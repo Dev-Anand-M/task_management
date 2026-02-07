@@ -35,6 +35,7 @@ import QuizGenerator from './pages/ai/QuizGenerator';
 import Leaderboard from './pages/Leaderboard';
 import Settings from './pages/Settings';
 import Notifications from './pages/Notifications';
+import DebugConnection from './pages/DebugConnection';
 
 // Protected Route Component (Layout Wrapper)
 const ProtectedLayout = ({ requiredRole }) => {
@@ -183,6 +184,9 @@ function AppRoutes() {
         <Route path="/ai/code-review" element={<CodeReview />} />
         <Route path="/ai/study-tools" element={<StudyTools />} />
         <Route path="/ai/quiz-generator" element={<QuizGenerator />} />
+
+        {/* Debug Route */}
+        <Route path="/debug" element={<DebugConnection />} />
       </Route>
 
       {/* Catch all */}
