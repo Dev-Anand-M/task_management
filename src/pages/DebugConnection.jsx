@@ -11,9 +11,11 @@ const DebugConnection = () => {
         realtime: { status: 'pending', detail: '' } // Optional check
     });
     const [loading, setLoading] = useState(true);
+    const [currentUser, setCurrentUser] = useState(null);
 
     const checkConnection = async () => {
         setLoading(true);
+        // ... (keep existing init)
         const newResults = {
             envVars: { status: 'pending', detail: '' },
             auth: { status: 'pending', detail: '' },
@@ -45,10 +47,18 @@ const DebugConnection = () => {
         try {
             const { data, error } = await supabase.auth.getSession();
             if (error) throw error;
-            newResults.auth = {
-                status: 'success',
-                detail: data.session ? `Logged in as ${data.session.user.email}` : 'No active session (Guest)'
-            };
+            if (data.session) {
+                setCurrentUser(data.session.user);
+                // Fetch profile to get role
+                const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.session.user.id).single();
+                newResults.auth = {
+                    status: 'success',
+                    detail: `Logged in as ${data.session.user.email} (${profile?.role || 'no role'})`
+                };
+                if (profile) setCurrentUser(prev => ({ ...prev, role: profile.role }));
+            } else {
+                newResults.auth = { status: 'success', detail: 'No active session (Guest)' };
+            }
         } catch (e) {
             newResults.auth = { status: 'error', detail: e.message };
         }
@@ -72,6 +82,22 @@ const DebugConnection = () => {
 
         setResults(newResults);
         setLoading(false);
+    };
+
+    const handlePromoteToAdmin = async () => {
+        if (!currentUser) return;
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ role: 'admin' })
+                .eq('id', currentUser.id);
+
+            if (error) throw error;
+            alert('Success! Role updated to ADMIN. Please refresh the page.');
+            checkConnection();
+        } catch (e) {
+            alert('Error updating role: ' + e.message + '\n\nIf this fails, you must update it in the Supabase Dashboard SQL Editor:\nUPDATE profiles SET role = \'admin\' WHERE id = \'' + currentUser.id + '\';');
+        }
     };
 
     useEffect(() => {
@@ -153,6 +179,21 @@ const DebugConnection = () => {
                             {results.database.status.toUpperCase()}
                         </Badge>
                     </div>
+
+                    {/* Admin Promotion Tool */}
+                    {currentUser && (
+                        <div className="mt-md p-md bg-surface rounded-lg border border-border flex justify-between items-center">
+                            <div>
+                                <h4 className="m-0">Current Role: {currentUser.role || 'member'}</h4>
+                                <p className="m-0 text-sm text-muted">User ID: {currentUser.id}</p>
+                            </div>
+                            {currentUser.role !== 'admin' && (
+                                <Button onClick={handlePromoteToAdmin} variant="secondary" size="sm">
+                                    Force Upgrade to Admin
+                                </Button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {results.database.status === 'error' && (

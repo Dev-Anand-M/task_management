@@ -121,6 +121,23 @@ const MemberDashboard = () => {
                 </p>
             </div>
 
+            {/* No Classroom Warning */}
+            {!user?.classroom_id && !user?.is_global_admin && (
+                <Card style={{ marginBottom: 'var(--space-xl)', borderColor: 'var(--warning-500)', background: 'rgba(245, 158, 11, 0.1)' }}>
+                    <div className="flex items-center gap-md">
+                        <div style={{ padding: 'var(--space-sm)', background: 'var(--warning-500)', borderRadius: '50%', color: 'white' }}>
+                            <HelpCircle size={24} />
+                        </div>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: 'var(--text-lg)' }}>No Classroom Assigned</h3>
+                            <p style={{ margin: '4px 0 0', color: 'var(--text-muted)' }}>
+                                You are not currently assigned to any classroom. You won't see any tasks or quizzes until an admin adds you to a classroom.
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+            )}
+
             {/* Achievements Card - Replaces Level Card */}
             <Card
                 variant="gradient"
