@@ -1,0 +1,15 @@
+{
+    "name": "Zenith",
+    "short_name": "Zenith",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#1c1917",
+    "theme_color": "#f59e0b",
+    "icons": [
+        {
+            "src": "/vite.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}

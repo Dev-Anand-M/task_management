@@ -1,0 +1,206 @@
+
+import { Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { Layout } from './components/layout';
+import { ErrorBoundary, LoadingSpinner } from './components/common';
+
+// Auth Pages
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+
+// Admin Pages
+import AdminDashboard from './pages/admin/Dashboard';
+import TaskManager from './pages/admin/TaskManager';
+import QuizBuilder from './pages/admin/QuizBuilder';
+import EvaluationCenter from './pages/admin/EvaluationCenter';
+import TeamManagement from './pages/admin/TeamManagement';
+import InviteCodes from './pages/admin/InviteCodes';
+import ClassroomSettings from './pages/admin/ClassroomSettings';
+import ClassroomDetail from './pages/admin/ClassroomDetail';
+
+// Member Pages
+import MemberDashboard from './pages/member/Dashboard';
+import MyTasks from './pages/member/MyTasks';
+import Quizzes from './pages/member/Quizzes';
+import Profile from './pages/member/Profile';
+
+// AI Pages
+import AIAssistant from './pages/ai/AIAssistant';
+import CodeReview from './pages/ai/CodeReview';
+import StudyTools from './pages/ai/StudyTools';
+import QuizGenerator from './pages/ai/QuizGenerator';
+
+// Shared Pages
+import Leaderboard from './pages/Leaderboard';
+import Settings from './pages/Settings';
+import Notifications from './pages/Notifications';
+
+// Protected Route Component (Layout Wrapper)
+const ProtectedLayout = ({ requiredRole }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--bg)'
+      }}>
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (requiredRole && user.role !== requiredRole) {
+    return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+  }
+
+  return (
+    <Layout>
+      <Outlet />
+    </Layout>
+  );
+};
+
+// Simple Route Guard for Role Branches
+const RoleGuard = ({ role }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) return <LoadingSpinner />; // Should be handled by parent but safe to keep
+  if (!user) return <Navigate to="/login" replace />;
+
+  if (user.role !== role) {
+    return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+  }
+
+  return <Outlet />;
+};
+
+// Auth Route (redirects if already logged in)
+const AuthRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--bg)'
+      }}>
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+  }
+
+  return children;
+};
+
+const AdminMemberProfile = () => {
+  const { userId } = useParams();
+  return <Profile userId={userId} readonly={true} />;
+};
+
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route
+        path="/login"
+        element={
+          <AuthRoute>
+            <Login />
+          </AuthRoute>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <AuthRoute>
+            <Register />
+          </AuthRoute>
+        }
+      />
+
+      {/* Main Authenticated Layout
+          This keeps the Sidebar/Header mounted when switching between pages
+      */}
+      <Route element={<ProtectedLayout />}>
+
+        {/* Admin Section */}
+        <Route path="/admin" element={<RoleGuard role="admin" />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="tasks" element={<TaskManager />} />
+          <Route path="tasks/new" element={<TaskManager />} />
+          <Route path="tasks/:taskId" element={<TaskManager />} />
+          <Route path="quizzes" element={<QuizBuilder />} />
+          <Route path="quizzes/new" element={<QuizBuilder />} />
+          <Route path="quizzes/:quizId" element={<QuizBuilder />} />
+          <Route path="evaluations" element={<EvaluationCenter />} />
+          <Route path="evaluations/:submissionId" element={<EvaluationCenter />} />
+          <Route path="team" element={<TeamManagement />} />
+          <Route path="invite-codes" element={<InviteCodes />} />
+          <Route path="classroom" element={<ClassroomSettings />} />
+          <Route path="classroom/:id" element={<ClassroomDetail />} />
+          <Route path="member/:userId" element={<AdminMemberProfile />} />
+        </Route>
+
+        {/* Member Section */}
+        {/* We can technically allow admins to see these or restrict them. 
+            For now, let's restrict /dashboard and /tasks root to members, 
+            or allow admins to see them if they want (though they have their own).
+            Let's restrict strictly to match previous logic. 
+        */}
+        <Route element={<RoleGuard role="member" />}>
+          <Route path="/dashboard" element={<MemberDashboard />} />
+          <Route path="/tasks" element={<MyTasks />} />
+          <Route path="/tasks/:taskId" element={<MyTasks />} />
+          <Route path="/quizzes" element={<Quizzes />} />
+          <Route path="/quizzes/:quizId" element={<Quizzes />} />
+          <Route path="/profile" element={<Profile />} />
+        </Route>
+
+        {/* Shared Routes */}
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/notifications" element={<Notifications />} />
+
+        {/* AI Tools - Available to everyone */}
+        <Route path="/ai/assistant" element={<AIAssistant />} />
+        <Route path="/ai/code-review" element={<CodeReview />} />
+        <Route path="/ai/study-tools" element={<StudyTools />} />
+        <Route path="/ai/quiz-generator" element={<QuizGenerator />} />
+      </Route>
+
+      {/* Catch all */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
+  );
+}
+
+export default App;

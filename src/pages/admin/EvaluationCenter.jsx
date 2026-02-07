@@ -1,0 +1,559 @@
+import { useState, useEffect, useCallback } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Card, Button, Badge, Avatar, Modal, Input, ProgressBar } from '../../components/common';
+import {
+    Search,
+    Filter,
+    CheckCircle,
+    XCircle,
+    Clock,
+    ExternalLink,
+    MessageSquare,
+    Award,
+    ArrowLeft,
+    RefreshCw,
+    AlertTriangle,
+    Check,
+    X
+} from 'lucide-react';
+import * as db from '../../services/database';
+import { formatDate, formatRelativeTime, getStatusColor, EVALUATION_CRITERIA } from '../../utils/constants';
+
+const EvaluationCenter = () => {
+    const { submissionId } = useParams();
+    const navigate = useNavigate();
+    const [submissions, setSubmissions] = useState([]);
+    const [filterStatus, setFilterStatus] = useState('pending');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    const loadSubmissions = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await db.getSubmissions();
+            setSubmissions(data);
+        } catch (error) {
+            console.error('Error loading submissions:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadSubmissions();
+    }, [loadSubmissions]);
+
+    const filteredSubmissions = submissions
+        .filter(sub => {
+            const matchesStatus = filterStatus === 'all' || sub.status === filterStatus;
+            const matchesSearch = searchQuery === '' ||
+                sub.profiles?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                sub.tasks?.title?.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesStatus && matchesSearch;
+        })
+        .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+
+    if (submissionId) {
+        return <EvaluationDetail submissionId={submissionId} onBack={() => navigate('/admin/evaluations')} onUpdate={loadSubmissions} />;
+    }
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center" style={{ minHeight: '400px' }}>
+                <div className="loading-spinner" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="animate-fade-in">
+            {/* Header */}
+            <div className="mb-lg">
+                <p style={{ color: 'var(--text-muted)' }}>
+                    Review and evaluate team submissions
+                </p>
+            </div>
+
+            {/* Filters */}
+            <Card style={{ marginBottom: 'var(--space-lg)', padding: 'var(--space-md)' }}>
+                <div className="flex gap-md items-center" style={{ flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1', minWidth: '200px' }}>
+                        <Input
+                            placeholder="Search by name or task..."
+                            icon={Search}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <div className="tabs" style={{ width: 'auto' }}>
+                        {['all', 'pending', 'approved', 'rejected'].map(status => (
+                            <button
+                                key={status}
+                                className={`tab ${filterStatus === status ? 'active' : ''}`}
+                                onClick={() => setFilterStatus(status)}
+                            >
+                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                                {status === 'pending' && (
+                                    <Badge variant="warning" style={{ marginLeft: '6px' }}>
+                                        {submissions.filter(s => s.status === 'pending').length}
+                                    </Badge>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </Card>
+
+            {/* Submissions List */}
+            {filteredSubmissions.length === 0 ? (
+                <Card>
+                    <div className="empty-state">
+                        <div className="empty-state-icon">
+                            <CheckCircle size={32} />
+                        </div>
+                        <h3>No submissions found</h3>
+                        <p>
+                            {filterStatus === 'pending'
+                                ? 'All caught up! No pending submissions to review.'
+                                : 'No submissions match your current filters.'}
+                        </p>
+                    </div>
+                </Card>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                    {filteredSubmissions.map(sub => (
+                        <Link
+                            key={sub.id}
+                            to={`/admin/evaluations/${sub.id}`}
+                            style={{ textDecoration: 'none' }}
+                        >
+                            <Card style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 'var(--space-lg)',
+                                padding: 'var(--space-lg)',
+                                cursor: 'pointer',
+                                transition: 'all var(--transition-fast)'
+                            }}>
+                                <Avatar name={sub.profiles?.name} size="lg" />
+
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div className="flex items-center gap-sm mb-xs">
+                                        <h4 style={{ margin: 0 }}>{sub.profiles?.name}</h4>
+                                        <Badge variant={getStatusColor(sub.status)}>{sub.status}</Badge>
+                                        {sub.is_resubmission && <Badge variant="primary">Resubmitted</Badge>}
+                                    </div>
+                                    <p style={{
+                                        margin: 0,
+                                        color: 'var(--text-muted)',
+                                        fontSize: 'var(--text-sm)'
+                                    }}>
+                                        {sub.tasks?.title}
+                                    </p>
+                                </div>
+
+                                <div style={{ textAlign: 'right' }}>
+                                    {sub.score !== null && sub.score !== undefined && (
+                                        <div style={{
+                                            fontSize: 'var(--text-lg)',
+                                            fontWeight: 600,
+                                            color: sub.status === 'approved' ? 'var(--success-500)' : 'var(--text-muted)'
+                                        }}>
+                                            {sub.score}/100
+                                        </div>
+                                    )}
+                                    <div style={{
+                                        fontSize: 'var(--text-xs)',
+                                        color: 'var(--text-muted)'
+                                    }}>
+                                        {formatRelativeTime(sub.submitted_at)}
+                                    </div>
+                                </div>
+
+                                <ExternalLink size={20} style={{ color: 'var(--text-muted)' }} />
+                            </Card>
+                        </Link>
+                    ))}
+                </div>
+            )}
+
+            <style>{`
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid var(--border);
+          border-top-color: var(--primary-500);
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+      `}</style>
+        </div>
+    );
+};
+
+// Detailed evaluation view
+const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
+    const [submission, setSubmission] = useState(null);
+    const [score, setScore] = useState('');
+    const [feedback, setFeedback] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    const loadSubmission = useCallback(async () => {
+        try {
+            setLoading(true);
+            const sub = await db.getSubmissionById(submissionId);
+            if (sub) {
+                setSubmission(sub);
+                setScore(sub.score?.toString() || sub.suggested_score?.toString() || '');
+                setFeedback(sub.feedback || '');
+            }
+        } catch (error) {
+            console.error('Error loading submission:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [submissionId]);
+
+    useEffect(() => {
+        loadSubmission();
+    }, [loadSubmission]);
+
+    const handleApprove = async () => {
+        if (!score) return;
+        setSaving(true);
+
+        try {
+            const scoreNum = parseInt(score);
+            await db.updateSubmission(submissionId, {
+                status: 'approved',
+                score: scoreNum,
+                feedback,
+                evaluated_at: new Date().toISOString()
+            });
+
+            // Award XP to user
+            if (submission.profiles?.id) {
+                const xpEarned = Math.round((scoreNum / 100) * (submission.tasks?.points || 100));
+                const currentXP = submission.profiles.xp || 0;
+                await db.updateProfile(submission.profiles.id, { xp: currentXP + xpEarned });
+
+                // Notify User
+                await db.createNotification({
+                    user_id: submission.profiles.id,
+                    classroom_id: submission.tasks?.classroom_id,
+                    title: 'Task Approved! \u0026 XP Awarded',
+                    message: `Your submission for "${submission.tasks?.title}" was approved with a score of ${scoreNum}/100. You earned ${xpEarned} XP!`,
+                    type: 'success',
+                    link: `/tasks/${submission.tasks?.id}`
+                });
+            }
+
+            onUpdate();
+            onBack();
+        } catch (error) {
+            console.error('Error approving submission:', error);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const [revisionDeadline, setRevisionDeadline] = useState('');
+
+    const handleReject = async () => {
+        setSaving(true);
+        try {
+            const scoreNum = parseInt(score) || 0;
+            const updateData = {
+                status: 'rejected',
+                score: scoreNum,
+                feedback,
+                evaluated_at: new Date().toISOString()
+            };
+
+            if (revisionDeadline) {
+                updateData.revision_deadline = new Date(revisionDeadline).toISOString();
+            }
+
+            await db.updateSubmission(submissionId, updateData);
+
+            // Notify User
+            if (submission.profiles?.id) {
+                let msg = `Reviewer requested a revision for "${submission.tasks?.title}". Check feedback for details.`;
+                if (revisionDeadline) {
+                    msg += ` New deadline: ${new Date(revisionDeadline).toLocaleDateString()}`;
+                }
+
+                await db.createNotification({
+                    user_id: submission.profiles.id,
+                    classroom_id: submission.tasks?.classroom_id,
+                    title: 'Revision Requested',
+                    message: msg,
+                    type: 'error',
+                    link: `/tasks/${submission.tasks?.id}`
+                });
+            }
+
+            onUpdate();
+            onBack();
+        } catch (error) {
+            console.error('Error rejecting submission:', error);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center" style={{ minHeight: '400px' }}>
+                <div className="loading-spinner" />
+            </div>
+        );
+    }
+
+    if (!submission) {
+        return <div>Submission not found</div>;
+    }
+
+    const autoEval = submission.auto_evaluation || {};
+    const taskCriteria = submission.tasks?.criteria || [];
+
+    return (
+        <div className="animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center gap-md mb-lg">
+                <Button variant="ghost" size="icon" onClick={onBack}>
+                    <ArrowLeft size={20} />
+                </Button>
+                <div>
+                    <h2 style={{ margin: 0 }}>Evaluate Submission</h2>
+                    <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+                        {submission.tasks?.title}
+                    </p>
+                </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-lg)' }}>
+                {/* Left Column - Submission Details */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                    {/* Submitter Info */}
+                    <Card>
+                        <div className="flex items-center gap-md">
+                            <Avatar name={submission.profiles?.name} size="lg" />
+                            <div>
+                                <h4 style={{ margin: 0 }}>{submission.profiles?.name}</h4>
+                                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                                    {submission.profiles?.email}
+                                </p>
+                            </div>
+                            <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                                <Badge variant={getStatusColor(submission.status)}>
+                                    {submission.status}
+                                </Badge>
+                                <p style={{ margin: '4px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                    Submitted {formatDate(submission.submitted_at)}
+                                </p>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* Repository Link */}
+                    <Card>
+                        <h4 style={{ marginBottom: 'var(--space-md)' }}>Repository</h4>
+                        <a
+                            href={submission.repo_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 'var(--space-sm)',
+                                padding: 'var(--space-md)',
+                                background: 'var(--card)',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid var(--border)',
+                                color: 'var(--primary-400)',
+                                fontSize: 'var(--text-sm)',
+                                wordBreak: 'break-all'
+                            }}
+                        >
+                            <ExternalLink size={16} />
+                            {submission.repo_url}
+                        </a>
+                        {submission.notes && (
+                            <div style={{ marginTop: 'var(--space-md)' }}>
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                                    Submission Notes:
+                                </p>
+                                <p style={{
+                                    padding: 'var(--space-md)',
+                                    background: 'var(--card)',
+                                    borderRadius: 'var(--radius-md)',
+                                    fontSize: 'var(--text-sm)'
+                                }}>
+                                    {submission.notes}
+                                </p>
+                            </div>
+                        )}
+                    </Card>
+
+                    {/* Feedback */}
+                    <Card>
+                        <h4 style={{ marginBottom: 'var(--space-md)' }}>
+                            <MessageSquare size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            Your Feedback
+                        </h4>
+                        <Input
+                            type="textarea"
+                            placeholder="Provide detailed feedback for the team member..."
+                            value={feedback}
+                            onChange={(e) => setFeedback(e.target.value)}
+                            style={{ minHeight: '150px' }}
+                        />
+                        <div style={{ marginTop: 'var(--space-md)' }}>
+                            <p style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                                Revision Deadline (Optional)
+                            </p>
+                            <Input
+                                type="date"
+                                value={revisionDeadline}
+                                onChange={(e) => setRevisionDeadline(e.target.value)}
+                            />
+                        </div>
+                    </Card>
+                </div>
+
+                {/* Right Column - Auto Evaluation & Scoring */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                    {/* Auto Evaluation */}
+                    <Card>
+                        <h4 style={{ marginBottom: 'var(--space-md)' }}>
+                            <RefreshCw size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            Auto-Evaluation
+                        </h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                            {taskCriteria.map(criteriaId => {
+                                const criteria = EVALUATION_CRITERIA.find(c => c.id === criteriaId);
+                                const passed = autoEval[criteriaId];
+
+                                return (
+                                    <div
+                                        key={criteriaId}
+                                        className="flex items-center gap-sm"
+                                        style={{
+                                            padding: 'var(--space-sm) var(--space-md)',
+                                            background: 'var(--card)',
+                                            borderRadius: 'var(--radius-md)',
+                                            borderLeft: `3px solid ${passed === true ? 'var(--success-500)' : passed === false ? 'var(--error-500)' : 'var(--warning-500)'}`
+                                        }}
+                                    >
+                                        {passed === true ? (
+                                            <Check size={16} style={{ color: 'var(--success-500)' }} />
+                                        ) : passed === false ? (
+                                            <X size={16} style={{ color: 'var(--error-500)' }} />
+                                        ) : (
+                                            <AlertTriangle size={16} style={{ color: 'var(--warning-500)' }} />
+                                        )}
+                                        <span style={{ fontSize: 'var(--text-sm)' }}>
+                                            {criteria?.label || criteriaId}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {submission.suggested_score && (
+                            <div style={{
+                                marginTop: 'var(--space-lg)',
+                                padding: 'var(--space-md)',
+                                background: 'rgba(99, 102, 241, 0.1)',
+                                borderRadius: 'var(--radius-md)',
+                                textAlign: 'center'
+                            }}>
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: '0 0 4px' }}>
+                                    Suggested Score
+                                </p>
+                                <p style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, margin: 0, color: 'var(--primary-400)' }}>
+                                    {submission.suggested_score}/100
+                                </p>
+                            </div>
+                        )}
+                    </Card>
+
+                    {/* Final Score */}
+                    <Card>
+                        <h4 style={{ marginBottom: 'var(--space-md)' }}>
+                            <Award size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            Final Score
+                        </h4>
+                        <Input
+                            type="number"
+                            placeholder="0-100"
+                            min="0"
+                            max="100"
+                            value={score}
+                            onChange={(e) => setScore(e.target.value)}
+                        />
+
+                        {score && submission.tasks?.points && (
+                            <div style={{
+                                marginTop: 'var(--space-md)',
+                                padding: 'var(--space-sm) var(--space-md)',
+                                background: 'var(--card)',
+                                borderRadius: 'var(--radius-md)',
+                                fontSize: 'var(--text-sm)',
+                                color: 'var(--text-muted)'
+                            }}>
+                                XP to award: <strong style={{ color: 'var(--success-500)' }}>
+                                    +{Math.round((parseInt(score) / 100) * submission.tasks.points)} XP
+                                </strong>
+                            </div>
+                        )}
+                    </Card>
+
+                    {/* Action Buttons */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                        <Button
+                            variant="success"
+                            onClick={handleApprove}
+                            disabled={!score || saving}
+                            loading={saving}
+                            icon={CheckCircle}
+                            style={{ width: '100%' }}
+                        >
+                            Approve & Award XP
+                        </Button>
+                        <Button
+                            variant="danger"
+                            onClick={handleReject}
+                            disabled={saving}
+                            icon={XCircle}
+                            style={{ width: '100%' }}
+                        >
+                            Request Revision
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            <style>{`
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid var(--border);
+          border-top-color: var(--primary-500);
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+        
+        @media (max-width: 900px) {
+          div[style*="grid-template-columns: 2fr 1fr"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+        </div>
+    );
+};
+
+export default EvaluationCenter;

@@ -1,0 +1,672 @@
+import { useState, useEffect, useCallback } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { Card, Button, Badge, Modal } from '../../components/common';
+import {
+    Search,
+    Clock,
+    Award,
+    HelpCircle,
+    ArrowLeft,
+    ArrowRight,
+    CheckCircle,
+    XCircle,
+    Timer,
+    Trophy
+} from 'lucide-react';
+import * as db from '../../services/database';
+import {
+    getDifficultyColor,
+    DIFFICULTY_LEVELS
+} from '../../utils/constants';
+
+const Quizzes = () => {
+    const { quizId } = useParams();
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const [quizzes, setQuizzes] = useState([]);
+    const [attempts, setAttempts] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    const loadData = useCallback(async () => {
+        if (!user?.id) return;
+
+        try {
+            setLoading(true);
+            const [allQuizzes, myAttempts] = await Promise.all([
+                db.getQuizzes(),
+                db.getQuizAttemptsByUser(user.id)
+            ]);
+
+            const myQuizzes = allQuizzes.filter(q => q.assigned_to?.includes(user.id));
+            setQuizzes(myQuizzes);
+            setAttempts(myAttempts);
+        } catch (error) {
+            console.error('Error loading quizzes:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [user?.id]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    const getQuizStatus = (quizId) => {
+        const attempt = attempts.find(a => a.quiz_id === quizId);
+        return attempt ? 'completed' : 'pending';
+    };
+
+    const getQuizScore = (quizId) => {
+        const attempt = attempts.find(a => a.quiz_id === quizId);
+        return attempt?.score || null;
+    };
+
+    const filteredQuizzes = quizzes.filter(quiz =>
+        quiz.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Separate pending and completed
+    const pendingQuizzes = filteredQuizzes.filter(q => getQuizStatus(q.id) === 'pending');
+    const completedQuizzes = filteredQuizzes.filter(q => getQuizStatus(q.id) === 'completed');
+
+    if (quizId) {
+        return <TakeQuiz quizId={quizId} onBack={() => navigate('/quizzes')} onComplete={loadData} />;
+    }
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center" style={{ minHeight: '400px' }}>
+                <div className="loading-spinner" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="animate-fade-in">
+            {/* Search */}
+            <Card style={{ marginBottom: 'var(--space-lg)', padding: 'var(--space-md)' }}>
+                <div className="flex items-center gap-sm" style={{
+                    background: 'var(--card)',
+                    borderRadius: 'var(--radius-lg)',
+                    padding: '0 var(--space-md)',
+                    border: '1px solid var(--border)'
+                }}>
+                    <Search size={18} style={{ color: 'var(--text-muted)' }} />
+                    <input
+                        type="text"
+                        placeholder="Search quizzes..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{
+                            flex: 1,
+                            background: 'transparent',
+                            border: 'none',
+                            padding: 'var(--space-md) 0',
+                            color: 'var(--text)',
+                            outline: 'none',
+                            fontSize: 'var(--text-base)'
+                        }}
+                    />
+                </div>
+            </Card>
+
+            {/* Pending Quizzes */}
+            {pendingQuizzes.length > 0 && (
+                <>
+                    <h3 style={{ marginBottom: 'var(--space-md)' }}>
+                        <HelpCircle size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                        Pending Quizzes ({pendingQuizzes.length})
+                    </h3>
+                    <div className="grid grid-cols-3 mb-xl">
+                        {pendingQuizzes.map(quiz => (
+                            <Link key={quiz.id} to={`/quizzes/${quiz.id}`} style={{ textDecoration: 'none' }}>
+                                <Card style={{
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 'var(--space-md)'
+                                }}>
+                                    <div className="flex justify-between items-start">
+                                        <Badge variant={getDifficultyColor(quiz.difficulty)}>
+                                            {quiz.difficulty}
+                                        </Badge>
+                                        <Badge variant="primary">{quiz.category}</Badge>
+                                    </div>
+
+                                    <div style={{ flex: 1 }}>
+                                        <h4 style={{ marginBottom: '4px' }}>{quiz.title}</h4>
+                                        <p style={{
+                                            fontSize: 'var(--text-sm)',
+                                            color: 'var(--text-muted)',
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 2,
+                                            WebkitBoxOrient: 'vertical',
+                                            overflow: 'hidden'
+                                        }}>
+                                            {quiz.description}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex justify-between items-center" style={{
+                                        paddingTop: 'var(--space-md)',
+                                        borderTop: '1px solid var(--border)'
+                                    }}>
+                                        <div className="flex gap-md" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                                            <span className="flex items-center gap-xs">
+                                                <HelpCircle size={14} /> {quiz.questions?.length} Q
+                                            </span>
+                                            <span className="flex items-center gap-xs">
+                                                <Clock size={14} /> {quiz.time_limit} min
+                                            </span>
+                                        </div>
+                                        <Badge variant="accent">
+                                            <Award size={12} /> +{quiz.points} XP
+                                        </Badge>
+                                    </div>
+                                </Card>
+                            </Link>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {/* Completed Quizzes */}
+            {completedQuizzes.length > 0 && (
+                <>
+                    <h3 style={{ marginBottom: 'var(--space-md)' }}>
+                        <CheckCircle size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                        Completed Quizzes ({completedQuizzes.length})
+                    </h3>
+                    <div className="grid grid-cols-3">
+                        {completedQuizzes.map(quiz => {
+                            const score = getQuizScore(quiz.id);
+                            const passed = score >= 70;
+
+                            return (
+                                <Card key={quiz.id} style={{
+                                    opacity: 0.9,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 'var(--space-md)'
+                                }}>
+                                    <div className="flex justify-between items-start">
+                                        <Badge variant={getDifficultyColor(quiz.difficulty)}>
+                                            {quiz.difficulty}
+                                        </Badge>
+                                        <Badge variant={passed ? 'success' : 'error'}>
+                                            {passed ? 'Passed' : 'Failed'}
+                                        </Badge>
+                                    </div>
+
+                                    <div>
+                                        <h4 style={{ marginBottom: '4px' }}>{quiz.title}</h4>
+                                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                                            {quiz.category}
+                                        </p>
+                                    </div>
+
+                                    <div style={{
+                                        padding: 'var(--space-md)',
+                                        background: passed ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                        borderRadius: 'var(--radius-md)',
+                                        textAlign: 'center'
+                                    }}>
+                                        <p style={{
+                                            fontSize: 'var(--text-2xl)',
+                                            fontWeight: 700,
+                                            margin: 0,
+                                            color: passed ? 'var(--success-500)' : 'var(--error-500)'
+                                        }}>
+                                            {score}%
+                                        </p>
+                                    </div>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                </>
+            )}
+
+            {filteredQuizzes.length === 0 && (
+                <Card>
+                    <div className="empty-state">
+                        <div className="empty-state-icon">
+                            <HelpCircle size={32} />
+                        </div>
+                        <h3>No quizzes assigned</h3>
+                        <p>Quizzes assigned to you will appear here.</p>
+                    </div>
+                </Card>
+            )}
+
+            <style>{`
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid var(--border);
+          border-top-color: var(--primary-500);
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+      `}</style>
+        </div>
+    );
+};
+
+// Take Quiz Component
+const TakeQuiz = ({ quizId, onBack, onComplete }) => {
+    const { user, addXP, addBadge } = useAuth();
+    const [quiz, setQuiz] = useState(null);
+    const [currentQuestion, setCurrentQuestion] = useState(0);
+    const [answers, setAnswers] = useState({});
+    const [timeLeft, setTimeLeft] = useState(0);
+    const [isComplete, setIsComplete] = useState(false);
+    const [results, setResults] = useState(null);
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+
+    const loadQuiz = useCallback(async () => {
+        try {
+            setLoading(true);
+            const q = await db.getQuizById(quizId);
+            if (q) {
+                setQuiz(q);
+                setTimeLeft(q.time_limit * 60); // Convert to seconds
+            }
+        } catch (error) {
+            console.error('Error loading quiz:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [quizId]);
+
+    useEffect(() => {
+        loadQuiz();
+    }, [loadQuiz]);
+
+    // Timer
+    const handleSubmit = useCallback(async () => {
+        if (!quiz || submitting) return;
+        setSubmitting(true);
+
+        // Calculate score
+        let correct = 0;
+        quiz.questions.forEach((q, index) => {
+            if (q.type === 'boolean') {
+                if (answers[index] === q.correctAnswer) correct++;
+            } else if (q.type === 'multiple') {
+                if (answers[index] === q.correctAnswer) correct++;
+            }
+        });
+
+        const score = Math.round((correct / quiz.questions.length) * 100);
+        const passed = score >= 70;
+
+        try {
+            // Save attempt
+            await db.createQuizAttempt({
+                quiz_id: quiz.id,
+                user_id: user.id,
+                answers,
+                score,
+                correct,
+                total: quiz.questions.length,
+                passed
+            });
+
+            // Award XP if passed
+            if (passed) {
+                const xpEarned = Math.round((score / 100) * quiz.points);
+                await addXP(xpEarned);
+
+                // Check for quiz_master badge
+                const allAttempts = await db.getQuizAttemptsByUser(user.id);
+                const passedQuizzes = allAttempts.filter(a => a.passed).length;
+                if (passedQuizzes >= 5) {
+                    await addBadge('quiz_master');
+                }
+            }
+
+            setResults({
+                score,
+                correct,
+                total: quiz.questions.length,
+                passed,
+                xpEarned: passed ? Math.round((score / 100) * quiz.points) : 0
+            });
+            setIsComplete(true);
+            onComplete();
+        } catch (error) {
+            console.error('Error submitting quiz:', error);
+        } finally {
+            setSubmitting(false);
+        }
+    }, [quiz, submitting, answers, user.id, addXP, addBadge, onComplete]);
+
+    useEffect(() => {
+        if (isComplete || !quiz || loading) return;
+
+        const timer = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    handleSubmit();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [isComplete, quiz, loading, handleSubmit]);
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const handleAnswer = (value) => {
+        setAnswers(prev => ({
+            ...prev,
+            [currentQuestion]: value
+        }));
+    };
+
+    if (loading || !quiz) {
+        return (
+            <div className="flex items-center justify-center" style={{ minHeight: '400px' }}>
+                <div className="loading-spinner" />
+            </div>
+        );
+    }
+
+    const question = quiz.questions[currentQuestion];
+    const isFirstQuestion = currentQuestion === 0;
+    const isLastQuestion = currentQuestion === quiz.questions.length - 1;
+    const progress = ((currentQuestion + 1) / quiz.questions.length) * 100;
+
+    // Result screen
+    if (isComplete && results) {
+        return (
+            <div className="animate-fade-in" style={{ maxWidth: '600px', margin: '0 auto' }}>
+                <Card style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
+                    <div style={{
+                        width: '100px',
+                        height: '100px',
+                        margin: '0 auto var(--space-lg)',
+                        borderRadius: '50%',
+                        background: results.passed
+                            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2))'
+                            : 'rgba(239, 68, 68, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        {results.passed ? (
+                            <Trophy size={48} style={{ color: 'var(--success-500)' }} />
+                        ) : (
+                            <XCircle size={48} style={{ color: 'var(--error-500)' }} />
+                        )}
+                    </div>
+
+                    <h2 style={{ marginBottom: 'var(--space-sm)' }}>
+                        {results.passed ? 'Congratulations! 🎉' : 'Keep Practicing!'}
+                    </h2>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-lg)' }}>
+                        {results.passed
+                            ? 'You passed the quiz!'
+                            : 'You need 70% to pass. Try again!'}
+                    </p>
+
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr 1fr',
+                        gap: 'var(--space-md)',
+                        marginBottom: 'var(--space-xl)'
+                    }}>
+                        <div style={{
+                            padding: 'var(--space-md)',
+                            background: 'var(--card)',
+                            borderRadius: 'var(--radius-lg)'
+                        }}>
+                            <p style={{
+                                fontSize: 'var(--text-3xl)',
+                                fontWeight: 700,
+                                margin: 0,
+                                color: results.passed ? 'var(--success-500)' : 'var(--error-500)'
+                            }}>
+                                {results.score}%
+                            </p>
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>
+                                Score
+                            </p>
+                        </div>
+                        <div style={{
+                            padding: 'var(--space-md)',
+                            background: 'var(--card)',
+                            borderRadius: 'var(--radius-lg)'
+                        }}>
+                            <p style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, margin: 0 }}>
+                                {results.correct}/{results.total}
+                            </p>
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>
+                                Correct
+                            </p>
+                        </div>
+                        <div style={{
+                            padding: 'var(--space-md)',
+                            background: 'var(--card)',
+                            borderRadius: 'var(--radius-lg)'
+                        }}>
+                            <p style={{
+                                fontSize: 'var(--text-3xl)',
+                                fontWeight: 700,
+                                margin: 0,
+                                color: 'var(--primary-400)'
+                            }}>
+                                +{results.xpEarned}
+                            </p>
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>
+                                XP Earned
+                            </p>
+                        </div>
+                    </div>
+
+                    <Button onClick={onBack} style={{ width: '100%' }}>
+                        Back to Quizzes
+                    </Button>
+                </Card>
+            </div>
+        );
+    }
+
+    return (
+        <div className="animate-fade-in">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-lg">
+                <div className="flex items-center gap-md">
+                    <Button variant="ghost" size="icon" onClick={() => setShowConfirm(true)}>
+                        <ArrowLeft size={20} />
+                    </Button>
+                    <div>
+                        <h2 style={{ margin: 0, fontSize: 'var(--text-xl)' }}>{quiz.title}</h2>
+                        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                            Question {currentQuestion + 1} of {quiz.questions.length}
+                        </p>
+                    </div>
+                </div>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-sm)',
+                    padding: 'var(--space-sm) var(--space-md)',
+                    background: timeLeft < 60 ? 'rgba(239, 68, 68, 0.1)' : 'var(--card)',
+                    borderRadius: 'var(--radius-lg)',
+                    color: timeLeft < 60 ? 'var(--error-500)' : 'var(--text)'
+                }}>
+                    <Timer size={18} />
+                    <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>
+                        {formatTime(timeLeft)}
+                    </span>
+                </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div style={{
+                height: '4px',
+                background: 'var(--border)',
+                borderRadius: 'var(--radius-full)',
+                marginBottom: 'var(--space-xl)',
+                overflow: 'hidden'
+            }}>
+                <div style={{
+                    height: '100%',
+                    width: `${progress}%`,
+                    background: 'var(--gradient-primary)',
+                    transition: 'width 0.3s ease'
+                }} />
+            </div>
+
+            {/* Question Card */}
+            <Card style={{
+                maxWidth: '800px',
+                margin: '0 auto',
+                minHeight: '400px',
+                display: 'flex',
+                flexDirection: 'column'
+            }}>
+                <div style={{ flex: 1 }}>
+                    <h3 style={{ marginBottom: 'var(--space-xl)', fontSize: 'var(--text-xl)' }}>
+                        {question.question}
+                    </h3>
+
+                    {/* Multiple Choice */}
+                    {question.type === 'multiple' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                            {question.options.map((option, index) => (
+                                <div
+                                    key={index}
+                                    onClick={() => handleAnswer(index)}
+                                    className={`quiz-option ${answers[currentQuestion] === index ? 'selected' : ''}`}
+                                >
+                                    <div className="quiz-radio" />
+                                    <span>{option}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Boolean */}
+                    {question.type === 'boolean' && (
+                        <div className="flex gap-md">
+                            {[true, false].map(value => (
+                                <div
+                                    key={value.toString()}
+                                    onClick={() => handleAnswer(value)}
+                                    className={`quiz-option ${answers[currentQuestion] === value ? 'selected' : ''}`}
+                                    style={{ flex: 1, justifyContent: 'center' }}
+                                >
+                                    <span style={{ fontSize: 'var(--text-lg)', fontWeight: 500 }}>
+                                        {value ? 'True' : 'False'}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Navigation */}
+                <div className="flex justify-between items-center" style={{
+                    paddingTop: 'var(--space-lg)',
+                    borderTop: '1px solid var(--border)',
+                    marginTop: 'var(--space-lg)'
+                }}>
+                    <Button
+                        variant="secondary"
+                        icon={ArrowLeft}
+                        onClick={() => setCurrentQuestion(prev => prev - 1)}
+                        disabled={isFirstQuestion}
+                    >
+                        Previous
+                    </Button>
+
+                    <div className="flex gap-xs">
+                        {quiz.questions.map((_, index) => (
+                            <div
+                                key={index}
+                                onClick={() => setCurrentQuestion(index)}
+                                style={{
+                                    width: '10px',
+                                    height: '10px',
+                                    borderRadius: '50%',
+                                    background: answers[index] !== undefined
+                                        ? 'var(--primary-500)'
+                                        : 'var(--border)',
+                                    border: currentQuestion === index ? '2px solid var(--primary-400)' : 'none',
+                                    cursor: 'pointer'
+                                }}
+                            />
+                        ))}
+                    </div>
+
+                    {isLastQuestion ? (
+                        <Button
+                            variant="success"
+                            icon={CheckCircle}
+                            onClick={handleSubmit}
+                            disabled={Object.keys(answers).length < quiz.questions.length || submitting}
+                            loading={submitting}
+                        >
+                            Submit Quiz
+                        </Button>
+                    ) : (
+                        <Button
+                            icon={ArrowRight}
+                            iconPosition="right"
+                            onClick={() => setCurrentQuestion(prev => prev + 1)}
+                        >
+                            Next
+                        </Button>
+                    )}
+                </div>
+            </Card>
+
+            {/* Exit Confirmation Modal */}
+            <Modal
+                isOpen={showConfirm}
+                onClose={() => setShowConfirm(false)}
+                title="Exit Quiz?"
+                size="sm"
+            >
+                <p style={{ marginBottom: 'var(--space-lg)' }}>
+                    Are you sure you want to exit? Your progress will be lost.
+                </p>
+                <div className="flex justify-end gap-md">
+                    <Button variant="secondary" onClick={() => setShowConfirm(false)}>
+                        Continue Quiz
+                    </Button>
+                    <Button variant="danger" onClick={onBack}>
+                        Exit Quiz
+                    </Button>
+                </div>
+            </Modal>
+
+            <style>{`
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid var(--border);
+          border-top-color: var(--primary-500);
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+      `}</style>
+        </div>
+    );
+};
+
+export default Quizzes;

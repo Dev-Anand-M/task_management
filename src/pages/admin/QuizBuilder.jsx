@@ -1,0 +1,735 @@
+import { useState, useEffect } from 'react';
+import { Card, Button, Badge, Modal, Input, Avatar } from '../../components/common';
+import {
+    Plus,
+    Search,
+    Edit2,
+    Trash2,
+    HelpCircle,
+    Clock,
+    Award,
+    Users,
+    GripVertical,
+    X
+} from 'lucide-react';
+import * as db from '../../services/database';
+import { useAuth } from '../../context/AuthContext';
+import {
+    TASK_CATEGORIES,
+    DIFFICULTY_LEVELS,
+    QUESTION_TYPES,
+    getDifficultyColor
+} from '../../utils/constants';
+
+const QuizBuilder = () => {
+    const { user } = useAuth();
+    const [quizzes, setQuizzes] = useState([]);
+    const [members, setMembers] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingQuiz, setEditingQuiz] = useState(null);
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    // Form state
+    const [formData, setFormData] = useState({
+        title: '',
+        description: '',
+        category: 'Frontend',
+        difficulty: 'easy',
+        time_limit: 10,
+        assigned_to: [],
+        questions: [],
+        is_global: false,
+        assignment_type: 'everyone'
+    });
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const loadData = async () => {
+        try {
+            setLoading(true);
+            const [quizzesData, membersData] = await Promise.all([
+                db.getQuizzes(),
+                db.getMembers()
+            ]);
+            setQuizzes(quizzesData);
+            setMembers(membersData);
+        } catch (error) {
+            console.error('Error loading data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const resetForm = () => {
+        setFormData({
+            title: '',
+            description: '',
+            category: 'Frontend',
+            difficulty: 'easy',
+            time_limit: 10,
+            assigned_to: [],
+            questions: [],
+            is_global: false,
+            assignment_type: 'everyone'
+        });
+    };
+
+    const openCreateModal = () => {
+        resetForm();
+        setEditingQuiz(null);
+        setShowCreateModal(true);
+    };
+
+    const openEditModal = (quiz) => {
+        setFormData({
+            title: quiz.title,
+            description: quiz.description || '',
+            category: quiz.category,
+            difficulty: quiz.difficulty,
+            time_limit: quiz.time_limit,
+            assigned_to: quiz.assigned_to || [],
+            questions: quiz.questions || [],
+            is_global: quiz.is_global || false,
+            assignment_type: quiz.assignment_type || (quiz.assigned_to?.length > 0 ? 'specific' : 'everyone')
+        });
+        setEditingQuiz(quiz);
+        setShowCreateModal(true);
+    };
+
+    const addQuestion = () => {
+        const newQuestion = {
+            id: Date.now().toString(),
+            type: 'multiple',
+            question: '',
+            options: ['', '', '', ''],
+            correctAnswer: 0
+        };
+        setFormData(prev => ({
+            ...prev,
+            questions: [...prev.questions, newQuestion]
+        }));
+    };
+
+    const updateQuestion = (index, updates) => {
+        setFormData(prev => ({
+            ...prev,
+            questions: prev.questions.map((q, i) =>
+                i === index ? { ...q, ...updates } : q
+            )
+        }));
+    };
+
+    const removeQuestion = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            questions: prev.questions.filter((_, i) => i !== index)
+        }));
+    };
+
+    const updateOption = (questionIndex, optionIndex, value) => {
+        setFormData(prev => ({
+            ...prev,
+            questions: prev.questions.map((q, i) => {
+                if (i === questionIndex) {
+                    const newOptions = [...q.options];
+                    newOptions[optionIndex] = value;
+                    return { ...q, options: newOptions };
+                }
+                return q;
+            })
+        }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+
+        const quizData = {
+            title: formData.title,
+            description: formData.description,
+            category: formData.category,
+            difficulty: formData.difficulty,
+            time_limit: formData.time_limit,
+            points: DIFFICULTY_LEVELS.find(d => d.value === formData.difficulty)?.points || 30,
+            questions: formData.questions,
+            assigned_to: formData.assignment_type === 'specific' ? formData.assigned_to : [],
+            status: 'active',
+            created_by: user?.id,
+            classroom_id: formData.is_global ? null : user?.classroom_id,
+            is_global: formData.is_global,
+            assignment_type: formData.assignment_type
+        };
+
+        try {
+            if (editingQuiz) {
+                await db.updateQuiz(editingQuiz.id, quizData);
+            } else {
+                await db.createQuiz(quizData);
+            }
+
+            await loadData();
+            setShowCreateModal(false);
+            resetForm();
+        } catch (error) {
+            console.error('Error saving quiz:', error);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async (quizId) => {
+        try {
+            await db.deleteQuiz(quizId);
+            await loadData();
+            setDeleteConfirm(null);
+        } catch (error) {
+            console.error('Error deleting quiz:', error);
+        }
+    };
+
+    const toggleAssignment = (userId) => {
+        setFormData(prev => ({
+            ...prev,
+            assigned_to: prev.assigned_to.includes(userId)
+                ? prev.assigned_to.filter(id => id !== userId)
+                : [...prev.assigned_to, userId]
+        }));
+    };
+
+    const filteredQuizzes = quizzes.filter(quiz =>
+        quiz.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center" style={{ minHeight: '400px' }}>
+                <div className="loading-spinner" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="animate-fade-in">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-lg">
+                <p style={{ color: 'var(--text-muted)' }}>
+                    Create and manage quizzes for your team
+                </p>
+                <Button icon={Plus} onClick={openCreateModal}>
+                    Create Quiz
+                </Button>
+            </div>
+
+            {/* Search */}
+            <Card style={{ marginBottom: 'var(--space-lg)', padding: 'var(--space-md)' }}>
+                <Input
+                    placeholder="Search quizzes..."
+                    icon={Search}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+            </Card>
+
+            {/* Quizzes Grid */}
+            {filteredQuizzes.length === 0 ? (
+                <Card>
+                    <div className="empty-state">
+                        <div className="empty-state-icon">
+                            <HelpCircle size={32} />
+                        </div>
+                        <h3>No quizzes found</h3>
+                        <p>Create your first quiz to test your team's knowledge.</p>
+                        <Button icon={Plus} onClick={openCreateModal}>
+                            Create Quiz
+                        </Button>
+                    </div>
+                </Card>
+            ) : (
+                <div className="grid grid-cols-3">
+                    {filteredQuizzes.map(quiz => {
+                        const assignedMembers = quiz.assigned_to?.map(id =>
+                            members.find(m => m.id === id)
+                        ).filter(Boolean) || [];
+
+                        return (
+                            <Card
+                                key={quiz.id}
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 'var(--space-md)'
+                                }}
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <Badge variant={getDifficultyColor(quiz.difficulty)}>
+                                            {quiz.difficulty}
+                                        </Badge>
+                                        <Badge variant="primary" style={{ marginLeft: '8px' }}>
+                                            {quiz.category}
+                                        </Badge>
+                                        {quiz.is_global && (
+                                            <Badge variant="accent" style={{ marginLeft: '8px' }}>Global</Badge>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-xs">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => openEditModal(quiz)}
+                                        >
+                                            <Edit2 size={16} />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setDeleteConfirm(quiz)}
+                                        >
+                                            <Trash2 size={16} />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 style={{ marginBottom: '4px' }}>{quiz.title}</h4>
+                                    <p style={{
+                                        fontSize: 'var(--text-sm)',
+                                        color: 'var(--text-muted)',
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        overflow: 'hidden'
+                                    }}>
+                                        {quiz.description}
+                                    </p>
+                                </div>
+
+                                <div className="flex gap-lg" style={{ fontSize: 'var(--text-sm)' }}>
+                                    <div className="flex items-center gap-xs" style={{ color: 'var(--text-muted)' }}>
+                                        <HelpCircle size={16} />
+                                        {quiz.questions?.length || 0} questions
+                                    </div>
+                                    <div className="flex items-center gap-xs" style={{ color: 'var(--text-muted)' }}>
+                                        <Clock size={16} />
+                                        {quiz.time_limit} min
+                                    </div>
+                                    <div className="flex items-center gap-xs" style={{ color: 'var(--text-muted)' }}>
+                                        <Award size={16} />
+                                        {quiz.points} pts
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center" style={{
+                                    paddingTop: 'var(--space-md)',
+                                    borderTop: '1px solid var(--border)'
+                                }}>
+                                    <Users size={16} style={{ color: 'var(--text-muted)', marginRight: '8px' }} />
+                                    <div style={{ display: 'flex' }}>
+                                        {quiz.assignment_type === 'everyone' ? (
+                                            <Badge variant="secondary">Everyone</Badge>
+                                        ) : (
+                                            assignedMembers.slice(0, 3).map((member, i) => (
+                                                <div
+                                                    key={member.id}
+                                                    style={{
+                                                        marginLeft: i > 0 ? '-8px' : 0,
+                                                        position: 'relative',
+                                                        zIndex: 3 - i
+                                                    }}
+                                                >
+                                                    <Avatar name={member.name} size="sm" />
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                    {quiz.assignment_type === 'specific' && (
+                                        <span style={{
+                                            fontSize: 'var(--text-xs)',
+                                            color: 'var(--text-muted)',
+                                            marginLeft: '8px'
+                                        }}>
+                                            {assignedMembers.length} assigned
+                                        </span>
+                                    )}
+                                </div>
+                            </Card>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Create/Edit Modal */}
+            <Modal
+                isOpen={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                title={editingQuiz ? 'Edit Quiz' : 'Create New Quiz'}
+                size="xl"
+            >
+                <form onSubmit={handleSubmit}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                        <Input
+                            label="Quiz Title"
+                            placeholder="e.g., HTML Fundamentals"
+                            value={formData.title}
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            required
+                        />
+
+                        <Input
+                            type="textarea"
+                            label="Description"
+                            placeholder="Describe what this quiz covers..."
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            required
+                        />
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-md)' }}>
+                            <div className="input-group">
+                                <label className="input-label">Category</label>
+                                <select
+                                    className="input select"
+                                    value={formData.category}
+                                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                >
+                                    {TASK_CATEGORIES.map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="input-group">
+                                <label className="input-label">Difficulty</label>
+                                <select
+                                    className="input select"
+                                    value={formData.difficulty}
+                                    onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
+                                >
+                                    {DIFFICULTY_LEVELS.map(level => (
+                                        <option key={level.value} value={level.value}>
+                                            {level.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <Input
+                                type="number"
+                                label="Time Limit (minutes)"
+                                min="1"
+                                max="120"
+                                value={formData.time_limit}
+                                onChange={(e) => setFormData({ ...formData, time_limit: parseInt(e.target.value) })}
+                            />
+                        </div>
+
+                        {/* Assignment Mode */}
+                        <div className="input-group">
+                            <label className="input-label">Target Audience</label>
+                            <div className="flex gap-md">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, is_global: false })}
+                                    className={`btn ${!formData.is_global ? 'btn-primary' : 'btn-secondary'} flex-1`}
+                                >
+                                    Current Classroom
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, is_global: true })}
+                                    className={`btn ${formData.is_global ? 'btn-primary' : 'btn-secondary'} flex-1`}
+                                >
+                                    All Classrooms (Global)
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="input-group">
+                            <label className="input-label">Assignment Type</label>
+                            <div className="flex gap-md">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, assignment_type: 'everyone' })}
+                                    className={`btn ${formData.assignment_type === 'everyone' ? 'btn-primary' : 'btn-secondary'} flex-1`}
+                                >
+                                    Assign to Everyone
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, assignment_type: 'specific' })}
+                                    className={`btn ${formData.assignment_type === 'specific' ? 'btn-primary' : 'btn-secondary'} flex-1`}
+                                >
+                                    Specific Members
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Assign Members - only show if specific */}
+                        {formData.assignment_type === 'specific' && (
+                            <div className="input-group">
+                                <label className="input-label">Select Members</label>
+                                <div style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: 'var(--space-sm)'
+                                }}>
+                                    {members.map(member => (
+                                        <div
+                                            key={member.id}
+                                            onClick={() => toggleAssignment(member.id)}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 'var(--space-sm)',
+                                                padding: 'var(--space-xs) var(--space-md)',
+                                                background: formData.assigned_to.includes(member.id)
+                                                    ? 'rgba(99, 102, 241, 0.1)'
+                                                    : 'var(--card)',
+                                                border: `2px solid ${formData.assigned_to.includes(member.id) ? 'var(--primary-500)' : 'var(--border)'}`,
+                                                borderRadius: 'var(--radius-full)',
+                                                cursor: 'pointer',
+                                                transition: 'all var(--transition-fast)'
+                                            }}
+                                        >
+                                            <Avatar name={member.name} size="sm" />
+                                            <span style={{ fontSize: 'var(--text-sm)' }}>{member.name}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                {members.length === 0 && (
+                                    <p className="text-xs text-muted italic">No members found in this classroom.</p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Questions */}
+                        <div className="input-group">
+                            <div className="flex justify-between items-center mb-md">
+                                <label className="input-label" style={{ margin: 0 }}>Questions</label>
+                                <Button type="button" variant="secondary" size="sm" icon={Plus} onClick={addQuestion}>
+                                    Add Question
+                                </Button>
+                            </div>
+
+                            {formData.questions.length === 0 ? (
+                                <div style={{
+                                    padding: 'var(--space-xl)',
+                                    background: 'var(--card)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    textAlign: 'center',
+                                    color: 'var(--text-muted)'
+                                }}>
+                                    <HelpCircle size={32} style={{ marginBottom: 'var(--space-sm)', opacity: 0.5 }} />
+                                    <p style={{ margin: 0 }}>No questions yet. Click "Add Question" to get started.</p>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                                    {formData.questions.map((question, qIndex) => (
+                                        <Card key={question.id} style={{ background: 'var(--surface)' }}>
+                                            <div className="flex justify-between items-start mb-md">
+                                                <div className="flex items-center gap-sm">
+                                                    <GripVertical size={16} style={{ color: 'var(--text-muted)' }} />
+                                                    <Badge variant="primary">Q{qIndex + 1}</Badge>
+                                                </div>
+                                                <div className="flex items-center gap-sm">
+                                                    <select
+                                                        className="input select"
+                                                        style={{ width: 'auto', padding: '0.5rem' }}
+                                                        value={question.type}
+                                                        onChange={(e) => updateQuestion(qIndex, {
+                                                            type: e.target.value,
+                                                            correctAnswer: e.target.value === 'boolean' ? true : 0,
+                                                            options: e.target.value === 'boolean' ? [] : ['', '', '', '']
+                                                        })}
+                                                    >
+                                                        {QUESTION_TYPES.map(type => (
+                                                            <option key={type.value} value={type.value}>{type.label}</option>
+                                                        ))}
+                                                    </select>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => removeQuestion(qIndex)}
+                                                    >
+                                                        <X size={16} />
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            <Input
+                                                placeholder="Enter your question..."
+                                                value={question.question}
+                                                onChange={(e) => updateQuestion(qIndex, { question: e.target.value })}
+                                                wrapperClassName="mb-md"
+                                            />
+
+                                            {question.type === 'multiple' && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                                                    {question.options.map((option, oIndex) => (
+                                                        <div
+                                                            key={oIndex}
+                                                            className="flex items-center gap-sm"
+                                                            onClick={() => updateQuestion(qIndex, { correctAnswer: oIndex })}
+                                                            style={{ cursor: 'pointer' }}
+                                                        >
+                                                            <div style={{
+                                                                width: '20px',
+                                                                height: '20px',
+                                                                borderRadius: '50%',
+                                                                border: `2px solid ${question.correctAnswer === oIndex ? 'var(--success-500)' : 'var(--border)'}`,
+                                                                background: question.correctAnswer === oIndex ? 'var(--success-500)' : 'transparent',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                flexShrink: 0
+                                                            }}>
+                                                                {question.correctAnswer === oIndex && (
+                                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                                                                        <polyline points="20 6 9 17 4 12" />
+                                                                    </svg>
+                                                                )}
+                                                            </div>
+                                                            <Input
+                                                                placeholder={`Option ${oIndex + 1}`}
+                                                                value={option}
+                                                                onChange={(e) => {
+                                                                    e.stopPropagation();
+                                                                    updateOption(qIndex, oIndex, e.target.value);
+                                                                }}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                style={{ flex: 1 }}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                                        Click the circle to mark the correct answer
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {question.type === 'boolean' && (
+                                                <div className="flex gap-md">
+                                                    {[{ label: 'True', value: true }, { label: 'False', value: false }].map(opt => (
+                                                        <div
+                                                            key={opt.label}
+                                                            onClick={() => updateQuestion(qIndex, { correctAnswer: opt.value })}
+                                                            style={{
+                                                                flex: 1,
+                                                                padding: 'var(--space-md)',
+                                                                background: question.correctAnswer === opt.value
+                                                                    ? 'rgba(16, 185, 129, 0.1)'
+                                                                    : 'var(--card)',
+                                                                border: `2px solid ${question.correctAnswer === opt.value ? 'var(--success-500)' : 'var(--border)'}`,
+                                                                borderRadius: 'var(--radius-md)',
+                                                                textAlign: 'center',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            {opt.label}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {question.type === 'short' && (
+                                                <Input
+                                                    placeholder="Expected answer (for grading reference)"
+                                                    value={question.correctAnswer || ''}
+                                                    onChange={(e) => updateQuestion(qIndex, { correctAnswer: e.target.value })}
+                                                />
+                                            )}
+                                        </Card>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-md" style={{ marginTop: 'var(--space-lg)' }}>
+                        <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={formData.questions.length === 0} loading={saving}>
+                            {editingQuiz ? 'Save Changes' : 'Create Quiz'}
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Delete Confirmation */}
+            <Modal
+                isOpen={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                title="Delete Quiz"
+                size="sm"
+            >
+                <p style={{ marginBottom: 'var(--space-lg)' }}>
+                    Are you sure you want to delete "<strong>{deleteConfirm?.title}</strong>"?
+                </p>
+                <div className="flex justify-end gap-md">
+                    <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>
+                        Cancel
+                    </Button>
+                    <Button variant="danger" onClick={() => handleDelete(deleteConfirm.id)}>
+                        Delete Quiz
+                    </Button>
+                </div>
+            </Modal>
+
+            <style>{`
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid var(--border);
+          border-top-color: var(--primary-500);
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+        .checkbox {
+          width: 18px;
+          height: 18px;
+          border: 2px solid var(--border);
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all var(--transition-fast);
+          flex-shrink: 0;
+        }
+        .checkbox.checked {
+          background: var(--primary-500);
+          border-color: var(--primary-500);
+          color: white;
+        }
+        .btn {
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            transition: all var(--transition-fast);
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .btn-primary {
+            background: var(--primary-500);
+            color: white;
+        }
+        .btn-secondary {
+            background: var(--card);
+            border-color: var(--border);
+            color: var(--text-main);
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+      `}</style>
+        </div>
+    );
+};
+
+export default QuizBuilder;
