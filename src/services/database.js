@@ -385,7 +385,7 @@ export const getQuizAttempts = async () => {
             .from('quiz_attempts')
             .select(`
                 *,
-                profiles!left(name, avatar_url, email, classroom_id),
+                profiles!left(name, avatar_url, email, classroom_id, xp),
                 quizzes!left(title, points)
             `);
 

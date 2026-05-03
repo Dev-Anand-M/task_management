@@ -155,50 +155,56 @@ const MemberDashboard = () => {
             )}
 
             {/* Achievements Card - Replaces Level Card */}
-            <Card
-                variant="gradient"
-                style={{
-                    marginBottom: 'var(--space-xl)',
-                    background: 'var(--gradient-primary)',
-                    color: 'white',
-                    position: 'relative',
-                    overflow: 'hidden'
-                }}
-            >
-                <div style={{
-                    position: 'absolute',
-                    right: '-50px',
-                    top: '-50px',
-                    width: '200px',
-                    height: '200px',
-                    background: 'rgba(255,255,255,0.1)',
-                    borderRadius: '50%'
-                }} />
+            <Link to="/xp-history" style={{ textDecoration: 'none' }}>
+                <Card
+                    variant="gradient"
+                    style={{
+                        marginBottom: 'var(--space-xl)',
+                        background: 'var(--gradient-primary)',
+                        color: 'white',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        cursor: 'pointer'
+                    }}
+                >
+                    <div style={{
+                        position: 'absolute',
+                        right: '-50px',
+                        top: '-50px',
+                        width: '200px',
+                        height: '200px',
+                        background: 'rgba(255,255,255,0.1)',
+                        borderRadius: '50%'
+                    }} />
 
-                <div className="flex justify-center items-center" style={{ position: 'relative', height: '100%' }}>
-                    <div className="flex flex-col items-center gap-md">
-                        <div style={{
-                            width: '80px',
-                            height: '80px',
-                            background: 'rgba(255,255,255,0.2)',
-                            borderRadius: 'var(--radius-xl)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '40px',
-                            marginBottom: 'var(--space-sm)'
-                        }}>
-                            🏆
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                            <p style={{ margin: 0, fontSize: 'var(--text-lg)', opacity: 0.9 }}>Total XP Earned</p>
-                            <h2 style={{ margin: 0, fontSize: 'var(--text-5xl)', fontWeight: 800 }}>
-                                {user?.xp || 0} XP
-                            </h2>
+                    <div className="flex justify-center items-center" style={{ position: 'relative', height: '100%' }}>
+                        <div className="flex flex-col items-center gap-md">
+                            <div style={{
+                                width: '80px',
+                                height: '80px',
+                                background: 'rgba(255,255,255,0.2)',
+                                borderRadius: 'var(--radius-xl)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '40px',
+                                marginBottom: 'var(--space-sm)'
+                            }}>
+                                🏆
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                                <p style={{ margin: 0, fontSize: 'var(--text-lg)', opacity: 0.9 }}>Total XP Earned</p>
+                                <h2 style={{ margin: 0, fontSize: 'var(--text-5xl)', fontWeight: 800 }}>
+                                    {user?.xp || 0} XP
+                                </h2>
+                                <p style={{ margin: 'var(--space-xs) 0 0', fontSize: 'var(--text-xs)', opacity: 0.8 }}>
+                                    Click to view history →
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </Card>
+                </Card>
+            </Link>
 
             {/* Quick Stats */}
             <div className="grid grid-cols-4 mb-xl">

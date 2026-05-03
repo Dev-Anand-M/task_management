@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Card, Button, Badge, Avatar, Modal } from '../../components/common';
 import {
@@ -278,18 +279,21 @@ const Profile = ({ userId = null, readonly = false }) => {
                         )}
                         <p style={{ margin: 0, color: 'rgba(255,255,255,0.9)' }}>{profileData.email}</p>
                         <div className="flex gap-md mt-lg">
-                            <div style={{
-                                background: 'rgba(0,0,0,0.3)',
-                                color: '#ffffff',
-                                fontWeight: 600,
-                                border: '1px solid rgba(255,255,255,0.3)',
-                                borderRadius: '9999px',
-                                padding: '0.25rem 0.75rem',
-                                fontSize: '0.75rem',
-                                backdropFilter: 'blur(4px)'
-                            }}>
-                                {profileData.xp?.toLocaleString() || 0} XP
-                            </div>
+                            <Link to="/xp-history" style={{ textDecoration: 'none' }}>
+                                <div style={{
+                                    background: 'rgba(0,0,0,0.3)',
+                                    color: '#ffffff',
+                                    fontWeight: 600,
+                                    border: '1px solid rgba(255,255,255,0.3)',
+                                    borderRadius: '9999px',
+                                    padding: '0.25rem 0.75rem',
+                                    fontSize: '0.75rem',
+                                    backdropFilter: 'blur(4px)',
+                                    cursor: 'pointer'
+                                }}>
+                                    {profileData.xp?.toLocaleString() || 0} XP →
+                                </div>
+                            </Link>
                         </div>
                     </div>
                 </div>

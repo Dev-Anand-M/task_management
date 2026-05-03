@@ -927,20 +927,27 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                             return acc + (isCorrect ? 1 : 0);
                                         }, 0);
                                         const finalScore = Math.round((finalCorrect / attempt.total) * 100);
+                                        const xpToAward = Math.round((finalCorrect / attempt.total) * (attempt.quizzes?.points || 100));
                                         
                                         // Update the saved attempt with Manual results
                                         await db.updateQuizAttempt(attempt.id, {
                                             correct: finalCorrect,
                                             score: finalScore,
                                             passed: finalScore >= 70,
+                                            xp_earned: xpToAward,
                                             metadata: { ...attempt.metadata, manually_evaluated: true, overrides }
+                                        });
+
+                                        // Update the user's profile XP
+                                        await db.updateProfile(attempt.user_id, {
+                                            xp: (attempt.profiles?.xp || 0) + xpToAward
                                         });
 
                                         // --- NOTIFY STUDENT ---
                                         await db.createNotification({
                                             user_id: attempt.user_id,
                                             title: 'Quiz Evaluated! 🧠',
-                                            message: `Your attempt on "${attempt.quizzes?.title}" has been reviewed. Final Score: ${finalScore}%`,
+                                            message: `Your attempt on "${attempt.quizzes?.title}" has been reviewed. Final Score: ${finalScore}% (+${xpToAward} XP)`,
                                             type: 'success',
                                             link: `/quizzes`,
                                             is_read: false,
