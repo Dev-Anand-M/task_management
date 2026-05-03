@@ -593,9 +593,13 @@ Format your response in markdown.`;
 
 // AI Quiz Evaluator (For Admins)
 export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null) => {
-    const systemPrompt = `You are an expert academic evaluator. Analyze the following quiz submission and provide a detailed evaluation.
+    const systemPrompt = `You are an expert academic evaluator and fact-checker. 
+    Analyze the provided quiz questions, the "correct" answers provided in the quiz key, and the student's actual answers.
     
-    For each question, determine if the student's answer is conceptually correct, especially for short-answer/text questions.
+    CRITICAL INSTRUCTIONS:
+    1. FACT-CHECK THE KEY: For EVERY question (MCQ, Boolean, or Short Answer), verify if the "correctAnswer" provided in the quiz data is actually factually correct. If you believe the quiz key is WRONG (human error by the quiz creator), set "isKeyError" to true for that question.
+    2. EVALUATE STUDENT: Determine if the student's answer is conceptually correct. For short-answer questions, be flexible and look for understanding.
+    3. ANALYZE ALL: Do not skip Multiple Choice or Boolean questions. Verify them too.
     
     Return the response as a valid JSON object in this exact format:
     {
@@ -604,17 +608,17 @@ export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null
         {
           "questionIndex": 0,
           "isCorrect": true/false,
-          "feedback": "Why this is correct/incorrect",
+          "isKeyError": true/false,
+          "feedback": "Why this is correct/incorrect. If isKeyError is true, explain why the quiz key is wrong.",
           "improvementTip": "How the student can do better"
         }
       ],
       "overallGrade": "A/B/C/D/F",
-      "mentorNote": "A private note for the admin about the student's progress"
+      "mentorNote": "A private note for the admin about the student's progress and any key errors found."
     }
     
     Important: 
-    - Be fair but rigorous.
-    - For text answers, look for keywords and conceptual understanding even if phrasing is different.
+    - Be fair, rigorous, and factually accurate.
     - Return ONLY the JSON object.`;
 
     const prompt = `

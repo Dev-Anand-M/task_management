@@ -871,14 +871,25 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                 {/* Summary Info */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
                     <Card>
-                        <div className="flex items-center gap-md mb-lg">
-                            <Avatar name={attempt.profiles?.name} size="lg" />
-                            <div>
-                                <h4 style={{ margin: 0 }}>{attempt.profiles?.name}</h4>
-                                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-                                    {attempt.profiles?.email}
-                                </p>
+                        <div className="flex justify-between items-center mb-lg">
+                            <div className="flex items-center gap-md">
+                                <Avatar name={attempt.profiles?.name} size="lg" />
+                                <div>
+                                    <h4 style={{ margin: 0 }}>{attempt.profiles?.name}</h4>
+                                    <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                                        {attempt.profiles?.email}
+                                    </p>
+                                </div>
                             </div>
+                            <Button 
+                                size="sm" 
+                                variant="warning" 
+                                icon={RefreshCw}
+                                loading={evaluating}
+                                onClick={handleAiEvaluate}
+                            >
+                                Intercept & Re-evaluate All
+                            </Button>
                         </div>
                         <div className="grid grid-cols-2 gap-sm mb-lg">
                             <div style={{ padding: 'var(--space-md)', background: 'var(--card)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
@@ -1010,6 +1021,8 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                 ? overrides[index] 
                                 : (q.type === 'short' ? false : userAnswer === q.correctAnswer);
                             
+                            const aiSuggestion = aiReport?.suggestions?.find(s => Number(s.questionIndex) === Number(index));
+                            
                             return (
                                 <div key={index} style={{
                                     padding: 'var(--space-md)',
@@ -1017,6 +1030,24 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                     borderRadius: 'var(--radius-lg)',
                                     borderLeft: `4px solid ${isCorrect ? 'var(--success-500)' : 'var(--error-500)'}`
                                 }}>
+                                    {aiSuggestion?.isKeyError && (
+                                        <div style={{ 
+                                            padding: 'var(--space-xs) var(--space-sm)', 
+                                            background: 'var(--error-50)', 
+                                            border: '1px solid var(--error-200)', 
+                                            borderRadius: 'var(--radius-sm)',
+                                            marginBottom: 'var(--space-sm)',
+                                            display: 'flex',
+                                            gap: '8px',
+                                            alignItems: 'center'
+                                        }}>
+                                            <AlertTriangle size={14} color="var(--error-500)" />
+                                            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--error-700)', fontWeight: 600 }}>
+                                                AI ALERT: This Question Key may be wrong! ({aiSuggestion.feedback})
+                                            </span>
+                                        </div>
+                                    )}
+
                                     <p style={{ fontWeight: 600, marginBottom: 'var(--space-md)' }}>
                                         {index + 1}. {q.question}
                                     </p>
