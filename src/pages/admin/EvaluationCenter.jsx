@@ -1053,14 +1053,14 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                     </Button>
 
                                                     {/* AI Badge */}
-                                                    {aiReport?.suggestions?.find(s => s.questionIndex === index) && (
+                                                    {aiReport?.suggestions?.find(s => Number(s.questionIndex) === Number(index)) && (
                                                         <Badge 
                                                             variant="outline"
                                                             style={{ 
                                                                 marginLeft: 'auto',
-                                                                borderColor: aiReport.suggestions.find(s => s.questionIndex === index).isCorrect ? 'var(--success-500)' : 'var(--error-500)',
-                                                                color: aiReport.suggestions.find(s => s.questionIndex === index).isCorrect ? 'var(--success-600)' : 'var(--error-600)',
-                                                                background: aiReport.suggestions.find(s => s.questionIndex === index).isCorrect ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                                                borderColor: aiReport.suggestions.find(s => Number(s.questionIndex) === Number(index)).isCorrect ? 'var(--success-500)' : 'var(--error-500)',
+                                                                color: aiReport.suggestions.find(s => Number(s.questionIndex) === Number(index)).isCorrect ? 'var(--success-600)' : 'var(--error-600)',
+                                                                background: aiReport.suggestions.find(s => Number(s.questionIndex) === Number(index)).isCorrect ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 gap: '4px',
@@ -1068,22 +1068,22 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                             }}
                                                         >
                                                             <Brain size={12} />
-                                                            AI: {aiReport.suggestions.find(s => s.questionIndex === index).isCorrect ? 'Correct' : 'Wrong'}
+                                                            AI: {aiReport.suggestions.find(s => Number(s.questionIndex) === Number(index)).isCorrect ? 'Correct' : 'Wrong'}
                                                         </Badge>
                                                     )}
                                                 </div>
 
-                                                {aiReport && aiReport.suggestions.find(s => s.questionIndex === index) && (
+                                                {aiReport && aiReport.suggestions.find(s => Number(s.questionIndex) === Number(index)) && (
                                                     <div style={{ marginTop: 'var(--space-md)', padding: 'var(--space-sm)', background: 'rgba(167, 139, 250, 0.1)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
                                                         <div className="flex items-center gap-xs mb-xs">
                                                             <Brain size={12} color="#8b5cf6" />
                                                             <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: '#7c3aed' }}>AI SUGGESTION</span>
                                                         </div>
                                                         <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-main)' }}>
-                                                            {aiReport.suggestions.find(s => s.questionIndex === index).feedback}
+                                                            {aiReport.suggestions.find(s => Number(s.questionIndex) === Number(index)).feedback}
                                                         </p>
                                                         <p style={{ margin: '4px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                                            Tip: {aiReport.suggestions.find(s => s.questionIndex === index).improvementTip}
+                                                            Tip: {aiReport.suggestions.find(s => Number(s.questionIndex) === Number(index)).improvementTip}
                                                         </p>
                                                     </div>
                                                 )}
