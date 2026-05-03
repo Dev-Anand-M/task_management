@@ -723,6 +723,29 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                             ))}
                         </div>
                     )}
+
+                    {/* Short Answer */}
+                    {question.type === 'short' && (
+                        <div style={{ marginTop: 'var(--space-md)' }}>
+                            <textarea
+                                className="input"
+                                placeholder="Type your answer here..."
+                                value={answers[currentQuestion] || ''}
+                                onChange={(e) => handleAnswer(e.target.value)}
+                                style={{ 
+                                    minHeight: '120px', 
+                                    fontSize: 'var(--text-lg)',
+                                    resize: 'none',
+                                    background: 'var(--surface)',
+                                    padding: 'var(--space-md)'
+                                }}
+                                autoFocus
+                            />
+                            <p style={{ marginTop: 'var(--space-sm)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                Tip: Be clear and concise. Your answer will be reviewed by an admin.
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Navigation */}
