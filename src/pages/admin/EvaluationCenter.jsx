@@ -73,7 +73,12 @@ const EvaluationCenter = () => {
             const matchesSearch = searchQuery === '' ||
                 userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 quizTitle.toLowerCase().includes(searchQuery.toLowerCase());
-            return matchesSearch;
+            
+            // Workflow: Only show if AI has finished its pass OR if it's already manually reviewed
+            // This prevents the admin from seeing "empty" un-evaluated quizzes
+            const isReady = att.metadata?.ai_evaluated === true || att.metadata?.manually_evaluated === true;
+            
+            return matchesSearch && isReady;
         })
         .sort((a, b) => new Date(b.created_at || b.completed_at) - new Date(a.created_at || a.completed_at));
 
@@ -996,9 +1001,10 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
                         {attempt.quiz?.questions.map((q, index) => {
                             const userAnswer = attempt.answers[index];
-                            const isCorrect = q.type === 'boolean' 
-                                ? userAnswer === q.correctAnswer
-                                : userAnswer === q.correctAnswer;
+                            // Check manual override first, then AI suggestion, then basic match
+                            const isCorrect = overrides[index] !== undefined 
+                                ? overrides[index] 
+                                : (q.type === 'short' ? false : userAnswer === q.correctAnswer);
                             
                             return (
                                 <div key={index} style={{

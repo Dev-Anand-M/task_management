@@ -388,16 +388,24 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
             onComplete();
 
             // 3. RUN AI EVALUATION IN THE BACKGROUND
-            // This won't block the student's screen or cause a timeout error.
             const runBackgroundAi = async (id) => {
+                console.log('--- STARTING BACKGROUND AI EVALUATION ---');
+                console.log('Attempt ID:', id);
+                
                 const hasAI = isAPIKeyConfigured('sambanova') || isAPIKeyConfigured('google') || isAPIKeyConfigured('openai');
-                if (!hasAI) return;
+                if (!hasAI) {
+                    console.log('AI NOT CONFIGURED. Skipping background evaluation.');
+                    return;
+                }
 
                 try {
                     let modelToUse = getSelectedModel();
                     if (isAPIKeyConfigured('sambanova')) modelToUse = 'Meta-Llama-3.3-70B-Instruct';
+                    
+                    console.log('Using Model:', modelToUse);
 
                     const report = await evaluateQuizAttempt(quiz, answers, modelToUse);
+                    console.log('AI Evaluation Report received:', report ? 'YES' : 'NO');
                     
                     if (report) {
                         let finalCorrect = 0;
@@ -419,21 +427,32 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                         });
 
                         const aiScore = Math.round((finalCorrect / quiz.questions.length) * 100);
+                        console.log('Calculated AI Score:', aiScore);
                         
-                        await db.updateQuizAttempt(id, {
-                            correct: finalCorrect,
-                            score: aiScore,
-                            passed: aiScore >= passThreshold,
-                            metadata: { 
-                                ai_evaluated: true, 
-                                ai_report: report, 
-                                model_used: modelToUse,
-                                overrides: autoOverrides
-                            }
-                        });
+                        const { error: updateError } = await db.supabase
+                            .from('quiz_attempts')
+                            .update({
+                                correct: finalCorrect,
+                                score: aiScore,
+                                passed: aiScore >= passThreshold,
+                                metadata: { 
+                                    ...attempt.metadata, // Keep original metadata
+                                    ai_evaluated: true, 
+                                    ai_report: report, 
+                                    model_used: modelToUse,
+                                    overrides: autoOverrides,
+                                    status: 'ai_reviewed'
+                                }
+                            })
+                            .eq('id', id);
+
+                        if (updateError) throw updateError;
+                        console.log('Database updated with AI results successfully.');
                     }
                 } catch (e) {
-                    console.error('Background AI Eval Failed:', e);
+                    console.error('CRITICAL: Background AI Eval Failed:', e);
+                } finally {
+                    console.log('--- BACKGROUND AI EVALUATION FINISHED ---');
                 }
             };
 
