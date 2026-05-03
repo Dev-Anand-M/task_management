@@ -6,7 +6,8 @@ export const PROVIDERS = {
     GEMINI: { id: 'gemini', name: 'Google Gemini', icon: '✨', keyName: 'gemini_api_key', url: 'https://makersuite.google.com/app/apikey' },
     OPENAI: { id: 'openai', name: 'OpenAI', icon: '🧠', keyName: 'openai_api_key', url: 'https://platform.openai.com/api-keys' },
     ANTHROPIC: { id: 'anthropic', name: 'Anthropic Claude', icon: '🤖', keyName: 'anthropic_api_key', url: 'https://console.anthropic.com/settings/keys' },
-    PERPLEXITY: { id: 'perplexity', name: 'Perplexity', icon: '🔍', keyName: 'perplexity_api_key', url: 'https://www.perplexity.ai/settings/api' }
+    PERPLEXITY: { id: 'perplexity', name: 'Perplexity', icon: '🔍', keyName: 'perplexity_api_key', url: 'https://www.perplexity.ai/settings/api' },
+    SAMBANOVA: { id: 'sambanova', name: 'SambaNova', icon: '⚡', keyName: 'sambanova_api_key', url: 'https://cloud.sambanova.ai/' }
 };
 
 // Available Models mapped to providers
@@ -15,7 +16,9 @@ export const AVAILABLE_MODELS = [
     { id: 'gemini-2.0-flash', provider: 'gemini', name: 'Gemini 2.0 Flash (Default)', description: 'Auto-calibrated for Gemini', inputTokenLimit: '1M', outputTokenLimit: '8k' },
     { id: 'gpt-4o', provider: 'openai', name: 'GPT-4o (Default)', description: 'Auto-calibrated for OpenAI', inputTokenLimit: '128k', outputTokenLimit: '4k' },
     { id: 'claude-3-5-sonnet-20240620', provider: 'anthropic', name: 'Claude 3.5 Sonnet (Default)', description: 'Auto-calibrated for Anthropic', inputTokenLimit: '200k', outputTokenLimit: '4k' },
-    { id: 'llama-3.1-sonar-large-128k-online', provider: 'perplexity', name: 'Sonar Large 3.1 (Default)', description: 'Auto-calibrated for Perplexity', inputTokenLimit: '128k', outputTokenLimit: '4k' }
+    { id: 'llama-3.1-sonar-large-128k-online', provider: 'perplexity', name: 'Sonar Large 3.1 (Default)', description: 'Auto-calibrated for Perplexity', inputTokenLimit: '128k', outputTokenLimit: '4k' },
+    { id: 'Meta-Llama-3.1-405B-Instruct', provider: 'sambanova', name: 'Llama 3.1 405B (SambaNova)', description: 'Ultra-fast inference via SambaNova', inputTokenLimit: '128k', outputTokenLimit: '4k' },
+    { id: 'Meta-Llama-3.1-70B-Instruct', provider: 'sambanova', name: 'Llama 3.1 70B (SambaNova)', description: 'Fast Llama 3.1 70B', inputTokenLimit: '128k', outputTokenLimit: '4k' }
 ];
 
 // Simple encryption for API key (XOR with user ID for obfuscation)
@@ -281,6 +284,14 @@ export const validateAPIKey = async (providerId, key) => {
             if (!response.ok) throw new Error('Invalid Perplexity API Key');
             return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'perplexity') };
         }
+        
+        if (providerId === 'sambanova') {
+            const response = await fetch('https://api.sambanova.ai/v1/models', {
+                headers: { 'Authorization': `Bearer ${trimmedKey}` }
+            });
+            if (!response.ok) throw new Error('Invalid SambaNova API Key');
+            return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'sambanova') };
+        }
 
         return { valid: false, error: 'Unknown provider' };
     } catch (err) {
@@ -409,6 +420,32 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null) => {
             if (!response.ok) {
                 const err = await response.json();
                 throw new Error(err.error?.message || 'Perplexity Error');
+            }
+            const data = await response.json();
+            await incrementUsage();
+            return data.choices?.[0]?.message?.content || '';
+        }
+
+        // --- SAMBANOVA ---
+        if (provider.id === 'sambanova') {
+            const response = await fetch('https://api.sambanova.ai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: selectedModelId,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: prompt }
+                    ],
+                    temperature: 0.7
+                })
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error?.message || 'SambaNova Error');
             }
             const data = await response.json();
             await incrementUsage();
