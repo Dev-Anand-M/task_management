@@ -163,7 +163,7 @@ const Header = ({ onMenuClick, title }) => {
         </h1>
 
         {!isAdmin && (
-          <div className="flex flex-col justify-center overflow-hidden" style={{ height: '40px', marginLeft: '1rem' }}>
+          <div className="header-ticker hidden lg:block" style={{ height: '40px', marginLeft: '1rem' }}>
             <div className="ticker-container">
               <div className="ticker-wrapper">
                 {tickerItems.length > 0 ? (

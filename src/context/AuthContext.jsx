@@ -20,50 +20,43 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         let mounted = true;
+        let authInitialized = false;
 
         const initializeAuth = async () => {
             try {
-                // Add a timeout to prevent getSession from hanging indefinitely
-                const sessionPromise = supabase.auth.getSession();
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Session fetch timeout')), 5000)
-                );
-                
-                const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+                const { data: { session } } = await supabase.auth.getSession();
 
                 if (session?.user && mounted) {
                     setUser(session.user);
                     await fetchProfile(session.user.id);
                 }
             } catch (error) {
-                console.warn('Auth initialization warning:', error);
-                // If it times out or fails, we will rely on onAuthStateChange below
+                console.error('Auth initialization error:', error);
             } finally {
+                authInitialized = true;
                 if (mounted) setLoading(false);
             }
         };
 
         initializeAuth();
 
-        // Set up listener for subsequent changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
                 if (!mounted) return;
 
                 if (session?.user) {
-                    // Prevent duplicate fetching if we already fetched it above
-                    setUser(prevUser => {
-                        if (!prevUser || prevUser.id !== session.user.id) {
-                            fetchProfile(session.user.id);
-                        }
-                        return session.user;
-                    });
+                    setUser(session.user);
+                    await fetchProfile(session.user.id);
                 } else {
                     setUser(null);
                     setProfile(null);
                 }
 
-                setLoading(false);
+                // Only set loading to false if we haven't already from initializeAuth
+                // or if this is a subsequent change
+                if (authInitialized || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+                    setLoading(false);
+                }
             }
         );
 
