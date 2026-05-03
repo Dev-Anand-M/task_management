@@ -294,7 +294,7 @@ export const validateAPIKey = async (providerId, key) => {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        model: 'llama3-8b',
+                        model: 'Meta-Llama-3.1-70B-Instruct',
                         messages: [{ role: 'user', content: 'test' }],
                         max_tokens: 1
                     })
