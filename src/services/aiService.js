@@ -576,25 +576,29 @@ export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null
     - If the quiz creator made an error in the answer key, flag it as "isKeyError": true
     - The student's answer should be evaluated against the actual facts, not just the quiz's answer key
     
-    Return the response as a valid JSON object in this exact format:
+    RESPONSE FORMAT: You MUST return ONLY a valid JSON object with this EXACT structure:
     {
       "summary": "Overall performance summary",
       "suggestions": [
         {
           "questionIndex": 0,
-          "isCorrect": true/false,
-          "isKeyError": true/false,
-          "feedback": "Why this is correct/incorrect. If isKeyError is true, explain why the quiz's designated answer is factually wrong.",
-          "improvementTip": "How the student can do better"
+          "isCorrect": true,
+          "isKeyError": false,
+          "feedback": "Detailed feedback about this question",
+          "improvementTip": "How the student can improve"
         }
       ],
-      "overallGrade": "A/B/C/D/F",
-      "mentorNote": "A private note for the admin about the student's progress and any answer key errors found."
+      "overallGrade": "B",
+      "mentorNote": "Private note for admin about student progress"
     }
     
-    Important: 
-    - Be fair, rigorous, and factually accurate.
-    - Return ONLY the JSON object.`;
+    IMPORTANT RULES:
+    - Return ONLY the JSON object, no other text
+    - Use proper JSON syntax with double quotes
+    - Boolean values must be true/false (not "true"/"false")
+    - Grade must be one of: A, B, C, D, F
+    - Include all required fields for each suggestion
+    - Do not include any markdown formatting or code blocks`;
 
     const prompt = `
     Quiz Title: ${quizData.title}
@@ -605,14 +609,30 @@ export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null
     const response = await generateContent(prompt, systemPrompt, model);
 
     try {
+        // Log the raw response for debugging
+        console.log('AI Evaluation Raw Response:', response);
+        
+        // Try to extract JSON from the response
         const jsonMatch = response.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
+            const jsonStr = jsonMatch[0];
+            console.log('Extracted JSON:', jsonStr);
+            return JSON.parse(jsonStr);
         }
-        return JSON.parse(response);
+        
+        // If no JSON found in match, try parsing the whole response
+        return JSON.parse(response.trim());
     } catch (e) {
-        console.error('Failed to parse AI evaluation:', response);
-        throw new Error('Failed to parse AI evaluation report');
+        console.error('Failed to parse AI evaluation:', e);
+        console.error('Raw response was:', response);
+        
+        // Return a fallback response instead of throwing
+        return {
+            summary: "AI evaluation failed - unable to parse response",
+            suggestions: [],
+            overallGrade: "F",
+            mentorNote: `Error parsing AI response: ${e.message}. Raw response: ${response.substring(0, 200)}...`
+        };
     }
 };
 
