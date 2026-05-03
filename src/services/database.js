@@ -255,13 +255,18 @@ export const getQuizzes = async () => {
 
     let query = supabase.from('quizzes').select('*').order('created_at', { ascending: false });
 
-    if (profile?.classroom_id) {
-        query = query.or(`classroom_id.eq.${profile.classroom_id},is_global.eq.true`);
+    // Students only see quizzes for their classroom, global ones, or ones specifically assigned to them
+    if (profile?.role === 'member') {
+        let orFilter = `is_global.eq.true`;
+        if (profile.classroom_id) {
+            orFilter += `,classroom_id.eq.${profile.classroom_id}`;
+        }
+        // Also include if specifically assigned to this user
+        orFilter += `,assigned_to.cs.["${user.id}"]`;
+        
+        query = query.or(orFilter);
     } else if (profile?.role === 'admin') {
         query = query.eq('created_by', user.id);
-    } else {
-        // Only return global ones if no context
-        query = query.eq('is_global', true);
     }
 
     const { data, error } = await query;
