@@ -281,6 +281,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [showReview, setShowReview] = useState(false);
+    const [quizStarted, setQuizStarted] = useState(false);
 
     const loadQuiz = useCallback(async () => {
         try {
@@ -443,12 +444,12 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
             console.error('Error locking quiz on exit:', error);
             onBack();
         } finally {
-            setSubmitting(false);
+                        setSubmitting(false);
         }
     };
 
     useEffect(() => {
-        if (isComplete || !quiz || loading) return;
+        if (!quiz || isComplete || !quizStarted) return;
 
         const timer = setInterval(() => {
             setTimeLeft(prev => {
@@ -462,7 +463,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [isComplete, quiz, loading, handleSubmit]);
+    }, [quiz, isComplete, quizStarted]);
 
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -669,6 +670,56 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                             </Button>
                         </div>
                     )}
+                </Card>
+            </div>
+        );
+    }
+
+    // Briefing screen
+    if (!quizStarted && !isComplete) {
+        return (
+            <div className="quiz-container animate-fade-in" style={{ maxWidth: '600px', margin: '0 auto' }}>
+                <Card style={{ padding: 'var(--space-2xl)' }}>
+                    <div className="flex flex-col items-center text-center">
+                        <div style={{
+                            width: '80px',
+                            height: '80px',
+                            background: 'rgba(167, 139, 250, 0.1)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: 'var(--space-lg)'
+                        }}>
+                            <Timer size={40} style={{ color: 'var(--primary-500)' }} />
+                        </div>
+                        
+                        <h2 style={{ marginBottom: 'var(--space-sm)' }}>{quiz.title}</h2>
+                        <Badge variant={getDifficultyColor(quiz.difficulty)} style={{ marginBottom: 'var(--space-xl)' }}>
+                            {quiz.difficulty}
+                        </Badge>
+
+                        <div style={{ width: '100%', textAlign: 'left', background: 'var(--surface)', padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)', marginBottom: 'var(--space-xl)', border: '1px solid var(--border)' }}>
+                            <h4 style={{ marginBottom: 'var(--space-md)', color: 'var(--text)' }}>Quiz Rules:</h4>
+                            <ul style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', paddingLeft: 'var(--space-lg)', color: 'var(--text-muted)' }}>
+                                <li>Time Limit: <strong>{quiz.time_limit} minutes</strong></li>
+                                <li>Total Questions: <strong>{quiz.questions?.length}</strong></li>
+                                <li>Passing Score: <strong>70%</strong></li>
+                                <li>Potential XP: <strong>+{quiz.points} XP</strong></li>
+                                <li style={{ color: 'var(--error-500)' }}>Once you start, the timer cannot be paused.</li>
+                                <li style={{ color: 'var(--error-500)' }}>AI will evaluate your answers after submission.</li>
+                            </ul>
+                        </div>
+
+                        <div className="flex gap-md w-full">
+                            <Button variant="secondary" onClick={onBack} style={{ flex: 1 }}>
+                                Not Now
+                            </Button>
+                            <Button onClick={() => setQuizStarted(true)} style={{ flex: 2 }}>
+                                Start Quiz
+                            </Button>
+                        </div>
+                    </div>
                 </Card>
             </div>
         );
