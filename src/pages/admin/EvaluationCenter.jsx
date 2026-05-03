@@ -747,10 +747,13 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
             const report = await evaluateQuizAttempt(attempt.quiz, attempt.answers, selectedModel);
             setAiReport(report);
             
-            // Auto-apply suggestions to overrides
+            // Auto-apply suggestions ONLY to short answers
             const newOverrides = { ...overrides };
             report.suggestions.forEach(s => {
-                newOverrides[s.questionIndex] = s.isCorrect;
+                const q = attempt.quiz.questions[s.questionIndex];
+                if (q && q.type === 'short') {
+                    newOverrides[s.questionIndex] = s.isCorrect;
+                }
             });
             setOverrides(newOverrides);
 
@@ -763,6 +766,8 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                     const isCorrect = override !== undefined ? override : false;
                     return acc + (isCorrect ? 1 : 0);
                 }
+                // MCQ/Boolean: AI suggestions are ignored for the final mark calculation
+                // but admins can still manually override if they REALLY want to via the UI
                 const isCorrect = override !== undefined ? override : (userAnswer === q.correctAnswer);
                 return acc + (isCorrect ? 1 : 0);
             }, 0);
