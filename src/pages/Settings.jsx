@@ -138,8 +138,8 @@ const Settings = () => {
                         const savedModel = getSelectedModel();
                         if (!savedModel || (validation.models && !validation.models.find(m => m.id === savedModel))) {
                             if (validation.models && validation.models.length > 0) {
-                                const { setSelectedModel } = await import('../services/aiService');
-                                setSelectedModel(validation.models[0].id);
+                                const { setSelectedModel: saveModelToService } = await import('../services/aiService');
+                                await saveModelToService(validation.models[0].id);
                                 setSelectedModel(validation.models[0].id);
                             }
                         }
