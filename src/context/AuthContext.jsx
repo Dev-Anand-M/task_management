@@ -25,17 +25,11 @@ export const AuthProvider = ({ children }) => {
         // Initialize session handling
         const initializeAuth = async () => {
             try {
-                // Get initial session - increased timeout for slow connections
-                const sessionPromise = supabase.auth.getSession();
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Session timeout')), 10000)
-                );
-
-                const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
+                // Get initial session - removed timeout to prevent false failures
+                const { data: { session }, error } = await supabase.auth.getSession();
 
                 if (error) {
                     console.error('Session fetch error:', error);
-                    // Don't throw, just mark as checked
                     if (mounted) {
                         setLoading(false);
                     }
@@ -43,6 +37,7 @@ export const AuthProvider = ({ children }) => {
                 }
 
                 if (session?.user && mounted) {
+                    console.log('Initial session found for user:', session.user.id);
                     setUser(session.user);
                     // Fetch profile immediately for initial load
                     await fetchProfile(session.user.id);
@@ -50,6 +45,8 @@ export const AuthProvider = ({ children }) => {
                     if (session.user.id) {
                         db.checkDeadlines(session.user.id).catch(console.error);
                     }
+                } else {
+                    console.log('No initial session found');
                 }
             } catch (error) {
                 console.error('Init auth error:', error);
@@ -155,26 +152,22 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            // Add timeout to prevent hanging
-            const profilePromise = supabase
+            console.log(`Fetching profile for user: ${userId} (attempt ${retryCount + 1})`);
+            
+            // Fetch profile including classroom details
+            const { data: userProfile, error } = await supabase
                 .from('profiles')
                 .select('*, classrooms(name)')
                 .eq('id', userId)
                 .single();
-            
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Profile query timeout')), 5000)
-            );
-
-            const { data: userProfile, error } = await Promise.race([profilePromise, timeoutPromise]);
 
             if (error) {
                 console.error('Profile fetch error:', error);
                 
-                // Retry logic for transient errors
-                if (retryCount < 2 && (error.code === 'PGRST116' || error.message?.includes('timeout'))) {
-                    console.log(`Retrying profile fetch (attempt ${retryCount + 1})...`);
-                    await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+                // Retry logic for transient errors (but not for "not found" errors)
+                if (retryCount < 1 && error.code !== 'PGRST116') {
+                    console.log(`Retrying profile fetch (attempt ${retryCount + 2})...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                     return fetchProfile(userId, retryCount + 1);
                 }
                 
@@ -183,6 +176,7 @@ export const AuthProvider = ({ children }) => {
                 try {
                     const simpleProfile = await db.getProfileById(userId);
                     if (simpleProfile) {
+                        console.log('Fallback profile fetch successful');
                         setProfile(simpleProfile);
                         return;
                     }
@@ -196,6 +190,7 @@ export const AuthProvider = ({ children }) => {
             }
 
             if (userProfile) {
+                console.log('Profile fetched successfully');
                 // Flatten classroom name into profile for easier access
                 setProfile({
                     ...userProfile,
@@ -210,6 +205,7 @@ export const AuthProvider = ({ children }) => {
                 console.log('Attempting fallback profile fetch after exception...');
                 const simpleProfile = await db.getProfileById(userId);
                 if (simpleProfile) {
+                    console.log('Fallback profile fetch successful');
                     setProfile(simpleProfile);
                     return;
                 }
@@ -235,22 +231,15 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, error: error.message };
             }
 
-            console.log('Login: Authentication successful, fetching profile...');
+            console.log('Login: Authentication successful, user ID:', data.user.id);
             
-            // Fetch profile with timeout to prevent hanging
-            try {
-                const profilePromise = fetchProfile(data.user.id);
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Profile fetch timeout')), 8000)
-                );
-                
-                await Promise.race([profilePromise, timeoutPromise]);
-                console.log('Login: Profile fetched successfully');
-            } catch (profileError) {
-                console.warn('Profile fetch failed during login, but user is authenticated:', profileError);
-                // Don't fail login if profile fetch fails - user is still authenticated
-                // Profile will be fetched by auth state change listener
-            }
+            // Set user immediately
+            setUser(data.user);
+            
+            // Fetch profile in background (don't wait for it)
+            fetchProfile(data.user.id).catch(err => {
+                console.warn('Profile fetch failed during login:', err);
+            });
             
             // Ensure loading is set to false
             setLoading(false);
