@@ -238,10 +238,18 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         try {
             console.log('Login: Starting authentication...');
-            const { data, error } = await supabase.auth.signInWithPassword({
+            
+            // Add timeout to prevent hanging on slow Supabase connection
+            const authPromise = supabase.auth.signInWithPassword({
                 email: email.toLowerCase().trim(),
                 password
             });
+            
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Authentication timeout - please check your connection')), 10000)
+            );
+            
+            const { data, error } = await Promise.race([authPromise, timeoutPromise]);
 
             if (error) {
                 console.error('Login error:', error);
@@ -266,7 +274,7 @@ export const AuthProvider = ({ children }) => {
         } catch (err) {
             console.error('Login error:', err);
             setLoading(false);
-            return { success: false, error: err.message || 'Login failed. Please try again.' };
+            return { success: false, error: err.message || 'Login failed. Please check your connection and try again.' };
         }
     };
 
