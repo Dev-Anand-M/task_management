@@ -48,7 +48,7 @@ const decryptKey = (encryptedKey, salt) => {
 };
 
 // Check if API key is configured for a specific provider
-export const isAPIKeyConfigured = (providerId = 'gemini') => {
+export const isAPIKeyConfigured = (providerId = 'sambanova') => {
     const provider = Object.values(PROVIDERS).find(p => p.id === providerId);
     return provider ? !!localStorage.getItem(provider.keyName) : false;
 };
@@ -73,7 +73,7 @@ export const fetchAvailableModels = async (apiKey) => {
         }
 
         // Fallback: try Gemini
-        return (await validateAPIKey('gemini', apiKey)).models || [];
+        return (await validateAPIKey('sambanova', apiKey)).models || [];
     } catch (e) {
         return [];
     }
@@ -155,19 +155,30 @@ export const removeAPIKey = async (providerId) => {
 
 // Get selected model with smart fallback
 export const getSelectedModel = () => {
-    // 1. Check for manual selection first
+    // 1. Check for manual selection first, but force SambaNova default when available
     const manualSelection = localStorage.getItem('selected_ai_model');
-    if (manualSelection) return manualSelection;
+    if (manualSelection) {
+        const manualModel = AVAILABLE_MODELS.find(m => m.id === manualSelection);
+        const hasSamba = !!localStorage.getItem('sambanova_api_key');
+
+        // If SambaNova is configured and manual model is missing/legacy/non-Samba, normalize to SambaNova default
+        if (hasSamba && (!manualModel || manualModel.provider !== 'sambanova')) {
+            localStorage.setItem('selected_ai_model', 'Meta-Llama-3.3-70B-Instruct');
+            return 'Meta-Llama-3.3-70B-Instruct';
+        }
+
+        return manualSelection;
+    }
 
     // 2. Fallback to configured keys in order of preference
+    if (localStorage.getItem('sambanova_api_key')) return 'Meta-Llama-3.3-70B-Instruct';
     if (localStorage.getItem('gemini_api_key')) return 'gemini-1.5-flash';
-    if (localStorage.getItem('sambanova_api_key')) return 'Meta-Llama-3.1-70B-Instruct';
     if (localStorage.getItem('openai_api_key')) return 'gpt-4o';
     if (localStorage.getItem('anthropic_api_key')) return 'claude-3-5-sonnet-20240620';
     if (localStorage.getItem('perplexity_api_key')) return 'llama-3.1-sonar-large-128k-online';
 
     // Default Fallback
-    return 'gemini-1.5-flash';
+    return 'Meta-Llama-3.3-70B-Instruct';
 };
 
 // Set selected model
@@ -179,7 +190,7 @@ export const setSelectedModel = async (modelId) => {
 // Helper: Get provider for a model
 const getProviderForModel = (modelId) => {
     const model = AVAILABLE_MODELS.find(m => m.id === modelId);
-    return model ? PROVIDERS[model.provider.toUpperCase()] : PROVIDERS.GEMINI;
+    return model ? PROVIDERS[model.provider.toUpperCase()] : PROVIDERS.SAMBANOVA;
 };
 
 // Increment usage
@@ -326,10 +337,22 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null) => {
     let selectedModelId = modelId || getSelectedModel();
     let provider = getProviderForModel(selectedModelId);
 
+    // Force SambaNova as execution default whenever its key is configured
+    const sambaKey = getAPIKey('sambanova');
+    if (sambaKey) {
+        const sambaModel = AVAILABLE_MODELS.find(m => m.id === selectedModelId && m.provider === 'sambanova')
+            || AVAILABLE_MODELS.find(m => m.provider === 'sambanova');
+        if (sambaModel) {
+            selectedModelId = sambaModel.id;
+            provider = PROVIDERS.SAMBANOVA;
+            localStorage.setItem('selected_ai_model', selectedModelId);
+        }
+    }
+
     // Auto-healing: If selected provider has no key, try to find one that does
     if (!getAPIKey(provider.id)) {
         console.warn(`Provider ${provider.id} not configured. Attempting to fallback...`);
-        const validProvider = Object.values(PROVIDERS).find(p => getAPIKey(p.id));
+        const validProvider = PROVIDERS.SAMBANOVA && getAPIKey('sambanova') ? PROVIDERS.SAMBANOVA : Object.values(PROVIDERS).find(p => getAPIKey(p.id));
         if (validProvider) {
             const newModel = AVAILABLE_MODELS.find(m => m.provider === validProvider.id);
             if (newModel) {

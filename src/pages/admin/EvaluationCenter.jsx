@@ -749,7 +749,8 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
             const { AVAILABLE_MODELS, isAPIKeyConfigured, getSelectedModel } = await import('../../services/aiService');
             const configured = AVAILABLE_MODELS.filter(m => isAPIKeyConfigured(m.provider));
             setAvailableModels(configured);
-            setSelectedModel(getSelectedModel());
+            const preferredModel = configured.find(m => m.provider === 'sambanova')?.id || getSelectedModel();
+            setSelectedModel(preferredModel);
         };
         loadModels();
     }, [loadAttempt]);
