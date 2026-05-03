@@ -386,15 +386,23 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                             }
                         });
 
-                        aiScore = Math.round((finalCorrect / quiz.questions.length) * 100);
-                        aiPassed = aiScore >= passThreshold;
+                        // Populate overrides automatically from AI suggestions
+                        const autoOverrides = {};
+                        report.suggestions.forEach(s => {
+                            autoOverrides[Number(s.questionIndex)] = s.isCorrect;
+                        });
 
-                        // Update the saved attempt with AI results
+                        // Update the saved attempt with AI results and pre-filled overrides
                         await db.updateQuizAttempt(attemptId.id || attemptId, {
                             correct: finalCorrect,
                             score: aiScore,
                             passed: aiPassed,
-                            metadata: { ai_evaluated: true, ai_report: report, model_used: modelToUse }
+                            metadata: { 
+                                ai_evaluated: true, 
+                                ai_report: report, 
+                                model_used: modelToUse,
+                                overrides: autoOverrides 
+                            }
                         });
                     }
                 } catch (e) {
