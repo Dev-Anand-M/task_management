@@ -155,9 +155,20 @@ export const removeAPIKey = async (providerId) => {
 
 // Get selected model with smart fallback
 export const getSelectedModel = () => {
-    // 1. Check for manual selection first
+    // 1. Check for manual selection first, but force SambaNova default when available
     const manualSelection = localStorage.getItem('selected_ai_model');
-    if (manualSelection) return manualSelection;
+    if (manualSelection) {
+        const manualModel = AVAILABLE_MODELS.find(m => m.id === manualSelection);
+        const hasSamba = !!localStorage.getItem('sambanova_api_key');
+
+        // If SambaNova is configured and manual model is missing/legacy/non-Samba, normalize to SambaNova default
+        if (hasSamba && (!manualModel || manualModel.provider !== 'sambanova')) {
+            localStorage.setItem('selected_ai_model', 'Meta-Llama-3.3-70B-Instruct');
+            return 'Meta-Llama-3.3-70B-Instruct';
+        }
+
+        return manualSelection;
+    }
 
     // 2. Fallback to configured keys in order of preference
     if (localStorage.getItem('sambanova_api_key')) return 'Meta-Llama-3.3-70B-Instruct';
