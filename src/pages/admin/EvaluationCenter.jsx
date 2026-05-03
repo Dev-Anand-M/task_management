@@ -716,6 +716,13 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
 
     const handleAiEvaluation = async () => {
         if (!attempt) return;
+        
+        const { isAnyAPIKeyConfigured } = await import('../../services/aiService');
+        if (!isAnyAPIKeyConfigured()) {
+            alert('⚠️ AI Not Configured: Please add an AI API Key in Settings to use this feature.');
+            return;
+        }
+
         setEvaluating(true);
         try {
             const report = await evaluateQuizAttempt(attempt.quiz, attempt.answers);
@@ -728,7 +735,8 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
             });
             setOverrides(newOverrides);
         } catch (error) {
-            alert('AI Evaluation failed: ' + error.message);
+            console.error('AI Eval Error:', error);
+            alert('❌ AI Review Failed: ' + (error.message.includes('not configured') ? 'Please check your API keys in Settings.' : error.message));
         } finally {
             setEvaluating(false);
         }
