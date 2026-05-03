@@ -697,8 +697,9 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
 const QuizReviewDetail = ({ attemptId, onBack }) => {
     const [attempt, setAttempt] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [overrides, setOverrides] = useState({}); // { questionIndex: boolean }
     const [saving, setSaving] = useState(false);
+    const [success, setSuccess] = useState(false);
+    const [overrides, setOverrides] = useState({}); // { questionIndex: boolean }
     const [aiReport, setAiReport] = useState(null);
     const [evaluating, setEvaluating] = useState(false);
     const [selectedModel, setSelectedModel] = useState('');
