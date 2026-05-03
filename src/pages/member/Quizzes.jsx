@@ -221,6 +221,15 @@ const Quizzes = () => {
                                             {score}%
                                         </p>
                                     </div>
+                                    <Button 
+                                        variant="secondary" 
+                                        size="sm" 
+                                        icon={Search}
+                                        onClick={() => navigate(`/quizzes/${quiz.id}`)}
+                                        style={{ width: '100%' }}
+                                    >
+                                        View Review
+                                    </Button>
                                 </Card>
                             );
                         })}
@@ -271,17 +280,36 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
     const loadQuiz = useCallback(async () => {
         try {
             setLoading(true);
-            const q = await db.getQuizById(quizId);
+            const [q, atts] = await Promise.all([
+                db.getQuizById(quizId),
+                db.getQuizAttemptsByUser(user.id)
+            ]);
+
             if (q) {
                 setQuiz(q);
-                setTimeLeft(q.time_limit * 60); // Convert to seconds
+                setTimeLeft(q.time_limit * 60);
+
+                // Check if this quiz was already completed
+                const existingAttempt = atts.find(a => a.quiz_id === quizId);
+                if (existingAttempt) {
+                    setAnswers(existingAttempt.answers || {});
+                    setResults({
+                        score: existingAttempt.score,
+                        correct: existingAttempt.correct,
+                        total: existingAttempt.total,
+                        passed: existingAttempt.passed,
+                        xpEarned: 0 // Don't show new XP for reviews
+                    });
+                    setIsComplete(true);
+                    setShowReview(true);
+                }
             }
         } catch (error) {
             console.error('Error loading quiz:', error);
         } finally {
             setLoading(false);
         }
-    }, [quizId]);
+    }, [quizId, user.id]);
 
     useEffect(() => {
         loadQuiz();
