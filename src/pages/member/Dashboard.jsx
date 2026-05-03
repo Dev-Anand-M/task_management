@@ -237,7 +237,7 @@ const MemberDashboard = () => {
             </div>
 
             {/* Main Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-lg)' }}>
+            <div className="dashboard-grid">
                 {/* Active Tasks */}
                 <Card>
                     <div className="flex justify-between items-center mb-lg">
@@ -418,22 +418,6 @@ const MemberDashboard = () => {
                 )}
             </Card>
 
-            <style>{`
-        .loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid var(--border);
-          border-top-color: var(--primary-500);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-        
-        @media (max-width: 900px) {
-          div[style*="grid-template-columns: 1fr 1fr"] {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
         </div>
     );
 };

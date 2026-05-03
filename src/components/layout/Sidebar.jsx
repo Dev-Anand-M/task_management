@@ -20,7 +20,8 @@ import {
     Brain,
     Code,
     GraduationCap,
-    MessageSquare
+    MessageSquare,
+    X
 } from 'lucide-react';
 import Avatar from '../common/Avatar';
 
@@ -102,38 +103,57 @@ const Sidebar = ({ isOpen, onClose }) => {
                     borderBottom: '1px solid rgba(255,255,255,0.2)',
                     display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'space-between',
                     gap: 'var(--space-sm)'
                 }}>
-                    <div style={{
-                        width: '32px',
-                        height: '32px',
-                        background: 'rgba(255,255,255,0.2)',
-                        borderRadius: 'var(--radius-md)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <Zap size={18} color="white" />
+                    <div className="flex items-center gap-sm">
+                        <div style={{
+                            width: '32px',
+                            height: '32px',
+                            background: 'rgba(255,255,255,0.2)',
+                            borderRadius: 'var(--radius-md)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <Zap size={18} color="white" />
+                        </div>
+                        <div>
+                            <h2 style={{
+                                fontSize: 'var(--text-base)',
+                                fontWeight: 700,
+                                margin: 0,
+                                color: 'white',
+                                letterSpacing: '-0.02em'
+                            }}>
+                                Zenith
+                            </h2>
+                            <span style={{
+                                fontSize: '10px',
+                                color: 'rgba(255,255,255,0.75)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em'
+                            }}>
+                                {isAdmin ? 'Admin' : 'Member'}
+                            </span>
+                        </div>
                     </div>
-                    <div>
-                        <h2 style={{
-                            fontSize: 'var(--text-base)',
-                            fontWeight: 700,
-                            margin: 0,
+
+                    <button 
+                        className="mobile-close-btn"
+                        onClick={onClose}
+                        style={{
+                            background: 'rgba(255,255,255,0.1)',
+                            border: 'none',
                             color: 'white',
-                            letterSpacing: '-0.02em'
-                        }}>
-                            Zenith
-                        </h2>
-                        <span style={{
-                            fontSize: '10px',
-                            color: 'rgba(255,255,255,0.75)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em'
-                        }}>
-                            {isAdmin ? 'Admin' : 'Member'}
-                        </span>
-                    </div>
+                            padding: '8px',
+                            borderRadius: '50%',
+                            cursor: 'pointer',
+                            display: 'none' // Hidden by default (CSS handles mobile)
+                        }}
+                    >
+                        <X size={20} />
+                    </button>
                 </div>
 
                 <nav style={{ flex: 1, padding: 'var(--space-sm)', overflowY: 'auto' }}>

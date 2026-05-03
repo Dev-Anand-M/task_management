@@ -144,7 +144,7 @@ const InviteCodes = () => {
     return (
         <div className="animate-fade-in">
             {/* Header */}
-            <div className="flex justify-between items-center mb-lg">
+            <div className="flex flex-mobile-col justify-between items-center mb-lg">
                 <div>
                     <h2 style={{ margin: 0, marginBottom: '4px' }}>
                         Invite Codes
@@ -170,7 +170,7 @@ const InviteCodes = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 mb-xl">
+            <div className="grid grid-cols-3 grid-3-mobile-1 mb-xl">
                 <Card style={{ textAlign: 'center' }}>
                     <Key size={24} style={{ color: 'var(--primary-500)', marginBottom: '8px' }} />
                     <h3 style={{ margin: 0, fontSize: 'var(--text-2xl)' }}>{stats.total}</h3>
@@ -398,18 +398,6 @@ const InviteCodes = () => {
                 </div>
             )}
 
-            <style>{`
-                @keyframes slideInUp {
-                    from {
-                        transform: translateY(100%);
-                        opacity: 0;
-                    }
-                    to {
-                        transform: translateY(0);
-                        opacity: 1;
-                    }
-                }
-            `}</style>
         </div>
     );
 };

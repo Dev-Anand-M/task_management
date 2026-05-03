@@ -108,7 +108,7 @@ const EvaluationCenter = () => {
     return (
         <div className="animate-fade-in">
             {/* Header */}
-            <div className="flex justify-between items-center mb-lg">
+            <div className="flex flex-mobile-col justify-between items-center mb-lg">
                 <div>
                     <h2 style={{ margin: 0 }}>Evaluation Center</h2>
                     <p style={{ color: 'var(--text-muted)', margin: 0 }}>
@@ -116,6 +116,49 @@ const EvaluationCenter = () => {
                     </p>
                 </div>
                 <div className="flex gap-sm">
+                    {mode === 'quizzes' && quizAttempts.some(a => a.metadata?.has_key_error) && (
+                        <Button 
+                            variant="danger" 
+                            size="sm" 
+                            icon={AlertTriangle} 
+                            className="animate-pulse"
+                            onClick={async () => {
+                                const flagged = quizAttempts.filter(a => a.metadata?.has_key_error);
+                                if (window.confirm(`Are you sure you want to Intercept & Re-evaluate all ${flagged.length} flagged attempts?`)) {
+                                    setLoading(true);
+                                    try {
+                                        const { evaluateQuizAttempt, getSelectedModel } = await import('../../services/aiService');
+                                        const model = getSelectedModel();
+                                        
+                                        for (const att of flagged) {
+                                            const quiz = await db.getQuizById(att.quiz_id);
+                                            const report = await evaluateQuizAttempt(quiz, att.answers, model);
+                                            
+                                            // Simple auto-update for bulk
+                                            const hasKeyError = report.suggestions.some(s => s.isKeyError === true);
+                                            await db.updateQuizAttempt(att.id, {
+                                                metadata: { 
+                                                    ...att.metadata, 
+                                                    ai_evaluated: true, 
+                                                    ai_report: report, 
+                                                    has_key_error: hasKeyError 
+                                                }
+                                            });
+                                        }
+                                        alert('Bulk re-evaluation complete!');
+                                        loadData();
+                                    } catch (e) {
+                                        console.error('Bulk Error:', e);
+                                        alert('Some attempts failed to re-evaluate.');
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                }
+                            }}
+                        >
+                            Intercept All Flagged
+                        </Button>
+                    )}
                     <Button variant="secondary" size="sm" icon={RefreshCw} onClick={loadData} loading={loading}>
                         Refresh Data
                     </Button>
@@ -143,7 +186,7 @@ const EvaluationCenter = () => {
             </div>
 
             <Card style={{ marginBottom: 'var(--space-lg)', padding: 'var(--space-md)' }}>
-                <div className="flex gap-md items-center" style={{ flexWrap: 'wrap' }}>
+                <div className="flex flex-mobile-col gap-md items-center" style={{ flexWrap: 'wrap' }}>
                     <div style={{ flex: '1', minWidth: '200px' }}>
                         <Input
                             placeholder={mode === 'tasks' ? "Search by name or task..." : "Search by name or quiz..."}
@@ -198,17 +241,10 @@ const EvaluationCenter = () => {
                                 to={`/admin/evaluations/tasks/${sub.id}`}
                                 style={{ textDecoration: 'none' }}
                             >
-                                <Card style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 'var(--space-lg)',
-                                    padding: 'var(--space-lg)',
-                                    cursor: 'pointer',
-                                    transition: 'all var(--transition-fast)'
-                                }}>
+                                <Card className="evaluation-card">
                                     <Avatar name={sub.profiles?.name} size="lg" />
 
-                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div className="evaluation-card-content" style={{ flex: 1, minWidth: 0 }}>
                                         <div className="flex items-center gap-sm mb-xs">
                                             <h4 style={{ margin: 0 }}>{sub.profiles?.name}</h4>
                                             <Badge variant={getStatusColor(sub.status)}>{sub.status}</Badge>
@@ -223,7 +259,7 @@ const EvaluationCenter = () => {
                                         </p>
                                     </div>
 
-                                    <div style={{ textAlign: 'right' }}>
+                                    <div className="evaluation-card-meta">
                                         {sub.score !== null && sub.score !== undefined && (
                                             <div style={{
                                                 fontSize: 'var(--text-lg)',
@@ -267,16 +303,10 @@ const EvaluationCenter = () => {
                                 to={`/admin/evaluations/quizzes/${att.id}`}
                                 style={{ textDecoration: 'none' }}
                             >
-                                <Card style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 'var(--space-lg)',
-                                    padding: 'var(--space-lg)',
-                                    cursor: 'pointer'
-                                }}>
+                                <Card className="evaluation-card">
                                     <Avatar name={att.profiles?.name} size="lg" />
 
-                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div className="evaluation-card-content" style={{ flex: 1, minWidth: 0 }}>
                                         <div className="flex items-center gap-sm mb-xs">
                                             <h4 style={{ margin: 0 }}>{att.profiles?.name}</h4>
                                             <Badge variant={att.passed ? 'success' : 'error'}>
@@ -303,7 +333,7 @@ const EvaluationCenter = () => {
                                         </p>
                                     </div>
 
-                                    <div style={{ textAlign: 'right' }}>
+                                    <div className="evaluation-card-meta">
                                         <div style={{
                                             fontSize: 'var(--text-lg)',
                                             fontWeight: 600,
@@ -327,16 +357,7 @@ const EvaluationCenter = () => {
                 )
             )}
 
-            <style>{`
-        .loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid var(--border);
-          border-top-color: var(--primary-500);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-      `}</style>
+
         </div>
     );
 };
@@ -471,7 +492,7 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
     return (
         <div className="animate-fade-in">
             {/* Header */}
-            <div className="flex items-center gap-md mb-lg">
+            <div className="flex flex-mobile-col items-center gap-md mb-lg">
                 <Button variant="ghost" size="icon" onClick={onBack}>
                     <ArrowLeft size={20} />
                 </Button>
@@ -483,7 +504,7 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-lg)' }}>
+            <div className="grid-2-1">
                 {/* Left Column - Submission Details */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
                     {/* Submitter Info */}
@@ -686,22 +707,7 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
                 </div>
             </div>
 
-            <style>{`
-        .loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid var(--border);
-          border-top-color: var(--primary-500);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-        
-        @media (max-width: 900px) {
-          div[style*="grid-template-columns: 2fr 1fr"] {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
+
         </div>
     );
 };
@@ -891,12 +897,13 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                             </div>
                             <Button 
                                 size="sm" 
-                                variant="warning" 
+                                variant={attempt.metadata?.has_key_error ? "danger" : "warning"} 
                                 icon={RefreshCw}
                                 loading={evaluating}
                                 onClick={handleAiEvaluation}
+                                className={attempt.metadata?.has_key_error ? "animate-pulse" : ""}
                             >
-                                Intercept & Re-evaluate All
+                                {attempt.metadata?.has_key_error ? "🚨 Intercept & Resolve Flagged" : "Intercept & Re-evaluate All"}
                             </Button>
                         </div>
                         <div className="grid grid-cols-2 gap-sm mb-lg">

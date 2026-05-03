@@ -349,7 +349,7 @@ const Settings = () => {
                         <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-md)', color: 'var(--text-muted)' }}>
                             THEME MODE
                         </h4>
-                        <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
+                        <div className="flex-mobile-col" style={{ display: 'flex', gap: 'var(--space-md)' }}>
                             <button
                                 onClick={() => isDark && toggleTheme()}
                                 style={{
@@ -683,7 +683,7 @@ const Settings = () => {
                     </div>
 
                     <form onSubmit={handlePasswordUpdate} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+                        <div className="grid-2-mobile-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <label style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-muted)' }}>
                                     NEW PASSWORD
@@ -758,7 +758,7 @@ const Settings = () => {
                     </div>
 
                     {/* Provider Tabs */}
-                    <div style={{
+                    <div className="tabs-scrollable" style={{
                         display: 'flex',
                         borderBottom: '1px solid var(--border)',
                         marginBottom: 'var(--space-lg)'
@@ -876,7 +876,7 @@ const Settings = () => {
                             <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-md)', color: 'var(--text-muted)' }}>
                                 USAGE STATISTICS
                             </h4>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-md)' }}>
+                            <div className="grid-3-mobile-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-md)' }}>
                                 <div style={{ textAlign: 'center' }}>
                                     <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--primary-500)' }}>
                                         {usageStats.requestsToday || 0}
@@ -961,22 +961,15 @@ const Settings = () => {
                                     fontSize: 'var(--text-sm)'
                                 }}
                             />
-                            <button
+                            <Button
+                                size="sm"
+                                variant="secondary"
                                 onClick={() => setShowApiKey(!showApiKey)}
-                                style={{
-                                    padding: 'var(--space-sm) var(--space-md)',
-                                    borderRadius: 'var(--radius-md)',
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--card)',
-                                    color: 'var(--text-main)',
-                                    cursor: 'pointer',
-                                    fontSize: 'var(--text-sm)'
-                                }}
                             >
                                 {showApiKey ? 'Hide' : 'Show'}
-                            </button>
+                            </Button>
                         </div>
-                        <div style={{ marginTop: 'var(--space-sm)', display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-md)' }}>
+                        <div className="flex-mobile-col" style={{ marginTop: 'var(--space-sm)', display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-md)' }}>
                             {aiKeyStatus === 'configured' && (
                                 <Button
                                     variant="ghost"
@@ -1030,7 +1023,7 @@ const Settings = () => {
                     {/* Model Selection removed per user request for automatic calibration */}
 
                     {/* Save/Remove Buttons */}
-                    <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                    <div className="flex-mobile-col" style={{ display: 'flex', gap: 'var(--space-sm)' }}>
                         <Button
                             onClick={handleSaveApiKey}
                             disabled={!aiApiKey.trim() || aiKeyStatus === 'testing'}

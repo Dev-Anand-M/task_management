@@ -152,9 +152,8 @@ const Header = ({ onMenuClick, title }) => {
           size="icon"
           onClick={onMenuClick}
           className="menu-button"
-          style={{ display: 'none' }}
         >
-          <Menu size={20} />
+          <Menu size={24} />
         </Button>
 
         <h1 style={{
@@ -235,7 +234,7 @@ const Header = ({ onMenuClick, title }) => {
               if (!showNotifications) loadNotificationData();
             }}
           >
-            <Bell size={20} />
+            <Bell size={24} />
             {unreadCount > 0 && (
               <span style={{
                 position: 'absolute',
@@ -260,19 +259,18 @@ const Header = ({ onMenuClick, title }) => {
 
           {/* Notifications Dropdown */}
           {showNotifications && (
-            <div style={{
-              position: 'absolute',
-              top: 'calc(100% + 12px)',
-              right: 0,
-              width: '380px',
-              background: 'var(--card)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-2xl)',
-              boxShadow: 'var(--shadow-xl)',
-              zIndex: 1000,
-              overflow: 'hidden',
-              animation: 'slideInUp 0.3s var(--transition-bounce)'
-            }}>
+            <div 
+              className="notification-panel-mobile"
+              style={{
+                animation: 'slideInUp 0.3s var(--transition-bounce)',
+                zIndex: 1000,
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-2xl)',
+                boxShadow: 'var(--shadow-xl)',
+                overflow: 'hidden'
+              }}
+            >
               {/* Header */}
               <div style={{
                 padding: 'var(--space-md) var(--space-lg)',
@@ -433,7 +431,7 @@ const Header = ({ onMenuClick, title }) => {
 
         {/* Theme Toggle */}
         <Button variant="ghost" size="icon" onClick={handleThemeToggle}>
-          {isDark ? <Sun size={20} /> : <Moon size={20} />}
+          {isDark ? <Sun size={24} /> : <Moon size={24} />}
         </Button>
 
         {/* Profile Dropdown */}
@@ -471,19 +469,18 @@ const Header = ({ onMenuClick, title }) => {
           </button>
 
           {showProfileMenu && (
-            <div style={{
-              position: 'absolute',
-              top: 'calc(100% + 12px)',
-              right: 0,
-              width: '240px',
-              background: 'var(--card)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-xl)',
-              boxShadow: 'var(--shadow-xl)',
-              zIndex: 1000,
-              overflow: 'hidden',
-              animation: 'slideInUp 0.2s ease-out'
-            }}>
+            <div 
+              className="profile-dropdown-mobile"
+              style={{
+                animation: 'slideInUp 0.2s ease-out',
+                zIndex: 1000,
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-xl)',
+                boxShadow: 'var(--shadow-xl)',
+                overflow: 'hidden'
+              }}
+            >
               {/* User Info Header */}
               <div style={{
                 padding: 'var(--space-md)',

@@ -132,7 +132,7 @@ const ClassroomSettings = () => {
 
     return (
         <div className="animate-fade-in max-w-6xl mx-auto">
-            <div className="flex justify-between items-center mb-xl">
+            <div className="flex flex-mobile-col justify-between items-center mb-xl">
                 <div>
                     <h2>My Classrooms</h2>
                     <p style={{ color: 'var(--text-muted)' }}>Manage and switch between your classrooms</p>
@@ -152,7 +152,7 @@ const ClassroomSettings = () => {
                             <span className="text-xs font-bold px-2">ACTIVE</span>
                         </div>
 
-                        <div className="flex justify-between items-start mb-lg">
+                        <div className="flex flex-mobile-col justify-between items-start mb-lg">
                             <div>
                                 <h1 className="text-3xl font-bold mb-xs text-gradient">{activeClassroom.name}</h1>
                                 <p className="text-muted max-w-2xl">{activeClassroom.description || "No description provided."}</p>
@@ -160,7 +160,7 @@ const ClassroomSettings = () => {
                             <Button variant="secondary" icon={Settings} onClick={() => handleEditClick(activeClassroom)}>Edit Details</Button>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-md">
+                        <div className="grid grid-cols-3 grid-3-mobile-1 gap-md">
                             <div className="flex items-center gap-md p-md bg-surface rounded-lg border border-border">
                                 <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
                                     <Users size={20} />

@@ -356,7 +356,7 @@ const QuizBuilder = () => {
     return (
         <div className="animate-fade-in">
             {/* Header */}
-            <div className="flex justify-between items-center mb-lg">
+            <div className="flex flex-mobile-col justify-between items-center mb-lg">
                 <p style={{ color: 'var(--text-muted)' }}>
                     Create and manage quizzes for your team
                 </p>
@@ -390,7 +390,7 @@ const QuizBuilder = () => {
                     </div>
                 </Card>
             ) : (
-                <div className="grid grid-cols-3">
+                <div className="grid grid-cols-3 grid-3-mobile-1">
                     {filteredQuizzes.map(quiz => {
                         const assignedMembers = quiz.assigned_to?.map(id =>
                             members.find(m => m.id === id)
@@ -537,7 +537,7 @@ const QuizBuilder = () => {
                             required
                         />
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 'var(--space-md)' }}>
+                        <div className="grid grid-4-mobile-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 'var(--space-md)' }}>
                             <div className="input-group">
                                 <label className="input-label">Category</label>
                                 <select
@@ -587,7 +587,7 @@ const QuizBuilder = () => {
                         {/* Assignment Mode */}
                         <div className="input-group">
                             <label className="input-label">Target Audience</label>
-                            <div className="flex gap-md">
+                            <div className="flex flex-mobile-col gap-md">
                                 <button
                                     type="button"
                                     onClick={() => setFormData({ ...formData, is_global: false })}
@@ -624,7 +624,7 @@ const QuizBuilder = () => {
 
                         <div className="input-group">
                             <label className="input-label">Assignment Type</label>
-                            <div className="flex gap-md">
+                            <div className="flex flex-mobile-col gap-md">
                                 <button
                                     type="button"
                                     onClick={() => setFormData({ ...formData, assignment_type: 'everyone' })}
@@ -875,52 +875,7 @@ const QuizBuilder = () => {
                 </div>
             </Modal>
 
-            <style>{`
-        .loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid var(--border);
-          border-top-color: var(--primary-500);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-        .checkbox {
-          width: 18px;
-          height: 18px;
-          border: 2px solid var(--border);
-          border-radius: 4px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all var(--transition-fast);
-          flex-shrink: 0;
-        }
-        .checkbox.checked {
-          background: var(--primary-500);
-          border-color: var(--primary-500);
-          color: white;
-        }
-        .btn {
-            padding: var(--space-sm) var(--space-md);
-            border-radius: var(--radius-md);
-            font-weight: 500;
-            transition: all var(--transition-fast);
-            cursor: pointer;
-            border: 1px solid transparent;
-        }
-        .btn-primary {
-            background: var(--primary-500);
-            color: white;
-        }
-        .btn-secondary {
-            background: var(--card);
-            border-color: var(--border);
-            color: var(--text-main);
-        }
-        .btn:hover {
-            opacity: 0.9;
-        }
-      `}</style>
+
         </div>
     );
 };

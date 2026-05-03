@@ -152,10 +152,10 @@ const AIAssistant = () => {
     };
 
     return (
-        <div className="animate-fade-in" style={{ height: 'calc(100vh - 120px)', display: 'flex', gap: 'var(--space-md)' }}>
+        <div className="animate-fade-in flex-mobile-col ai-container-mobile" style={{ height: 'calc(100vh - 120px)', display: 'flex', gap: 'var(--space-md)' }}>
 
             {/* History Sidebar */}
-            <Card style={{ width: '260px', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', flexShrink: 0 }}>
+            <Card className="ai-sidebar-mobile" style={{ width: '260px', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', flexShrink: 0 }}>
                 <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border)' }}>
                     <Button onClick={startNewChat} style={{ width: '100%' }}>
                         <MessageSquare size={16} />
@@ -211,7 +211,7 @@ const AIAssistant = () => {
             {/* Main Chat Area */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                 {/* Header */}
-                <div className="flex justify-between items-center mb-md">
+                <div className="flex flex-mobile-col justify-between items-center mb-md">
                     <div>
                         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                             <Brain className="text-primary" />
@@ -349,18 +349,7 @@ const AIAssistant = () => {
                 </Card>
             </div>
 
-            <style>{`
-                .markdown-content h1, .markdown-content h2, .markdown-content h3 { margin-top: var(--space-md); margin-bottom: var(--space-sm); }
-                .markdown-content p { margin-bottom: var(--space-sm); }
-                .markdown-content code { background: var(--card); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
-                .markdown-content pre { background: var(--card); padding: var(--space-md); border-radius: var(--radius-md); overflow-x: auto; margin: var(--space-sm) 0; }
-                .markdown-content pre code { background: none; padding: 0; }
-                .markdown-content ul, .markdown-content ol { margin-left: var(--space-lg); margin-bottom: var(--space-sm); }
-                .animate-spin { animation: spin 1s linear infinite; }
-                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-                .history-item:hover { background: var(--surface-hover/50) !important; }
-                .history-item:hover .delete-icon { opacity: 1 !important; color: var(--error-500); }
-            `}</style>
+
         </div>
     );
 };

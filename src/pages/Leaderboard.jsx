@@ -82,7 +82,7 @@ const Leaderboard = () => {
     return (
         <div className="animate-fade-in">
             {/* Header Stats */}
-            <div className="grid grid-cols-3 mb-xl" style={{ gap: 'var(--space-md)' }}>
+            <div className="grid grid-cols-3 grid-3-mobile-1 mb-xl" style={{ gap: 'var(--space-md)' }}>
                 <Card style={{
                     textAlign: 'center',
                     background: 'var(--gradient-primary)',
@@ -296,22 +296,6 @@ const Leaderboard = () => {
                 </div>
             </Card>
 
-            <style>{`
-        .loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid var(--border);
-          border-top-color: var(--primary-500);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-        
-        @media (min-width: 768px) {
-          .level-progress {
-            display: block !important;
-          }
-        }
-      `}</style>
         </div>
     );
 };

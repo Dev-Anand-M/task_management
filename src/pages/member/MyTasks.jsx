@@ -147,7 +147,7 @@ const MyTasks = () => {
                     </div>
                 </Card>
             ) : (
-                <div className="grid grid-cols-3">
+                <div className="grid grid-cols-3 grid-3-mobile-1">
                     {filteredTasks.map(task => {
                         const status = getTaskStatus(task.id);
                         const submission = submissions.find(s => s.task_id === task.id);
@@ -224,16 +224,6 @@ const MyTasks = () => {
                 </div>
             )}
 
-            <style>{`
-        .loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid var(--border);
-          border-top-color: var(--primary-500);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-      `}</style>
         </div>
     );
 };
@@ -434,7 +424,7 @@ const TaskDetail = ({ taskId, onBack, onUpdate }) => {
                 })()}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-lg)' }}>
+            <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-lg)' }}>
                 {/* Left Column */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
                     {/* Description */}
@@ -736,22 +726,6 @@ const TaskDetail = ({ taskId, onBack, onUpdate }) => {
                 </form>
             </Modal>
 
-            <style>{`
-        .loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid var(--border);
-          border-top-color: var(--primary-500);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-        
-        @media (max-width: 900px) {
-          div[style*="grid-template-columns: 2fr 1fr"] {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
         </div>
     );
 };

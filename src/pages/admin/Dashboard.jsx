@@ -138,7 +138,7 @@ const AdminDashboard = () => {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-4" style={{ marginBottom: 'var(--space-xl)' }}>
+            <div className="stat-card-grid" style={{ marginBottom: 'var(--space-xl)' }}>
                 {statCards.map((stat) => (
                     <Card
                         key={stat.label}
@@ -182,11 +182,7 @@ const AdminDashboard = () => {
             </div>
 
             {/* Main Content Grid */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 'var(--space-lg)'
-            }}>
+            <div className="dashboard-grid">
                 {/* Recent Submissions */}
                 <Card>
                     <div className="flex justify-between items-center mb-lg">
@@ -341,10 +337,9 @@ const AdminDashboard = () => {
                 </Card>
             </div >
 
-            {/* Quick Actions */}
-            < div style={{ marginTop: 'var(--space-xl)' }}>
+            <div style={{ marginTop: 'var(--space-xl)' }}>
                 <h3 style={{ marginBottom: 'var(--space-md)' }}>Quick Actions</h3>
-                <div className="flex gap-md">
+                <div className="flex flex-mobile-col gap-md">
                     <Link to="/admin/tasks/new">
                         <Button icon={Plus}>Create New Task</Button>
                     </Link>
@@ -359,39 +354,6 @@ const AdminDashboard = () => {
                 </div>
             </div >
 
-            <style>{`
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid var(--border);
-          border-top-color: var(--primary-500);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-        
-        @media (max-width: 900px) {
-          .grid-cols-4 {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-        }
-        
-        @media (max-width: 768px) {
-          div[style*="grid-template-columns: 1fr 1fr"] {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
         </div >
     );
 };

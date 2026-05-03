@@ -254,16 +254,7 @@ const Quizzes = () => {
                 </Card>
             )}
 
-            <style>{`
-        .loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid var(--border);
-          border-top-color: var(--primary-500);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-      `}</style>
+
         </div>
     );
 };
@@ -586,7 +577,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                             <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-lg)' }}>
                                 {results.passed ? 'You passed the quiz!' : 'You need 70% to pass. Try again!'}
                             </p>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-md mb-xl">
+                            <div className="grid grid-cols-1 md:grid-cols-3 grid-3-mobile-1 gap-md mb-xl">
                                 <Card variant="secondary" style={{ padding: 'var(--space-md)', textAlign: 'center' }}>
                                     <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: results.passed ? 'var(--success-500)' : 'var(--error-500)' }}>
                                         {results.score}%
@@ -1025,16 +1016,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                 </Modal>
             )}
 
-            <style>{`
-        .loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid var(--border);
-          border-top-color: var(--primary-500);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-      `}</style>
+
         </div>
     );
 };

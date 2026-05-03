@@ -90,7 +90,7 @@ const Notifications = () => {
 
     return (
         <div className="animate-fade-in">
-            <div className="flex justify-between items-center mb-lg">
+            <div className="flex flex-mobile-col justify-between items-center mb-lg">
                 <div>
                     <h2>Notifications</h2>
                     <p style={{ color: 'var(--text-muted)' }}>Stay updated with your latest activities</p>

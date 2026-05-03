@@ -169,7 +169,7 @@ const ClassroomDetail = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 </div>
 
-                <div className="absolute bottom-0 left-0 p-xl flex justify-between items-end w-full">
+                <div className="absolute bottom-0 left-0 p-xl flex flex-mobile-col justify-between items-end w-full">
                     <div>
                         <h1 className="text-4xl font-black text-white m-0 tracking-tight drop-shadow-lg">{classroom.name}</h1>
                         <p className="text-white/80 font-medium m-0 mt-xs flex items-center gap-sm">
@@ -187,7 +187,7 @@ const ClassroomDetail = () => {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex border-b border-border bg-card/30 sticky top-0 z-10 backdrop-blur-md rounded-t-xl overflow-hidden shadow-sm">
+            <div className="flex tabs-scrollable border-b border-border bg-card/30 sticky top-0 z-10 backdrop-blur-md rounded-t-xl overflow-hidden shadow-sm">
                 <TabButton id="stream" label="Stream" icon={Layout} />
                 <TabButton id="classwork" label="Classwork" icon={BookOpen} />
                 <TabButton id="people" label="People" icon={Users} />
@@ -291,7 +291,7 @@ const ClassroomDetail = () => {
                 {/* --- CLASSWORK TAB --- */}
                 {activeTab === 'classwork' && (
                     <div className="max-w-4xl mx-auto flex flex-col gap-xl">
-                        <div className="flex justify-between items-center mb-md border-b border-border pb-lg">
+                        <div className="flex flex-mobile-col justify-between items-center mb-md border-b border-border pb-lg">
                             <h2 className="m-0 font-black text-2xl flex items-center gap-md">
                                 <BookOpen className="text-primary-500" size={28} />
                                 Classwork
@@ -356,7 +356,7 @@ const ClassroomDetail = () => {
                         </section>
 
                         <section>
-                            <h2 className="m-0 pb-md mb-xl font-black text-2xl flex items-center justify-between border-b-2 border-primary-500/10">
+                            <h2 className="m-0 pb-md mb-xl font-black text-2xl flex flex-mobile-col items-center justify-between border-b-2 border-primary-500/10">
                                 <div className="flex items-center gap-md text-primary-500">
                                     Classmates
                                 </div>

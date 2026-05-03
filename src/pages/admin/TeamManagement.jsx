@@ -122,7 +122,7 @@ const TeamManagement = () => {
     return (
         <div className="animate-fade-in">
             {/* Header */}
-            <div className="flex justify-between items-center mb-lg">
+            <div className="flex flex-mobile-col justify-between items-center mb-lg">
                 <p style={{ color: 'var(--text-muted)' }}>
                     View and manage your team members
                 </p>
@@ -142,7 +142,7 @@ const TeamManagement = () => {
             </Card>
 
             {/* Stats Bar */}
-            <div className="grid grid-cols-4 mb-lg" style={{ gap: 'var(--space-md)' }}>
+            <div className="grid grid-cols-4 stat-card-grid mb-lg" style={{ gap: 'var(--space-md)' }}>
                 <Card style={{ padding: 'var(--space-md)', textAlign: 'center' }}>
                     <h3 style={{ fontSize: 'var(--text-2xl)', margin: 0 }}>{members.length}</h3>
                     <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>
@@ -351,16 +351,6 @@ const TeamManagement = () => {
                 </div>
             </Modal>
 
-            <style>{`
-        .loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid var(--border);
-          border-top-color: var(--primary-500);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-      `}</style>
         </div>
     );
 };
