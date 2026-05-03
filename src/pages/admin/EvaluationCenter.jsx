@@ -17,6 +17,7 @@ import {
     X
 } from 'lucide-react';
 import * as db from '../../services/database';
+import { evaluateQuizAttempt } from '../../services/aiService';
 import { formatDate, formatRelativeTime, getStatusColor, EVALUATION_CRITERIA } from '../../utils/constants';
 
 const EvaluationCenter = () => {
@@ -689,6 +690,8 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
     const [loading, setLoading] = useState(true);
     const [overrides, setOverrides] = useState({}); // { questionIndex: boolean }
     const [saving, setSaving] = useState(false);
+    const [aiReport, setAiReport] = useState(null);
+    const [evaluating, setEvaluating] = useState(false);
 
     const loadAttempt = useCallback(async () => {
         try {
@@ -710,6 +713,26 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
     useEffect(() => {
         loadAttempt();
     }, [loadAttempt]);
+
+    const handleAiEvaluation = async () => {
+        if (!attempt) return;
+        setEvaluating(true);
+        try {
+            const report = await evaluateQuizAttempt(attempt.quiz, attempt.answers);
+            setAiReport(report);
+            
+            // Auto-apply suggestions to overrides
+            const newOverrides = { ...overrides };
+            report.suggestions.forEach(s => {
+                newOverrides[s.questionIndex] = s.isCorrect;
+            });
+            setOverrides(newOverrides);
+        } catch (error) {
+            alert('AI Evaluation failed: ' + error.message);
+        } finally {
+            setEvaluating(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -813,7 +836,36 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                 Save Manual Evaluation
                             </Button>
                         )}
+
+                        <div style={{ marginTop: 'var(--space-md)' }}>
+                            <Button
+                                variant="primary"
+                                style={{ width: '100%', background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)', borderColor: 'transparent' }}
+                                onClick={handleAiEvaluation}
+                                loading={evaluating}
+                                icon={Brain}
+                            >
+                                {aiReport ? 'Re-run AI Review' : 'Run Smart AI Review'}
+                            </Button>
+                        </div>
                     </Card>
+
+                    {aiReport && (
+                        <Card style={{ border: '1px solid #a78bfa', background: 'rgba(167, 139, 250, 0.05)' }}>
+                            <div className="flex items-center gap-sm mb-md">
+                                <Brain size={20} color="#8b5cf6" />
+                                <h4 style={{ margin: 0, color: '#7c3aed' }}>AI Mentor Report</h4>
+                                <Badge style={{ marginLeft: 'auto', background: '#7c3aed' }}>Grade: {aiReport.overallGrade}</Badge>
+                            </div>
+                            <p style={{ fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
+                                {aiReport.summary}
+                            </p>
+                            <div style={{ padding: 'var(--space-sm)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px dashed #a78bfa' }}>
+                                <p style={{ margin: 0, fontSize: 'var(--text-xs)', fontWeight: 600, color: '#7c3aed', marginBottom: '4px' }}>MENTOR NOTE:</p>
+                                <p style={{ margin: 0, fontSize: 'var(--text-xs)', fontStyle: 'italic' }}>{aiReport.mentorNote}</p>
+                            </div>
+                        </Card>
+                    )}
                 </div>
 
                 {/* Answers Review */}
@@ -889,6 +941,21 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                         Mark Wrong
                                                     </Button>
                                                 </div>
+
+                                                {aiReport && aiReport.suggestions.find(s => s.questionIndex === index) && (
+                                                    <div style={{ marginTop: 'var(--space-md)', padding: 'var(--space-sm)', background: 'rgba(167, 139, 250, 0.1)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
+                                                        <div className="flex items-center gap-xs mb-xs">
+                                                            <Brain size={12} color="#8b5cf6" />
+                                                            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: '#7c3aed' }}>AI SUGGESTION</span>
+                                                        </div>
+                                                        <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-main)' }}>
+                                                            {aiReport.suggestions.find(s => s.questionIndex === index).feedback}
+                                                        </p>
+                                                        <p style={{ margin: '4px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                                            Tip: {aiReport.suggestions.find(s => s.questionIndex === index).improvementTip}
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>

@@ -560,6 +560,52 @@ Format your response in markdown.`;
     return generateContent(question, systemPrompt, model);
 };
 
+// AI Quiz Evaluator (For Admins)
+export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null) => {
+    const systemPrompt = `You are an expert academic evaluator. Analyze the following quiz submission and provide a detailed evaluation.
+    
+    For each question, determine if the student's answer is conceptually correct, especially for short-answer/text questions.
+    
+    Return the response as a valid JSON object in this exact format:
+    {
+      "summary": "Overall performance summary",
+      "suggestions": [
+        {
+          "questionIndex": 0,
+          "isCorrect": true/false,
+          "feedback": "Why this is correct/incorrect",
+          "improvementTip": "How the student can do better"
+        }
+      ],
+      "overallGrade": "A/B/C/D/F",
+      "mentorNote": "A private note for the admin about the student's progress"
+    }
+    
+    Important: 
+    - Be fair but rigorous.
+    - For text answers, look for keywords and conceptual understanding even if phrasing is different.
+    - Return ONLY the JSON object.`;
+
+    const prompt = `
+    Quiz Title: ${quizData.title}
+    Questions: ${JSON.stringify(quizData.questions)}
+    Student Answers: ${JSON.stringify(studentAnswers)}
+    `;
+
+    const response = await generateContent(prompt, systemPrompt, model);
+
+    try {
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+        return JSON.parse(response);
+    } catch (e) {
+        console.error('Failed to parse AI evaluation:', response);
+        throw new Error('Failed to parse AI evaluation report');
+    }
+};
+
 // AI Study Notes Generator
 export const generateStudyNotes = async (topic) => {
     const systemPrompt = `You are an expert educator. Create comprehensive, in-depth study notes for the topic: "${topic}"
