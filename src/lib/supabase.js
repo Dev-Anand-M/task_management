@@ -23,14 +23,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         detectSessionInUrl: true,
         flowType: 'pkce',
         storageKey: 'zenith-auth-v2',
-        lock: {
-            acquire: (name, acquireCallback) => {
-                return acquireCallback();
-            },
-            release: (name) => {
-                // Dummy release
-                return Promise.resolve();
-            }
+        lock: (name, acquireCallback) => {
+            return acquireCallback();
         }
     },
     global: {
