@@ -753,6 +753,33 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                 newOverrides[s.questionIndex] = s.isCorrect;
             });
             setOverrides(newOverrides);
+
+            // PERSIST to Database immediately so it's not lost
+            const finalCorrect = attempt.quiz.questions.reduce((acc, q, idx) => {
+                const userAnswer = attempt.answers[idx];
+                const override = newOverrides[idx];
+                
+                if (q.type === 'short') {
+                    const isCorrect = override !== undefined ? override : false;
+                    return acc + (isCorrect ? 1 : 0);
+                }
+                const isCorrect = override !== undefined ? override : (userAnswer === q.correctAnswer);
+                return acc + (isCorrect ? 1 : 0);
+            }, 0);
+            const finalScore = Math.round((finalCorrect / attempt.total) * 100);
+
+            await db.updateQuizAttempt(attempt.id, {
+                correct: finalCorrect,
+                score: finalScore,
+                passed: finalScore >= 70,
+                metadata: { 
+                    ...attempt.metadata, 
+                    ai_evaluated: true, 
+                    ai_report: report, 
+                    model_used: selectedModel,
+                    overrides: newOverrides 
+                }
+            });
         } catch (error) {
             console.error('AI Eval Error:', error);
             alert('❌ AI Review Failed: ' + (error.message.includes('not configured') ? 'Please check your API keys in Settings.' : error.message));
@@ -801,26 +828,33 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                         <div className="grid grid-cols-2 gap-sm mb-lg">
                             <div style={{ padding: 'var(--space-md)', background: 'var(--card)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
                                 <p style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, margin: 0, color: attempt.passed ? 'var(--success-500)' : 'var(--error-500)' }}>
-                                    {Math.round((Object.values({ ...attempt.answers, ...overrides }).reduce((acc, curr, idx) => {
-                                        const q = attempt.quiz.questions[idx];
+                                    {Math.round((attempt.quiz.questions.reduce((acc, q, idx) => {
+                                        const userAnswer = attempt.answers[idx];
+                                        const override = overrides[idx];
+                                        
                                         if (q.type === 'short') {
-                                            const isManuallyCorrect = overrides[idx] !== undefined ? overrides[idx] : (curr === q.correctAnswer);
-                                            return acc + (isManuallyCorrect ? 1 : 0);
+                                            const isCorrect = override !== undefined ? override : false;
+                                            return acc + (isCorrect ? 1 : 0);
                                         }
-                                        return acc + (curr === q.correctAnswer ? 1 : 0);
+                                        // For MCQ/Boolean, overrides can still happen but usually we use userAnswer
+                                        const isCorrect = override !== undefined ? override : (userAnswer === q.correctAnswer);
+                                        return acc + (isCorrect ? 1 : 0);
                                     }, 0) / attempt.total) * 100)}%
                                 </p>
                                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: 0 }}>Score</p>
                             </div>
                             <div style={{ padding: 'var(--space-md)', background: 'var(--card)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
                                 <p style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, margin: 0 }}>
-                                    {Object.values({ ...attempt.answers, ...overrides }).reduce((acc, curr, idx) => {
-                                        const q = attempt.quiz.questions[idx];
+                                    {attempt.quiz.questions.reduce((acc, q, idx) => {
+                                        const userAnswer = attempt.answers[idx];
+                                        const override = overrides[idx];
+                                        
                                         if (q.type === 'short') {
-                                            const isManuallyCorrect = overrides[idx] !== undefined ? overrides[idx] : (curr === q.correctAnswer);
-                                            return acc + (isManuallyCorrect ? 1 : 0);
+                                            const isCorrect = override !== undefined ? override : false;
+                                            return acc + (isCorrect ? 1 : 0);
                                         }
-                                        return acc + (curr === q.correctAnswer ? 1 : 0);
+                                        const isCorrect = override !== undefined ? override : (userAnswer === q.correctAnswer);
+                                        return acc + (isCorrect ? 1 : 0);
                                     }, 0)}/{attempt.total}
                                 </p>
                                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: 0 }}>Correct</p>
@@ -835,13 +869,16 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                 onClick={async () => {
                                     setSaving(true);
                                     try {
-                                        const finalCorrect = Object.values({ ...attempt.answers, ...overrides }).reduce((acc, curr, idx) => {
-                                            const q = attempt.quiz.questions[idx];
+                                        const finalCorrect = attempt.quiz.questions.reduce((acc, q, idx) => {
+                                            const userAnswer = attempt.answers[idx];
+                                            const override = overrides[idx];
+                                            
                                             if (q.type === 'short') {
-                                                const isManuallyCorrect = overrides[idx] !== undefined ? overrides[idx] : (curr === q.correctAnswer);
-                                                return acc + (isManuallyCorrect ? 1 : 0);
+                                                const isCorrect = override !== undefined ? override : false;
+                                                return acc + (isCorrect ? 1 : 0);
                                             }
-                                            return acc + (curr === q.correctAnswer ? 1 : 0);
+                                            const isCorrect = override !== undefined ? override : (userAnswer === q.correctAnswer);
+                                            return acc + (isCorrect ? 1 : 0);
                                         }, 0);
                                         const finalScore = Math.round((finalCorrect / attempt.total) * 100);
                                         
