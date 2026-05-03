@@ -48,7 +48,7 @@ const decryptKey = (encryptedKey, salt) => {
 };
 
 // Check if API key is configured for a specific provider
-export const isAPIKeyConfigured = (providerId = 'gemini') => {
+export const isAPIKeyConfigured = (providerId = 'sambanova') => {
     const provider = Object.values(PROVIDERS).find(p => p.id === providerId);
     return provider ? !!localStorage.getItem(provider.keyName) : false;
 };
@@ -73,7 +73,7 @@ export const fetchAvailableModels = async (apiKey) => {
         }
 
         // Fallback: try Gemini
-        return (await validateAPIKey('gemini', apiKey)).models || [];
+        return (await validateAPIKey('sambanova', apiKey)).models || [];
     } catch (e) {
         return [];
     }
@@ -160,14 +160,14 @@ export const getSelectedModel = () => {
     if (manualSelection) return manualSelection;
 
     // 2. Fallback to configured keys in order of preference
+    if (localStorage.getItem('sambanova_api_key')) return 'Meta-Llama-3.3-70B-Instruct';
     if (localStorage.getItem('gemini_api_key')) return 'gemini-1.5-flash';
-    if (localStorage.getItem('sambanova_api_key')) return 'Meta-Llama-3.1-70B-Instruct';
     if (localStorage.getItem('openai_api_key')) return 'gpt-4o';
     if (localStorage.getItem('anthropic_api_key')) return 'claude-3-5-sonnet-20240620';
     if (localStorage.getItem('perplexity_api_key')) return 'llama-3.1-sonar-large-128k-online';
 
     // Default Fallback
-    return 'gemini-1.5-flash';
+    return 'Meta-Llama-3.3-70B-Instruct';
 };
 
 // Set selected model
@@ -179,7 +179,7 @@ export const setSelectedModel = async (modelId) => {
 // Helper: Get provider for a model
 const getProviderForModel = (modelId) => {
     const model = AVAILABLE_MODELS.find(m => m.id === modelId);
-    return model ? PROVIDERS[model.provider.toUpperCase()] : PROVIDERS.GEMINI;
+    return model ? PROVIDERS[model.provider.toUpperCase()] : PROVIDERS.SAMBANOVA;
 };
 
 // Increment usage

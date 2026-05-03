@@ -92,7 +92,7 @@ const Settings = () => {
     }, []);
 
     // AI Settings
-    const [selectedProvider, setSelectedProvider] = useState('gemini');
+    const [selectedProvider, setSelectedProvider] = useState('sambanova');
     const [aiApiKey, setAiApiKey] = useState('');
     const [showApiKey, setShowApiKey] = useState(false);
     const [aiKeyStatus, setAiKeyStatus] = useState('unconfigured'); // 'unconfigured', 'configured', 'testing', 'invalid'
