@@ -1,3 +1,4 @@
+// Vercel Deployment Trigger: 2026-05-03-2001
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, Avatar, Modal, Input, ProgressBar } from '../../components/common';
