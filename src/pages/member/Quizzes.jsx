@@ -344,21 +344,30 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
         try {
             setSubmitting(true);
             // 1. SAVE IMMEDIATELY - This is the most important part to prevent "retakes"
-            const attemptId = await db.createQuizAttempt({
-                quiz_id: quiz.id,
-                user_id: user.id,
-                answers,
-                score,
-                correct,
-                total: quiz.questions.length,
-                passed,
-                completed_at: new Date().toISOString(),
-                metadata: { ai_evaluated: false, status: 'submitted' }
-            });
+            // Use a small timeout or just immediate return if possible, but we need the ID for AI
+            const { data: attempt, error: dbError } = await db.supabase
+                .from('quiz_attempts')
+                .insert({
+                    quiz_id: quiz.id,
+                    user_id: user.id,
+                    answers,
+                    score,
+                    correct,
+                    total: quiz.questions.length,
+                    passed,
+                    completed_at: new Date().toISOString(),
+                    metadata: { ai_evaluated: false, status: 'submitted' }
+                })
+                .select('id')
+                .single();
+
+            if (dbError) throw dbError;
+
+            const attemptId = attempt.id;
 
             // 2. SHOW SUCCESS UI IMMEDIATELY
-            // We don't wait for AI to show the student that they are done.
-            setResults({ loading: false, score, total: quiz.questions.length });
+            setSubmitting(false);
+            setResults({ loading: false, score, total: quiz.questions.length, manually_evaluated: false });
             setIsComplete(true);
             onComplete();
 
@@ -412,7 +421,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                 }
             };
 
-            runBackgroundAi(attemptId.id || attemptId);
+            runBackgroundAi(attemptId);
 
         } catch (error) {
             console.error('Error submitting quiz:', error);
@@ -727,6 +736,29 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
 
     return (
         <div className="quiz-container animate-fade-in">
+            {/* Submission Overlay */}
+            {submitting && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.7)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 9999,
+                    color: 'white',
+                    backdropFilter: 'blur(4px)'
+                }}>
+                    <div className="loading-spinner" style={{ marginBottom: 'var(--space-md)', width: '60px', height: '60px', borderTopColor: 'white' }} />
+                    <h3 style={{ color: 'white', marginBottom: 'var(--space-xs)' }}>Saving Your Answers...</h3>
+                    <p style={{ color: 'rgba(255,255,255,0.7)' }}>Please don't refresh the page.</p>
+                </div>
+            )}
+
             {/* Header */}
             <div className="quiz-header">
                 <div className="flex items-center gap-md">
