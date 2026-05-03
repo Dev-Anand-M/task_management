@@ -336,8 +336,8 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
         const passed = score >= passThreshold;
 
         try {
-            // Save attempt
-            await db.createQuizAttempt({
+            // Save attempt initially
+            const attemptId = await db.createQuizAttempt({
                 quiz_id: quiz.id,
                 user_id: user.id,
                 answers,
@@ -347,93 +347,72 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                 passed
             });
 
-            // Award XP based on correct answers percentage
-            const maxPoints = quiz.points || 100;
-            const xpToAward = Math.round((correct / quiz.questions.length) * maxPoints);
-            
-            if (xpToAward > 0) {
-                await addXP(xpToAward);
-
-                // Check for quiz_master badge
-                const allAttempts = await db.getQuizAttemptsByUser(user.id);
-                const passedQuizzes = allAttempts.filter(a => a.passed).length;
-                if (passedQuizzes >= 5) {
-                    await addBadge('quiz_master');
-                }
-            }
-
-            setResults({
-                score,
-                correct,
-                total: quiz.questions.length,
-                passed,
-                xpEarned: xpToAward
-            });
-            setIsComplete(true);
-
             // --- AUTO AI EVALUATION ---
-            // Run in background if any AI is configured
-            const runAiEval = async (attemptId) => {
+            // Force it to finish BEFORE showing results
+            const hasAI = isAPIKeyConfigured('sambanova') || isAPIKeyConfigured('google') || isAPIKeyConfigured('openai');
+            
+            let finalCorrect = correct;
+            let aiScore = score;
+            let aiPassed = passed;
+            let report = null;
+
+            if (hasAI) {
                 try {
-                    // Force SambaNova if requested by user, otherwise use selected
+                    setResults({ loading: true, message: 'AI is evaluating your answers...' });
+                    
                     let modelToUse = getSelectedModel();
                     const hasSambaNova = isAPIKeyConfigured('sambanova');
                     if (hasSambaNova) modelToUse = 'Meta-Llama-3.3-70B-Instruct';
 
-                    console.log('Running Auto AI Eval with:', modelToUse);
-                    const report = await evaluateQuizAttempt(quiz, answers, modelToUse);
+                    report = await evaluateQuizAttempt(quiz, answers, modelToUse);
                     
                     if (report) {
-                        // Calculate final marks: 
-                        // 1. Start with local correct count for MCQs/Booleans
-                        // 2. Add AI's evaluation for Short Answers
-                        let finalCorrect = 0;
-                        
+                        finalCorrect = 0;
                         quiz.questions.forEach((q, idx) => {
                             const aiSuggestion = report.suggestions.find(s => Number(s.questionIndex) === Number(idx));
                             const isLocallyCorrect = q.type !== 'short' && answers[idx] === q.correctAnswer;
 
                             if (q.type === 'short') {
-                                // Trust AI for short answers
                                 if (aiSuggestion?.isCorrect) finalCorrect++;
                             } else {
-                                // For MCQ/Boolean: Correct if local check passes OR AI rescues it
                                 if (isLocallyCorrect || (aiSuggestion?.isCorrect)) {
                                     finalCorrect++;
                                 }
                             }
                         });
 
-                        const aiScore = Math.round((finalCorrect / quiz.questions.length) * 100);
-                        const aiPassed = aiScore >= passThreshold;
+                        aiScore = Math.round((finalCorrect / quiz.questions.length) * 100);
+                        aiPassed = aiScore >= passThreshold;
 
-                        await db.updateQuizAttempt(attemptId, {
+                        // Update the saved attempt with AI results
+                        await db.updateQuizAttempt(attemptId.id || attemptId, {
                             correct: finalCorrect,
                             score: aiScore,
                             passed: aiPassed,
                             metadata: { ai_evaluated: true, ai_report: report, model_used: modelToUse }
                         });
-                        
-                        console.log('Auto AI Eval Completed & Marks Updated');
-                        
-                        // Update UI results if still on the page
-                        setResults(prev => ({
-                            ...prev,
-                            score: aiScore,
-                            correct: finalCorrect,
-                            passed: aiPassed
-                        }));
                     }
                 } catch (e) {
                     console.error('Auto AI Eval Failed:', e);
                 }
-            };
+            }
 
-            // Start AI evaluation
-            const savedAttempt = await db.getQuizAttemptsByUser(user.id);
-            const latestAttempt = savedAttempt[0]; // Most recent
-            if (latestAttempt) runAiEval(latestAttempt.id);
+            // Award XP based on FINAL correct answers
+            const maxPoints = quiz.points || 100;
+            const xpToAward = Math.round((finalCorrect / quiz.questions.length) * maxPoints);
+            
+            if (xpToAward > 0) {
+                await addXP(xpToAward);
+            }
 
+            setResults({
+                score: aiScore,
+                correct: finalCorrect,
+                total: quiz.questions.length,
+                passed: aiPassed,
+                xpEarned: xpToAward
+            });
+            setIsComplete(true);
             onComplete();
         } catch (error) {
             console.error('Error submitting quiz:', error);
