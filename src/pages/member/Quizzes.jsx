@@ -316,14 +316,12 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                 passed
             });
 
-            // Award XP if passed
-            if (passed) {
-                const quizPoints = quiz.points || 100; // Fallback to 100
-                const xpEarned = Math.round((score / 100) * quizPoints);
-                
-                if (!isNaN(xpEarned) && xpEarned > 0) {
-                    await addXP(xpEarned);
-                }
+            // Award XP based on correct answers percentage
+            const maxPoints = quiz.points || 100;
+            const xpToAward = Math.round((correct / quiz.questions.length) * maxPoints);
+            
+            if (xpToAward > 0) {
+                await addXP(xpToAward);
 
                 // Check for quiz_master badge
                 const allAttempts = await db.getQuizAttemptsByUser(user.id);
@@ -338,7 +336,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                 correct,
                 total: quiz.questions.length,
                 passed,
-                xpEarned: passed ? Math.round((score / 100) * quiz.points) : 0
+                xpEarned: xpToAward
             });
             setIsComplete(true);
             onComplete();
