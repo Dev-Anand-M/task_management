@@ -73,11 +73,29 @@ const MemberDashboard = () => {
                 .slice(0, 3);
             setActiveTasks(active);
 
-            // Recent activity (recent submissions)
-            const recent = submissions
-                .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))
-                .slice(0, 5);
-            setRecentActivity(recent);
+            // Combine Tasks and Quizzes for Recent Activity
+            const combinedActivity = [
+                ...submissions.map(s => ({
+                    id: s.id,
+                    type: 'task',
+                    title: s.tasks?.title || 'Task Submission',
+                    status: s.status,
+                    score: s.score,
+                    date: s.submitted_at
+                })),
+                ...quizAttempts.map(a => ({
+                    id: a.id,
+                    type: 'quiz',
+                    title: a.quizzes?.title || 'Quiz Attempt',
+                    status: a.passed ? 'approved' : 'rejected',
+                    score: a.score,
+                    date: a.created_at
+                }))
+            ]
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 5);
+
+            setRecentActivity(combinedActivity);
 
             // Upcoming quizzes
             const upcoming = quizzes
@@ -335,7 +353,7 @@ const MemberDashboard = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
                         {recentActivity.map(activity => (
                             <div
-                                key={activity.id}
+                                key={`${activity.type}-${activity.id}`}
                                 className="flex items-center gap-md"
                                 style={{
                                     padding: 'var(--space-md)',
@@ -356,7 +374,9 @@ const MemberDashboard = () => {
                                     alignItems: 'center',
                                     justifyContent: 'center'
                                 }}>
-                                    {activity.status === 'approved' ? (
+                                    {activity.type === 'quiz' ? (
+                                        <HelpCircle size={20} style={{ color: activity.status === 'approved' ? 'var(--success-500)' : 'var(--error-500)' }} />
+                                    ) : activity.status === 'approved' ? (
                                         <CheckCircle size={20} style={{ color: 'var(--success-500)' }} />
                                     ) : activity.status === 'rejected' ? (
                                         <Target size={20} style={{ color: 'var(--error-500)' }} />
@@ -366,22 +386,24 @@ const MemberDashboard = () => {
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <p style={{ margin: 0, fontWeight: 500, fontSize: 'var(--text-sm)' }}>
-                                        {activity.tasks?.title}
+                                        {activity.title}
                                     </p>
                                     <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                                        {activity.status === 'approved' && activity.score
-                                            ? `Approved with ${activity.score}/100`
-                                            : activity.status === 'pending'
-                                                ? 'Awaiting review'
-                                                : 'Revision requested'}
+                                        {activity.type === 'quiz' 
+                                            ? `${activity.status === 'approved' ? 'Passed' : 'Failed'} with ${activity.score}%`
+                                            : activity.status === 'approved' && activity.score
+                                                ? `Approved with ${activity.score}/100`
+                                                : activity.status === 'pending'
+                                                    ? 'Awaiting review'
+                                                    : 'Revision requested'}
                                     </p>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <Badge variant={getStatusColor(activity.status)}>
-                                        {activity.status}
+                                    <Badge variant={activity.type === 'quiz' ? (activity.status === 'approved' ? 'success' : 'error') : getStatusColor(activity.status)}>
+                                        {activity.type === 'quiz' ? (activity.status === 'approved' ? 'Passed' : 'Failed') : activity.status}
                                     </Badge>
                                     <p style={{ margin: '4px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                                        {formatRelativeTime(activity.submitted_at)}
+                                        {formatRelativeTime(activity.date)}
                                     </p>
                                 </div>
                             </div>

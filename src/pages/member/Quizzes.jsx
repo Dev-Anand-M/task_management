@@ -318,8 +318,12 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
 
             // Award XP if passed
             if (passed) {
-                const xpEarned = Math.round((score / 100) * quiz.points);
-                await addXP(xpEarned);
+                const quizPoints = quiz.points || 100; // Fallback to 100
+                const xpEarned = Math.round((score / 100) * quizPoints);
+                
+                if (!isNaN(xpEarned) && xpEarned > 0) {
+                    await addXP(xpEarned);
+                }
 
                 // Check for quiz_master badge
                 const allAttempts = await db.getQuizAttemptsByUser(user.id);
