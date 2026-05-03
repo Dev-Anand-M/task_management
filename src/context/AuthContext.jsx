@@ -21,50 +21,55 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         let mounted = true;
 
-        // Initialize session handling
         const initializeAuth = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                // Add a timeout to prevent getSession from hanging indefinitely
+                const sessionPromise = supabase.auth.getSession();
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Session fetch timeout')), 5000)
+                );
+                
+                const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
 
                 if (session?.user && mounted) {
                     setUser(session.user);
                     await fetchProfile(session.user.id);
                 }
             } catch (error) {
-                console.error('Init auth error:', error);
+                console.warn('Auth initialization warning:', error);
+                // If it times out or fails, we will rely on onAuthStateChange below
             } finally {
                 if (mounted) setLoading(false);
             }
-
-            // Set up listener for subsequent changes
-            const { data: { subscription } } = supabase.auth.onAuthStateChange(
-                async (event, session) => {
-                    if (!mounted) return;
-
-                    if (event === 'INITIAL_SESSION') {
-                        return;
-                    }
-
-                    if (session?.user) {
-                        setUser(session.user);
-                        await fetchProfile(session.user.id);
-                    } else {
-                        setUser(null);
-                        setProfile(null);
-                    }
-
-                    setLoading(false);
-                }
-            );
-
-            return subscription;
         };
 
-        const authPromise = initializeAuth();
+        initializeAuth();
+
+        // Set up listener for subsequent changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+                if (!mounted) return;
+
+                if (session?.user) {
+                    // Prevent duplicate fetching if we already fetched it above
+                    setUser(prevUser => {
+                        if (!prevUser || prevUser.id !== session.user.id) {
+                            fetchProfile(session.user.id);
+                        }
+                        return session.user;
+                    });
+                } else {
+                    setUser(null);
+                    setProfile(null);
+                }
+
+                setLoading(false);
+            }
+        );
 
         return () => {
             mounted = false;
-            authPromise.then(subscription => subscription?.unsubscribe());
+            subscription?.unsubscribe();
         };
     }, []);
 
