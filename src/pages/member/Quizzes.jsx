@@ -282,6 +282,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
     const [submitting, setSubmitting] = useState(false);
     const [showReview, setShowReview] = useState(false);
     const [quizStarted, setQuizStarted] = useState(false);
+    const [submissionError, setSubmissionError] = useState(null);
 
     const loadQuiz = useCallback(async () => {
         try {
@@ -310,6 +311,15 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                     setIsComplete(true);
                     setShowReview(true);
                 }
+                // Load from localStorage if available
+                try {
+                    const savedAnswers = localStorage.getItem(`quiz_answers_${quizId}`);
+                    if (savedAnswers) {
+                        setAnswers(JSON.parse(savedAnswers));
+                    }
+                } catch (e) {
+                    console.error('Error loading saved answers:', e);
+                }
             }
         } catch (error) {
             console.error('Error loading quiz:', error);
@@ -317,6 +327,12 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
             setLoading(false);
         }
     }, [quizId, user.id]);
+
+    // Save answers to localStorage as student works
+    useEffect(() => {
+        if (!quiz || isComplete) return;
+        localStorage.setItem(`quiz_answers_${quizId}`, JSON.stringify(answers));
+    }, [answers, quizId, quiz, isComplete]);
 
     useEffect(() => {
         loadQuiz();
@@ -423,13 +439,16 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
 
             runBackgroundAi(attemptId);
 
+            // 4. CLEANUP BACKUP
+            localStorage.removeItem(`quiz_answers_${quizId}`);
+
         } catch (error) {
             console.error('Error submitting quiz:', error);
-            alert('Submission failed. Please check your connection.');
+            setSubmissionError('Your internet connection might be unstable. Please try again.');
         } finally {
             setSubmitting(false);
         }
-    }, [quiz, submitting, answers, user.id, addXP, addBadge, onComplete]);
+    }, [quiz, submitting, answers, user.id, addXP, addBadge, onComplete, quizId]);
 
     const handleExit = async () => {
         if (!quiz || submitting) return;
@@ -959,6 +978,27 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                     </Button>
                 </div>
             </Modal>
+
+            {submissionError && (
+                <Modal
+                    isOpen={true}
+                    onClose={() => setSubmissionError(null)}
+                    title="Submission Failed"
+                >
+                    <div style={{ textAlign: 'center', padding: 'var(--space-md)' }}>
+                        <XCircle size={48} style={{ color: 'var(--error-500)', marginBottom: 'var(--space-md)' }} />
+                        <p style={{ marginBottom: 'var(--space-lg)' }}>{submissionError}</p>
+                        <div className="flex gap-md justify-center">
+                            <Button variant="secondary" onClick={() => setSubmissionError(null)}>
+                                Close
+                            </Button>
+                            <Button onClick={handleSubmit}>
+                                Try Again
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
 
             <style>{`
         .loading-spinner {
