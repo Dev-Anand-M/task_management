@@ -927,22 +927,37 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                         }, 0);
                                         const finalScore = Math.round((finalCorrect / attempt.total) * 100);
                                         
+                                        // Update the saved attempt with Manual results
                                         await db.updateQuizAttempt(attempt.id, {
                                             correct: finalCorrect,
                                             score: finalScore,
                                             passed: finalScore >= 70,
                                             metadata: { ...attempt.metadata, manually_evaluated: true, overrides }
                                         });
-                                        alert('Evaluation saved! Score updated.');
-                                        onBack();
+
+                                        // --- NOTIFY STUDENT ---
+                                        await db.createNotification({
+                                            user_id: attempt.user_id,
+                                            title: 'Quiz Evaluated! 🧠',
+                                            message: `Your attempt on "${attempt.quizzes?.title}" has been reviewed. Final Score: ${finalScore}%`,
+                                            type: 'success',
+                                            link: `/quizzes`,
+                                            is_read: false,
+                                            created_at: new Date().toISOString()
+                                        });
+
+                                        setSuccess(true);
+                                        setTimeout(() => setSuccess(false), 3000);
+                                        loadAttempt();
                                     } catch (e) {
-                                        alert('Error saving evaluation: ' + e.message);
+                                        console.error('Save Error:', e);
+                                        alert('Failed to save evaluation');
                                     } finally {
                                         setSaving(false);
                                     }
                                 }}
                             >
-                                Save Manual Evaluation
+                                {success ? 'Saved Successfully!' : 'Save Manual Evaluation'}
                             </Button>
                         )}
 

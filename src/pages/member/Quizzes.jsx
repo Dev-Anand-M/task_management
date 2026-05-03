@@ -496,96 +496,34 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
         return (
         <div className="quiz-container animate-fade-in" style={{ width: '100%' }}>
                 <Card style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
+                <Card style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
                     <div style={{
                         width: '100px',
                         height: '100px',
                         margin: '0 auto var(--space-lg)',
                         borderRadius: '50%',
-                        background: results.passed
-                            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2))'
-                            : 'rgba(239, 68, 68, 0.1)',
+                        background: 'rgba(167, 139, 250, 0.1)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
                     }}>
-                        {results.passed ? (
-                            <Trophy size={48} style={{ color: 'var(--success-500)' }} />
-                        ) : (
-                            <XCircle size={48} style={{ color: 'var(--error-500)' }} />
-                        )}
+                        <Clock size={48} style={{ color: 'var(--primary-500)' }} />
                     </div>
 
                     <h2 style={{ marginBottom: 'var(--space-sm)' }}>
-                        {results.passed ? 'Congratulations! 🎉' : 'Keep Practicing!'}
+                        Quiz Submitted! 📄
                     </h2>
-                    <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-lg)' }}>
-                        {results.passed
-                            ? 'You passed the quiz!'
-                            : 'You need 70% to pass. Try again!'}
+                    <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-xl)', fontSize: 'var(--text-lg)' }}>
+                        Your quiz is currently **under review**. 
+                        You will receive a notification as soon as the evaluator has finalized your grade.
                     </p>
 
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr 1fr',
-                        gap: 'var(--space-md)',
-                        marginBottom: 'var(--space-xl)'
-                    }}>
-                        <div style={{
-                            padding: 'var(--space-md)',
-                            background: 'var(--card)',
-                            borderRadius: 'var(--radius-lg)'
-                        }}>
-                            <p style={{
-                                fontSize: 'var(--text-3xl)',
-                                fontWeight: 700,
-                                margin: 0,
-                                color: results.passed ? 'var(--success-500)' : 'var(--error-500)'
-                            }}>
-                                {results.score}%
-                            </p>
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>
-                                Score
-                            </p>
-                        </div>
-                        <div style={{
-                            padding: 'var(--space-md)',
-                            background: 'var(--card)',
-                            borderRadius: 'var(--radius-lg)'
-                        }}>
-                            <p style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, margin: 0 }}>
-                                {results.correct}/{results.total}
-                            </p>
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>
-                                Correct
-                            </p>
-                        </div>
-                        <div style={{
-                            padding: 'var(--space-md)',
-                            background: 'var(--card)',
-                            borderRadius: 'var(--radius-lg)'
-                        }}>
-                            <p style={{
-                                fontSize: 'var(--text-3xl)',
-                                fontWeight: 700,
-                                margin: 0,
-                                color: 'var(--primary-400)'
-                            }}>
-                                +{results.xpEarned}
-                            </p>
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>
-                                XP Earned
-                            </p>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-                        <Button variant="secondary" icon={Search} onClick={() => setShowReview(true)}>
-                            Review My Answers
-                        </Button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', maxWidth: '300px', margin: '0 auto' }}>
                         <Button onClick={onBack}>
-                            Back to Quizzes
+                            Back to Dashboard
                         </Button>
                     </div>
+                </Card>
 
                     {showReview && (
                         <div style={{ marginTop: 'var(--space-2xl)', textAlign: 'left' }}>
