@@ -2449,8 +2449,6 @@ input.bg-surface\/80 {
   }
 }
 
-}
-
 @media (max-width: 480px) {
   :root {
     --text-4xl: 1.75rem;
