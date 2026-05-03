@@ -22,10 +22,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         persistSession: true,
         detectSessionInUrl: true,
         flowType: 'pkce',
-        storageKey: 'zenith-auth-v2',
-        lock: (name, acquireCallback) => {
-            return acquireCallback();
-        }
+        storageKey: 'zenith-session-v1',
+        storage: window.sessionStorage
     },
     global: {
         headers: {
