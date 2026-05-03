@@ -119,7 +119,7 @@ const Quizzes = () => {
                         <HelpCircle size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                         Pending Quizzes ({pendingQuizzes.length})
                     </h3>
-                    <div className="grid grid-cols-3 mb-xl">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md mb-xl">
                         {pendingQuizzes.map(quiz => (
                             <Link key={quiz.id} to={`/quizzes/${quiz.id}`} style={{ textDecoration: 'none' }}>
                                 <Card style={{
@@ -179,7 +179,7 @@ const Quizzes = () => {
                         <CheckCircle size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                         Completed Quizzes ({completedQuizzes.length})
                     </h3>
-                    <div className="grid grid-cols-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
                         {completedQuizzes.map(quiz => {
                             const attempt = attempts.find(a => a.quiz_id === quiz.id);
                             const isFinalized = attempt?.metadata?.manually_evaluated === true;
@@ -340,7 +340,8 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
         const passed = score >= passThreshold;
 
         try {
-            // Save attempt initially
+            setSubmitting(true);
+            // 1. SAVE IMMEDIATELY - This is the most important part to prevent "retakes"
             const attemptId = await db.createQuizAttempt({
                 quiz_id: quiz.id,
                 user_id: user.id,
@@ -349,30 +350,32 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                 correct,
                 total: quiz.questions.length,
                 passed,
-                completed_at: new Date().toISOString()
+                completed_at: new Date().toISOString(),
+                metadata: { ai_evaluated: false, status: 'submitted' }
             });
 
-            // --- AUTO AI EVALUATION ---
-            // Force it to finish BEFORE showing results
-            const hasAI = isAPIKeyConfigured('sambanova') || isAPIKeyConfigured('google') || isAPIKeyConfigured('openai');
-            
-            let finalCorrect = correct;
-            let aiScore = score;
-            let aiPassed = passed;
-            let report = null;
+            // 2. SHOW SUCCESS UI IMMEDIATELY
+            // We don't wait for AI to show the student that they are done.
+            setResults({ loading: false, score, total: quiz.questions.length });
+            setIsComplete(true);
+            onComplete();
 
-            if (hasAI) {
+            // 3. RUN AI EVALUATION IN THE BACKGROUND
+            // This won't block the student's screen or cause a timeout error.
+            const runBackgroundAi = async (id) => {
+                const hasAI = isAPIKeyConfigured('sambanova') || isAPIKeyConfigured('google') || isAPIKeyConfigured('openai');
+                if (!hasAI) return;
+
                 try {
-                    setResults({ loading: true, message: 'AI is evaluating your answers...' });
-                    
                     let modelToUse = getSelectedModel();
-                    const hasSambaNova = isAPIKeyConfigured('sambanova');
-                    if (hasSambaNova) modelToUse = 'Meta-Llama-3.3-70B-Instruct';
+                    if (isAPIKeyConfigured('sambanova')) modelToUse = 'Meta-Llama-3.3-70B-Instruct';
 
-                    report = await evaluateQuizAttempt(quiz, answers, modelToUse);
+                    const report = await evaluateQuizAttempt(quiz, answers, modelToUse);
                     
                     if (report) {
-                        finalCorrect = 0;
+                        let finalCorrect = 0;
+                        const autoOverrides = {};
+                        
                         quiz.questions.forEach((q, idx) => {
                             const aiSuggestion = report.suggestions.find(s => Number(s.questionIndex) === Number(idx));
                             const isLocallyCorrect = q.type !== 'short' && answers[idx] === q.correctAnswer;
@@ -380,55 +383,38 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                             if (q.type === 'short') {
                                 if (aiSuggestion?.isCorrect) finalCorrect++;
                             } else {
-                                if (isLocallyCorrect || (aiSuggestion?.isCorrect)) {
-                                    finalCorrect++;
-                                }
+                                if (isLocallyCorrect || (aiSuggestion?.isCorrect)) finalCorrect++;
+                            }
+                            
+                            if (aiSuggestion) {
+                                autoOverrides[Number(idx)] = aiSuggestion.isCorrect;
                             }
                         });
 
-                        // Populate overrides automatically from AI suggestions
-                        const autoOverrides = {};
-                        report.suggestions.forEach(s => {
-                            autoOverrides[Number(s.questionIndex)] = s.isCorrect;
-                        });
-
-                        // Update the saved attempt with AI results and pre-filled overrides
-                        await db.updateQuizAttempt(attemptId.id || attemptId, {
+                        const aiScore = Math.round((finalCorrect / quiz.questions.length) * 100);
+                        
+                        await db.updateQuizAttempt(id, {
                             correct: finalCorrect,
                             score: aiScore,
-                            passed: aiPassed,
+                            passed: aiScore >= passThreshold,
                             metadata: { 
                                 ai_evaluated: true, 
                                 ai_report: report, 
                                 model_used: modelToUse,
-                                overrides: autoOverrides 
+                                overrides: autoOverrides
                             }
                         });
                     }
                 } catch (e) {
-                    console.error('Auto AI Eval Failed:', e);
+                    console.error('Background AI Eval Failed:', e);
                 }
-            }
+            };
 
-            // Award XP based on FINAL correct answers
-            const maxPoints = quiz.points || 100;
-            const xpToAward = Math.round((finalCorrect / quiz.questions.length) * maxPoints);
-            
-            if (xpToAward > 0) {
-                await addXP(xpToAward);
-            }
+            runBackgroundAi(attemptId.id || attemptId);
 
-            setResults({
-                score: aiScore,
-                correct: finalCorrect,
-                total: quiz.questions.length,
-                passed: aiPassed,
-                xpEarned: xpToAward
-            });
-            setIsComplete(true);
-            onComplete();
         } catch (error) {
             console.error('Error submitting quiz:', error);
+            alert('Submission failed. Please check your connection.');
         } finally {
             setSubmitting(false);
         }
