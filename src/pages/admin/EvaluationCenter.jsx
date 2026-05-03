@@ -676,6 +676,8 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
 const QuizReviewDetail = ({ attemptId, onBack }) => {
     const [attempt, setAttempt] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [overrides, setOverrides] = useState({}); // { questionIndex: boolean }
+    const [saving, setSaving] = useState(false);
 
     const loadAttempt = useCallback(async () => {
         try {
@@ -735,20 +737,71 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                 </p>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-sm">
+                        <div className="grid grid-cols-2 gap-sm mb-lg">
                             <div style={{ padding: 'var(--space-md)', background: 'var(--card)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
                                 <p style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, margin: 0, color: attempt.passed ? 'var(--success-500)' : 'var(--error-500)' }}>
-                                    {attempt.score}%
+                                    {Math.round((Object.values({ ...attempt.answers, ...overrides }).reduce((acc, curr, idx) => {
+                                        const q = attempt.quiz.questions[idx];
+                                        if (q.type === 'short') {
+                                            const isManuallyCorrect = overrides[idx] !== undefined ? overrides[idx] : (curr === q.correctAnswer);
+                                            return acc + (isManuallyCorrect ? 1 : 0);
+                                        }
+                                        return acc + (curr === q.correctAnswer ? 1 : 0);
+                                    }, 0) / attempt.total) * 100)}%
                                 </p>
                                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: 0 }}>Score</p>
                             </div>
                             <div style={{ padding: 'var(--space-md)', background: 'var(--card)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
                                 <p style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, margin: 0 }}>
-                                    {attempt.correct}/{attempt.total}
+                                    {Object.values({ ...attempt.answers, ...overrides }).reduce((acc, curr, idx) => {
+                                        const q = attempt.quiz.questions[idx];
+                                        if (q.type === 'short') {
+                                            const isManuallyCorrect = overrides[idx] !== undefined ? overrides[idx] : (curr === q.correctAnswer);
+                                            return acc + (isManuallyCorrect ? 1 : 0);
+                                        }
+                                        return acc + (curr === q.correctAnswer ? 1 : 0);
+                                    }, 0)}/{attempt.total}
                                 </p>
                                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: 0 }}>Correct</p>
                             </div>
                         </div>
+
+                        {Object.keys(overrides).length > 0 && (
+                            <Button 
+                                variant="success" 
+                                style={{ width: '100%' }} 
+                                loading={saving}
+                                onClick={async () => {
+                                    setSaving(true);
+                                    try {
+                                        const finalCorrect = Object.values({ ...attempt.answers, ...overrides }).reduce((acc, curr, idx) => {
+                                            const q = attempt.quiz.questions[idx];
+                                            if (q.type === 'short') {
+                                                const isManuallyCorrect = overrides[idx] !== undefined ? overrides[idx] : (curr === q.correctAnswer);
+                                                return acc + (isManuallyCorrect ? 1 : 0);
+                                            }
+                                            return acc + (curr === q.correctAnswer ? 1 : 0);
+                                        }, 0);
+                                        const finalScore = Math.round((finalCorrect / attempt.total) * 100);
+                                        
+                                        await db.updateQuizAttempt(attempt.id, {
+                                            correct: finalCorrect,
+                                            score: finalScore,
+                                            passed: finalScore >= 70,
+                                            metadata: { ...attempt.metadata, manually_evaluated: true, overrides }
+                                        });
+                                        alert('Evaluation saved! Score updated.');
+                                        onBack();
+                                    } catch (e) {
+                                        alert('Error saving evaluation: ' + e.message);
+                                    } finally {
+                                        setSaving(false);
+                                    }
+                                }}
+                            >
+                                Save Manual Evaluation
+                            </Button>
+                        )}
                     </Card>
                 </div>
 
@@ -788,13 +841,43 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                     {opt}
                                                 </div>
                                             ))
-                                        ) : (
+                                        ) : q.type === 'boolean' ? (
                                             <div style={{ fontSize: 'var(--text-sm)' }}>
                                                 <span style={{ color: q.correctAnswer === true ? 'var(--success-500)' : 'var(--text-muted)' }}>True</span> / 
                                                 <span style={{ color: q.correctAnswer === false ? 'var(--success-500)' : 'var(--text-muted)' }}> False</span>
                                                 <p style={{ marginTop: '8px', color: isCorrect ? 'var(--success-500)' : 'var(--error-500)', fontWeight: 600 }}>
                                                     Student Choice: {userAnswer === true ? 'True' : userAnswer === false ? 'False' : 'No Answer'}
                                                 </p>
+                                            </div>
+                                        ) : (
+                                            <div style={{ fontSize: 'var(--text-sm)' }}>
+                                                <div style={{ padding: 'var(--space-sm)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: 'var(--space-sm)' }}>
+                                                    <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>Expected Answer:</p>
+                                                    <p style={{ margin: 0, fontWeight: 600, color: 'var(--success-500)' }}>{q.correctAnswer}</p>
+                                                </div>
+                                                <div style={{ padding: 'var(--space-sm)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: `1px solid ${isCorrect ? 'var(--success-500)' : 'var(--error-500)'}` }}>
+                                                    <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>Student Answer:</p>
+                                                    <p style={{ margin: 0, fontWeight: 600 }}>{userAnswer || '(No answer)'}</p>
+                                                </div>
+                                                
+                                                <div className="flex gap-sm mt-md">
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant={overrides[index] === true ? 'success' : 'secondary'}
+                                                        onClick={() => setOverrides(prev => ({ ...prev, [index]: true }))}
+                                                        icon={Check}
+                                                    >
+                                                        Mark Correct
+                                                    </Button>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant={overrides[index] === false ? 'danger' : 'secondary'}
+                                                        onClick={() => setOverrides(prev => ({ ...prev, [index]: false }))}
+                                                        icon={X}
+                                                    >
+                                                        Mark Wrong
+                                                    </Button>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
