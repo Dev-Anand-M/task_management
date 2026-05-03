@@ -1498,17 +1498,31 @@ html[data-theme="dark"] .sidebar {
   padding: var(--space-md);
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  padding: var(--space-md);
+}
+
 .modal {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   width: 100%;
+  max-width: 600px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-xl);
   position: relative;
   overflow: hidden;
+  animation: slideUp 0.3s ease-out;
 }
 
 .modal-header {
@@ -2221,16 +2235,23 @@ input.bg-surface\/80 {
     padding: var(--space-md);
   }
 
-  /* Fix for overlapping cards */
-  .grid {
-    gap: var(--space-md);
+  /* Fix for small icons */
+  .btn svg, .btn-icon svg {
+    width: 20px !important;
+    height: 20px !important;
   }
 
-  h1 { font-size: var(--text-2xl); }
-  h2 { font-size: var(--text-xl); }
+  /* Full screen modals on very small devices */
+  .modal {
+    max-height: 92vh;
+    margin-bottom: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
   
-  .card {
-    padding: var(--space-md);
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
   }
 }
 
