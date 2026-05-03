@@ -701,6 +701,8 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
     const [saving, setSaving] = useState(false);
     const [aiReport, setAiReport] = useState(null);
     const [evaluating, setEvaluating] = useState(false);
+    const [selectedModel, setSelectedModel] = useState('');
+    const [availableModels, setAvailableModels] = useState([]);
 
     const loadAttempt = useCallback(async () => {
         try {
@@ -721,20 +723,28 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
 
     useEffect(() => {
         loadAttempt();
+        
+        // Load configured models
+        const loadModels = async () => {
+            const { AVAILABLE_MODELS, isAPIKeyConfigured, getSelectedModel } = await import('../../services/aiService');
+            const configured = AVAILABLE_MODELS.filter(m => isAPIKeyConfigured(m.provider));
+            setAvailableModels(configured);
+            setSelectedModel(getSelectedModel());
+        };
+        loadModels();
     }, [loadAttempt]);
 
     const handleAiEvaluation = async () => {
         if (!attempt) return;
         
-        const { isAnyAPIKeyConfigured } = await import('../../services/aiService');
-        if (!isAnyAPIKeyConfigured()) {
-            alert('⚠️ AI Not Configured: Please add an AI API Key in Settings to use this feature.');
+        if (!selectedModel) {
+            alert('Please select an AI model first.');
             return;
         }
 
         setEvaluating(true);
         try {
-            const report = await evaluateQuizAttempt(attempt.quiz, attempt.answers);
+            const report = await evaluateQuizAttempt(attempt.quiz, attempt.answers, selectedModel);
             setAiReport(report);
             
             // Auto-apply suggestions to overrides
@@ -855,12 +865,44 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                         )}
 
                         <div style={{ marginTop: 'var(--space-md)' }}>
+                            <div style={{ marginBottom: 'var(--space-md)' }}>
+                                <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>
+                                    Select AI Evaluator
+                                </label>
+                                <select 
+                                    value={selectedModel} 
+                                    onChange={(e) => setSelectedModel(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        borderRadius: 'var(--radius-md)',
+                                        border: '1px solid var(--border)',
+                                        background: 'var(--surface)',
+                                        color: 'var(--text-main)',
+                                        fontSize: 'var(--text-sm)',
+                                        cursor: 'pointer',
+                                        outline: 'none'
+                                    }}
+                                >
+                                    <option value="" disabled>Select a model...</option>
+                                    {availableModels.map(m => (
+                                        <option key={m.id} value={m.id}>
+                                            {m.name}
+                                        </option>
+                                    ))}
+                                    {availableModels.length === 0 && (
+                                        <option value="" disabled>No AI configured (Check Settings)</option>
+                                    )}
+                                </select>
+                            </div>
+
                             <Button
                                 variant="primary"
                                 style={{ width: '100%', background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)', borderColor: 'transparent' }}
                                 onClick={handleAiEvaluation}
                                 loading={evaluating}
                                 icon={Brain}
+                                disabled={availableModels.length === 0}
                             >
                                 {aiReport ? 'Re-run AI Review' : 'Run Smart AI Review'}
                             </Button>
