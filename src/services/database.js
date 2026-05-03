@@ -355,12 +355,35 @@ export const deleteQuiz = async (id) => {
 
 
 export const getQuizAttempts = async () => {
-    const { data, error } = await supabase
-        .from('quiz_attempts')
-        .select('*, profiles(name, avatar_url, email), quizzes(title, points)')
-        .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data || [];
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
+
+        let query = supabase
+            .from('quiz_attempts')
+            .select('*, profiles!inner(name, avatar_url, email, classroom_id), quizzes!inner(title, points)');
+
+        // If admin, they see either their classroom or everything
+        if (profile?.role === 'admin') {
+            if (profile.classroom_id) {
+                // Filter by classroom if admin belongs to one
+                query = query.eq('profiles.classroom_id', profile.classroom_id);
+            }
+            // If global admin (no classroom_id), they see everything
+        } else {
+            // Students only see their own
+            query = query.eq('user_id', user.id);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error in getQuizAttempts:', err);
+        return [];
+    }
 };
 
 export const getQuizAttemptsByUser = async (userId) => {
