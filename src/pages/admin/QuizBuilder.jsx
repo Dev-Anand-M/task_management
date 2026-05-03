@@ -391,20 +391,28 @@ const QuizBuilder = () => {
                                             <Badge variant="accent" style={{ marginLeft: '8px' }}>Global</Badge>
                                         )}
                                     </div>
-                                    <div className="flex gap-xs">
+                                    <div className="flex gap-sm" style={{ position: 'relative', zIndex: 10 }}>
                                         <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => openEditModal(quiz)}
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                openEditModal(quiz);
+                                            }}
+                                            style={{ padding: '8px' }}
                                         >
-                                            <Edit2 size={16} />
+                                            <Edit2 size={16} color="var(--primary-400)" />
                                         </Button>
                                         <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => setDeleteConfirm(quiz)}
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDeleteConfirm(quiz);
+                                            }}
+                                            style={{ padding: '8px' }}
                                         >
-                                            <Trash2 size={16} />
+                                            <Trash2 size={16} color="var(--error-400)" />
                                         </Button>
                                     </div>
                                 </div>
