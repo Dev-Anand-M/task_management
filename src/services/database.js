@@ -270,9 +270,15 @@ export const getQuizzes = async () => {
     // Filter based on assignment for students
     if (profile?.role === 'member') {
         return (data || []).filter(quiz => {
+            // Global quizzes are for everyone
+            if (quiz.is_global) return true;
+            
+            // If assigned specifically, check if user is in list
             if (quiz.assignment_type === 'specific') {
                 return quiz.assigned_to?.includes(user.id);
             }
+            
+            // Otherwise, it's a classroom quiz (already filtered by classroom_id in query)
             return true;
         });
     }
@@ -304,12 +310,23 @@ export const createQuiz = async (quiz) => {
 
     // Notify students
     try {
-        if (classroomId) {
+        if (quiz.assignment_type === 'specific' && quiz.assigned_to?.length > 0) {
+            // Notify specific students
+            const notifications = quiz.assigned_to.map(studentId => ({
+                user_id: studentId,
+                title: 'New Quiz Assigned',
+                message: `You have been specifically assigned the quiz: "${quiz.title}"`,
+                type: 'warning',
+                link: '/quizzes'
+            }));
+            await supabase.from('notifications').insert(notifications);
+        } else if (classroomId) {
+            // Notify entire classroom
             await notifyClassroom(classroomId, {
                 title: quiz.is_global ? 'New Global Quiz Available' : 'New Quiz Available',
                 message: `A new quiz "${quiz.title}" is ready for you!`,
                 type: 'warning',
-                link: `/quizzes`
+                link: '/quizzes'
             });
         }
     } catch (err) {
