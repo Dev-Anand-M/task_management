@@ -384,22 +384,27 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                     const report = await evaluateQuizAttempt(quiz, answers, modelToUse);
                     
                     if (report) {
-                        // Calculate new marks based on AI feedback for short answers
-                        let aiCorrect = correct;
-                        report.suggestions.forEach(s => {
-                            const q = quiz.questions[s.questionIndex];
+                        // Calculate final marks: 
+                        // 1. Start with local correct count for MCQs/Booleans
+                        // 2. Add AI's evaluation for Short Answers
+                        let finalCorrect = 0;
+                        
+                        quiz.questions.forEach((q, idx) => {
                             if (q.type === 'short') {
-                                // If AI says correct but we thought wrong (or vice versa)
-                                const wasCorrectLocally = false; // We don't have local grading for short text yet
-                                if (s.isCorrect) aiCorrect++;
+                                // Use AI's evaluation for short text
+                                const aiSuggestion = report.suggestions.find(s => s.questionIndex === idx);
+                                if (aiSuggestion?.isCorrect) finalCorrect++;
+                            } else {
+                                // Use local logic for MCQ/Boolean (it's more reliable for exact matches)
+                                if (answers[idx] === q.correctAnswer) finalCorrect++;
                             }
                         });
 
-                        const aiScore = Math.round((aiCorrect / quiz.questions.length) * 100);
+                        const aiScore = Math.round((finalCorrect / quiz.questions.length) * 100);
                         const aiPassed = aiScore >= passThreshold;
 
                         await db.updateQuizAttempt(attemptId, {
-                            correct: aiCorrect,
+                            correct: finalCorrect,
                             score: aiScore,
                             passed: aiPassed,
                             metadata: { ai_evaluated: true, ai_report: report, model_used: modelToUse }
@@ -411,7 +416,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                         setResults(prev => ({
                             ...prev,
                             score: aiScore,
-                            correct: aiCorrect,
+                            correct: finalCorrect,
                             passed: aiPassed
                         }));
                     }
