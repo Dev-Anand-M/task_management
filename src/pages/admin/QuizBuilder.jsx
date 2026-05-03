@@ -230,7 +230,14 @@ const QuizBuilder = () => {
             if (type.includes('mcq') || type.includes('multiple')) {
                 const options = [row[2], row[3], row[4], row[5]];
                 let correctIdx = parseInt(row[6]);
-                if (isNaN(correctIdx)) correctIdx = 0;
+                
+                // Human-friendly indexing: If user puts 1, it should be the 1st option (index 0)
+                // If they put 0, we still keep it as 0.
+                if (!isNaN(correctIdx) && correctIdx > 0 && correctIdx <= 4) {
+                    correctIdx = correctIdx - 1;
+                } else if (isNaN(correctIdx)) {
+                    correctIdx = 0;
+                }
                 
                 newQuestions.push({
                     id: `q-${Date.now()}-${index}`,
