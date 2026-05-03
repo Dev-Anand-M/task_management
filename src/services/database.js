@@ -255,40 +255,35 @@ export const getQuizzes = async () => {
 
     let query = supabase.from('quizzes').select('*').order('created_at', { ascending: false });
 
+    // Fetch all quizzes and filter in JS for maximum reliability
+    const { data, error } = await query;
+    if (error) {
+        console.error('Database error fetching quizzes:', error);
+        throw error;
+    }
+
+    const allQuizzes = data || [];
+
     // Students only see quizzes for their classroom, global ones, or ones specifically assigned to them
     if (profile?.role === 'member') {
-        let orFilter = `is_global.eq.true`;
-        if (profile.classroom_id) {
-            orFilter += `,classroom_id.eq.${profile.classroom_id}`;
-        }
-        // Also include if specifically assigned to this user
-        orFilter += `,assigned_to.cs.["${user.id}"]`;
-        
-        query = query.or(orFilter);
-    } else if (profile?.role === 'admin') {
-        query = query.eq('created_by', user.id);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    // Filter based on assignment for students
-    if (profile?.role === 'member') {
-        return (data || []).filter(quiz => {
-            // Global quizzes are for everyone
-            if (quiz.is_global) return true;
+        const filtered = allQuizzes.filter(quiz => {
+            const isGlobal = quiz.is_global === true;
+            const isInClassroom = quiz.classroom_id === profile.classroom_id;
+            const isSpecificallyAssigned = quiz.assigned_to?.includes(user.id);
             
-            // If assigned specifically, check if user is in list
-            if (quiz.assignment_type === 'specific') {
-                return quiz.assigned_to?.includes(user.id);
+            // Debugging log (visible in console)
+            if (isGlobal || isInClassroom || isSpecificallyAssigned) {
+                console.log(`Quiz "${quiz.title}" visible because:`, { isGlobal, isInClassroom, isSpecificallyAssigned });
             }
-            
-            // Otherwise, it's a classroom quiz (already filtered by classroom_id in query)
-            return true;
+
+            return isGlobal || isInClassroom || isSpecificallyAssigned;
         });
+        
+        console.log(`Member Quizzes: Found ${allQuizzes.length} total, showing ${filtered.length} for user`);
+        return filtered;
     }
 
-    return data || [];
+    return allQuizzes;
 };
 
 export const getQuizById = async (id) => {
