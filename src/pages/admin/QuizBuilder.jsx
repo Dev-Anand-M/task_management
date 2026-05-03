@@ -43,8 +43,10 @@ const QuizBuilder = () => {
         assigned_to: [],
         questions: [],
         is_global: false,
-        assignment_type: 'everyone'
+        assignment_type: 'everyone',
+        classroom_id: ''
     });
+    const [classrooms, setClassrooms] = useState([]);
 
     useEffect(() => {
         loadData();
@@ -53,12 +55,14 @@ const QuizBuilder = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [quizzesData, membersData] = await Promise.all([
+            const [quizzesData, membersData, classroomsData] = await Promise.all([
                 db.getQuizzes(),
-                db.getMembers()
+                db.getMembers(),
+                db.getClassrooms()
             ]);
             setQuizzes(quizzesData);
             setMembers(membersData);
+            setClassrooms(classroomsData);
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {
@@ -76,7 +80,8 @@ const QuizBuilder = () => {
             assigned_to: [],
             questions: [],
             is_global: false,
-            assignment_type: 'everyone'
+            assignment_type: 'everyone',
+            classroom_id: ''
         });
     };
 
@@ -96,7 +101,8 @@ const QuizBuilder = () => {
             assigned_to: quiz.assigned_to || [],
             questions: quiz.questions || [],
             is_global: quiz.is_global || false,
-            assignment_type: quiz.assignment_type || (quiz.assigned_to?.length > 0 ? 'specific' : 'everyone')
+            assignment_type: quiz.assignment_type || (quiz.assigned_to?.length > 0 ? 'specific' : 'everyone'),
+            classroom_id: quiz.classroom_id || ''
         });
         setEditingQuiz(quiz);
         setShowCreateModal(true);
@@ -263,23 +269,28 @@ const QuizBuilder = () => {
             assigned_to: formData.assignment_type === 'specific' ? formData.assigned_to : [],
             status: 'active',
             created_by: user?.id,
-            classroom_id: formData.is_global ? null : user?.classroom_id,
+            classroom_id: formData.is_global ? null : (formData.classroom_id || user?.classroom_id),
             is_global: formData.is_global,
             assignment_type: formData.assignment_type
         };
 
         try {
-            if (editingQuiz) {
-                await db.updateQuiz(editingQuiz.id, quizData);
-            } else {
-                await db.createQuiz(quizData);
-            }
+            const saveAction = editingQuiz 
+                ? db.updateQuiz(editingQuiz.id, quizData) 
+                : db.createQuiz(quizData);
+                
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Save timeout. The server took too long to respond.')), 10000)
+            );
+
+            await Promise.race([saveAction, timeoutPromise]);
 
             await loadData();
             setShowCreateModal(false);
             resetForm();
         } catch (error) {
             console.error('Error saving quiz:', error);
+            alert(`Failed to save quiz: ${error.message}`);
         } finally {
             setSaving(false);
         }
@@ -551,6 +562,23 @@ const QuizBuilder = () => {
                                 </button>
                             </div>
                         </div>
+                        
+                        {!formData.is_global && (
+                            <div className="input-group">
+                                <label className="input-label">Select Target Classroom</label>
+                                <select
+                                    className="input select"
+                                    value={formData.classroom_id}
+                                    onChange={(e) => setFormData({ ...formData, classroom_id: e.target.value })}
+                                    required={!formData.is_global}
+                                >
+                                    <option value="">-- Choose a Classroom --</option>
+                                    {classrooms.map(cls => (
+                                        <option key={cls.id} value={cls.id}>{cls.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
 
                         <div className="input-group">
                             <label className="input-label">Assignment Type</label>
