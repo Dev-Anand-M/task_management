@@ -588,20 +588,20 @@ Format your response in markdown.`;
 // AI Quiz Evaluator (For Admins)
 export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null) => {
     const systemPrompt = `You are an expert academic evaluator and fact-checker. 
-    Analyze the provided quiz questions, the designated correct answers, and the student's actual answers.
+    You are reviewing a student's quiz submission where the quiz creator has already set what they think are the "correct answers."
     
-    CRITICAL INSTRUCTIONS:
-    1. FACT-CHECK THE ANSWERS: For EVERY question (MCQ, Boolean, or Short Answer), verify if the "correctAnswer" field in the quiz data is actually factually correct. If you believe the designated correct answer is WRONG (human error by the quiz creator), set "isKeyError" to true for that question.
-    2. EVALUATE STUDENT: Determine if the student's answer is conceptually correct. For short-answer questions, be flexible and look for understanding.
-    3. ANALYZE ALL: Do not skip Multiple Choice or Boolean questions. Verify them too.
+    YOUR JOB:
+    1. Check if the quiz creator's "correct answers" are actually factually accurate
+    2. Evaluate the student's answers against the real facts (not just the quiz creator's answers)
+    3. If the quiz creator made a mistake in their answer key, flag it as an error
     
-    CONTEXT: You are reviewing a quiz where:
-    - Each question has a "correctAnswer" field that indicates what the quiz creator thinks is correct
-    - You need to verify if that designated answer is actually factually accurate
-    - If the quiz creator made an error in the answer key, flag it as "isKeyError": true
-    - The student's answer should be evaluated against the actual facts, not just the quiz's answer key
+    IMPORTANT CONTEXT:
+    - The quiz has pre-set "correct answers" that the quiz creator believes are right
+    - You need to fact-check these pre-set answers for accuracy
+    - The student should be graded based on factual correctness, not just matching the quiz's answer key
+    - If the quiz creator's answer key is wrong, the student might be right even if they don't match the quiz's answer
     
-    RESPONSE FORMAT: You MUST return ONLY a valid JSON object with this EXACT structure:
+    RESPONSE FORMAT: Return ONLY a valid JSON object with this EXACT structure:
     {
       "summary": "Overall performance summary",
       "suggestions": [
@@ -609,26 +609,37 @@ export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null
           "questionIndex": 0,
           "isCorrect": true,
           "isKeyError": false,
-          "feedback": "Detailed feedback about this question",
+          "feedback": "Detailed feedback - if isKeyError is true, explain that the quiz creator's answer key is factually incorrect",
           "improvementTip": "How the student can improve"
         }
       ],
       "overallGrade": "B",
-      "mentorNote": "Private note for admin about student progress"
+      "mentorNote": "Private note for admin about student progress and any errors in the quiz's answer key"
     }
     
-    IMPORTANT RULES:
+    CRITICAL RULES:
+    - When isKeyError is true, it means the QUIZ CREATOR made an error in the answer key
+    - The student should not be penalized for quiz creator errors
+    - Focus on factual accuracy, not just matching the quiz's predetermined answers
     - Return ONLY the JSON object, no other text
     - Use proper JSON syntax with double quotes
     - Boolean values must be true/false (not "true"/"false")
-    - Grade must be one of: A, B, C, D, F
-    - Include all required fields for each suggestion
-    - Do not include any markdown formatting or code blocks`;
+    - Grade must be one of: A, B, C, D, F`;
 
     const prompt = `
-    Quiz Title: ${quizData.title}
-    Questions and Designated Correct Answers: ${JSON.stringify(quizData.questions)}
-    Student's Actual Answers: ${JSON.stringify(studentAnswers)}
+    QUIZ TO EVALUATE:
+    Title: ${quizData.title}
+    
+    QUIZ CREATOR'S ANSWER KEY (what they think is correct):
+    ${JSON.stringify(quizData.questions, null, 2)}
+    
+    STUDENT'S ACTUAL ANSWERS:
+    ${JSON.stringify(studentAnswers, null, 2)}
+    
+    TASK: Evaluate each question by:
+    1. Checking if the quiz creator's "correctAnswer" is factually accurate
+    2. Comparing the student's answer to the actual facts
+    3. If the quiz creator's answer key is wrong, set "isKeyError": true for that question
     `;
 
     const response = await generateContent(prompt, systemPrompt, model);
