@@ -218,6 +218,33 @@ const Settings = () => {
         setColorScheme(schemeId);
     };
 
+    const handlePasswordUpdate = async (e) => {
+        e.preventDefault();
+        if (newPassword !== confirmPassword) {
+            alert('Passwords do not match');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const { error } = await supabase.auth.updateUser({
+                password: newPassword
+            });
+
+            if (error) throw error;
+
+            alert('Password updated successfully!');
+            setNewPassword('');
+            setConfirmPassword('');
+            setIsResetting(false);
+        } catch (err) {
+            console.error('Error updating password:', err);
+            alert(err.message || 'Failed to update password');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleSaveApiKey = async () => {
         if (!aiApiKey.trim()) return;
 
