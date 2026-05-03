@@ -762,13 +762,27 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
             const report = await evaluateQuizAttempt(attempt.quiz, attempt.answers, selectedModel);
             setAiReport(report);
             
-            // Auto-apply suggestions ONLY to short answers
+            // Auto-apply suggestions with 'Safety Net' logic
             const newOverrides = { ...overrides };
             report.suggestions.forEach(s => {
                 const qIndex = Number(s.questionIndex);
                 const q = attempt.quiz.questions[qIndex];
-                if (q && q.type === 'short') {
-                    newOverrides[qIndex] = s.isCorrect;
+                const userAnswer = attempt.answers[qIndex];
+                
+                if (q) {
+                    if (q.type === 'short') {
+                        // ALWAYS apply for short answers (AI is primary evaluator)
+                        newOverrides[qIndex] = s.isCorrect;
+                    } else {
+                        // ONLY interfere for MCQ/Boolean if the local answer is WRONG
+                        const isLocallyCorrect = userAnswer === q.correctAnswer;
+                        if (!isLocallyCorrect) {
+                            // Only apply AI suggestion if it disagrees with the 'Wrong' status (Rescue logic)
+                            // or if you want it to just confirm the wrong status with the glow.
+                            newOverrides[qIndex] = s.isCorrect;
+                        }
+                        // If locally correct, we DON'T touch newOverrides for this index
+                    }
                 }
             });
             console.log('Final Overrides to set:', newOverrides);
