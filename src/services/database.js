@@ -341,6 +341,18 @@ export const createQuiz = async (quiz) => {
     return data;
 };
 
+export const updateQuiz = async (id, updates) => {
+    const { data, error } = await supabase.from('quizzes').update(updates).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+};
+
+export const deleteQuiz = async (id) => {
+    const { error } = await supabase.from('quizzes').delete().eq('id', id);
+    if (error) throw error;
+};
+
+
 export const getQuizAttempts = async () => {
     const { data, error } = await supabase.from('quiz_attempts').select('*').order('completed_at', { ascending: false });
     if (error) throw error;
