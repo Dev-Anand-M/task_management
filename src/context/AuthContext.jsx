@@ -22,8 +22,17 @@ export const AuthProvider = ({ children }) => {
         let mounted = true;
         let authInitialized = false;
 
+        // EMERGENCY TIMEOUT: If auth takes more than 5 seconds (common on mobile), force stop loading
+        const timeoutId = setTimeout(() => {
+            if (mounted && !authInitialized) {
+                console.warn('Auth initialization timed out, forcing loading to false');
+                setLoading(false);
+            }
+        }, 6000);
+
         const initializeAuth = async () => {
             try {
+                // Pre-emptively set loading to false if we take too long
                 const { data: { session } } = await supabase.auth.getSession();
 
                 if (session?.user && mounted) {
@@ -35,6 +44,7 @@ export const AuthProvider = ({ children }) => {
             } finally {
                 authInitialized = true;
                 if (mounted) setLoading(false);
+                clearTimeout(timeoutId);
             }
         };
 
@@ -56,6 +66,7 @@ export const AuthProvider = ({ children }) => {
                 // or if this is a subsequent change
                 if (authInitialized || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
                     setLoading(false);
+                    clearTimeout(timeoutId);
                 }
             }
         );
@@ -63,6 +74,7 @@ export const AuthProvider = ({ children }) => {
         return () => {
             mounted = false;
             subscription?.unsubscribe();
+            clearTimeout(timeoutId);
         };
     }, []);
 
