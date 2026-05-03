@@ -266,6 +266,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
     const [showConfirm, setShowConfirm] = useState(false);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [showReview, setShowReview] = useState(false);
 
     const loadQuiz = useCallback(async () => {
         try {
@@ -503,9 +504,118 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                         </div>
                     </div>
 
-                    <Button onClick={onBack} style={{ width: '100%' }}>
-                        Back to Quizzes
-                    </Button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                        <Button variant="secondary" icon={Search} onClick={() => setShowReview(true)}>
+                            Review My Answers
+                        </Button>
+                        <Button onClick={onBack}>
+                            Back to Quizzes
+                        </Button>
+                    </div>
+
+                    {showReview && (
+                        <div style={{ marginTop: 'var(--space-2xl)', textAlign: 'left' }}>
+                            <h3 style={{ marginBottom: 'var(--space-lg)', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--space-sm)' }}>
+                                Detailed Review
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                                {quiz.questions.map((q, qIndex) => {
+                                    const userAnswer = answers[qIndex];
+                                    const isCorrect = q.type === 'boolean' 
+                                        ? userAnswer === q.correctAnswer 
+                                        : userAnswer === q.correctAnswer;
+                                    
+                                    return (
+                                        <Card key={qIndex} style={{ 
+                                            background: 'var(--surface)',
+                                            borderLeft: `4px solid ${isCorrect ? 'var(--success-500)' : 'var(--error-500)'}`
+                                        }}>
+                                            <div className="flex justify-between items-start mb-sm">
+                                                <Badge variant="secondary">Question {qIndex + 1}</Badge>
+                                                {isCorrect ? (
+                                                    <Badge variant="success">Correct</Badge>
+                                                ) : (
+                                                    <Badge variant="danger">Incorrect</Badge>
+                                                )}
+                                            </div>
+                                            <p style={{ fontWeight: 600, marginBottom: 'var(--space-md)', color: 'var(--text)' }}>
+                                                {q.question}
+                                            </p>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+                                                {q.type === 'multiple' ? (
+                                                    q.options.map((opt, oIdx) => (
+                                                        <div key={oIdx} style={{
+                                                            padding: 'var(--space-sm) var(--space-md)',
+                                                            borderRadius: 'var(--radius-md)',
+                                                            background: oIdx === q.correctAnswer 
+                                                                ? 'rgba(16, 185, 129, 0.1)' 
+                                                                : (oIdx === userAnswer ? 'rgba(239, 68, 68, 0.1)' : 'transparent'),
+                                                            border: `1px solid ${oIdx === q.correctAnswer 
+                                                                ? 'var(--success-500)' 
+                                                                : (oIdx === userAnswer ? 'var(--error-500)' : 'var(--border)')}`,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 'var(--space-sm)',
+                                                            fontSize: 'var(--text-sm)'
+                                                        }}>
+                                                            <div style={{
+                                                                width: '8px',
+                                                                height: '8px',
+                                                                borderRadius: '50%',
+                                                                background: oIdx === q.correctAnswer ? 'var(--success-500)' : 'var(--text-muted)'
+                                                            }} />
+                                                            {opt}
+                                                            {oIdx === q.correctAnswer && <Badge variant="success" size="xs" style={{ marginLeft: 'auto' }}>Correct Answer</Badge>}
+                                                            {oIdx === userAnswer && oIdx !== q.correctAnswer && <Badge variant="danger" size="xs" style={{ marginLeft: 'auto' }}>Your Answer</Badge>}
+                                                        </div>
+                                                    ))
+                                                ) : q.type === 'boolean' ? (
+                                                    <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                                                        {[true, false].map((val) => (
+                                                            <div key={val.toString()} style={{
+                                                                flex: 1,
+                                                                padding: 'var(--space-sm)',
+                                                                textAlign: 'center',
+                                                                borderRadius: 'var(--radius-md)',
+                                                                background: val === q.correctAnswer 
+                                                                    ? 'rgba(16, 185, 129, 0.1)' 
+                                                                    : (val === userAnswer ? 'rgba(239, 68, 68, 0.1)' : 'transparent'),
+                                                                border: `1px solid ${val === q.correctAnswer 
+                                                                    ? 'var(--success-500)' 
+                                                                    : (val === userAnswer ? 'var(--error-500)' : 'var(--border)')}`,
+                                                                fontSize: 'var(--text-sm)',
+                                                                color: val === q.correctAnswer ? 'var(--success-500)' : 'var(--text-muted)'
+                                                            }}>
+                                                                {val ? 'True' : 'False'}
+                                                                {val === q.correctAnswer && ' (Correct)'}
+                                                                {val === userAnswer && val !== q.correctAnswer && ' (You)'}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ padding: 'var(--space-md)', background: 'var(--card)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                                                        <p style={{ margin: 0, fontSize: 'var(--text-sm)' }}>
+                                                            <strong style={{ color: 'var(--success-500)' }}>Correct Answer:</strong> {q.correctAnswer}
+                                                        </p>
+                                                        <p style={{ margin: 'var(--space-xs) 0 0', fontSize: 'var(--text-sm)' }}>
+                                                            <strong style={{ color: isCorrect ? 'var(--success-500)' : 'var(--error-500)' }}>Your Answer:</strong> {userAnswer || '(No answer)'}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                            <Button variant="secondary" onClick={() => {
+                                setShowReview(false);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }} style={{ marginTop: 'var(--space-xl)', width: '100%' }}>
+                                Back to Top
+                            </Button>
+                        </div>
+                    )}
                 </Card>
             </div>
         );
