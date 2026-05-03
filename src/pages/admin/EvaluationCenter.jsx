@@ -739,7 +739,12 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
         if (attempt?.metadata?.ai_report && !aiReport) {
             setAiReport(attempt.metadata.ai_report);
             if (attempt.metadata.overrides) {
-                setOverrides(attempt.metadata.overrides);
+                // Ensure keys are numbers for consistency
+                const typedOverrides = {};
+                Object.entries(attempt.metadata.overrides).forEach(([k, v]) => {
+                    typedOverrides[Number(k)] = v;
+                });
+                setOverrides(typedOverrides);
             }
         }
     }, [attempt, aiReport]);
@@ -760,9 +765,10 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
             // Auto-apply suggestions ONLY to short answers
             const newOverrides = { ...overrides };
             report.suggestions.forEach(s => {
-                const q = attempt.quiz.questions[s.questionIndex];
+                const qIndex = Number(s.questionIndex);
+                const q = attempt.quiz.questions[qIndex];
                 if (q && q.type === 'short') {
-                    newOverrides[s.questionIndex] = s.isCorrect;
+                    newOverrides[qIndex] = s.isCorrect;
                 }
             });
             setOverrides(newOverrides);
