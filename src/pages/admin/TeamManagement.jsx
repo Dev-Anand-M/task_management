@@ -8,11 +8,11 @@ import {
     Award,
     ListTodo,
     HelpCircle,
-    MoreVertical,
     Eye,
     Edit2,
     Trash2,
-    Trophy
+    Trophy,
+    Key
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { formatDate, calculateLevel, calculateLevelProgress, BADGES } from '../../utils/constants';
@@ -28,6 +28,24 @@ const TeamManagement = () => {
     useEffect(() => {
         loadMembers();
     }, []);
+
+    const handleResetPassword = async (email) => {
+        if (!window.confirm(`Are you sure you want to send a password reset email to ${email}?`)) {
+            return;
+        }
+
+        try {
+            const result = await db.sendPasswordResetEmail(email);
+            if (result.success) {
+                alert(`Password reset email has been sent to ${email}`);
+            } else {
+                alert(`Failed to send reset email: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Reset password error:', error);
+            alert('An unexpected error occurred while sending the reset email.');
+        }
+    };
 
     const loadMembers = async () => {
         try {
@@ -201,11 +219,21 @@ const TeamManagement = () => {
                                         <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
                                             {formatDate(member.created_at)}
                                         </td>
-                                        <td>
+                                        <td className="flex justify-end items-center gap-xs">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleResetPassword(member.email)}
+                                                title="Send Password Reset Email"
+                                                style={{ color: 'var(--warning-500)' }}
+                                            >
+                                                <Key size={16} />
+                                            </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => navigate(`/admin/member/${member.id}`)}
+                                                title="View Details"
                                             >
                                                 <Eye size={16} />
                                             </Button>

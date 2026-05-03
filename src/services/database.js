@@ -648,6 +648,22 @@ export const switchClassroom = async (classroomId) => {
 };
 
 // ============================================
+// AUTH MANAGEMENT (ADMIN)
+// ============================================
+export const sendPasswordResetEmail = async (email) => {
+    try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/settings?reset=true`,
+        });
+        if (error) throw error;
+        return { success: true };
+    } catch (err) {
+        console.error('Error sending reset email:', err);
+        return { success: false, error: err.message };
+    }
+};
+
+// ============================================
 // ADMIN CLASSROOM DATA (CONTEXTLESS)
 // ============================================
 export const getClassroomById = async (id) => {

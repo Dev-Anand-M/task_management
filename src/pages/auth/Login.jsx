@@ -11,6 +11,7 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isResetMode, setIsResetMode] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -23,6 +24,23 @@ const Login = () => {
             // Navigation will be handled by AuthRoute redirect
         } else {
             setError(result.error || 'Invalid credentials');
+        }
+
+        setLoading(false);
+    };
+
+    const handleResetSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        const { success, error: resetError } = await db.sendPasswordResetEmail(email);
+
+        if (success) {
+            alert('Password reset email sent! Please check your inbox.');
+            setIsResetMode(false);
+        } else {
+            setError(resetError || 'Failed to send reset email');
         }
 
         setLoading(false);
@@ -96,8 +114,8 @@ const Login = () => {
                         </div>
                     )}
 
-                    {/* Login Form */}
-                    <form onSubmit={handleSubmit}>
+                    {/* Login / Reset Form */}
+                    <form onSubmit={isResetMode ? handleResetSubmit : handleSubmit}>
                         <div className="form-fields">
                             <Input
                                 type="email"
@@ -109,24 +127,55 @@ const Login = () => {
                                 required
                             />
 
-                            <Input
-                                type="password"
-                                label="Password"
-                                placeholder="Enter your password"
-                                icon={Lock}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                            />
+                            {!isResetMode && (
+                                <>
+                                    <Input
+                                        type="password"
+                                        label="Password"
+                                        placeholder="Enter your password"
+                                        icon={Lock}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                    />
+                                    <div style={{ textAlign: 'right', marginTop: '-8px' }}>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setIsResetMode(true)}
+                                            style={{ 
+                                                background: 'none', 
+                                                border: 'none', 
+                                                color: '#10b981', 
+                                                fontSize: '0.75rem', 
+                                                cursor: 'pointer',
+                                                padding: 0
+                                            }}
+                                        >
+                                            Forgot Password?
+                                        </button>
+                                    </div>
+                                </>
+                            )}
 
                             <Button
                                 type="submit"
                                 className="submit-btn"
                                 loading={loading}
                             >
-                                <span>Sign In</span>
+                                <span>{isResetMode ? 'Send Reset Link' : 'Sign In'}</span>
                                 <ArrowRight size={18} />
                             </Button>
+
+                            {isResetMode && (
+                                <Button
+                                    variant="ghost"
+                                    type="button"
+                                    onClick={() => setIsResetMode(false)}
+                                    style={{ width: '100%', color: 'var(--text-muted)' }}
+                                >
+                                    Back to Login
+                                </Button>
+                            )}
                         </div>
                     </form>
 
