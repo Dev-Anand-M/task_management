@@ -310,6 +310,13 @@ export const validateAPIKey = async (providerId, key) => {
 const callAIProxy = async (provider, endpoint, apiKey, body) => {
     const proxyUrl = '/api/ai-proxy';
     
+    console.log(`[callAIProxy] Making request to ${proxyUrl}`, {
+        provider,
+        endpoint,
+        hasApiKey: !!apiKey,
+        hasBody: !!body
+    });
+    
     const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: {
@@ -324,12 +331,30 @@ const callAIProxy = async (provider, endpoint, apiKey, body) => {
         })
     });
 
+    console.log(`[callAIProxy] Response status: ${response.status}`);
+
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || error.message || `HTTP ${response.status}`);
+        let errorData;
+        try {
+            errorData = await response.json();
+        } catch (e) {
+            const text = await response.text();
+            console.error(`[callAIProxy] Failed to parse error response:`, text);
+            throw new Error(`HTTP ${response.status}: ${text}`);
+        }
+        console.error(`[callAIProxy] Error response:`, errorData);
+        throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
     }
 
-    return response.json();
+    try {
+        const data = await response.json();
+        console.log(`[callAIProxy] Success, received data keys:`, Object.keys(data));
+        return data;
+    } catch (e) {
+        const text = await response.text();
+        console.error(`[callAIProxy] Failed to parse success response:`, text);
+        throw new Error(`Failed to parse response: ${e.message}`);
+    }
 };
 
 // Generic AI completion function
