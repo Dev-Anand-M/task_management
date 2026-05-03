@@ -19,11 +19,9 @@ console.log('Initializing Supabase client with URL:', supabaseUrl);
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
         autoRefreshToken: true,
-        persistSession: true,
+        persistSession: false,
         detectSessionInUrl: true,
-        flowType: 'pkce',
-        storageKey: 'zenith-session-v1',
-        storage: window.sessionStorage
+        flowType: 'pkce'
     },
     global: {
         headers: {
