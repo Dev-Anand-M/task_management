@@ -61,11 +61,15 @@ const EvaluationCenter = () => {
 
     const filteredQuizzes = quizAttempts
         .filter(att => {
+            const userName = att.profiles?.name || '';
+            const quizTitle = att.quizzes?.title || '';
             const matchesSearch = searchQuery === '' ||
-                att.profiles?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                att.quizzes?.title?.toLowerCase().includes(searchQuery.toLowerCase());
+                userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                quizTitle.toLowerCase().includes(searchQuery.toLowerCase());
             return matchesSearch;
         });
+
+    console.log('Evaluation Data:', { mode, submissions: submissions.length, quizAttempts: quizAttempts.length });
 
     if (mode === 'tasks' && submissionId) {
         return <EvaluationDetail submissionId={submissionId} onBack={() => navigate('/admin/evaluations')} onUpdate={loadData} />;
@@ -108,6 +112,9 @@ const EvaluationCenter = () => {
                         onClick={() => setMode('quizzes')}
                     >
                         Quizzes
+                        <Badge variant="primary" style={{ marginLeft: '6px' }}>
+                            {quizAttempts.length}
+                        </Badge>
                     </button>
                 </div>
             </div>
