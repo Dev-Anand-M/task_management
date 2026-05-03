@@ -103,7 +103,10 @@ const AuthRoute = ({ children }) => {
   }
 
   if (user) {
-    return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+    // Safe navigation with fallback
+    const redirectPath = user?.role === 'admin' ? '/admin' : '/dashboard';
+    console.log('AuthRoute: User logged in, redirecting to:', redirectPath);
+    return <Navigate to={redirectPath} replace />;
   }
 
   return children;

@@ -17,7 +17,6 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [sessionChecked, setSessionChecked] = useState(false);
 
     useEffect(() => {
         let mounted = true;
@@ -38,7 +37,6 @@ export const AuthProvider = ({ children }) => {
                     console.error('Session fetch error:', error);
                     // Don't throw, just mark as checked
                     if (mounted) {
-                        setSessionChecked(true);
                         setLoading(false);
                     }
                     return;
@@ -53,16 +51,9 @@ export const AuthProvider = ({ children }) => {
                         db.checkDeadlines(session.user.id).catch(console.error);
                     }
                 }
-                
-                if (mounted) {
-                    setSessionChecked(true);
-                }
             } catch (error) {
                 console.error('Init auth error:', error);
                 // Don't clear user state on initialization errors
-                if (mounted) {
-                    setSessionChecked(true);
-                }
             } finally {
                 if (mounted) setLoading(false);
             }
@@ -105,7 +96,10 @@ export const AuthProvider = ({ children }) => {
                     if (event === 'SIGNED_IN') {
                         if (session?.user) {
                             setUser(session.user);
-                            await fetchProfile(session.user.id);
+                            // Fetch profile with timeout to prevent hanging
+                            fetchProfile(session.user.id).catch(err => {
+                                console.warn('Profile fetch failed on sign in:', err);
+                            });
                         }
                         setLoading(false);
                         return;
@@ -116,7 +110,9 @@ export const AuthProvider = ({ children }) => {
                         if (session?.user) {
                             setUser(session.user);
                             // Refresh profile on user update
-                            await fetchProfile(session.user.id);
+                            fetchProfile(session.user.id).catch(err => {
+                                console.warn('Profile fetch failed on user update:', err);
+                            });
                         }
                         setLoading(false);
                         return;
@@ -159,12 +155,18 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            // Fetch profile including classroom details if possible
-            const { data: userProfile, error } = await supabase
+            // Add timeout to prevent hanging
+            const profilePromise = supabase
                 .from('profiles')
                 .select('*, classrooms(name)')
                 .eq('id', userId)
                 .single();
+            
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Profile query timeout')), 5000)
+            );
+
+            const { data: userProfile, error } = await Promise.race([profilePromise, timeoutPromise]);
 
             if (error) {
                 console.error('Profile fetch error:', error);
@@ -178,10 +180,14 @@ export const AuthProvider = ({ children }) => {
                 
                 // Fallback to simple profile fetch
                 console.log('Attempting fallback profile fetch...');
-                const simpleProfile = await db.getProfileById(userId);
-                if (simpleProfile) {
-                    setProfile(simpleProfile);
-                    return;
+                try {
+                    const simpleProfile = await db.getProfileById(userId);
+                    if (simpleProfile) {
+                        setProfile(simpleProfile);
+                        return;
+                    }
+                } catch (fallbackError) {
+                    console.error('Fallback profile fetch failed:', fallbackError);
                 }
                 
                 // If all else fails, keep the user logged in but without full profile
@@ -218,6 +224,7 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
+            console.log('Login: Starting authentication...');
             const { data, error } = await supabase.auth.signInWithPassword({
                 email: email.toLowerCase().trim(),
                 password
@@ -228,11 +235,31 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, error: error.message };
             }
 
-            // Wait for profile to be fetched before returning success
-            await fetchProfile(data.user.id);
+            console.log('Login: Authentication successful, fetching profile...');
+            
+            // Fetch profile with timeout to prevent hanging
+            try {
+                const profilePromise = fetchProfile(data.user.id);
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Profile fetch timeout')), 8000)
+                );
+                
+                await Promise.race([profilePromise, timeoutPromise]);
+                console.log('Login: Profile fetched successfully');
+            } catch (profileError) {
+                console.warn('Profile fetch failed during login, but user is authenticated:', profileError);
+                // Don't fail login if profile fetch fails - user is still authenticated
+                // Profile will be fetched by auth state change listener
+            }
+            
+            // Ensure loading is set to false
+            setLoading(false);
+            console.log('Login: Complete, returning success');
+            
             return { success: true };
         } catch (err) {
             console.error('Login error:', err);
+            setLoading(false);
             return { success: false, error: err.message || 'Login failed. Please try again.' };
         }
     };

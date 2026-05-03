@@ -17,16 +17,26 @@ const Login = () => {
         setError('');
         setLoading(true);
 
-        const result = await login(email, password);
+        console.log('Login attempt started...');
+        
+        try {
+            const result = await login(email, password);
+            console.log('Login result:', result);
 
-        if (result.success) {
-            // Navigation will be handled by AuthRoute redirect
-            // No need to manually navigate
-        } else {
-            setError(result.error || 'Invalid credentials');
+            if (result.success) {
+                console.log('Login successful, waiting for redirect...');
+                // Navigation will be handled by AuthRoute redirect
+                // No need to manually navigate
+            } else {
+                console.error('Login failed:', result.error);
+                setError(result.error || 'Invalid credentials');
+                setLoading(false);
+            }
+        } catch (err) {
+            console.error('Login exception:', err);
+            setError('An unexpected error occurred. Please try again.');
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     const features = [
