@@ -221,15 +221,13 @@ const Settings = () => {
     const handleSaveApiKey = async () => {
         if (!aiApiKey.trim()) return;
 
-        // Clear previous message and set testing status
         setValidationMessage({ type: '', text: '' });
         setAiKeyStatus('testing');
         setAvailableModels([]);
 
         try {
-            // Validate the API key first
-            const { validateAPIKey, syncToDatabase } = await import('../services/aiService');
-            const result = await validateAPIKey(aiApiKey.trim());
+            const { validateAPIKey, saveAPIKey } = await import('../services/aiService');
+            const result = await validateAPIKey(selectedProvider, aiApiKey.trim());
 
             if (!result.valid) {
                 setAiKeyStatus('invalid');
@@ -237,62 +235,50 @@ const Settings = () => {
                 return;
             }
 
-            // Key is valid - save it
-            localStorage.setItem('gemini_api_key', aiApiKey.trim());
+            // Save via service
+            await saveAPIKey(selectedProvider, aiApiKey.trim());
             setAiKeyStatus('configured');
+            setAvailableModels(result.models || []);
 
-            // Set available models from API response
-            if (result.models && result.models.length > 0) {
-                setAvailableModels(result.models);
-                // Auto-select first model if none selected
-                if (!selectedModel) {
-                    const firstModel = result.models[0].id;
-                    setSelectedModel(firstModel);
-                    localStorage.setItem('gemini_model', firstModel);
-                }
+            if (result.models && result.models.length > 0 && !selectedModel) {
+                const { setSelectedModel: saveModelToService } = await import('../services/aiService');
+                const firstModel = result.models[0].id;
+                await saveModelToService(firstModel);
+                setSelectedModel(firstModel);
             }
 
-            // Sync to database
-            await syncToDatabase();
-
-            const modelCount = result.models?.length || 0;
             setValidationMessage({
                 type: 'success',
-                text: `API key validated! Found ${modelCount} compatible models.`
+                text: `${selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)} API key validated and saved!`
             });
         } catch (e) {
             console.error('Failed to validate/save API key:', e);
             setAiKeyStatus('invalid');
-            setValidationMessage({ type: 'error', text: 'Failed to validate API key. Please try again.' });
+            setValidationMessage({ type: 'error', text: 'Failed to save API key: ' + e.message });
         }
     };
 
     const handleRemoveApiKey = async () => {
-        if (confirm('Are you sure you want to remove your API key?')) {
-            localStorage.removeItem('gemini_api_key');
-            setAiApiKey('');
-            setAiKeyStatus('unconfigured');
-
-            // Sync to database
+        if (confirm('Are you sure you want to remove this API key?')) {
             try {
-                const { syncToDatabase } = await import('../services/aiService');
-                await syncToDatabase();
+                const { removeAPIKey } = await import('../services/aiService');
+                await removeAPIKey(selectedProvider);
+                setAiApiKey('');
+                setAiKeyStatus('unconfigured');
+                setAvailableModels([]);
             } catch (e) {
-                console.error('Failed to sync to database:', e);
+                console.error('Failed to remove API key:', e);
             }
         }
     };
 
     const handleModelChange = async (modelId) => {
         setSelectedModel(modelId);
-        localStorage.setItem('gemini_model', modelId);
-
-        // Sync to database
         try {
-            const { syncToDatabase } = await import('../services/aiService');
-            await syncToDatabase();
+            const { setSelectedModel: saveModelToService } = await import('../services/aiService');
+            await saveModelToService(modelId);
         } catch (e) {
-            console.error('Failed to sync to database:', e);
+            console.error('Failed to sync model change:', e);
         }
     };
 
