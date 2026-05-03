@@ -151,7 +151,8 @@ const Header = ({ onMenuClick, title }) => {
           variant="ghost"
           size="icon"
           onClick={onMenuClick}
-          className="menu-button"
+          className="menu-button lg:hidden"
+          style={{ display: 'none' }}
         >
           <Menu size={24} />
         </Button>
@@ -228,29 +229,35 @@ const Header = ({ onMenuClick, title }) => {
           <Button
             variant="ghost"
             size="icon"
-            style={{ position: 'relative' }}
+            style={{ 
+              position: 'relative',
+              width: '44px',
+              height: '44px',
+              padding: '10px'
+            }}
             onClick={() => {
               setShowNotifications(!showNotifications);
               if (!showNotifications) loadNotificationData();
             }}
           >
-            <Bell size={24} />
+            <Bell size={28} />
             {unreadCount > 0 && (
               <span style={{
                 position: 'absolute',
-                top: '4px',
-                right: '4px',
-                minWidth: '16px',
-                height: '16px',
+                top: '6px',
+                right: '6px',
+                minWidth: '18px',
+                height: '18px',
                 background: 'var(--error-500)',
                 borderRadius: '50%',
-                fontSize: '10px',
+                fontSize: '11px',
                 fontWeight: 600,
                 color: 'white',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '0 4px'
+                padding: '0 4px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
               }}>
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
@@ -430,8 +437,17 @@ const Header = ({ onMenuClick, title }) => {
         </div>
 
         {/* Theme Toggle */}
-        <Button variant="ghost" size="icon" onClick={handleThemeToggle}>
-          {isDark ? <Sun size={24} /> : <Moon size={24} />}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={handleThemeToggle}
+          style={{ 
+            width: '44px',
+            height: '44px',
+            padding: '10px'
+          }}
+        >
+          {isDark ? <Sun size={28} /> : <Moon size={28} />}
         </Button>
 
         {/* Profile Dropdown */}
@@ -456,15 +472,15 @@ const Header = ({ onMenuClick, title }) => {
                 src={user.avatar_url}
                 alt={user.name}
                 style={{
-                  width: '32px',
-                  height: '32px',
+                  width: '40px',
+                  height: '40px',
                   borderRadius: '50%',
                   objectFit: 'cover',
                   border: '2px solid var(--border)'
                 }}
               />
             ) : (
-              <Avatar name={user?.name} size="sm" />
+              <Avatar name={user?.name} size="md" />
             )}
           </button>
 
@@ -615,14 +631,43 @@ const Header = ({ onMenuClick, title }) => {
       </div>
 
       <style>{`
+        /* Hide hamburger menu on desktop, show on mobile */
+        .menu-button {
+          display: none;
+        }
+        
         @media (max-width: 1024px) {
           .menu-button {
             display: flex !important;
           }
         }
+        
         @media (min-width: 768px) {
           .header-search {
             display: block !important;
+          }
+        }
+        
+        /* Improve button hover states */
+        .btn-icon:hover {
+          background: var(--surface-hover);
+          transform: scale(1.05);
+        }
+        
+        /* Better mobile spacing */
+        @media (max-width: 768px) {
+          .header {
+            padding: 0 var(--space-md);
+          }
+          
+          .flex.items-center.gap-sm {
+            gap: var(--space-xs);
+          }
+          
+          /* Larger touch targets on mobile */
+          .btn-icon {
+            min-width: 48px;
+            min-height: 48px;
           }
         }
       `}</style>

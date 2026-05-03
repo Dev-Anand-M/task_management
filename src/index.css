@@ -742,10 +742,24 @@ html[data-theme="dark"] .sidebar {
 }
 
 .btn-icon {
-  width: 42px;
-  height: 42px;
-  padding: 0;
-  border-radius: var(--radius-md);
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.btn-icon:hover {
+  background: var(--surface-hover);
+  transform: scale(1.05);
+}
+
+.btn-icon svg {
+  width: 24px;
+  height: 24px;
 }
 
 /* ---- Input Component ---- */
@@ -2341,15 +2355,17 @@ input.bg-surface\/80 {
     padding: var(--space-md);
   }
 
-  /* Fix for small icons */
+  /* Improved mobile button sizes */
   .btn svg, .btn-icon svg {
-    width: 24px !important; /* Larger icons for mobile */
-    height: 24px !important;
+    width: 28px !important; /* Larger icons for mobile */
+    height: 28px !important;
   }
 
   .btn-icon {
-    width: 48px !important; /* Larger touch target */
-    height: 48px !important;
+    width: 52px !important; /* Larger touch target */
+    height: 52px !important;
+    padding: 12px !important;
+  }
   }
 
   /* Full screen modals on very small devices */
