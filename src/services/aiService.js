@@ -17,9 +17,9 @@ export const AVAILABLE_MODELS = [
     { id: 'gpt-4o', provider: 'openai', name: 'GPT-4o (Default)', description: 'Auto-calibrated for OpenAI', inputTokenLimit: '128k', outputTokenLimit: '4k' },
     { id: 'claude-3-5-sonnet-20240620', provider: 'anthropic', name: 'Claude 3.5 Sonnet (Default)', description: 'Auto-calibrated for Anthropic', inputTokenLimit: '200k', outputTokenLimit: '4k' },
     { id: 'llama-3.1-sonar-large-128k-online', provider: 'perplexity', name: 'Sonar Large 3.1 (Default)', description: 'Auto-calibrated for Perplexity', inputTokenLimit: '128k', outputTokenLimit: '4k' },
-    { id: 'Meta-Llama-3.1-405B-Instruct', provider: 'sambanova', name: 'Llama 3.1 405B (SambaNova)', description: 'Ultra-fast inference via SambaNova', inputTokenLimit: '128k', outputTokenLimit: '4k' },
-    { id: 'Meta-Llama-3.1-70B-Instruct', provider: 'sambanova', name: 'Llama 3.1 70B (SambaNova)', description: 'Fast Llama 3.1 70B', inputTokenLimit: '128k', outputTokenLimit: '4k' },
-    { id: 'Meta-Llama-3.1-8B-Instruct', provider: 'sambanova', name: 'Llama 3.1 8B (SambaNova)', description: 'Lightweight Llama 3.1 8B', inputTokenLimit: '128k', outputTokenLimit: '4k' }
+    { id: 'Meta-Llama-3.3-70B-Instruct', provider: 'sambanova', name: 'Llama 3.3 70B (SambaNova)', description: 'Latest Meta model on SambaNova', inputTokenLimit: '128k', outputTokenLimit: '4k' },
+    { id: 'DeepSeek-V3.2', provider: 'sambanova', name: 'DeepSeek V3.2 (SambaNova)', description: 'Powerful reasoning model', inputTokenLimit: '128k', outputTokenLimit: '4k' },
+    { id: 'gemma-3-12b-it', provider: 'sambanova', name: 'Gemma 3 12B (SambaNova)', description: 'Google latest open model', inputTokenLimit: '128k', outputTokenLimit: '4k' }
 ];
 
 // Simple encryption for API key (XOR with user ID for obfuscation)
@@ -299,7 +299,7 @@ export const validateAPIKey = async (providerId, key) => {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        model: 'Meta-Llama-3.1-70B-Instruct',
+                        model: 'Meta-Llama-3.3-70B-Instruct',
                         messages: [{ role: 'user', content: 'test' }],
                         max_tokens: 1
                     })
