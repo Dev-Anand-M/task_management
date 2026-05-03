@@ -363,36 +363,48 @@ export const deleteQuiz = async (id) => {
 
 export const getQuizAttempts = async () => {
     try {
+        console.log('--- START QUIZ ATTEMPT FETCH ---');
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return [];
+        if (!user) {
+            console.error('No authenticated user found');
+            return [];
+        }
 
-        // Check if user is admin
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+        // Fetch profile with error logging
+        const { data: profile, error: profError } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+        if (profError) console.error('Error fetching admin profile:', profError);
+        
         const isAdmin = profile?.role === 'admin';
+        console.log('User Role:', profile?.role, 'IsAdmin:', isAdmin);
 
-        console.log('Fetching quiz attempts. User is Admin:', isAdmin);
+        // Simple fetch first to see if table is empty
+        const { data: rawCount, error: countError } = await supabase.from('quiz_attempts').select('id');
+        console.log('Total attempts in DB (raw count):', rawCount?.length, countError || 'No error');
 
         let query = supabase
             .from('quiz_attempts')
             .select(`
                 *,
-                profiles!left(id, name, avatar_url, email, classroom_id),
-                quizzes!left(id, title, points)
+                profiles!left(name, avatar_url, email, classroom_id),
+                quizzes!left(title, points)
             `);
 
-        // Only filter for students. Admins see EVERYTHING.
         if (!isAdmin) {
+            console.log('Filtering for Student:', user.id);
             query = query.eq('user_id', user.id);
+        } else {
+            console.log('Admin detected. Fetching global records.');
         }
 
         const { data, error } = await query.order('created_at', { ascending: false });
         
         if (error) {
-            console.error('Supabase error fetching quiz attempts:', error);
+            console.error('DATABASE ERROR during fetch:', error);
             throw error;
         }
 
-        console.log(`Successfully fetched ${data?.length || 0} attempts.`);
+        console.log('Final results returned:', data?.length);
+        console.log('--- END QUIZ ATTEMPT FETCH ---');
         return data || [];
     } catch (err) {
         console.error('CRITICAL: Error in getQuizAttempts:', err);
