@@ -181,7 +181,9 @@ const Quizzes = () => {
                     </h3>
                     <div className="grid grid-cols-3">
                         {completedQuizzes.map(quiz => {
-                            const score = getQuizScore(quiz.id);
+                            const attempt = attempts.find(a => a.quiz_id === quiz.id);
+                            const isFinalized = attempt?.metadata?.manually_evaluated === true;
+                            const score = attempt?.score || 0;
                             const passed = score >= 70;
 
                             return (
@@ -195,8 +197,8 @@ const Quizzes = () => {
                                         <Badge variant={getDifficultyColor(quiz.difficulty)}>
                                             {quiz.difficulty}
                                         </Badge>
-                                        <Badge variant={passed ? 'success' : 'error'}>
-                                            {passed ? 'Passed' : 'Failed'}
+                                        <Badge variant={!isFinalized ? 'warning' : (passed ? 'success' : 'error')}>
+                                            {!isFinalized ? 'In Review' : (passed ? 'Passed' : 'Failed')}
                                         </Badge>
                                     </div>
 
@@ -209,27 +211,29 @@ const Quizzes = () => {
 
                                     <div style={{
                                         padding: 'var(--space-md)',
-                                        background: passed ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                        background: !isFinalized ? 'var(--surface)' : (passed ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'),
                                         borderRadius: 'var(--radius-md)',
-                                        textAlign: 'center'
+                                        textAlign: 'center',
+                                        border: !isFinalized ? '1px dashed var(--border)' : 'none'
                                     }}>
                                         <p style={{
-                                            fontSize: 'var(--text-2xl)',
+                                            fontSize: !isFinalized ? 'var(--text-sm)' : 'var(--text-2xl)',
                                             fontWeight: 700,
                                             margin: 0,
-                                            color: passed ? 'var(--success-500)' : 'var(--error-500)'
+                                            color: !isFinalized ? 'var(--text-muted)' : (passed ? 'var(--success-500)' : 'var(--error-500)')
                                         }}>
-                                            {score}%
+                                            {!isFinalized ? 'Evaluation Pending...' : `${score}%`}
                                         </p>
                                     </div>
                                     <Button 
                                         variant="secondary" 
                                         size="sm" 
-                                        icon={Search}
-                                        onClick={() => navigate(`/quizzes/${quiz.id}`)}
-                                        style={{ width: '100%' }}
+                                        icon={!isFinalized ? Clock : Search}
+                                        onClick={() => isFinalized && navigate(`/quizzes/${quiz.id}`)}
+                                        style={{ width: '100%', opacity: !isFinalized ? 0.6 : 1, cursor: !isFinalized ? 'default' : 'pointer' }}
+                                        disabled={!isFinalized}
                                     >
-                                        View Review
+                                        {!isFinalized ? 'Waiting for Review' : 'View Review'}
                                     </Button>
                                 </Card>
                             );
