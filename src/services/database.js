@@ -363,16 +363,10 @@ export const getQuizAttempts = async () => {
 
         let query = supabase
             .from('quiz_attempts')
-            .select('*, profiles!inner(name, avatar_url, email, classroom_id), quizzes!inner(title, points)');
+            .select('*, profiles(name, avatar_url, email, classroom_id), quizzes(title, points)');
 
-        // If admin, they see either their classroom or everything
-        if (profile?.role === 'admin') {
-            if (profile.classroom_id) {
-                // Filter by classroom if admin belongs to one
-                query = query.eq('profiles.classroom_id', profile.classroom_id);
-            }
-            // If global admin (no classroom_id), they see everything
-        } else {
+        // If admin, they see everything to ensure nothing is missed
+        if (profile?.role !== 'admin') {
             // Students only see their own
             query = query.eq('user_id', user.id);
         }
