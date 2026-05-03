@@ -893,7 +893,7 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                 variant="warning" 
                                 icon={RefreshCw}
                                 loading={evaluating}
-                                onClick={handleAiEvaluate}
+                                onClick={handleAiEvaluation}
                             >
                                 Intercept & Re-evaluate All
                             </Button>
