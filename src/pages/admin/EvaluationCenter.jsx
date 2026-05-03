@@ -734,12 +734,16 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
         loadModels();
     }, [loadAttempt]);
 
-    // Update local aiReport if one exists in metadata
+    // Update local state from metadata when attempt loads
     useEffect(() => {
-        if (attempt?.metadata?.ai_report && !aiReport) {
-            setAiReport(attempt.metadata.ai_report);
-            if (attempt.metadata.overrides) {
-                // Ensure keys are numbers for consistency
+        if (attempt?.metadata) {
+            // Load AI Report if it exists
+            if (attempt.metadata.ai_report && !aiReport) {
+                setAiReport(attempt.metadata.ai_report);
+            }
+            
+            // Load Overrides (Manual or AI)
+            if (attempt.metadata.overrides && Object.keys(overrides).length === 0) {
                 const typedOverrides = {};
                 Object.entries(attempt.metadata.overrides).forEach(([k, v]) => {
                     typedOverrides[Number(k)] = v;
@@ -747,7 +751,7 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                 setOverrides(typedOverrides);
             }
         }
-    }, [attempt, aiReport]);
+    }, [attempt, aiReport, overrides]);
 
     const handleAiEvaluation = async () => {
         if (!attempt) return;
