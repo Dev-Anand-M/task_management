@@ -154,9 +154,13 @@ export const removeAPIKey = async (providerId) => {
 
 // Get selected model with smart fallback
 export const getSelectedModel = () => {
-    // Check which keys are configured and return the default model for that provider
-    // This implements the "Automatic Calibration" requested by the user.
+    // 1. Check for manual selection first
+    const manualSelection = localStorage.getItem('selected_ai_model');
+    if (manualSelection) return manualSelection;
+
+    // 2. Fallback to configured keys in order of preference
     if (localStorage.getItem('gemini_api_key')) return 'gemini-2.0-flash';
+    if (localStorage.getItem('sambanova_api_key')) return 'Meta-Llama-3.1-70B-Instruct';
     if (localStorage.getItem('openai_api_key')) return 'gpt-4o';
     if (localStorage.getItem('anthropic_api_key')) return 'claude-3-5-sonnet-20240620';
     if (localStorage.getItem('perplexity_api_key')) return 'llama-3.1-sonar-large-128k-online';
