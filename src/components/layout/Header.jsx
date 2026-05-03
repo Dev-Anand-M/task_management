@@ -55,9 +55,11 @@ const Header = ({ onMenuClick, title }) => {
 
   const loadTickerData = async () => {
     try {
-      const [tasks, submissions] = await Promise.all([
+      const [tasks, submissions, quizzes, attempts] = await Promise.all([
         db.getTasks(),
-        db.getSubmissionsByUser(user.id)
+        db.getSubmissionsByUser(user.id),
+        db.getQuizzes(),
+        db.getQuizAttemptsByUser(user.id)
       ]);
 
       const now = new Date();
@@ -68,14 +70,14 @@ const Header = ({ onMenuClick, title }) => {
       // Filter for actionable tasks (No submission or Rejected status)
       const actionItems = myTasks.filter(task => {
         const sub = submissions.find(s => s.task_id === task.id);
-        // If no submission, it's pending.
-        // If rejected, it's pending (needs fix).
-        // If pending (waiting review) or approved, it is NOT pending for the student (no action needed right now).
         if (!sub) return true;
         return sub.status === 'rejected';
       });
 
-      const pendingCount = actionItems.length;
+      const pendingTasksCount = actionItems.length;
+
+      // Pending Quizzes
+      const pendingQuizzesCount = quizzes.filter(q => !attempts.some(a => a.quiz_id === q.id)).length;
 
       // Count deadlines only for these actionable items
       const upcomingDeadlines = actionItems.filter(t => {
@@ -86,7 +88,8 @@ const Header = ({ onMenuClick, title }) => {
       }).length;
 
       const items = [];
-      if (pendingCount > 0) items.push(`${pendingCount} Pending Task${pendingCount === 1 ? '' : 's'}`);
+      if (pendingTasksCount > 0) items.push(`${pendingTasksCount} Pending Task${pendingTasksCount === 1 ? '' : 's'}`);
+      if (pendingQuizzesCount > 0) items.push(`${pendingQuizzesCount} Pending Quiz${pendingQuizzesCount === 1 ? '' : 'zes'}`);
       if (upcomingDeadlines > 0) items.push(`${upcomingDeadlines} Deadline${upcomingDeadlines === 1 ? '' : 's'} Soon`);
 
       setTickerItems(items);
