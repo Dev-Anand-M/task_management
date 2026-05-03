@@ -307,10 +307,17 @@ export const createQuiz = async (quiz) => {
         classroomId = profile?.classroom_id;
     }
 
-    const { data, error } = await supabase.from('quizzes').insert({
-        ...quiz,
-        classroom_id: quiz.is_global ? null : classroomId
-    }).select().single();
+    const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out. The quiz might still be saving, please check the list in a moment.')), 15000)
+    );
+
+    const { data, error } = await Promise.race([
+        supabase.from('quizzes').insert({
+            ...quiz,
+            classroom_id: quiz.is_global ? null : classroomId
+        }).select().single(),
+        timeoutPromise
+    ]);
 
     if (error) throw error;
 
