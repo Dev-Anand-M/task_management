@@ -68,24 +68,25 @@ export const AuthProvider = ({ children }) => {
 
     const fetchProfile = async (userId) => {
         try {
-            const fetchPromise = supabase
+            // First, set a basic profile from the auth user metadata as a fallback
+            if (user) {
+                setProfile({
+                    id: user.id,
+                    email: user.email,
+                    name: user.user_metadata?.name || user.email?.split('@')[0],
+                    role: user.user_metadata?.role || 'member',
+                    classroom_id: user.user_metadata?.classroom_id
+                });
+            }
+
+            const { data: userProfile, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
                 .single();
-                
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
-            );
-
-            const { data: userProfile, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
             if (error) {
-                console.error('Profile fetch error:', error);
-                const simpleProfile = await db.getProfileById(userId);
-                if (simpleProfile) {
-                    setProfile(simpleProfile);
-                }
+                console.warn('Profile fetch error, using fallback:', error);
                 return;
             }
 
