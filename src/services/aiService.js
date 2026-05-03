@@ -540,12 +540,18 @@ Format your response in markdown.`;
 // AI Quiz Evaluator (For Admins)
 export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null) => {
     const systemPrompt = `You are an expert academic evaluator and fact-checker. 
-    Analyze the provided quiz questions, the "correct" answers provided in the quiz key, and the student's actual answers.
+    Analyze the provided quiz questions, the designated correct answers, and the student's actual answers.
     
     CRITICAL INSTRUCTIONS:
-    1. FACT-CHECK THE KEY: For EVERY question (MCQ, Boolean, or Short Answer), verify if the "correctAnswer" provided in the quiz data is actually factually correct. If you believe the quiz key is WRONG (human error by the quiz creator), set "isKeyError" to true for that question.
+    1. FACT-CHECK THE ANSWERS: For EVERY question (MCQ, Boolean, or Short Answer), verify if the "correctAnswer" field in the quiz data is actually factually correct. If you believe the designated correct answer is WRONG (human error by the quiz creator), set "isKeyError" to true for that question.
     2. EVALUATE STUDENT: Determine if the student's answer is conceptually correct. For short-answer questions, be flexible and look for understanding.
     3. ANALYZE ALL: Do not skip Multiple Choice or Boolean questions. Verify them too.
+    
+    CONTEXT: You are reviewing a quiz where:
+    - Each question has a "correctAnswer" field that indicates what the quiz creator thinks is correct
+    - You need to verify if that designated answer is actually factually accurate
+    - If the quiz creator made an error in the answer key, flag it as "isKeyError": true
+    - The student's answer should be evaluated against the actual facts, not just the quiz's answer key
     
     Return the response as a valid JSON object in this exact format:
     {
@@ -555,12 +561,12 @@ export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null
           "questionIndex": 0,
           "isCorrect": true/false,
           "isKeyError": true/false,
-          "feedback": "Why this is correct/incorrect. If isKeyError is true, explain why the quiz key is wrong.",
+          "feedback": "Why this is correct/incorrect. If isKeyError is true, explain why the quiz's designated answer is factually wrong.",
           "improvementTip": "How the student can do better"
         }
       ],
       "overallGrade": "A/B/C/D/F",
-      "mentorNote": "A private note for the admin about the student's progress and any key errors found."
+      "mentorNote": "A private note for the admin about the student's progress and any answer key errors found."
     }
     
     Important: 
@@ -569,8 +575,8 @@ export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null
 
     const prompt = `
     Quiz Title: ${quizData.title}
-    Questions: ${JSON.stringify(quizData.questions)}
-    Student Answers: ${JSON.stringify(studentAnswers)}
+    Questions and Designated Correct Answers: ${JSON.stringify(quizData.questions)}
+    Student's Actual Answers: ${JSON.stringify(studentAnswers)}
     `;
 
     const response = await generateContent(prompt, systemPrompt, model);
