@@ -734,6 +734,16 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
         loadModels();
     }, [loadAttempt]);
 
+    // Update local aiReport if one exists in metadata
+    useEffect(() => {
+        if (attempt?.metadata?.ai_report && !aiReport) {
+            setAiReport(attempt.metadata.ai_report);
+            if (attempt.metadata.overrides) {
+                setOverrides(attempt.metadata.overrides);
+            }
+        }
+    }, [attempt, aiReport]);
+
     const handleAiEvaluation = async () => {
         if (!attempt) return;
         
@@ -1024,7 +1034,7 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                     <p style={{ margin: 0, fontWeight: 600 }}>{userAnswer || '(No answer)'}</p>
                                                 </div>
                                                 
-                                                <div className="flex gap-sm mt-md">
+                                                <div className="flex items-center gap-sm mt-md">
                                                     <Button 
                                                         size="sm" 
                                                         variant={overrides[index] === true ? 'success' : 'secondary'}
@@ -1041,6 +1051,26 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                     >
                                                         Mark Wrong
                                                     </Button>
+
+                                                    {/* AI Badge */}
+                                                    {aiReport?.suggestions?.find(s => s.questionIndex === index) && (
+                                                        <Badge 
+                                                            variant="outline"
+                                                            style={{ 
+                                                                marginLeft: 'auto',
+                                                                borderColor: aiReport.suggestions.find(s => s.questionIndex === index).isCorrect ? 'var(--success-500)' : 'var(--error-500)',
+                                                                color: aiReport.suggestions.find(s => s.questionIndex === index).isCorrect ? 'var(--success-600)' : 'var(--error-600)',
+                                                                background: aiReport.suggestions.find(s => s.questionIndex === index).isCorrect ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
+                                                                padding: '4px 8px'
+                                                            }}
+                                                        >
+                                                            <Brain size={12} />
+                                                            AI: {aiReport.suggestions.find(s => s.questionIndex === index).isCorrect ? 'Correct' : 'Wrong'}
+                                                        </Badge>
+                                                    )}
                                                 </div>
 
                                                 {aiReport && aiReport.suggestions.find(s => s.questionIndex === index) && (
