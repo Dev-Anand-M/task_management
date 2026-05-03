@@ -1064,8 +1064,12 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                             <div className="flex items-center gap-sm mt-md w-full">
                                                                 <Button 
                                                                     size="sm" 
-                                                                    variant={overrides[index] === true ? 'success' : 'secondary'}
-                                                                    style={{ flex: 1 }}
+                                                                    variant={(overrides[index] === true || overrides[index.toString()] === true) ? 'success' : 'secondary'}
+                                                                    style={{ 
+                                                                        flex: 1,
+                                                                        background: (overrides[index] === true || overrides[index.toString()] === true) ? 'var(--success-500)' : '',
+                                                                        color: (overrides[index] === true || overrides[index.toString()] === true) ? 'white' : ''
+                                                                    }}
                                                                     onClick={() => setOverrides(prev => ({ ...prev, [index]: true }))}
                                                                     icon={Check}
                                                                 >
@@ -1073,8 +1077,12 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                                 </Button>
                                                                 <Button 
                                                                     size="sm" 
-                                                                    variant={overrides[index] === false ? 'danger' : 'secondary'}
-                                                                    style={{ flex: 1 }}
+                                                                    variant={(overrides[index] === false || overrides[index.toString()] === false) ? 'danger' : 'secondary'}
+                                                                    style={{ 
+                                                                        flex: 1,
+                                                                        background: (overrides[index] === false || overrides[index.toString()] === false) ? 'var(--error-500)' : '',
+                                                                        color: (overrides[index] === false || overrides[index.toString()] === false) ? 'white' : ''
+                                                                    }}
                                                                     onClick={() => setOverrides(prev => ({ ...prev, [index]: false }))}
                                                                     icon={X}
                                                                 >
