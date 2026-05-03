@@ -32,14 +32,19 @@ const EvaluationCenter = () => {
     const loadData = useCallback(async () => {
         try {
             setLoading(true);
-            const [subs, attempts] = await Promise.all([
+            console.log('Admin Fetching Evaluation Data...');
+            const [subs, atts] = await Promise.all([
                 db.getSubmissions(),
                 db.getQuizAttempts()
             ]);
-            setSubmissions(subs);
-            setQuizAttempts(attempts);
+            
+            console.log('Submissions found:', subs?.length);
+            console.log('Quiz attempts found:', atts?.length);
+            
+            setSubmissions(subs || []);
+            setQuizAttempts(atts || []);
         } catch (error) {
-            console.error('Error loading evaluation data:', error);
+            console.error('CRITICAL: Evaluation Data Load Failed:', error);
         } finally {
             setLoading(false);
         }
@@ -67,7 +72,8 @@ const EvaluationCenter = () => {
                 userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 quizTitle.toLowerCase().includes(searchQuery.toLowerCase());
             return matchesSearch;
-        });
+        })
+        .sort((a, b) => new Date(b.created_at || b.completed_at) - new Date(a.created_at || a.completed_at));
 
     console.log('Evaluation Data:', { mode, submissions: submissions.length, quizAttempts: quizAttempts.length });
 
@@ -79,7 +85,7 @@ const EvaluationCenter = () => {
         return <QuizReviewDetail attemptId={submissionId} onBack={() => navigate('/admin/evaluations')} />;
     }
 
-    if (loading) {
+    if (loading && submissions.length === 0 && quizAttempts.length === 0) {
         return (
             <div className="flex items-center justify-center" style={{ minHeight: '400px' }}>
                 <div className="loading-spinner" />
@@ -97,25 +103,30 @@ const EvaluationCenter = () => {
                         Review and evaluate team progress
                     </p>
                 </div>
-                <div className="tabs" style={{ background: 'var(--card)', padding: '4px' }}>
-                    <button
-                        className={`tab ${mode === 'tasks' ? 'active' : ''}`}
-                        onClick={() => {
-                            setMode('tasks');
-                            setFilterStatus('pending');
-                        }}
-                    >
-                        Tasks
-                    </button>
-                    <button
-                        className={`tab ${mode === 'quizzes' ? 'active' : ''}`}
-                        onClick={() => setMode('quizzes')}
-                    >
-                        Quizzes
-                        <Badge variant="primary" style={{ marginLeft: '6px' }}>
-                            {quizAttempts.length}
-                        </Badge>
-                    </button>
+                <div className="flex gap-sm">
+                    <Button variant="secondary" size="sm" icon={RefreshCw} onClick={loadData} loading={loading}>
+                        Refresh Data
+                    </Button>
+                    <div className="tabs" style={{ background: 'var(--card)', padding: '4px' }}>
+                        <button
+                            className={`tab ${mode === 'tasks' ? 'active' : ''}`}
+                            onClick={() => {
+                                setMode('tasks');
+                                setFilterStatus('pending');
+                            }}
+                        >
+                            Tasks
+                        </button>
+                        <button
+                            className={`tab ${mode === 'quizzes' ? 'active' : ''}`}
+                            onClick={() => setMode('quizzes')}
+                        >
+                            Quizzes
+                            <Badge variant="primary" style={{ marginLeft: '6px' }}>
+                                {quizAttempts.length}
+                            </Badge>
+                        </button>
+                    </div>
                 </div>
             </div>
 
