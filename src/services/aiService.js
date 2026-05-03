@@ -337,10 +337,22 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null) => {
     let selectedModelId = modelId || getSelectedModel();
     let provider = getProviderForModel(selectedModelId);
 
+    // Force SambaNova as execution default whenever its key is configured
+    const sambaKey = getAPIKey('sambanova');
+    if (sambaKey) {
+        const sambaModel = AVAILABLE_MODELS.find(m => m.id === selectedModelId && m.provider === 'sambanova')
+            || AVAILABLE_MODELS.find(m => m.provider === 'sambanova');
+        if (sambaModel) {
+            selectedModelId = sambaModel.id;
+            provider = PROVIDERS.SAMBANOVA;
+            localStorage.setItem('selected_ai_model', selectedModelId);
+        }
+    }
+
     // Auto-healing: If selected provider has no key, try to find one that does
     if (!getAPIKey(provider.id)) {
         console.warn(`Provider ${provider.id} not configured. Attempting to fallback...`);
-        const validProvider = Object.values(PROVIDERS).find(p => getAPIKey(p.id));
+        const validProvider = PROVIDERS.SAMBANOVA && getAPIKey('sambanova') ? PROVIDERS.SAMBANOVA : Object.values(PROVIDERS).find(p => getAPIKey(p.id));
         if (validProvider) {
             const newModel = AVAILABLE_MODELS.find(m => m.provider === validProvider.id);
             if (newModel) {
