@@ -103,10 +103,15 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const signInPromise = supabase.auth.signInWithPassword({
                 email: email.toLowerCase().trim(),
                 password
             });
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Sign in timeout')), 10000)
+            );
+
+            const { data, error } = await Promise.race([signInPromise, timeoutPromise]);
 
             if (error) {
                 console.error('Login error:', error);
@@ -123,7 +128,7 @@ export const AuthProvider = ({ children }) => {
 
     const register = async (name, email, password, classroomId) => {
         try {
-            const { data, error } = await supabase.auth.signUp({
+            const signUpPromise = supabase.auth.signUp({
                 email: email.toLowerCase().trim(),
                 password,
                 options: {
@@ -134,6 +139,11 @@ export const AuthProvider = ({ children }) => {
                     }
                 }
             });
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Sign up timeout')), 10000)
+            );
+
+            const { data, error } = await Promise.race([signUpPromise, timeoutPromise]);
 
             if (error) {
                 return { success: false, error: error.message };
@@ -143,7 +153,7 @@ export const AuthProvider = ({ children }) => {
             return { success: true, user: data.user };
         } catch (err) {
             console.error('Registration error:', err);
-            return { success: false, error: 'Registration failed. Please try again.' };
+            return { success: false, error: err.message || 'Registration failed. Please try again.' };
         }
     };
 
