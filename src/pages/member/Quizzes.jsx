@@ -345,6 +345,32 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
         }
     }, [quiz, submitting, answers, user.id, addXP, addBadge, onComplete]);
 
+    const handleExit = async () => {
+        if (!quiz || submitting) return;
+        
+        // Lock the quiz by creating a failed attempt
+        try {
+            setSubmitting(true);
+            await db.createQuizAttempt({
+                quiz_id: quiz.id,
+                user_id: user.id,
+                answers,
+                score: 0,
+                correct: 0,
+                total: quiz.questions.length,
+                passed: false,
+                metadata: { exited: true }
+            });
+            onBack();
+            onComplete();
+        } catch (error) {
+            console.error('Error locking quiz on exit:', error);
+            onBack();
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     useEffect(() => {
         if (isComplete || !quiz || loading) return;
 
@@ -512,6 +538,15 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                         {formatTime(timeLeft)}
                     </span>
                 </div>
+                <Button 
+                    variant="success" 
+                    size="sm" 
+                    onClick={handleSubmit}
+                    disabled={submitting}
+                    loading={submitting}
+                >
+                    Submit Quiz
+                </Button>
             </div>
 
             {/* Progress Bar */}
@@ -642,14 +677,14 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                 size="sm"
             >
                 <p style={{ marginBottom: 'var(--space-lg)' }}>
-                    Are you sure you want to exit? Your progress will be lost.
+                    Are you sure you want to exit? <strong>This will count as a failed attempt and the quiz will be locked.</strong>
                 </p>
                 <div className="flex justify-end gap-md">
                     <Button variant="secondary" onClick={() => setShowConfirm(false)}>
                         Continue Quiz
                     </Button>
-                    <Button variant="danger" onClick={onBack}>
-                        Exit Quiz
+                    <Button variant="danger" onClick={handleExit} loading={submitting}>
+                        Exit & Lock Quiz
                     </Button>
                 </div>
             </Modal>
