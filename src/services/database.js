@@ -663,6 +663,23 @@ export const sendPasswordResetEmail = async (email) => {
     }
 };
 
+export const adminResetPassword = async (userId, newPassword) => {
+    try {
+        // This requires an RPC function named 'admin_reset_password' in Supabase
+        // which has SECURITY DEFINER and allows admins to update auth.users
+        const { data, error } = await supabase.rpc('admin_reset_password', {
+            target_user_id: userId,
+            new_password: newPassword
+        });
+
+        if (error) throw error;
+        return { success: true };
+    } catch (err) {
+        console.error('Admin password reset error:', err);
+        return { success: false, error: err.message };
+    }
+};
+
 // ============================================
 // ADMIN CLASSROOM DATA (CONTEXTLESS)
 // ============================================

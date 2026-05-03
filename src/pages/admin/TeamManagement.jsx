@@ -23,7 +23,10 @@ const TeamManagement = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedMember, setSelectedMember] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
     const [loading, setLoading] = useState(true);
+    const [resetting, setResetting] = useState(false);
 
     useEffect(() => {
         loadMembers();
@@ -44,6 +47,33 @@ const TeamManagement = () => {
         } catch (error) {
             console.error('Reset password error:', error);
             alert('An unexpected error occurred while sending the reset email.');
+        }
+    };
+
+    const handleDirectReset = async () => {
+        if (!newPassword || newPassword.length < 6) {
+            alert('Password must be at least 6 characters.');
+            return;
+        }
+
+        setResetting(true);
+        try {
+            // Note: This requires a Supabase Edge Function or Admin API access
+            // For now, we call the database service which will handle the logic
+            const result = await db.adminResetPassword(selectedMember.id, newPassword);
+            
+            if (result.success) {
+                alert(`Password for ${selectedMember.name} has been updated successfully!`);
+                setShowPasswordModal(false);
+                setNewPassword('');
+            } else {
+                alert(`Error: ${result.error || 'Failed to update password. You may need to enable the Admin Edge Function.'}`);
+            }
+        } catch (error) {
+            console.error('Reset error:', error);
+            alert('An unexpected error occurred.');
+        } finally {
+            setResetting(false);
         }
     };
 
@@ -223,8 +253,11 @@ const TeamManagement = () => {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                onClick={() => handleResetPassword(member.email)}
-                                                title="Send Password Reset Email"
+                                                onClick={() => {
+                                                    setSelectedMember(member);
+                                                    setShowPasswordModal(true);
+                                                }}
+                                                title="Directly Set New Password"
                                                 style={{ color: 'var(--warning-500)' }}
                                             >
                                                 <Key size={16} />
@@ -247,6 +280,44 @@ const TeamManagement = () => {
             </Card>
 
 
+
+            {/* Password Reset Modal */}
+            <Modal
+                isOpen={showPasswordModal}
+                onClose={() => setShowPasswordModal(false)}
+                title={`Set Password for ${selectedMember?.name}`}
+                size="sm"
+            >
+                <div className="flex flex-col gap-md">
+                    <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                        Since you are using fake emails, this will directly update the password in the system.
+                    </p>
+                    <Input
+                        type="password"
+                        label="New Password"
+                        placeholder="Min 6 characters"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                    />
+                    <div className="flex gap-sm mt-md">
+                        <Button
+                            variant="secondary"
+                            onClick={() => setShowPasswordModal(false)}
+                            style={{ flex: 1 }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleDirectReset}
+                            loading={resetting}
+                            style={{ flex: 1 }}
+                        >
+                            Update Password
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Invite Modal */}
             <Modal
