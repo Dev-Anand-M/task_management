@@ -1344,6 +1344,20 @@ html[data-theme="dark"] .sidebar {
   }
 }
 
+@media (min-width: 1024px) {
+  .lg\:block {
+    display: block;
+  }
+
+  .lg\:flex {
+    display: flex;
+  }
+
+  .lg\:hidden {
+    display: none;
+  }
+}
+
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1969,6 +1983,15 @@ input.bg-surface\/80 {
   .page-content {
     padding: var(--space-md);
   }
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 199;
+  animation: fadeIn 0.3s ease-out;
 }
 
 /* ---- Animations ---- */
