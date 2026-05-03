@@ -417,7 +417,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
     // Result screen
     if (isComplete && results) {
         return (
-            <div className="animate-fade-in" style={{ maxWidth: '600px', margin: '0 auto' }}>
+        <div className="quiz-container animate-fade-in" style={{ width: '100%' }}>
                 <Card style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
                     <div style={{
                         width: '100px',
@@ -510,9 +510,9 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
     }
 
     return (
-        <div className="animate-fade-in">
+        <div className="quiz-container animate-fade-in">
             {/* Header */}
-            <div className="flex justify-between items-center mb-lg">
+            <div className="quiz-header">
                 <div className="flex items-center gap-md">
                     <Button variant="ghost" size="icon" onClick={() => setShowConfirm(true)}>
                         <ArrowLeft size={20} />
