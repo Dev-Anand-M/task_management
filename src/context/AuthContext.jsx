@@ -22,15 +22,26 @@ export const AuthProvider = ({ children }) => {
         let mounted = true;
         let subscription = null;
 
-        // Initialize session handling
+        // Initialize session handling with timeout
         const initializeAuth = async () => {
+            // Set a safety timeout to ensure loading state is cleared
+            const safetyTimeout = setTimeout(() => {
+                if (mounted) {
+                    console.warn('AuthContext: Initialization timeout, forcing loading to false');
+                    setLoading(false);
+                }
+            }, 3000); // 3 second safety timeout
+
             try {
-                // Get initial session - removed timeout to prevent false failures
+                console.log('AuthContext: Starting initialization...');
+                
+                // Get initial session
                 const { data: { session }, error } = await supabase.auth.getSession();
 
                 if (error) {
                     console.error('Session fetch error:', error);
                     if (mounted) {
+                        clearTimeout(safetyTimeout);
                         setLoading(false);
                     }
                     return;
@@ -39,8 +50,10 @@ export const AuthProvider = ({ children }) => {
                 if (session?.user && mounted) {
                     console.log('Initial session found for user:', session.user.id);
                     setUser(session.user);
-                    // Fetch profile immediately for initial load
-                    await fetchProfile(session.user.id);
+                    // Fetch profile in background - don't block UI
+                    fetchProfile(session.user.id).catch(err => {
+                        console.warn('Initial profile fetch failed:', err);
+                    });
                     // Check deadlines in background
                     if (session.user.id) {
                         db.checkDeadlines(session.user.id).catch(console.error);
@@ -50,9 +63,13 @@ export const AuthProvider = ({ children }) => {
                 }
             } catch (error) {
                 console.error('Init auth error:', error);
-                // Don't clear user state on initialization errors
             } finally {
-                if (mounted) setLoading(false);
+                // Always set loading to false to unblock UI
+                if (mounted) {
+                    clearTimeout(safetyTimeout);
+                    console.log('AuthContext: Initialization complete, setting loading to false');
+                    setLoading(false);
+                }
             }
 
             // Set up listener for subsequent changes
