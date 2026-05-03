@@ -355,7 +355,10 @@ export const deleteQuiz = async (id) => {
 
 
 export const getQuizAttempts = async () => {
-    const { data, error } = await supabase.from('quiz_attempts').select('*').order('completed_at', { ascending: false });
+    const { data, error } = await supabase
+        .from('quiz_attempts')
+        .select('*, profiles(name, avatar_url, email), quizzes(title, points)')
+        .order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
 };

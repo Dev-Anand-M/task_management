@@ -22,26 +22,32 @@ import { formatDate, formatRelativeTime, getStatusColor, EVALUATION_CRITERIA } f
 const EvaluationCenter = () => {
     const { submissionId } = useParams();
     const navigate = useNavigate();
+    const [mode, setMode] = useState('tasks'); // 'tasks' or 'quizzes'
     const [submissions, setSubmissions] = useState([]);
+    const [quizAttempts, setQuizAttempts] = useState([]);
     const [filterStatus, setFilterStatus] = useState('pending');
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
 
-    const loadSubmissions = useCallback(async () => {
+    const loadData = useCallback(async () => {
         try {
             setLoading(true);
-            const data = await db.getSubmissions();
-            setSubmissions(data);
+            const [subs, attempts] = await Promise.all([
+                db.getSubmissions(),
+                db.getQuizAttempts()
+            ]);
+            setSubmissions(subs);
+            setQuizAttempts(attempts);
         } catch (error) {
-            console.error('Error loading submissions:', error);
+            console.error('Error loading evaluation data:', error);
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        loadSubmissions();
-    }, [loadSubmissions]);
+        loadData();
+    }, [loadData]);
 
     const filteredSubmissions = submissions
         .filter(sub => {
@@ -53,8 +59,20 @@ const EvaluationCenter = () => {
         })
         .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
 
-    if (submissionId) {
-        return <EvaluationDetail submissionId={submissionId} onBack={() => navigate('/admin/evaluations')} onUpdate={loadSubmissions} />;
+    const filteredQuizzes = quizAttempts
+        .filter(att => {
+            const matchesSearch = searchQuery === '' ||
+                att.profiles?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                att.quizzes?.title?.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesSearch;
+        });
+
+    if (mode === 'tasks' && submissionId) {
+        return <EvaluationDetail submissionId={submissionId} onBack={() => navigate('/admin/evaluations')} onUpdate={loadData} />;
+    }
+
+    if (mode === 'quizzes' && submissionId) {
+        return <QuizReviewDetail attemptId={submissionId} onBack={() => navigate('/admin/evaluations')} />;
     }
 
     if (loading) {
@@ -68,113 +86,204 @@ const EvaluationCenter = () => {
     return (
         <div className="animate-fade-in">
             {/* Header */}
-            <div className="mb-lg">
-                <p style={{ color: 'var(--text-muted)' }}>
-                    Review and evaluate team submissions
-                </p>
+            <div className="flex justify-between items-center mb-lg">
+                <div>
+                    <h2 style={{ margin: 0 }}>Evaluation Center</h2>
+                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>
+                        Review and evaluate team progress
+                    </p>
+                </div>
+                <div className="tabs" style={{ background: 'var(--card)', padding: '4px' }}>
+                    <button
+                        className={`tab ${mode === 'tasks' ? 'active' : ''}`}
+                        onClick={() => {
+                            setMode('tasks');
+                            setFilterStatus('pending');
+                        }}
+                    >
+                        Tasks
+                    </button>
+                    <button
+                        className={`tab ${mode === 'quizzes' ? 'active' : ''}`}
+                        onClick={() => setMode('quizzes')}
+                    >
+                        Quizzes
+                    </button>
+                </div>
             </div>
 
-            {/* Filters */}
             <Card style={{ marginBottom: 'var(--space-lg)', padding: 'var(--space-md)' }}>
                 <div className="flex gap-md items-center" style={{ flexWrap: 'wrap' }}>
                     <div style={{ flex: '1', minWidth: '200px' }}>
                         <Input
-                            placeholder="Search by name or task..."
+                            placeholder={mode === 'tasks' ? "Search by name or task..." : "Search by name or quiz..."}
                             icon={Search}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <div className="tabs" style={{ width: 'auto' }}>
-                        {['all', 'pending', 'approved', 'rejected'].map(status => (
-                            <button
-                                key={status}
-                                className={`tab ${filterStatus === status ? 'active' : ''}`}
-                                onClick={() => setFilterStatus(status)}
-                            >
-                                {status.charAt(0).toUpperCase() + status.slice(1)}
-                                {status === 'pending' && (
-                                    <Badge variant="warning" style={{ marginLeft: '6px' }}>
-                                        {submissions.filter(s => s.status === 'pending').length}
-                                    </Badge>
-                                )}
-                            </button>
-                        ))}
-                    </div>
+                    {mode === 'tasks' && (
+                        <div className="tabs" style={{ width: 'auto' }}>
+                            {['all', 'pending', 'approved', 'rejected'].map(status => (
+                                <button
+                                    key={status}
+                                    className={`tab ${filterStatus === status ? 'active' : ''}`}
+                                    onClick={() => setFilterStatus(status)}
+                                >
+                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                    {status === 'pending' && (
+                                        <Badge variant="warning" style={{ marginLeft: '6px' }}>
+                                            {submissions.filter(s => s.status === 'pending').length}
+                                        </Badge>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </Card>
 
-            {/* Submissions List */}
-            {filteredSubmissions.length === 0 ? (
-                <Card>
-                    <div className="empty-state">
-                        <div className="empty-state-icon">
-                            <CheckCircle size={32} />
+            {/* List */}
+            {mode === 'tasks' ? (
+                /* Submissions List */
+                filteredSubmissions.length === 0 ? (
+                    <Card>
+                        <div className="empty-state">
+                            <div className="empty-state-icon">
+                                <CheckCircle size={32} />
+                            </div>
+                            <h3>No submissions found</h3>
+                            <p>
+                                {filterStatus === 'pending'
+                                    ? 'All caught up! No pending submissions to review.'
+                                    : 'No submissions match your current filters.'}
+                            </p>
                         </div>
-                        <h3>No submissions found</h3>
-                        <p>
-                            {filterStatus === 'pending'
-                                ? 'All caught up! No pending submissions to review.'
-                                : 'No submissions match your current filters.'}
-                        </p>
-                    </div>
-                </Card>
-            ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-                    {filteredSubmissions.map(sub => (
-                        <Link
-                            key={sub.id}
-                            to={`/admin/evaluations/${sub.id}`}
-                            style={{ textDecoration: 'none' }}
-                        >
-                            <Card style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 'var(--space-lg)',
-                                padding: 'var(--space-lg)',
-                                cursor: 'pointer',
-                                transition: 'all var(--transition-fast)'
-                            }}>
-                                <Avatar name={sub.profiles?.name} size="lg" />
+                    </Card>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                        {filteredSubmissions.map(sub => (
+                            <Link
+                                key={sub.id}
+                                to={`/admin/evaluations/${sub.id}`}
+                                style={{ textDecoration: 'none' }}
+                            >
+                                <Card style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 'var(--space-lg)',
+                                    padding: 'var(--space-lg)',
+                                    cursor: 'pointer',
+                                    transition: 'all var(--transition-fast)'
+                                }}>
+                                    <Avatar name={sub.profiles?.name} size="lg" />
 
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div className="flex items-center gap-sm mb-xs">
-                                        <h4 style={{ margin: 0 }}>{sub.profiles?.name}</h4>
-                                        <Badge variant={getStatusColor(sub.status)}>{sub.status}</Badge>
-                                        {sub.is_resubmission && <Badge variant="primary">Resubmitted</Badge>}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div className="flex items-center gap-sm mb-xs">
+                                            <h4 style={{ margin: 0 }}>{sub.profiles?.name}</h4>
+                                            <Badge variant={getStatusColor(sub.status)}>{sub.status}</Badge>
+                                            {sub.is_resubmission && <Badge variant="primary">Resubmitted</Badge>}
+                                        </div>
+                                        <p style={{
+                                            margin: 0,
+                                            color: 'var(--text-muted)',
+                                            fontSize: 'var(--text-sm)'
+                                        }}>
+                                            {sub.tasks?.title}
+                                        </p>
                                     </div>
-                                    <p style={{
-                                        margin: 0,
-                                        color: 'var(--text-muted)',
-                                        fontSize: 'var(--text-sm)'
-                                    }}>
-                                        {sub.tasks?.title}
-                                    </p>
-                                </div>
 
-                                <div style={{ textAlign: 'right' }}>
-                                    {sub.score !== null && sub.score !== undefined && (
+                                    <div style={{ textAlign: 'right' }}>
+                                        {sub.score !== null && sub.score !== undefined && (
+                                            <div style={{
+                                                fontSize: 'var(--text-lg)',
+                                                fontWeight: 600,
+                                                color: sub.status === 'approved' ? 'var(--success-500)' : 'var(--text-muted)'
+                                            }}>
+                                                {sub.score}/100
+                                            </div>
+                                        )}
+                                        <div style={{
+                                            fontSize: 'var(--text-xs)',
+                                            color: 'var(--text-muted)'
+                                        }}>
+                                            {formatRelativeTime(sub.submitted_at)}
+                                        </div>
+                                    </div>
+
+                                    <ExternalLink size={20} style={{ color: 'var(--text-muted)' }} />
+                                </Card>
+                            </Link>
+                        ))}
+                    </div>
+                )
+            ) : (
+                /* Quizzes List */
+                filteredQuizzes.length === 0 ? (
+                    <Card>
+                        <div className="empty-state">
+                            <div className="empty-state-icon">
+                                <Award size={32} />
+                            </div>
+                            <h3>No quiz attempts yet</h3>
+                            <p>Students haven't completed any quizzes yet.</p>
+                        </div>
+                    </Card>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                        {filteredQuizzes.map(att => (
+                            <Link
+                                key={att.id}
+                                to={`/admin/evaluations/${att.id}`}
+                                style={{ textDecoration: 'none' }}
+                            >
+                                <Card style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 'var(--space-lg)',
+                                    padding: 'var(--space-lg)',
+                                    cursor: 'pointer'
+                                }}>
+                                    <Avatar name={att.profiles?.name} size="lg" />
+
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div className="flex items-center gap-sm mb-xs">
+                                            <h4 style={{ margin: 0 }}>{att.profiles?.name}</h4>
+                                            <Badge variant={att.passed ? 'success' : 'error'}>
+                                                {att.passed ? 'Passed' : 'Failed'}
+                                            </Badge>
+                                        </div>
+                                        <p style={{
+                                            margin: 0,
+                                            color: 'var(--text-muted)',
+                                            fontSize: 'var(--text-sm)'
+                                        }}>
+                                            {att.quizzes?.title}
+                                        </p>
+                                    </div>
+
+                                    <div style={{ textAlign: 'right' }}>
                                         <div style={{
                                             fontSize: 'var(--text-lg)',
                                             fontWeight: 600,
-                                            color: sub.status === 'approved' ? 'var(--success-500)' : 'var(--text-muted)'
+                                            color: att.passed ? 'var(--success-500)' : 'var(--error-500)'
                                         }}>
-                                            {sub.score}/100
+                                            {att.score}%
                                         </div>
-                                    )}
-                                    <div style={{
-                                        fontSize: 'var(--text-xs)',
-                                        color: 'var(--text-muted)'
-                                    }}>
-                                        {formatRelativeTime(sub.submitted_at)}
+                                        <div style={{
+                                            fontSize: 'var(--text-xs)',
+                                            color: 'var(--text-muted)'
+                                        }}>
+                                            {formatRelativeTime(att.created_at || att.completed_at)}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <ExternalLink size={20} style={{ color: 'var(--text-muted)' }} />
-                            </Card>
-                        </Link>
-                    ))}
-                </div>
+                                    <ExternalLink size={20} style={{ color: 'var(--text-muted)' }} />
+                                </Card>
+                            </Link>
+                        ))}
+                    </div>
+                )
             )}
 
             <style>{`
@@ -552,6 +661,142 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
           }
         }
       `}</style>
+        </div>
+    );
+};
+
+// Detailed Quiz review view
+const QuizReviewDetail = ({ attemptId, onBack }) => {
+    const [attempt, setAttempt] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    const loadAttempt = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await db.getQuizAttempts();
+            const att = data.find(a => a.id === attemptId);
+            if (att) {
+                // Fetch the actual quiz questions for reference
+                const quiz = await db.getQuizById(att.quiz_id);
+                setAttempt({ ...att, quiz });
+            }
+        } catch (error) {
+            console.error('Error loading quiz attempt:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [attemptId]);
+
+    useEffect(() => {
+        loadAttempt();
+    }, [loadAttempt]);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center" style={{ minHeight: '400px' }}>
+                <div className="loading-spinner" />
+            </div>
+        );
+    }
+
+    if (!attempt) return <div>Attempt not found</div>;
+
+    return (
+        <div className="animate-fade-in">
+            <div className="flex items-center gap-md mb-lg">
+                <Button variant="ghost" size="icon" onClick={onBack}>
+                    <ArrowLeft size={20} />
+                </Button>
+                <div>
+                    <h2 style={{ margin: 0 }}>Quiz Results Review</h2>
+                    <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+                        {attempt.quiz?.title}
+                    </p>
+                </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--space-lg)' }}>
+                {/* Summary Info */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                    <Card>
+                        <div className="flex items-center gap-md mb-lg">
+                            <Avatar name={attempt.profiles?.name} size="lg" />
+                            <div>
+                                <h4 style={{ margin: 0 }}>{attempt.profiles?.name}</h4>
+                                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                                    {attempt.profiles?.email}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-sm">
+                            <div style={{ padding: 'var(--space-md)', background: 'var(--card)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <p style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, margin: 0, color: attempt.passed ? 'var(--success-500)' : 'var(--error-500)' }}>
+                                    {attempt.score}%
+                                </p>
+                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: 0 }}>Score</p>
+                            </div>
+                            <div style={{ padding: 'var(--space-md)', background: 'var(--card)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <p style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, margin: 0 }}>
+                                    {attempt.correct}/{attempt.total}
+                                </p>
+                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: 0 }}>Correct</p>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                {/* Answers Review */}
+                <Card>
+                    <h4 style={{ marginBottom: 'var(--space-lg)' }}>Question Review</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                        {attempt.quiz?.questions.map((q, index) => {
+                            const userAnswer = attempt.answers[index];
+                            const isCorrect = q.type === 'boolean' 
+                                ? userAnswer === q.correctAnswer
+                                : userAnswer === q.correctAnswer;
+                            
+                            return (
+                                <div key={index} style={{
+                                    padding: 'var(--space-md)',
+                                    background: 'var(--card)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    borderLeft: `4px solid ${isCorrect ? 'var(--success-500)' : 'var(--error-500)'}`
+                                }}>
+                                    <p style={{ fontWeight: 600, marginBottom: 'var(--space-md)' }}>
+                                        {index + 1}. {q.question}
+                                    </p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+                                        {q.type === 'multiple' ? (
+                                            q.options.map((opt, optIndex) => (
+                                                <div key={optIndex} style={{
+                                                    fontSize: 'var(--text-sm)',
+                                                    color: optIndex === q.correctAnswer ? 'var(--success-500)' : optIndex === userAnswer ? 'var(--error-500)' : 'var(--text-muted)',
+                                                    fontWeight: (optIndex === q.correctAnswer || optIndex === userAnswer) ? 600 : 400,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px'
+                                                }}>
+                                                    {optIndex === q.correctAnswer && <Check size={14} />}
+                                                    {optIndex === userAnswer && !isCorrect && <X size={14} />}
+                                                    {opt}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div style={{ fontSize: 'var(--text-sm)' }}>
+                                                <span style={{ color: q.correctAnswer === true ? 'var(--success-500)' : 'var(--text-muted)' }}>True</span> / 
+                                                <span style={{ color: q.correctAnswer === false ? 'var(--success-500)' : 'var(--text-muted)' }}> False</span>
+                                                <p style={{ marginTop: '8px', color: isCorrect ? 'var(--success-500)' : 'var(--error-500)', fontWeight: 600 }}>
+                                                    Student Choice: {userAnswer === true ? 'True' : userAnswer === false ? 'False' : 'No Answer'}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </Card>
+            </div>
         </div>
     );
 };
