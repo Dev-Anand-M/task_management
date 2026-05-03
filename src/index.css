@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 /* ====================================
    SkillQuest Design System
    Professional Abstract Aesthetics
@@ -359,8 +361,6 @@ html[data-theme="light"] .progress-bar {
   --card-hover-shadow: 0 8px 30px rgba(251, 191, 36, 0.15);
 }
 
-/* ---- Google Fonts Import ---- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* ---- Base Styles ---- */
 html {

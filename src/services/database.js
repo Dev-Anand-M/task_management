@@ -399,10 +399,20 @@ export const getQuizAttempts = async () => {
         return [];
     }
 };
-    } catch (err) {
-        console.error('Error in getQuizAttempts:', err);
-        return [];
+
+export const updateQuizAttempt = async (id, updates) => {
+    const { data, error } = await supabase
+        .from('quiz_attempts')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error updating quiz attempt:', error);
+        throw error;
     }
+    return data;
 };
 
 export const getQuizAttemptsByUser = async (userId) => {
