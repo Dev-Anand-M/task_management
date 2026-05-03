@@ -92,13 +92,6 @@ const Sidebar = ({ isOpen, onClose }) => {
                 <div
                     className="sidebar-overlay"
                     onClick={onClose}
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        background: 'rgba(0,0,0,0.7)',
-                        zIndex: 199,
-                        display: 'none'
-                    }}
                 />
             )}
 
