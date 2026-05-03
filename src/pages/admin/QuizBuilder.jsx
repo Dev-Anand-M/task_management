@@ -199,58 +199,74 @@ const QuizBuilder = () => {
             lines.push(currentLine);
         }
 
-        const hasHeader = lines.length > 0 && lines[0].some(cell => cell.toLowerCase().includes('question'));
-        const dataLines = hasHeader ? lines.slice(1) : lines;
+        if (lines.length < 2) {
+            alert('CSV is too short. Please provide at least metadata and one question.');
+            return;
+        }
+
+        // Row 1: Metadata (Title, Description, Category, Difficulty, TimeLimit)
+        const metadata = lines[0];
+        const newFormData = { ...formData };
+        
+        if (metadata.length >= 2) {
+            newFormData.title = metadata[0] || formData.title;
+            newFormData.description = metadata[1] || formData.description;
+            if (metadata[2]) newFormData.category = metadata[2];
+            if (metadata[3]) newFormData.difficulty = metadata[3].toLowerCase();
+            if (metadata[4]) newFormData.time_limit = parseInt(metadata[4]) || 10;
+        }
+
+        // Row 2 is usually headers, skip if it looks like one
+        const startIndex = lines[1].some(cell => cell.toLowerCase().includes('type') || cell.toLowerCase().includes('question')) ? 2 : 1;
+        const dataLines = lines.slice(startIndex);
 
         const newQuestions = [];
-        
         dataLines.forEach((row, index) => {
             if (row.length < 2) return;
             
-            const questionText = row[0];
+            const type = row[0].toLowerCase();
+            const questionText = row[1];
             
-            if (row.length >= 6) {
-                const options = [row[1], row[2], row[3], row[4]];
-                let correctIdx = parseInt(row[5]);
-                if (isNaN(correctIdx) || correctIdx < 0 || correctIdx > 3) correctIdx = 0;
+            if (type.includes('mcq') || type.includes('multiple')) {
+                const options = [row[2], row[3], row[4], row[5]];
+                let correctIdx = parseInt(row[6]);
+                if (isNaN(correctIdx)) correctIdx = 0;
                 
                 newQuestions.push({
-                    id: Date.now().toString() + index,
+                    id: `q-${Date.now()}-${index}`,
                     type: 'multiple',
                     question: questionText,
                     options: options,
                     correctAnswer: correctIdx
                 });
-            } else if (row.length >= 2) {
-                const answer = row[1].toLowerCase();
-                if (answer === 'true' || answer === 'false') {
-                    newQuestions.push({
-                        id: Date.now().toString() + index,
-                        type: 'boolean',
-                        question: questionText,
-                        options: [],
-                        correctAnswer: answer === 'true'
-                    });
-                } else {
-                    newQuestions.push({
-                        id: Date.now().toString() + index,
-                        type: 'short',
-                        question: questionText,
-                        options: [],
-                        correctAnswer: row[1]
-                    });
-                }
+            } else if (type.includes('bool') || type.includes('true')) {
+                const answer = row[2].toLowerCase() === 'true';
+                newQuestions.push({
+                    id: `q-${Date.now()}-${index}`,
+                    type: 'boolean',
+                    question: questionText,
+                    options: [],
+                    correctAnswer: answer
+                });
+            } else if (type.includes('short')) {
+                newQuestions.push({
+                    id: `q-${Date.now()}-${index}`,
+                    type: 'short',
+                    question: questionText,
+                    options: [],
+                    correctAnswer: row[2]
+                });
             }
         });
 
         if (newQuestions.length > 0) {
-            setFormData(prev => ({
-                ...prev,
-                questions: [...prev.questions, ...newQuestions]
-            }));
-            alert(`Successfully imported ${newQuestions.length} questions!`);
+            setFormData({
+                ...newFormData,
+                questions: newQuestions
+            });
+            alert(`Successfully imported Quiz: "${newFormData.title}" with ${newQuestions.length} questions!`);
         } else {
-            alert('Could not find valid questions in the CSV. Make sure the format is correct.');
+            alert('Could not find valid questions. Ensure the Type (mcq/boolean/short) is in the first column.');
         }
     };
 
@@ -668,9 +684,11 @@ const QuizBuilder = () => {
                             </div>
                             <div className="text-xs text-muted mb-md p-sm bg-surface border border-border rounded-lg" style={{ opacity: 0.8 }}>
                                 <strong>CSV Format:</strong><br/>
-                                • <strong>Multiple Choice:</strong> Question, Option 1, Option 2, Option 3, Option 4, Correct Index (0-3)<br/>
-                                • <strong>True/False:</strong> Question, True/False<br/>
-                                • <strong>Short Answer:</strong> Question, Expected Answer
+                                • <strong>Row 1:</strong> Title, Description, Category, Difficulty, TimeLimit<br/>
+                                • <strong>Row 2:</strong> Headers (Type, Question, Opt1, Opt2, Opt3, Opt4, Correct)<br/>
+                                • <strong>mcq:</strong> mcq, Question, Option 1, Option 2, Option 3, Option 4, Correct Index (0-3)<br/>
+                                • <strong>boolean:</strong> boolean, Question, True/False<br/>
+                                • <strong>short:</strong> short, Question, Expected Answer
                             </div>
 
                             {formData.questions.length === 0 ? (
