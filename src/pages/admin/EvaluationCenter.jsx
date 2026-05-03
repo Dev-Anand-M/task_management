@@ -74,11 +74,7 @@ const EvaluationCenter = () => {
                 userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 quizTitle.toLowerCase().includes(searchQuery.toLowerCase());
             
-            // Workflow: Only show if AI has finished its pass OR if it's already manually reviewed
-            // This prevents the admin from seeing "empty" un-evaluated quizzes
-            const isReady = att.metadata?.ai_evaluated === true || att.metadata?.manually_evaluated === true;
-            
-            return matchesSearch && isReady;
+            return matchesSearch;
         })
         .sort((a, b) => new Date(b.created_at || b.completed_at) - new Date(a.created_at || a.completed_at));
 
@@ -285,6 +281,14 @@ const EvaluationCenter = () => {
                                             <Badge variant={att.passed ? 'success' : 'error'}>
                                                 {att.passed ? 'Passed' : 'Failed'}
                                             </Badge>
+                                            {att.metadata?.ai_evaluated ? (
+                                                <Badge variant="primary">AI Evaluated</Badge>
+                                            ) : (
+                                                <Badge variant="warning">🤖 AI Processing...</Badge>
+                                            )}
+                                            {att.metadata?.manually_evaluated && (
+                                                <Badge variant="success">Finalized</Badge>
+                                            )}
                                         </div>
                                         <p style={{
                                             margin: 0,
