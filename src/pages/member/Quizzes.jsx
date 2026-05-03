@@ -444,7 +444,8 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
 
         } catch (error) {
             console.error('Error submitting quiz:', error);
-            setSubmissionError('Your internet connection might be unstable. Please try again.');
+            const errorMessage = error.message || (typeof error === 'string' ? error : 'Unknown database error');
+            setSubmissionError(`Submission failed: ${errorMessage}. Please try again or contact support.`);
         } finally {
             setSubmitting(false);
         }
