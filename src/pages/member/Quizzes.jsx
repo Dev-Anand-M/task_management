@@ -15,6 +15,7 @@ import {
     Trophy
 } from 'lucide-react';
 import * as db from '../../services/database';
+import { evaluateQuizAttempt, getSelectedModel, isAPIKeyConfigured } from '../../services/aiService';
 import {
     getDifficultyColor,
     DIFFICULTY_LEVELS
@@ -369,6 +370,61 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                 xpEarned: xpToAward
             });
             setIsComplete(true);
+
+            // --- AUTO AI EVALUATION ---
+            // Run in background if any AI is configured
+            const runAiEval = async (attemptId) => {
+                try {
+                    // Force SambaNova if requested by user, otherwise use selected
+                    let modelToUse = getSelectedModel();
+                    const hasSambaNova = isAPIKeyConfigured('sambanova');
+                    if (hasSambaNova) modelToUse = 'Meta-Llama-3.3-70B-Instruct';
+
+                    console.log('Running Auto AI Eval with:', modelToUse);
+                    const report = await evaluateQuizAttempt(quiz, answers, modelToUse);
+                    
+                    if (report) {
+                        // Calculate new marks based on AI feedback for short answers
+                        let aiCorrect = correct;
+                        report.suggestions.forEach(s => {
+                            const q = quiz.questions[s.questionIndex];
+                            if (q.type === 'short') {
+                                // If AI says correct but we thought wrong (or vice versa)
+                                const wasCorrectLocally = false; // We don't have local grading for short text yet
+                                if (s.isCorrect) aiCorrect++;
+                            }
+                        });
+
+                        const aiScore = Math.round((aiCorrect / quiz.questions.length) * 100);
+                        const aiPassed = aiScore >= passThreshold;
+
+                        await db.updateQuizAttempt(attemptId, {
+                            correct: aiCorrect,
+                            score: aiScore,
+                            passed: aiPassed,
+                            metadata: { ai_evaluated: true, ai_report: report, model_used: modelToUse }
+                        });
+                        
+                        console.log('Auto AI Eval Completed & Marks Updated');
+                        
+                        // Update UI results if still on the page
+                        setResults(prev => ({
+                            ...prev,
+                            score: aiScore,
+                            correct: aiCorrect,
+                            passed: aiPassed
+                        }));
+                    }
+                } catch (e) {
+                    console.error('Auto AI Eval Failed:', e);
+                }
+            };
+
+            // Start AI evaluation
+            const savedAttempt = await db.getQuizAttemptsByUser(user.id);
+            const latestAttempt = savedAttempt[0]; // Most recent
+            if (latestAttempt) runAiEval(latestAttempt.id);
+
             onComplete();
         } catch (error) {
             console.error('Error submitting quiz:', error);
