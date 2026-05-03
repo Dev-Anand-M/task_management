@@ -20,57 +20,53 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         let mounted = true;
-        let subscription = null;
 
-        // Initialize session handling with timeout
+        // Initialize session handling
         const initializeAuth = async () => {
-            // Set a safety timeout to ensure loading state is cleared
-            const safetyTimeout = setTimeout(() => {
-                if (mounted) {
-                    console.warn('AuthContext: Initialization timeout, forcing loading to false');
-                    setLoading(false);
-                }
-            }, 3000); // 3 second safety timeout
-
             try {
-                console.log('AuthContext: Starting initialization...');
-                
-                // Get initial session
-                const { data: { session }, error } = await supabase.auth.getSession();
-
-                if (error) {
-                    console.error('Session fetch error:', error);
-                    if (mounted) {
-                        clearTimeout(safetyTimeout);
-                        setLoading(false);
-                    }
-                    return;
-                }
+                const { data: { session } } = await supabase.auth.getSession();
 
                 if (session?.user && mounted) {
-                    console.log('Initial session found for user:', session.user.id);
                     setUser(session.user);
-                    // Fetch profile in background - don't block UI
-                    fetchProfile(session.user.id).catch(err => {
-                        console.warn('Initial profile fetch failed:', err);
-                    });
-                    // Check deadlines in background
-                    if (session.user.id) {
-                        db.checkDeadlines(session.user.id).catch(console.error);
-                    }
-                } else {
-                    console.log('No initial session found');
+                    await fetchProfile(session.user.id);
                 }
             } catch (error) {
                 console.error('Init auth error:', error);
             } finally {
-                // Always set loading to false to unblock UI
-                if (mounted) {
-                    clearTimeout(safetyTimeout);
-                    console.log('AuthContext: Initialization complete, setting loading to false');
+                if (mounted) setLoading(false);
+            }
+
+            // Set up listener for subsequent changes
+            const { data: { subscription } } = supabase.auth.onAuthStateChange(
+                async (event, session) => {
+                    if (!mounted) return;
+
+                    if (event === 'INITIAL_SESSION') {
+                        return;
+                    }
+
+                    if (session?.user) {
+                        setUser(session.user);
+                        await fetchProfile(session.user.id);
+                    } else {
+                        setUser(null);
+                        setProfile(null);
+                    }
+
                     setLoading(false);
                 }
-            }
+            );
+
+            return subscription;
+        };
+
+        const authPromise = initializeAuth();
+
+        return () => {
+            mounted = false;
+            authPromise.then(subscription => subscription?.unsubscribe());
+        };
+    }, []);
 
             // Set up listener for subsequent changes
             const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
@@ -162,16 +158,8 @@ export const AuthProvider = ({ children }) => {
         };
     }, []);
 
-    const fetchProfile = async (userId, retryCount = 0) => {
-        if (!userId) {
-            console.error('fetchProfile called without userId');
-            return;
-        }
-
+    const fetchProfile = async (userId) => {
         try {
-            console.log(`Fetching profile for user: ${userId} (attempt ${retryCount + 1})`);
-            
-            // Fetch profile including classroom details
             const { data: userProfile, error } = await supabase
                 .from('profiles')
                 .select('*, classrooms(name)')
@@ -180,101 +168,41 @@ export const AuthProvider = ({ children }) => {
 
             if (error) {
                 console.error('Profile fetch error:', error);
-                
-                // Retry logic for transient errors (but not for "not found" errors)
-                if (retryCount < 1 && error.code !== 'PGRST116') {
-                    console.log(`Retrying profile fetch (attempt ${retryCount + 2})...`);
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    return fetchProfile(userId, retryCount + 1);
+                const simpleProfile = await db.getProfileById(userId);
+                if (simpleProfile) {
+                    setProfile(simpleProfile);
                 }
-                
-                // Fallback to simple profile fetch
-                console.log('Attempting fallback profile fetch...');
-                try {
-                    const simpleProfile = await db.getProfileById(userId);
-                    if (simpleProfile) {
-                        console.log('Fallback profile fetch successful');
-                        setProfile(simpleProfile);
-                        return;
-                    }
-                } catch (fallbackError) {
-                    console.error('Fallback profile fetch failed:', fallbackError);
-                }
-                
-                // If all else fails, keep the user logged in but without full profile
-                console.warn('Could not fetch profile, user will remain logged in with limited data');
                 return;
             }
 
             if (userProfile) {
-                console.log('Profile fetched successfully');
-                // Flatten classroom name into profile for easier access
                 setProfile({
                     ...userProfile,
                     classroom_name: userProfile.classrooms?.name
                 });
             }
         } catch (err) {
-            console.error('Profile fetch exception:', err);
-            
-            // Try fallback
-            try {
-                console.log('Attempting fallback profile fetch after exception...');
-                const simpleProfile = await db.getProfileById(userId);
-                if (simpleProfile) {
-                    console.log('Fallback profile fetch successful');
-                    setProfile(simpleProfile);
-                    return;
-                }
-            } catch (fallbackErr) {
-                console.error('Fallback profile fetch error:', fallbackErr);
-            }
-            
-            // Don't throw - keep user logged in even if profile fetch fails
-            console.warn('Profile fetch failed, but user session is maintained');
+            console.error('Profile fetch error:', err);
         }
     };
 
     const login = async (email, password) => {
         try {
-            console.log('Login: Starting authentication...');
-            
-            // Add timeout to prevent hanging on slow Supabase connection
-            const authPromise = supabase.auth.signInWithPassword({
+            const { data, error } = await supabase.auth.signInWithPassword({
                 email: email.toLowerCase().trim(),
                 password
             });
-            
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Authentication timeout - please check your connection')), 10000)
-            );
-            
-            const { data, error } = await Promise.race([authPromise, timeoutPromise]);
 
             if (error) {
                 console.error('Login error:', error);
                 return { success: false, error: error.message };
             }
 
-            console.log('Login: Authentication successful, user ID:', data.user.id);
-            
-            // Set user immediately
-            setUser(data.user);
-            
-            // Fetch profile in background (don't wait for it)
-            fetchProfile(data.user.id).catch(err => {
-                console.warn('Profile fetch failed during login:', err);
-            });
-            
-            // Ensure loading is set to false
-            setLoading(false);
-            console.log('Login: Complete, returning success');
-            
+            await fetchProfile(data.user.id);
             return { success: true };
         } catch (err) {
             console.error('Login error:', err);
-            setLoading(false);
-            return { success: false, error: err.message || 'Login failed. Please check your connection and try again.' };
+            return { success: false, error: err.message || 'Login failed. Please try again.' };
         }
     };
 
@@ -313,33 +241,14 @@ export const AuthProvider = ({ children }) => {
     const refreshUser = async () => {
         if (user?.id) {
             await fetchProfile(user.id);
-        } else {
-            // Try to recover session if user is null
-            console.log('Attempting to recover session...');
-            await forceRefresh();
         }
     };
 
     const forceRefresh = async () => {
-        try {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            
-            if (error) {
-                console.error('Force refresh error:', error);
-                // Don't clear state on error - keep user logged in
-                return;
-            }
-            
-            if (session?.user) {
-                setUser(session.user);
-                await fetchProfile(session.user.id);
-            } else {
-                console.warn('No session found during force refresh');
-                // Don't automatically log out - session might be temporarily unavailable
-            }
-        } catch (err) {
-            console.error('Force refresh exception:', err);
-            // Don't clear state on exception
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+            setUser(session.user);
+            await fetchProfile(session.user.id);
         }
     };
 
