@@ -771,6 +771,7 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                     newOverrides[qIndex] = s.isCorrect;
                 }
             });
+            console.log('Final Overrides to set:', newOverrides);
             setOverrides(newOverrides);
 
             // PERSIST to Database immediately so it's not lost
@@ -1040,44 +1041,64 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                     <p style={{ margin: 0, fontWeight: 600 }}>{userAnswer || '(No answer)'}</p>
                                                 </div>
                                                 
-                                                <div className="flex items-center gap-sm mt-md">
-                                                    <Button 
-                                                        size="sm" 
-                                                        variant={overrides[index] === true ? 'success' : 'secondary'}
-                                                        onClick={() => setOverrides(prev => ({ ...prev, [index]: true }))}
-                                                        icon={Check}
-                                                    >
-                                                        Mark Correct
-                                                    </Button>
-                                                    <Button 
-                                                        size="sm" 
-                                                        variant={overrides[index] === false ? 'danger' : 'secondary'}
-                                                        onClick={() => setOverrides(prev => ({ ...prev, [index]: false }))}
-                                                        icon={X}
-                                                    >
-                                                        Mark Wrong
-                                                    </Button>
+                                                    {/* AI Badge & Glow logic */}
+                                                    {(() => {
+                                                        const suggestion = aiReport?.suggestions?.find(s => Number(s.questionIndex) === Number(index));
+                                                        const aiIsCorrect = suggestion?.isCorrect;
+                                                        
+                                                        return (
+                                                            <div className="flex items-center gap-sm mt-md w-full">
+                                                                <Button 
+                                                                    size="sm" 
+                                                                    variant={overrides[index] === true ? 'success' : 'secondary'}
+                                                                    style={{ 
+                                                                        flex: 1,
+                                                                        boxShadow: (aiIsCorrect === true && overrides[index] === undefined) ? '0 0 15px var(--success-500)' : 'none',
+                                                                        border: (aiIsCorrect === true && overrides[index] === undefined) ? '2px solid var(--success-400)' : '1px solid transparent',
+                                                                        transform: (aiIsCorrect === true && overrides[index] === undefined) ? 'scale(1.05)' : 'scale(1)',
+                                                                        transition: 'all 0.3s ease'
+                                                                    }}
+                                                                    onClick={() => setOverrides(prev => ({ ...prev, [index]: true }))}
+                                                                    icon={Check}
+                                                                >
+                                                                    Mark Correct
+                                                                </Button>
+                                                                <Button 
+                                                                    size="sm" 
+                                                                    variant={overrides[index] === false ? 'danger' : 'secondary'}
+                                                                    style={{ 
+                                                                        flex: 1,
+                                                                        boxShadow: (aiIsCorrect === false && overrides[index] === undefined) ? '0 0 15px var(--error-500)' : 'none',
+                                                                        border: (aiIsCorrect === false && overrides[index] === undefined) ? '2px solid var(--error-400)' : '1px solid transparent',
+                                                                        transform: (aiIsCorrect === false && overrides[index] === undefined) ? 'scale(1.05)' : 'scale(1)',
+                                                                        transition: 'all 0.3s ease'
+                                                                    }}
+                                                                    onClick={() => setOverrides(prev => ({ ...prev, [index]: false }))}
+                                                                    icon={X}
+                                                                >
+                                                                    Mark Wrong
+                                                                </Button>
 
-                                                    {/* AI Badge */}
-                                                    {aiReport?.suggestions?.find(s => Number(s.questionIndex) === Number(index)) && (
-                                                        <Badge 
-                                                            variant="outline"
-                                                            style={{ 
-                                                                marginLeft: 'auto',
-                                                                borderColor: aiReport.suggestions.find(s => Number(s.questionIndex) === Number(index)).isCorrect ? 'var(--success-500)' : 'var(--error-500)',
-                                                                color: aiReport.suggestions.find(s => Number(s.questionIndex) === Number(index)).isCorrect ? 'var(--success-600)' : 'var(--error-600)',
-                                                                background: aiReport.suggestions.find(s => Number(s.questionIndex) === Number(index)).isCorrect ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '4px',
-                                                                padding: '4px 8px'
-                                                            }}
-                                                        >
-                                                            <Brain size={12} />
-                                                            AI: {aiReport.suggestions.find(s => Number(s.questionIndex) === Number(index)).isCorrect ? 'Correct' : 'Wrong'}
-                                                        </Badge>
-                                                    )}
-                                                </div>
+                                                                {suggestion && (
+                                                                    <Badge 
+                                                                        variant="outline"
+                                                                        style={{ 
+                                                                            borderColor: aiIsCorrect ? 'var(--success-500)' : 'var(--error-500)',
+                                                                            color: aiIsCorrect ? 'var(--success-600)' : 'var(--error-600)',
+                                                                            background: aiIsCorrect ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '4px',
+                                                                            padding: '4px 8px'
+                                                                        }}
+                                                                    >
+                                                                        <Brain size={12} />
+                                                                        AI Suggests {aiIsCorrect ? 'Correct' : 'Wrong'}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
 
                                                 {aiReport && aiReport.suggestions.find(s => Number(s.questionIndex) === Number(index)) && (
                                                     <div style={{ marginTop: 'var(--space-md)', padding: 'var(--space-sm)', background: 'rgba(167, 139, 250, 0.1)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
