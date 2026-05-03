@@ -585,13 +585,8 @@ const Header = ({ onMenuClick, title }) => {
 
                 <button
                   onClick={() => {
-                    // Since we don't have direct access to logout from Header (it's in Layout/Sidebar context usually, but we have useAuth)
-                    // useAuth provides logout
-                    // We need to pass it or use it
-                    // We have useAuth() in Header!
-                    useAuth().logout(); // Wait, we can't call hooks in callback usually, but useAuth result is constant.
-                    // Actually we destructure user, isAdmin from useAuth(). Let's destructure logout too.
-                    // See import section.
+                    logout();
+                    setShowProfileMenu(false);
                   }}
                   style={{
                     width: '100%',

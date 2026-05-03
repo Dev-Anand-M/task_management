@@ -20,7 +20,8 @@ const Login = () => {
         const result = await login(email, password);
 
         if (result.success) {
-            navigate(result.user.role === 'admin' ? '/admin' : '/dashboard');
+            // Navigation will be handled by AuthRoute redirect
+            // No need to manually navigate
         } else {
             setError(result.error || 'Invalid credentials');
         }

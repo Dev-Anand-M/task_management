@@ -17,49 +17,120 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [sessionChecked, setSessionChecked] = useState(false);
 
     useEffect(() => {
         let mounted = true;
+        let subscription = null;
 
         // Initialize session handling
         const initializeAuth = async () => {
             try {
-                // Get initial session with a timeout to prevent hanging
+                // Get initial session - increased timeout for slow connections
                 const sessionPromise = supabase.auth.getSession();
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Session timeout')), 5000));
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Session timeout')), 10000)
+                );
 
-                const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+                const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
+
+                if (error) {
+                    console.error('Session fetch error:', error);
+                    // Don't throw, just mark as checked
+                    if (mounted) {
+                        setSessionChecked(true);
+                        setLoading(false);
+                    }
+                    return;
+                }
 
                 if (session?.user && mounted) {
                     setUser(session.user);
                     // Fetch profile immediately for initial load
                     await fetchProfile(session.user.id);
                     // Check deadlines in background
-                    db.checkDeadlines(session.user.id).catch(console.error);
+                    if (session.user.id) {
+                        db.checkDeadlines(session.user.id).catch(console.error);
+                    }
+                }
+                
+                if (mounted) {
+                    setSessionChecked(true);
                 }
             } catch (error) {
                 console.error('Init auth error:', error);
+                // Don't clear user state on initialization errors
+                if (mounted) {
+                    setSessionChecked(true);
+                }
             } finally {
                 if (mounted) setLoading(false);
             }
 
             // Set up listener for subsequent changes
-            const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
                 async (event, session) => {
                     if (!mounted) return;
 
-                    // Ignnore INITIAL_SESSION as we handled it above
+                    console.log('Auth state change:', event, session?.user?.id);
+
+                    // Ignore INITIAL_SESSION as we handled it above
                     if (event === 'INITIAL_SESSION') {
                         return;
                     }
 
+                    // Handle explicit sign out
+                    if (event === 'SIGNED_OUT') {
+                        setUser(null);
+                        setProfile(null);
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Handle token refresh - don't clear state on refresh
+                    if (event === 'TOKEN_REFRESHED') {
+                        if (session?.user) {
+                            setUser(session.user);
+                            // Optionally refresh profile on token refresh
+                            // Only if we don't have a profile yet
+                            if (!profile) {
+                                await fetchProfile(session.user.id);
+                            }
+                        }
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Handle sign in
+                    if (event === 'SIGNED_IN') {
+                        if (session?.user) {
+                            setUser(session.user);
+                            await fetchProfile(session.user.id);
+                        }
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Handle user updated
+                    if (event === 'USER_UPDATED') {
+                        if (session?.user) {
+                            setUser(session.user);
+                            // Refresh profile on user update
+                            await fetchProfile(session.user.id);
+                        }
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Default: if we have a session, keep the user logged in
                     if (session?.user) {
                         setUser(session.user);
-                        // Only fetch profile if it's a different user or explicit sign-in event
-                        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                        // Only fetch profile if we don't have one
+                        if (!profile) {
                             await fetchProfile(session.user.id);
                         }
                     } else {
+                        // Only clear state if explicitly no session
                         setUser(null);
                         setProfile(null);
                     }
@@ -68,25 +139,55 @@ export const AuthProvider = ({ children }) => {
                 }
             );
 
-            return subscription;
+            subscription = authSubscription;
         };
 
-        const authPromise = initializeAuth();
+        initializeAuth();
 
         return () => {
             mounted = false;
-            authPromise.then(subscription => subscription?.unsubscribe());
+            if (subscription) {
+                subscription.unsubscribe();
+            }
         };
     }, []);
 
-    const fetchProfile = async (userId) => {
+    const fetchProfile = async (userId, retryCount = 0) => {
+        if (!userId) {
+            console.error('fetchProfile called without userId');
+            return;
+        }
+
         try {
             // Fetch profile including classroom details if possible
-            const { data: userProfile } = await supabase
+            const { data: userProfile, error } = await supabase
                 .from('profiles')
                 .select('*, classrooms(name)')
                 .eq('id', userId)
                 .single();
+
+            if (error) {
+                console.error('Profile fetch error:', error);
+                
+                // Retry logic for transient errors
+                if (retryCount < 2 && (error.code === 'PGRST116' || error.message?.includes('timeout'))) {
+                    console.log(`Retrying profile fetch (attempt ${retryCount + 1})...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+                    return fetchProfile(userId, retryCount + 1);
+                }
+                
+                // Fallback to simple profile fetch
+                console.log('Attempting fallback profile fetch...');
+                const simpleProfile = await db.getProfileById(userId);
+                if (simpleProfile) {
+                    setProfile(simpleProfile);
+                    return;
+                }
+                
+                // If all else fails, keep the user logged in but without full profile
+                console.warn('Could not fetch profile, user will remain logged in with limited data');
+                return;
+            }
 
             if (userProfile) {
                 // Flatten classroom name into profile for easier access
@@ -94,13 +195,24 @@ export const AuthProvider = ({ children }) => {
                     ...userProfile,
                     classroom_name: userProfile.classrooms?.name
                 });
-            } else {
-                // Fallback
-                const simpleProfile = await db.getProfileById(userId);
-                setProfile(simpleProfile);
             }
         } catch (err) {
-            console.error('Profile fetch error:', err);
+            console.error('Profile fetch exception:', err);
+            
+            // Try fallback
+            try {
+                console.log('Attempting fallback profile fetch after exception...');
+                const simpleProfile = await db.getProfileById(userId);
+                if (simpleProfile) {
+                    setProfile(simpleProfile);
+                    return;
+                }
+            } catch (fallbackErr) {
+                console.error('Fallback profile fetch error:', fallbackErr);
+            }
+            
+            // Don't throw - keep user logged in even if profile fetch fails
+            console.warn('Profile fetch failed, but user session is maintained');
         }
     };
 
@@ -116,6 +228,7 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, error: error.message };
             }
 
+            // Wait for profile to be fetched before returning success
             await fetchProfile(data.user.id);
             return { success: true };
         } catch (err) {
@@ -159,14 +272,33 @@ export const AuthProvider = ({ children }) => {
     const refreshUser = async () => {
         if (user?.id) {
             await fetchProfile(user.id);
+        } else {
+            // Try to recover session if user is null
+            console.log('Attempting to recover session...');
+            await forceRefresh();
         }
     };
 
     const forceRefresh = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-            setUser(session.user);
-            await fetchProfile(session.user.id);
+        try {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            
+            if (error) {
+                console.error('Force refresh error:', error);
+                // Don't clear state on error - keep user logged in
+                return;
+            }
+            
+            if (session?.user) {
+                setUser(session.user);
+                await fetchProfile(session.user.id);
+            } else {
+                console.warn('No session found during force refresh');
+                // Don't automatically log out - session might be temporarily unavailable
+            }
+        } catch (err) {
+            console.error('Force refresh exception:', err);
+            // Don't clear state on exception
         }
     };
 
@@ -195,7 +327,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const value = {
-        user: profile || user,
+        user: profile,
         authUser: user,
         loading,
         isAdmin: profile?.role === 'admin',

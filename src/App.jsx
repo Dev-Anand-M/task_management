@@ -59,8 +59,8 @@ const ProtectedLayout = ({ requiredRole }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole && user.role !== requiredRole) {
-    return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+  if (requiredRole && user?.role !== requiredRole) {
+    return <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />;
   }
 
   return (
@@ -77,8 +77,8 @@ const RoleGuard = ({ role }) => {
   if (loading) return <LoadingSpinner />; // Should be handled by parent but safe to keep
   if (!user) return <Navigate to="/login" replace />;
 
-  if (user.role !== role) {
-    return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+  if (user?.role !== role) {
+    return <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />;
   }
 
   return <Outlet />;

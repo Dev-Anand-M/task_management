@@ -25,7 +25,7 @@ import {
 import Avatar from '../common/Avatar';
 
 const Sidebar = ({ isOpen, onClose }) => {
-    const { user, isAdmin, logout } = useAuth();
+    const { user, isAdmin, logout, forceRefresh } = useAuth();
     const [classrooms, setClassrooms] = useState([]);
     const [showClassroomMenu, setShowClassroomMenu] = useState(false);
     const [showAiTools, setShowAiTools] = useState(false);
@@ -40,9 +40,17 @@ const Sidebar = ({ isOpen, onClose }) => {
     const handleSwitchClassroom = async (classroomId) => {
         try {
             await db.switchClassroom(classroomId);
-            window.location.reload();
+            // Force refresh auth context instead of full page reload
+            await forceRefresh();
+            // Reload classrooms list
+            if (isAdmin) {
+                const updatedClassrooms = await db.getClassrooms();
+                setClassrooms(updatedClassrooms);
+            }
+            setShowClassroomMenu(false);
         } catch (error) {
             console.error('Failed to switch classroom:', error);
+            alert('Failed to switch classroom. Please try again.');
         }
     };
 

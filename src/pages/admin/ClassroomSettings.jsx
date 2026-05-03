@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
 const ClassroomSettings = () => {
-    const { user } = useAuth();
+    const { user, forceRefresh } = useAuth();
     const navigate = useNavigate();
 
     const [classrooms, setClassrooms] = useState([]);
@@ -73,8 +73,6 @@ const ClassroomSettings = () => {
             setShowCreateModal(false);
             setNewName('');
             setNewDesc('');
-            // Reload done by handleSwitch usually, but let's reload list
-            loadData();
         } catch (error) {
             console.error(error);
             alert('Failed to create classroom');
@@ -112,9 +110,14 @@ const ClassroomSettings = () => {
         try {
             setLoading(true);
             await db.switchClassroom(id);
-            window.location.reload(); // Reload to refresh all data/configs (easiest way to reset all stores)
+            // Force refresh auth context instead of full page reload
+            await forceRefresh();
+            // Reload data after context refresh
+            await loadData();
         } catch (error) {
             console.error('Switch error', error);
+            alert('Failed to switch classroom');
+        } finally {
             setLoading(false);
         }
     };

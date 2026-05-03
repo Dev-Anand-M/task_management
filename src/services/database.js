@@ -4,25 +4,34 @@ import { supabase } from '../lib/supabase';
 // PROFILES
 // ============================================
 export const getMembers = async () => {
-    // Filter by current classroom
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+    try {
+        // Filter by current classroom
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+            console.error('Auth error in getMembers:', error);
+            return [];
+        }
+        if (!user) return [];
 
-    const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
+        const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
 
-    let query = supabase.from('profiles').select('*').order('created_at', { ascending: false });
+        let query = supabase.from('profiles').select('*').order('created_at', { ascending: false });
 
-    if (profile?.classroom_id) {
-        query = query.eq('classroom_id', profile.classroom_id);
-    } else if (profile?.role !== 'admin') {
-        // If not admin and no classroom, return nothing or handle appropriately
+        if (profile?.classroom_id) {
+            query = query.eq('classroom_id', profile.classroom_id);
+        } else if (profile?.role !== 'admin') {
+            // If not admin and no classroom, return nothing or handle appropriately
+            return [];
+        }
+        // If admin and no classroom, returns all (Global)
+
+        const { data, error: queryError } = await query;
+        if (queryError) throw queryError;
+        return data || [];
+    } catch (err) {
+        console.error('Error in getMembers:', err);
         return [];
     }
-    // If admin and no classroom, returns all (Global)
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return data || [];
 };
 
 export const getProfileById = async (id) => {
