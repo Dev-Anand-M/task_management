@@ -344,7 +344,8 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                 score,
                 correct,
                 total: quiz.questions.length,
-                passed
+                passed,
+                completed_at: new Date().toISOString()
             });
 
             // --- AUTO AI EVALUATION ---

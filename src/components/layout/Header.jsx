@@ -135,8 +135,9 @@ const Header = ({ onMenuClick, title }) => {
   };
 
   const formatTime = (isoString) => {
-    // Simple relative time or just time string
+    if (!isoString) return '';
     const date = new Date(isoString);
+    if (isNaN(date.getTime())) return '';
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 

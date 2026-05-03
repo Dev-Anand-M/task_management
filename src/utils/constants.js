@@ -7,7 +7,10 @@ export const generateId = () => {
 
 // Format date
 export const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    if (!date) return 'N/A';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return 'N/A';
+    return d.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
@@ -16,8 +19,12 @@ export const formatDate = (date) => {
 
 // Format relative time
 export const formatRelativeTime = (date) => {
+    if (!date) return 'Just now';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return 'Just now';
+    
     const now = new Date();
-    const diff = now - new Date(date);
+    const diff = now - d;
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
