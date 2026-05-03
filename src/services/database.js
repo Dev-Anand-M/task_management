@@ -271,12 +271,18 @@ export const getQuizzes = async () => {
             const isInClassroom = quiz.classroom_id === profile.classroom_id;
             const isSpecificallyAssigned = quiz.assigned_to?.includes(user.id);
             
-            // Debugging log (visible in console)
-            if (isGlobal || isInClassroom || isSpecificallyAssigned) {
-                console.log(`Quiz "${quiz.title}" visible because:`, { isGlobal, isInClassroom, isSpecificallyAssigned });
+            // Logic:
+            // 1. If global, everyone sees it.
+            // 2. If specific, ONLY the assigned students see it.
+            // 3. Otherwise (classroom/everyone), everyone in the classroom sees it.
+            
+            if (isGlobal) return true;
+            
+            if (quiz.assignment_type === 'specific') {
+                return isSpecificallyAssigned;
             }
-
-            return isGlobal || isInClassroom || isSpecificallyAssigned;
+            
+            return isInClassroom;
         });
         
         console.log(`Member Quizzes: Found ${allQuizzes.length} total, showing ${filtered.length} for user`);
