@@ -390,13 +390,17 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                         let finalCorrect = 0;
                         
                         quiz.questions.forEach((q, idx) => {
+                            const aiSuggestion = report.suggestions.find(s => Number(s.questionIndex) === Number(idx));
+                            const isLocallyCorrect = q.type !== 'short' && answers[idx] === q.correctAnswer;
+
                             if (q.type === 'short') {
-                                // Use AI's evaluation for short text
-                                const aiSuggestion = report.suggestions.find(s => s.questionIndex === idx);
+                                // Trust AI for short answers
                                 if (aiSuggestion?.isCorrect) finalCorrect++;
                             } else {
-                                // Use local logic for MCQ/Boolean (it's more reliable for exact matches)
-                                if (answers[idx] === q.correctAnswer) finalCorrect++;
+                                // For MCQ/Boolean: Correct if local check passes OR AI rescues it
+                                if (isLocallyCorrect || (aiSuggestion?.isCorrect)) {
+                                    finalCorrect++;
+                                }
                             }
                         });
 

@@ -942,49 +942,7 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                             </Button>
                         )}
 
-                        <div style={{ marginTop: 'var(--space-md)' }}>
-                            <div style={{ marginBottom: 'var(--space-md)' }}>
-                                <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>
-                                    Select AI Evaluator
-                                </label>
-                                <select 
-                                    value={selectedModel} 
-                                    onChange={(e) => setSelectedModel(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '10px',
-                                        borderRadius: 'var(--radius-md)',
-                                        border: '1px solid var(--border)',
-                                        background: 'var(--surface)',
-                                        color: 'var(--text-main)',
-                                        fontSize: 'var(--text-sm)',
-                                        cursor: 'pointer',
-                                        outline: 'none'
-                                    }}
-                                >
-                                    <option value="" disabled>Select a model...</option>
-                                    {availableModels.map(m => (
-                                        <option key={m.id} value={m.id}>
-                                            {m.name}
-                                        </option>
-                                    ))}
-                                    {availableModels.length === 0 && (
-                                        <option value="" disabled>No AI configured (Check Settings)</option>
-                                    )}
-                                </select>
-                            </div>
 
-                            <Button
-                                variant="primary"
-                                style={{ width: '100%', background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)', borderColor: 'transparent' }}
-                                onClick={handleAiEvaluation}
-                                loading={evaluating}
-                                icon={Brain}
-                                disabled={availableModels.length === 0}
-                            >
-                                {aiReport ? 'Re-run AI Review' : 'Run Smart AI Review'}
-                            </Button>
-                        </div>
                     </Card>
 
                     {aiReport && (
