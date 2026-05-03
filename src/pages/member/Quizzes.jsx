@@ -39,13 +39,7 @@ const Quizzes = () => {
                 db.getQuizAttemptsByUser(user.id)
             ]);
 
-            const myQuizzes = allQuizzes.filter(q => 
-                q.is_global || 
-                !q.assignment_type || 
-                q.assignment_type === 'classroom' || 
-                q.assigned_to?.includes(user.id)
-            );
-            setQuizzes(myQuizzes);
+            setQuizzes(allQuizzes);
             setAttempts(myAttempts);
         } catch (error) {
             console.error('Error loading quizzes:', error);

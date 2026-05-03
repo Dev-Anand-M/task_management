@@ -62,7 +62,6 @@ const MemberDashboard = () => {
                 assignedTasks: myTasks.length,
                 completedTasks: completedTaskIds.length,
                 pendingQuizzes: quizzes.filter(q =>
-                    (q.is_global || !q.assignment_type || q.assignment_type === 'classroom' || q.assigned_to?.includes(user.id)) &&
                     !quizAttempts.some(a => a.quiz_id === q.id)
                 ).length,
                 totalXP: user.xp || 0
@@ -83,7 +82,6 @@ const MemberDashboard = () => {
             // Upcoming quizzes
             const upcoming = quizzes
                 .filter(q =>
-                    (q.is_global || !q.assignment_type || q.assignment_type === 'classroom' || q.assigned_to?.includes(user.id)) &&
                     !quizAttempts.some(a => a.quiz_id === q.id)
                 )
                 .slice(0, 3);
