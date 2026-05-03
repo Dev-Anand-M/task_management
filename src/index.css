@@ -2068,10 +2068,6 @@ input.bg-surface\/80 {
     opacity: 1;
     transform: translateY(0);
   }
-}  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 @keyframes fadeIn {
@@ -2472,6 +2468,7 @@ input.bg-surface\/80 {
   .card {
     padding: var(--space-md);
   }
-}@ k e y f r a m e s   s l i d e I n U p   {   f r o m   {   t r a n s f o r m :   t r a n s l a t e Y ( 1 0 0 % ) ;   o p a c i t y :   0 ;   }   t o   {   t r a n s f o r m :   t r a n s l a t e Y ( 0 ) ;   o p a c i t y :   1 ;   }   } 
- 
- 
+}
+
+
+
