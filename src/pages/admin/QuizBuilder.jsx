@@ -10,7 +10,8 @@ import {
     Award,
     Users,
     GripVertical,
-    X
+    X,
+    Upload
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { useAuth } from '../../context/AuthContext';
@@ -143,6 +144,108 @@ const QuizBuilder = () => {
                 return q;
             })
         }));
+    };
+
+    const handleFileUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const csvData = event.target.result;
+            parseCSV(csvData);
+            e.target.value = '';
+        };
+        reader.readAsText(file);
+    };
+
+    const parseCSV = (csvText) => {
+        const lines = [];
+        let currentLine = [];
+        let currentCell = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < csvText.length; i++) {
+            const char = csvText[i];
+            const nextChar = csvText[i + 1];
+            
+            if (char === '"') {
+                if (inQuotes && nextChar === '"') {
+                    currentCell += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                currentLine.push(currentCell.trim());
+                currentCell = '';
+            } else if (char === '\n' && !inQuotes) {
+                currentLine.push(currentCell.trim());
+                lines.push(currentLine);
+                currentLine = [];
+                currentCell = '';
+            } else if (char !== '\r') {
+                currentCell += char;
+            }
+        }
+        if (currentCell || currentLine.length > 0) {
+            currentLine.push(currentCell.trim());
+            lines.push(currentLine);
+        }
+
+        const hasHeader = lines.length > 0 && lines[0].some(cell => cell.toLowerCase().includes('question'));
+        const dataLines = hasHeader ? lines.slice(1) : lines;
+
+        const newQuestions = [];
+        
+        dataLines.forEach((row, index) => {
+            if (row.length < 2) return;
+            
+            const questionText = row[0];
+            
+            if (row.length >= 6) {
+                const options = [row[1], row[2], row[3], row[4]];
+                let correctIdx = parseInt(row[5]);
+                if (isNaN(correctIdx) || correctIdx < 0 || correctIdx > 3) correctIdx = 0;
+                
+                newQuestions.push({
+                    id: Date.now().toString() + index,
+                    type: 'multiple',
+                    question: questionText,
+                    options: options,
+                    correctAnswer: correctIdx
+                });
+            } else if (row.length >= 2) {
+                const answer = row[1].toLowerCase();
+                if (answer === 'true' || answer === 'false') {
+                    newQuestions.push({
+                        id: Date.now().toString() + index,
+                        type: 'boolean',
+                        question: questionText,
+                        options: [],
+                        correctAnswer: answer === 'true'
+                    });
+                } else {
+                    newQuestions.push({
+                        id: Date.now().toString() + index,
+                        type: 'short',
+                        question: questionText,
+                        options: [],
+                        correctAnswer: row[1]
+                    });
+                }
+            }
+        });
+
+        if (newQuestions.length > 0) {
+            setFormData(prev => ({
+                ...prev,
+                questions: [...prev.questions, ...newQuestions]
+            }));
+            alert(`Successfully imported ${newQuestions.length} questions!`);
+        } else {
+            alert('Could not find valid questions in the CSV. Make sure the format is correct.');
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -509,11 +612,29 @@ const QuizBuilder = () => {
 
                         {/* Questions */}
                         <div className="input-group">
-                            <div className="flex justify-between items-center mb-md">
+                            <div className="flex justify-between items-center mb-xs">
                                 <label className="input-label" style={{ margin: 0 }}>Questions</label>
-                                <Button type="button" variant="secondary" size="sm" icon={Plus} onClick={addQuestion}>
-                                    Add Question
-                                </Button>
+                                <div className="flex gap-sm">
+                                    <input 
+                                        type="file" 
+                                        accept=".csv" 
+                                        id="csv-upload" 
+                                        style={{ display: 'none' }} 
+                                        onChange={handleFileUpload} 
+                                    />
+                                    <Button type="button" variant="ghost" size="sm" icon={Upload} onClick={() => document.getElementById('csv-upload').click()}>
+                                        Import CSV
+                                    </Button>
+                                    <Button type="button" variant="secondary" size="sm" icon={Plus} onClick={addQuestion}>
+                                        Add Question
+                                    </Button>
+                                </div>
+                            </div>
+                            <div className="text-xs text-muted mb-md p-sm bg-surface border border-border rounded-lg" style={{ opacity: 0.8 }}>
+                                <strong>CSV Format:</strong><br/>
+                                • <strong>Multiple Choice:</strong> Question, Option 1, Option 2, Option 3, Option 4, Correct Index (0-3)<br/>
+                                • <strong>True/False:</strong> Question, True/False<br/>
+                                • <strong>Short Answer:</strong> Question, Expected Answer
                             </div>
 
                             {formData.questions.length === 0 ? (
