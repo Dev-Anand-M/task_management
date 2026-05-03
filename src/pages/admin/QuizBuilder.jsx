@@ -81,7 +81,8 @@ const QuizBuilder = () => {
             questions: [],
             is_global: false,
             assignment_type: 'everyone',
-            classroom_id: ''
+            classroom_id: '',
+            passing_score: 70
         });
     };
 
@@ -102,7 +103,8 @@ const QuizBuilder = () => {
             questions: quiz.questions || [],
             is_global: quiz.is_global || false,
             assignment_type: quiz.assignment_type || (quiz.assigned_to?.length > 0 ? 'specific' : 'everyone'),
-            classroom_id: quiz.classroom_id || ''
+            classroom_id: quiz.classroom_id || '',
+            passing_score: quiz.passing_score || 70
         });
         setEditingQuiz(quiz);
         setShowCreateModal(true);
@@ -287,6 +289,7 @@ const QuizBuilder = () => {
             category: formData.category,
             difficulty: formData.difficulty,
             time_limit: formData.time_limit,
+            passing_score: formData.passing_score,
             points: DIFFICULTY_LEVELS.find(d => d.value === formData.difficulty)?.points || 30,
             questions: formData.questions,
             assigned_to: formData.assignment_type === 'specific' ? formData.assigned_to : [],
@@ -534,7 +537,7 @@ const QuizBuilder = () => {
                             required
                         />
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-md)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 'var(--space-md)' }}>
                             <div className="input-group">
                                 <label className="input-label">Category</label>
                                 <select
@@ -565,11 +568,19 @@ const QuizBuilder = () => {
 
                             <Input
                                 type="number"
-                                label="Time Limit (minutes)"
+                                label="Time Limit (min)"
                                 min="1"
                                 max="120"
                                 value={formData.time_limit}
                                 onChange={(e) => setFormData({ ...formData, time_limit: parseInt(e.target.value) })}
+                            />
+                            <Input
+                                type="number"
+                                label="Pass Grade (%)"
+                                min="0"
+                                max="100"
+                                value={formData.passing_score}
+                                onChange={(e) => setFormData({ ...formData, passing_score: parseInt(e.target.value) })}
                             />
                         </div>
 

@@ -331,7 +331,8 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
         });
 
         const score = Math.round((correct / quiz.questions.length) * 100);
-        const passed = score >= 70;
+        const passThreshold = quiz.passing_score || 70;
+        const passed = score >= passThreshold;
 
         try {
             // Save attempt
