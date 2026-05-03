@@ -1882,7 +1882,13 @@ input.bg-surface\/80 {
 }
 
 .animate-fade-in {
-  animation: fadeIn var(--transition-base);
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Ensure content is visible even if animation fails */
+.page-content {
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .animate-slide-up {
