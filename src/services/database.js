@@ -366,21 +366,39 @@ export const getQuizAttempts = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return [];
 
-        const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
+        // Check if user is admin
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+        const isAdmin = profile?.role === 'admin';
+
+        console.log('Fetching quiz attempts. User is Admin:', isAdmin);
 
         let query = supabase
             .from('quiz_attempts')
-            .select('*, profiles(name, avatar_url, email, classroom_id), quizzes(title, points)');
+            .select(`
+                *,
+                profiles!left(id, name, avatar_url, email, classroom_id),
+                quizzes!left(id, title, points)
+            `);
 
-        // If admin, they see everything to ensure nothing is missed
-        if (profile?.role !== 'admin') {
-            // Students only see their own
+        // Only filter for students. Admins see EVERYTHING.
+        if (!isAdmin) {
             query = query.eq('user_id', user.id);
         }
 
         const { data, error } = await query.order('created_at', { ascending: false });
-        if (error) throw error;
+        
+        if (error) {
+            console.error('Supabase error fetching quiz attempts:', error);
+            throw error;
+        }
+
+        console.log(`Successfully fetched ${data?.length || 0} attempts.`);
         return data || [];
+    } catch (err) {
+        console.error('CRITICAL: Error in getQuizAttempts:', err);
+        return [];
+    }
+};
     } catch (err) {
         console.error('Error in getQuizAttempts:', err);
         return [];
