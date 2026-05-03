@@ -429,6 +429,10 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                         const aiScore = Math.round((finalCorrect / quiz.questions.length) * 100);
                         console.log('Calculated AI Score:', aiScore);
                         
+                        // Check for Key Errors to flag for Admin
+                        const hasKeyError = report.suggestions.some(s => s.isKeyError === true);
+                        if (hasKeyError) console.log('⚠️ AI DETECTED POTENTIAL QUIZ KEY ERROR!');
+
                         const { error: updateError } = await db.supabase
                             .from('quiz_attempts')
                             .update({
@@ -441,7 +445,8 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                                     ai_report: report, 
                                     model_used: modelToUse,
                                     overrides: autoOverrides,
-                                    status: 'ai_reviewed'
+                                    status: 'ai_reviewed',
+                                    has_key_error: hasKeyError // FLAG FOR ADMIN
                                 }
                             })
                             .eq('id', id);

@@ -289,6 +289,9 @@ const EvaluationCenter = () => {
                                             {att.metadata?.manually_evaluated && (
                                                 <Badge variant="success">Finalized</Badge>
                                             )}
+                                            {att.metadata?.has_key_error && (
+                                                <Badge variant="error">🚩 Key Error?</Badge>
+                                            )}
                                         </div>
                                         <p style={{
                                             margin: 0,
@@ -823,6 +826,9 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
             }, 0);
             const finalScore = Math.round((finalCorrect / attempt.total) * 100);
 
+            // Check for Key Errors to flag for Admin
+            const hasKeyError = report.suggestions.some(s => s.isKeyError === true);
+
             await db.updateQuizAttempt(attempt.id, {
                 correct: finalCorrect,
                 score: finalScore,
@@ -832,7 +838,8 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                     ai_evaluated: true, 
                     ai_report: report, 
                     model_used: selectedModel,
-                    overrides: newOverrides 
+                    overrides: newOverrides,
+                    has_key_error: hasKeyError 
                 }
             });
         } catch (error) {
