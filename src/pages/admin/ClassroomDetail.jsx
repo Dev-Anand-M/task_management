@@ -65,13 +65,22 @@ const ClassroomDetail = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [cls, mems, tks, subs, st, ann] = await Promise.all([
-                db.getClassroomById(classroomId),
-                db.getMembersByClassroom(classroomId),
-                db.getTasksByClassroom(classroomId),
-                db.getSubmissionsByClassroom(classroomId),
-                db.getClassroomStats(classroomId),
-                db.getAnnouncementsByClassroom(classroomId)
+            
+            // Fetch classroom first so we can at least show the classroom exists
+            const cls = await db.getClassroomById(classroomId);
+            if (!cls) {
+                setClassroom(null);
+                return;
+            }
+
+            // Fetch related data, catching errors individually so one failure 
+            // (e.g. missing announcements table) doesn't break the whole page
+            const [mems, tks, subs, st, ann] = await Promise.all([
+                db.getMembersByClassroom(classroomId).catch(e => { console.error('Members error:', e); return []; }),
+                db.getTasksByClassroom(classroomId).catch(e => { console.error('Tasks error:', e); return []; }),
+                db.getSubmissionsByClassroom(classroomId).catch(e => { console.error('Subs error:', e); return []; }),
+                db.getClassroomStats(classroomId).catch(e => { console.error('Stats error:', e); return null; }),
+                db.getAnnouncementsByClassroom ? db.getAnnouncementsByClassroom(classroomId).catch(e => { console.error('Announcements error:', e); return []; }) : Promise.resolve([])
             ]);
 
             setClassroom(cls);
@@ -82,6 +91,7 @@ const ClassroomDetail = () => {
             setAnnouncements(ann);
         } catch (error) {
             console.error('Error loading classroom detail:', error);
+            setClassroom(null);
         } finally {
             setLoading(false);
         }
