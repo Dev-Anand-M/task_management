@@ -1065,13 +1065,7 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                                 <Button 
                                                                     size="sm" 
                                                                     variant={overrides[index] === true ? 'success' : 'secondary'}
-                                                                    style={{ 
-                                                                        flex: 1,
-                                                                        boxShadow: (aiIsCorrect === true && overrides[index] === undefined) ? '0 0 15px var(--success-500)' : 'none',
-                                                                        border: (aiIsCorrect === true && overrides[index] === undefined) ? '2px solid var(--success-400)' : '1px solid transparent',
-                                                                        transform: (aiIsCorrect === true && overrides[index] === undefined) ? 'scale(1.05)' : 'scale(1)',
-                                                                        transition: 'all 0.3s ease'
-                                                                    }}
+                                                                    style={{ flex: 1 }}
                                                                     onClick={() => setOverrides(prev => ({ ...prev, [index]: true }))}
                                                                     icon={Check}
                                                                 >
@@ -1080,13 +1074,7 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                                 <Button 
                                                                     size="sm" 
                                                                     variant={overrides[index] === false ? 'danger' : 'secondary'}
-                                                                    style={{ 
-                                                                        flex: 1,
-                                                                        boxShadow: (aiIsCorrect === false && overrides[index] === undefined) ? '0 0 15px var(--error-500)' : 'none',
-                                                                        border: (aiIsCorrect === false && overrides[index] === undefined) ? '2px solid var(--error-400)' : '1px solid transparent',
-                                                                        transform: (aiIsCorrect === false && overrides[index] === undefined) ? 'scale(1.05)' : 'scale(1)',
-                                                                        transition: 'all 0.3s ease'
-                                                                    }}
+                                                                    style={{ flex: 1 }}
                                                                     onClick={() => setOverrides(prev => ({ ...prev, [index]: false }))}
                                                                     icon={X}
                                                                 >
