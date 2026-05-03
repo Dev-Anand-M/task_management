@@ -13,7 +13,7 @@ export const PROVIDERS = {
 // Available Models mapped to providers
 export const AVAILABLE_MODELS = [
     // Defaults for Auto-Calibration
-    { id: 'gemini-2.0-flash', provider: 'gemini', name: 'Gemini 2.0 Flash (Default)', description: 'Auto-calibrated for Gemini', inputTokenLimit: '1M', outputTokenLimit: '8k' },
+    { id: 'gemini-1.5-flash', provider: 'gemini', name: 'Gemini 1.5 Flash (Default)', description: 'Stable and fast for everyone', inputTokenLimit: '1M', outputTokenLimit: '8k' },
     { id: 'gpt-4o', provider: 'openai', name: 'GPT-4o (Default)', description: 'Auto-calibrated for OpenAI', inputTokenLimit: '128k', outputTokenLimit: '4k' },
     { id: 'claude-3-5-sonnet-20240620', provider: 'anthropic', name: 'Claude 3.5 Sonnet (Default)', description: 'Auto-calibrated for Anthropic', inputTokenLimit: '200k', outputTokenLimit: '4k' },
     { id: 'llama-3.1-sonar-large-128k-online', provider: 'perplexity', name: 'Sonar Large 3.1 (Default)', description: 'Auto-calibrated for Perplexity', inputTokenLimit: '128k', outputTokenLimit: '4k' },
@@ -159,14 +159,14 @@ export const getSelectedModel = () => {
     if (manualSelection) return manualSelection;
 
     // 2. Fallback to configured keys in order of preference
-    if (localStorage.getItem('gemini_api_key')) return 'gemini-2.0-flash';
+    if (localStorage.getItem('gemini_api_key')) return 'gemini-1.5-flash';
     if (localStorage.getItem('sambanova_api_key')) return 'Meta-Llama-3.1-70B-Instruct';
     if (localStorage.getItem('openai_api_key')) return 'gpt-4o';
     if (localStorage.getItem('anthropic_api_key')) return 'claude-3-5-sonnet-20240620';
     if (localStorage.getItem('perplexity_api_key')) return 'llama-3.1-sonar-large-128k-online';
 
     // Default Fallback
-    return 'gemini-2.0-flash';
+    return 'gemini-1.5-flash';
 };
 
 // Set selected model
