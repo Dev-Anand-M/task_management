@@ -14,7 +14,8 @@ import {
     RefreshCw,
     AlertTriangle,
     Check,
-    X
+    X,
+    Brain
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { evaluateQuizAttempt } from '../../services/aiService';
