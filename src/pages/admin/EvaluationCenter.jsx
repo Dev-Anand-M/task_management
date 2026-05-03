@@ -21,9 +21,9 @@ import { evaluateQuizAttempt } from '../../services/aiService';
 import { formatDate, formatRelativeTime, getStatusColor, EVALUATION_CRITERIA } from '../../utils/constants';
 
 const EvaluationCenter = () => {
-    const { submissionId } = useParams();
+    const { type, submissionId } = useParams();
     const navigate = useNavigate();
-    const [mode, setMode] = useState('tasks'); // 'tasks' or 'quizzes'
+    const [mode, setMode] = useState(type || 'tasks'); // 'tasks' or 'quizzes'
     const [submissions, setSubmissions] = useState([]);
     const [quizAttempts, setQuizAttempts] = useState([]);
     const [filterStatus, setFilterStatus] = useState('pending');
@@ -83,6 +83,14 @@ const EvaluationCenter = () => {
     }
 
     if (mode === 'quizzes' && submissionId) {
+        return <QuizReviewDetail attemptId={submissionId} onBack={() => navigate('/admin/evaluations')} />;
+    }
+
+    // Handle legacy URLs or automatic routing based on type param
+    if (type === 'tasks' && submissionId) {
+        return <EvaluationDetail submissionId={submissionId} onBack={() => navigate('/admin/evaluations')} onUpdate={loadData} />;
+    }
+    if (type === 'quizzes' && submissionId) {
         return <QuizReviewDetail attemptId={submissionId} onBack={() => navigate('/admin/evaluations')} />;
     }
 
@@ -184,7 +192,7 @@ const EvaluationCenter = () => {
                         {filteredSubmissions.map(sub => (
                             <Link
                                 key={sub.id}
-                                to={`/admin/evaluations/${sub.id}`}
+                                to={`/admin/evaluations/tasks/${sub.id}`}
                                 style={{ textDecoration: 'none' }}
                             >
                                 <Card style={{
@@ -253,7 +261,7 @@ const EvaluationCenter = () => {
                         {filteredQuizzes.map(att => (
                             <Link
                                 key={att.id}
-                                to={`/admin/evaluations/${att.id}`}
+                                to={`/admin/evaluations/quizzes/${att.id}`}
                                 style={{ textDecoration: 'none' }}
                             >
                                 <Card style={{

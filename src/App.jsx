@@ -154,6 +154,7 @@ function AppRoutes() {
           <Route path="quizzes/new" element={<QuizBuilder />} />
           <Route path="quizzes/:quizId" element={<QuizBuilder />} />
           <Route path="evaluations" element={<EvaluationCenter />} />
+          <Route path="evaluations/:type/:submissionId" element={<EvaluationCenter />} />
           <Route path="evaluations/:submissionId" element={<EvaluationCenter />} />
           <Route path="team" element={<TeamManagement />} />
           <Route path="invite-codes" element={<InviteCodes />} />
