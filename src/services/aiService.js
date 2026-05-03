@@ -12,14 +12,16 @@ export const PROVIDERS = {
 
 // Available Models mapped to providers
 export const AVAILABLE_MODELS = [
-    // Defaults for Auto-Calibration
-    { id: 'gemini-1.5-flash', provider: 'gemini', name: 'Gemini 1.5 Flash (Default)', description: 'Stable and fast for everyone', inputTokenLimit: '1M', outputTokenLimit: '8k' },
-    { id: 'gpt-4o', provider: 'openai', name: 'GPT-4o (Default)', description: 'Auto-calibrated for OpenAI', inputTokenLimit: '128k', outputTokenLimit: '4k' },
-    { id: 'claude-3-5-sonnet-20240620', provider: 'anthropic', name: 'Claude 3.5 Sonnet (Default)', description: 'Auto-calibrated for Anthropic', inputTokenLimit: '200k', outputTokenLimit: '4k' },
-    { id: 'llama-3.1-sonar-large-128k-online', provider: 'perplexity', name: 'Sonar Large 3.1 (Default)', description: 'Auto-calibrated for Perplexity', inputTokenLimit: '128k', outputTokenLimit: '4k' },
-    { id: 'Meta-Llama-3.3-70B-Instruct', provider: 'sambanova', name: 'Llama 3.3 70B (SambaNova)', description: 'Latest Meta model on SambaNova', inputTokenLimit: '128k', outputTokenLimit: '4k' },
+    // SambaNova Models (Default Provider)
+    { id: 'Meta-Llama-3.3-70B-Instruct', provider: 'sambanova', name: 'Llama 3.3 70B (Default)', description: 'Latest Meta model - Fast and powerful', inputTokenLimit: '128k', outputTokenLimit: '4k' },
     { id: 'DeepSeek-V3.2', provider: 'sambanova', name: 'DeepSeek V3.2 (SambaNova)', description: 'Powerful reasoning model', inputTokenLimit: '128k', outputTokenLimit: '4k' },
-    { id: 'gemma-3-12b-it', provider: 'sambanova', name: 'Gemma 3 12B (SambaNova)', description: 'Google latest open model', inputTokenLimit: '128k', outputTokenLimit: '4k' }
+    { id: 'gemma-3-12b-it', provider: 'sambanova', name: 'Gemma 3 12B (SambaNova)', description: 'Google latest open model', inputTokenLimit: '128k', outputTokenLimit: '4k' },
+    
+    // Other Providers
+    { id: 'gemini-1.5-flash', provider: 'gemini', name: 'Gemini 1.5 Flash', description: 'Stable and fast for everyone', inputTokenLimit: '1M', outputTokenLimit: '8k' },
+    { id: 'gpt-4o', provider: 'openai', name: 'GPT-4o', description: 'Auto-calibrated for OpenAI', inputTokenLimit: '128k', outputTokenLimit: '4k' },
+    { id: 'claude-3-5-sonnet-20240620', provider: 'anthropic', name: 'Claude 3.5 Sonnet', description: 'Auto-calibrated for Anthropic', inputTokenLimit: '200k', outputTokenLimit: '4k' },
+    { id: 'llama-3.1-sonar-large-128k-online', provider: 'perplexity', name: 'Sonar Large 3.1', description: 'Auto-calibrated for Perplexity', inputTokenLimit: '128k', outputTokenLimit: '4k' }
 ];
 
 // Simple encryption for API key (XOR with user ID for obfuscation)
@@ -159,15 +161,15 @@ export const getSelectedModel = () => {
     const manualSelection = localStorage.getItem('selected_ai_model');
     if (manualSelection) return manualSelection;
 
-    // 2. Fallback to configured keys in order of preference
+    // 2. Fallback to configured keys in order of preference (SambaNova first)
+    if (localStorage.getItem('sambanova_api_key')) return 'Meta-Llama-3.3-70B-Instruct';
     if (localStorage.getItem('gemini_api_key')) return 'gemini-1.5-flash';
-    if (localStorage.getItem('sambanova_api_key')) return 'Meta-Llama-3.1-70B-Instruct';
     if (localStorage.getItem('openai_api_key')) return 'gpt-4o';
     if (localStorage.getItem('anthropic_api_key')) return 'claude-3-5-sonnet-20240620';
     if (localStorage.getItem('perplexity_api_key')) return 'llama-3.1-sonar-large-128k-online';
 
-    // Default Fallback
-    return 'gemini-1.5-flash';
+    // Default Fallback (SambaNova)
+    return 'Meta-Llama-3.3-70B-Instruct';
 };
 
 // Set selected model
@@ -248,77 +250,75 @@ export const validateAPIKey = async (providerId, key) => {
 
     try {
         if (providerId === 'gemini') {
-            const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models?key=${trimmedKey}`
-            );
-            if (!response.ok) throw new Error('Invalid Gemini API Key');
-            // Auto-calibrate: Just return default
+            const endpoint = '/v1beta/models';
+            await callAIProxy('gemini', endpoint, trimmedKey, null);
             return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'gemini') };
         }
 
         if (providerId === 'openai') {
-            const response = await fetch('https://api.openai.com/v1/models', {
-                headers: { 'Authorization': `Bearer ${trimmedKey}` }
-            });
-            if (!response.ok) throw new Error('Invalid OpenAI API Key');
+            const endpoint = '/v1/models';
+            await callAIProxy('openai', endpoint, trimmedKey, null);
             return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'openai') };
         }
 
         if (providerId === 'anthropic') {
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'x-api-key': trimmedKey,
-                    'anthropic-version': '2023-06-01',
-                    'content-type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: 'claude-3-haiku-20240307',
-                    max_tokens: 1,
-                    messages: [{ role: 'user', content: 'Hi' }]
-                })
-            });
-            if (response.status === 401 || response.status === 403) throw new Error('Invalid Anthropic API Key');
+            const endpoint = '/v1/messages';
+            const body = {
+                model: 'claude-3-haiku-20240307',
+                max_tokens: 1,
+                messages: [{ role: 'user', content: 'Hi' }]
+            };
+            await callAIProxy('anthropic', endpoint, trimmedKey, body);
             return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'anthropic') };
         }
 
         if (providerId === 'perplexity') {
-            const response = await fetch('https://api.perplexity.ai/models', {
-                headers: { 'Authorization': `Bearer ${trimmedKey}` }
-            });
-            if (!response.ok) throw new Error('Invalid Perplexity API Key');
+            const endpoint = '/models';
+            await callAIProxy('perplexity', endpoint, trimmedKey, null);
             return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'perplexity') };
         }
         
         if (providerId === 'sambanova') {
-            try {
-                const response = await fetch('https://api.sambanova.ai/v1/chat/completions', {
-                    method: 'POST',
-                    headers: { 
-                        'Authorization': `Bearer ${trimmedKey}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        model: 'Meta-Llama-3.3-70B-Instruct',
-                        messages: [{ role: 'user', content: 'test' }],
-                        max_tokens: 1
-                    })
-                });
-                if (response.status === 401) throw new Error('Invalid SambaNova API Key');
-                // If we get 200 or even a 400 (if model name is wrong), it means the key was accepted
-                return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'sambanova') };
-            } catch (e) {
-                // If it's a CORS error, we might still be okay if the key was accepted
-                // But for now, let's treat any 401 as invalid
-                if (e.message.includes('401')) throw e;
-                return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'sambanova') };
-            }
+            const endpoint = '/v1/chat/completions';
+            const body = {
+                model: 'Meta-Llama-3.3-70B-Instruct',
+                messages: [{ role: 'user', content: 'test' }],
+                max_tokens: 1
+            };
+            await callAIProxy('sambanova', endpoint, trimmedKey, body);
+            return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'sambanova') };
         }
 
         return { valid: false, error: 'Unknown provider' };
     } catch (err) {
         return { valid: false, error: err.message || 'Validation failed' };
     }
+};
+
+// Helper: Call AI proxy
+const callAIProxy = async (provider, endpoint, apiKey, body) => {
+    const proxyUrl = '/api/ai-proxy';
+    
+    const response = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            provider,
+            endpoint,
+            apiKey,
+            body,
+            method: 'POST'
+        })
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.message || `HTTP ${response.status}`);
+    }
+
+    return response.json();
 };
 
 // Generic AI completion function
@@ -353,132 +353,78 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null) => {
     try {
         // --- GEMINI ---
         if (provider.id === 'gemini') {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModelId}:generateContent`;
-            const response = await fetch(`${apiUrl}?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: fullPrompt }] }],
-                    generationConfig: { temperature: 0.7, topK: 40, topP: 0.95, maxOutputTokens: 8192 }
-                })
-            });
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error?.message || 'Gemini Error');
-            }
-            const data = await response.json();
+            const endpoint = `/v1beta/models/${selectedModelId}:generateContent`;
+            const body = {
+                contents: [{ parts: [{ text: fullPrompt }] }],
+                generationConfig: { temperature: 0.7, topK: 40, topP: 0.95, maxOutputTokens: 8192 }
+            };
+            
+            const data = await callAIProxy('gemini', endpoint, apiKey, body);
             await incrementUsage();
             return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         }
 
         // --- OPENAI ---
         if (provider.id === 'openai') {
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: selectedModelId,
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: prompt }
-                    ],
-                    temperature: 0.7
-                })
-            });
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error?.message || 'OpenAI Error');
-            }
-            const data = await response.json();
+            const endpoint = '/v1/chat/completions';
+            const body = {
+                model: selectedModelId,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.7
+            };
+            
+            const data = await callAIProxy('openai', endpoint, apiKey, body);
             await incrementUsage();
             return data.choices?.[0]?.message?.content || '';
         }
 
         // --- ANTHROPIC ---
         if (provider.id === 'anthropic') {
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'x-api-key': apiKey,
-                    'anthropic-version': '2023-06-01',
-                    'content-type': 'application/json',
-                    'anthropic-dangerously-allow-browser': 'true'
-                },
-                body: JSON.stringify({
-                    model: selectedModelId,
-                    max_tokens: 4096,
-                    system: systemPrompt,
-                    messages: [{ role: 'user', content: prompt }]
-                })
-            });
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error?.message || 'Anthropic Error');
-            }
-            const data = await response.json();
+            const endpoint = '/v1/messages';
+            const body = {
+                model: selectedModelId,
+                max_tokens: 4096,
+                system: systemPrompt,
+                messages: [{ role: 'user', content: prompt }]
+            };
+            
+            const data = await callAIProxy('anthropic', endpoint, apiKey, body);
             await incrementUsage();
             return data.content?.[0]?.text || '';
         }
 
         // --- PERPLEXITY ---
         if (provider.id === 'perplexity') {
-            const response = await fetch('https://api.perplexity.ai/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: selectedModelId,
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: prompt }
-                    ]
-                })
-            });
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error?.message || 'Perplexity Error');
-            }
-            const data = await response.json();
+            const endpoint = '/chat/completions';
+            const body = {
+                model: selectedModelId,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: prompt }
+                ]
+            };
+            
+            const data = await callAIProxy('perplexity', endpoint, apiKey, body);
             await incrementUsage();
             return data.choices?.[0]?.message?.content || '';
         }
 
         // --- SAMBANOVA ---
         if (provider.id === 'sambanova') {
-            const response = await fetch('https://api.sambanova.ai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: selectedModelId,
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: prompt }
-                    ],
-                    temperature: 0.7
-                })
-            });
-            if (!response.ok) {
-                let errorMsg = `SambaNova Error: ${response.status}`;
-                try {
-                    const err = await response.json();
-                    errorMsg = err.error?.message || errorMsg;
-                } catch (e) {
-                    const text = await response.text();
-                    console.error('SambaNova HTML Error:', text);
-                    if (response.status === 410) errorMsg = 'SambaNova Model Unavailable (410 Gone). Please try a different model.';
-                    else errorMsg = `SambaNova Error ${response.status}: ${text.substring(0, 100)}`;
-                }
-                throw new Error(errorMsg);
-            }
-            const data = await response.json();
+            const endpoint = '/v1/chat/completions';
+            const body = {
+                model: selectedModelId,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.7
+            };
+            
+            const data = await callAIProxy('sambanova', endpoint, apiKey, body);
             await incrementUsage();
             return data.choices?.[0]?.message?.content || '';
         }

@@ -2068,10 +2068,6 @@ input.bg-surface\/80 {
     opacity: 1;
     transform: translateY(0);
   }
-}  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 @keyframes fadeIn {
