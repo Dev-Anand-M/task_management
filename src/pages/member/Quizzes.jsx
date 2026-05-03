@@ -303,7 +303,8 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                         correct: existingAttempt.correct,
                         total: existingAttempt.total,
                         passed: existingAttempt.passed,
-                        xpEarned: 0 // Don't show new XP for reviews
+                        xpEarned: 0,
+                        manually_evaluated: existingAttempt.metadata?.manually_evaluated
                     });
                     setIsComplete(true);
                     setShowReview(true);
@@ -491,37 +492,79 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
 
     // Result screen
     if (isComplete && results) {
+        const isFinalized = results.manually_evaluated === true;
+
         return (
-        <div className="quiz-container animate-fade-in" style={{ width: '100%' }}>
-                <Card style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
+            <div className="quiz-container animate-fade-in" style={{ width: '100%' }}>
                 <Card style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
                     <div style={{
                         width: '100px',
                         height: '100px',
                         margin: '0 auto var(--space-lg)',
                         borderRadius: '50%',
-                        background: 'rgba(167, 139, 250, 0.1)',
+                        background: !isFinalized 
+                            ? 'rgba(167, 139, 250, 0.1)' 
+                            : (results.passed ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'),
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
                     }}>
-                        <Clock size={48} style={{ color: 'var(--primary-500)' }} />
+                        {!isFinalized ? (
+                            <Clock size={48} style={{ color: 'var(--primary-500)' }} />
+                        ) : results.passed ? (
+                            <Trophy size={48} style={{ color: 'var(--success-500)' }} />
+                        ) : (
+                            <XCircle size={48} style={{ color: 'var(--error-500)' }} />
+                        )}
                     </div>
 
                     <h2 style={{ marginBottom: 'var(--space-sm)' }}>
-                        Quiz Submitted! 📄
+                        {!isFinalized ? 'Quiz Submitted! 📄' : (results.passed ? 'Congratulations! 🎉' : 'Keep Practicing!')}
                     </h2>
-                    <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-xl)', fontSize: 'var(--text-lg)' }}>
-                        Your quiz is currently **under review**. 
-                        You will receive a notification as soon as the evaluator has finalized your grade.
-                    </p>
+                    
+                    {!isFinalized ? (
+                        <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-xl)', fontSize: 'var(--text-lg)' }}>
+                            Your quiz is currently **under review**. 
+                            You will receive a notification as soon as the evaluator has finalized your grade.
+                        </p>
+                    ) : (
+                        <>
+                            <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-lg)' }}>
+                                {results.passed ? 'You passed the quiz!' : 'You need 70% to pass. Try again!'}
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-md mb-xl">
+                                <Card variant="secondary" style={{ padding: 'var(--space-md)', textAlign: 'center' }}>
+                                    <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: results.passed ? 'var(--success-500)' : 'var(--error-500)' }}>
+                                        {results.score}%
+                                    </div>
+                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Score</div>
+                                </Card>
+                                <Card variant="secondary" style={{ padding: 'var(--space-md)', textAlign: 'center' }}>
+                                    <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700 }}>
+                                        {results.correct}/{results.total}
+                                    </div>
+                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Correct</div>
+                                </Card>
+                                <Card variant="secondary" style={{ padding: 'var(--space-md)', textAlign: 'center' }}>
+                                    <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--primary-500)' }}>
+                                        +{results.xpEarned || 0}
+                                    </div>
+                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>XP Earned</div>
+                                </Card>
+                            </div>
+                        </>
+                    )}
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', maxWidth: '300px', margin: '0 auto' }}>
+                        {isFinalized && (
+                            <Button variant="secondary" icon={Search} onClick={() => setShowReview(true)}>
+                                Review My Answers
+                            </Button>
+                        )}
                         <Button onClick={onBack}>
-                            Back to Dashboard
+                            {isFinalized ? 'Back to Dashboard' : 'Done for Now'}
                         </Button>
                     </div>
-                </Card>
 
                     {showReview && (
                         <div style={{ marginTop: 'var(--space-2xl)', textAlign: 'left' }}>
