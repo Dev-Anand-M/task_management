@@ -396,7 +396,7 @@ export const getQuizAttempts = async () => {
             console.log('Admin detected. Fetching global records.');
         }
 
-        const { data, error } = await query.order('created_at', { ascending: false });
+        const { data, error } = await query.order('completed_at', { ascending: false });
         
         if (error) {
             console.error('DATABASE ERROR during fetch:', error);
