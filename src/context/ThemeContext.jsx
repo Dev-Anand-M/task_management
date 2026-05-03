@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import * as storage from '../services/storage';
+import { supabase } from '../lib/supabase';
 
 const ThemeContext = createContext(null);
 
@@ -63,23 +64,24 @@ export const ThemeProvider = ({ children }) => {
         syncPreferenceToDb({ colorScheme: newScheme });
     };
 
-    // Helper to sync to DB without depending on AuthContext context (using direct client)
+    // Helper to sync to DB
     const syncPreferenceToDb = async (prefUpdate) => {
         try {
-            const { data: { session } } = await import('../lib/supabase').then(m => m.supabase.auth.getSession());
+            const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
-                // Get current preferences first or merge? 
-                // We'll do a simple merge on the server side ideally, but here we might need to read first.
-                // Optimistically update partial jsonb is tricky without a function.
-                // We will fetch current profile, merge, and update.
-                const { data: profile } = await import('../lib/supabase')
-                    .then(m => m.supabase.from('profiles').select('preferences').eq('id', session.user.id).single());
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('preferences')
+                    .eq('id', session.user.id)
+                    .single();
 
                 const currentPrefs = profile?.preferences || {};
                 const newPrefs = { ...currentPrefs, ...prefUpdate };
 
-                await import('../lib/supabase')
-                    .then(m => m.supabase.from('profiles').update({ preferences: newPrefs }).eq('id', session.user.id));
+                await supabase
+                    .from('profiles')
+                    .update({ preferences: newPrefs })
+                    .eq('id', session.user.id);
             }
         } catch (err) {
             console.error('Failed to sync theme preference:', err);
@@ -92,10 +94,15 @@ export const ThemeProvider = ({ children }) => {
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.setAttribute('data-color-scheme', colorScheme);
 
-        const { data: authListener } = import('../lib/supabase').then(m => m.supabase.auth.onAuthStateChange(async (event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
                 // Fetch preferences
-                const { data: profile } = await m.supabase.from('profiles').select('preferences').eq('id', session.user.id).single();
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('preferences')
+                    .eq('id', session.user.id)
+                    .single();
+                    
                 if (profile?.preferences) {
                     if (profile.preferences.theme) {
                         setThemeState(profile.preferences.theme);
@@ -109,8 +116,9 @@ export const ThemeProvider = ({ children }) => {
                     }
                 }
             }
-        }));
+        });
 
+        return () => subscription?.unsubscribe();
     }, []);
 
     const toggleTheme = () => {
