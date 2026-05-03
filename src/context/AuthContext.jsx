@@ -75,11 +75,17 @@ export const AuthProvider = ({ children }) => {
 
     const fetchProfile = async (userId) => {
         try {
-            const { data: userProfile, error } = await supabase
+            const fetchPromise = supabase
                 .from('profiles')
                 .select('*, classrooms(name)')
                 .eq('id', userId)
                 .single();
+                
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+            );
+
+            const { data: userProfile, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
             if (error) {
                 console.error('Profile fetch error:', error);
@@ -108,7 +114,7 @@ export const AuthProvider = ({ children }) => {
                 password
             });
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Sign in timeout')), 10000)
+                setTimeout(() => reject(new Error('Sign in timeout. The server is taking too long to respond.')), 8000)
             );
 
             const { data, error } = await Promise.race([signInPromise, timeoutPromise]);
@@ -118,6 +124,7 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, error: error.message };
             }
 
+            setUser(data.user);
             await fetchProfile(data.user.id);
             return { success: true };
         } catch (err) {
@@ -140,7 +147,7 @@ export const AuthProvider = ({ children }) => {
                 }
             });
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Sign up timeout')), 10000)
+                setTimeout(() => reject(new Error('Sign up timeout. The server is taking too long to respond.')), 8000)
             );
 
             const { data, error } = await Promise.race([signUpPromise, timeoutPromise]);
@@ -149,6 +156,7 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, error: error.message };
             }
 
+            setUser(data.user);
             await fetchProfile(data.user.id);
             return { success: true, user: data.user };
         } catch (err) {
