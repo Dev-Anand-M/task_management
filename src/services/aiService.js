@@ -18,7 +18,8 @@ export const AVAILABLE_MODELS = [
     { id: 'claude-3-5-sonnet-20240620', provider: 'anthropic', name: 'Claude 3.5 Sonnet (Default)', description: 'Auto-calibrated for Anthropic', inputTokenLimit: '200k', outputTokenLimit: '4k' },
     { id: 'llama-3.1-sonar-large-128k-online', provider: 'perplexity', name: 'Sonar Large 3.1 (Default)', description: 'Auto-calibrated for Perplexity', inputTokenLimit: '128k', outputTokenLimit: '4k' },
     { id: 'Meta-Llama-3.1-405B-Instruct', provider: 'sambanova', name: 'Llama 3.1 405B (SambaNova)', description: 'Ultra-fast inference via SambaNova', inputTokenLimit: '128k', outputTokenLimit: '4k' },
-    { id: 'Meta-Llama-3.1-70B-Instruct', provider: 'sambanova', name: 'Llama 3.1 70B (SambaNova)', description: 'Fast Llama 3.1 70B', inputTokenLimit: '128k', outputTokenLimit: '4k' }
+    { id: 'Meta-Llama-3.1-70B-Instruct', provider: 'sambanova', name: 'Llama 3.1 70B (SambaNova)', description: 'Fast Llama 3.1 70B', inputTokenLimit: '128k', outputTokenLimit: '4k' },
+    { id: 'Meta-Llama-3.1-8B-Instruct', provider: 'sambanova', name: 'Llama 3.1 8B (SambaNova)', description: 'Lightweight Llama 3.1 8B', inputTokenLimit: '128k', outputTokenLimit: '4k' }
 ];
 
 // Simple encryption for API key (XOR with user ID for obfuscation)
@@ -465,8 +466,17 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null) => {
                 })
             });
             if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error?.message || 'SambaNova Error');
+                let errorMsg = `SambaNova Error: ${response.status}`;
+                try {
+                    const err = await response.json();
+                    errorMsg = err.error?.message || errorMsg;
+                } catch (e) {
+                    const text = await response.text();
+                    console.error('SambaNova HTML Error:', text);
+                    if (response.status === 410) errorMsg = 'SambaNova Model Unavailable (410 Gone). Please try a different model.';
+                    else errorMsg = `SambaNova Error ${response.status}: ${text.substring(0, 100)}`;
+                }
+                throw new Error(errorMsg);
             }
             const data = await response.json();
             await incrementUsage();
