@@ -279,8 +279,11 @@ const Header = ({ onMenuClick, title }) => {
                 borderRadius: 'var(--radius-2xl)',
                 boxShadow: 'var(--shadow-xl)',
                 overflow: 'hidden',
-                zIndex: 1000,
-                animation: 'slideInUp 0.3s var(--transition-bounce)'
+                zIndex: 1100,
+                animation: 'slideInUp 0.3s var(--transition-bounce)',
+                display: 'block',
+                visibility: 'visible',
+                opacity: 1
               }}
             >
               {/* Header */}
@@ -503,8 +506,11 @@ const Header = ({ onMenuClick, title }) => {
                 borderRadius: 'var(--radius-xl)',
                 boxShadow: 'var(--shadow-xl)',
                 overflow: 'hidden',
-                zIndex: 1000,
-                animation: 'slideInUp 0.2s ease-out'
+                zIndex: 1100,
+                animation: 'slideInUp 0.2s ease-out',
+                display: 'block',
+                visibility: 'visible',
+                opacity: 1
               }}
             >
               {/* User Info Header */}
