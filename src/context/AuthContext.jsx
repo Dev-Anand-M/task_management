@@ -119,6 +119,14 @@ export const AuthProvider = ({ children }) => {
                     ...userProfile,
                     classroom_name
                 });
+
+                // Centralized AI Settings: Load from database into local storage cache
+                try {
+                    const { loadFromDatabase } = await import('../services/aiService');
+                    await loadFromDatabase();
+                } catch (aiErr) {
+                    console.error('Failed to load AI settings:', aiErr);
+                }
             }
         } catch (err) {
             console.error('Profile fetch error:', err);

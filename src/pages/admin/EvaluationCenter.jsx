@@ -868,7 +868,7 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--space-lg)' }}>
+            <div className="grid-3-mobile-1" style={{ gap: 'var(--space-lg)', alignItems: 'start' }}>
                 {/* Summary Info */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
                     <Card>
@@ -1267,45 +1267,49 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                         const aiIsCorrect = suggestion?.isCorrect;
                                                         
                                                         return (
-                                                            <div className="flex items-center gap-sm mt-md w-full">
-                                                                <Button 
-                                                                    size="sm" 
-                                                                    variant={
-                                                                        (overrides[index] === true || overrides[index.toString()] === true) 
-                                                                            ? (aiIsCorrect === true ? 'primary' : 'success')
-                                                                            : 'secondary'
-                                                                    }
-                                                                    style={{ 
-                                                                        flex: 1,
-                                                                        background: (overrides[index] === true || overrides[index.toString()] === true) 
-                                                                            ? (aiIsCorrect === true ? '#3b82f6' : 'var(--success-500)')
-                                                                            : '',
-                                                                        color: (overrides[index] === true || overrides[index.toString()] === true) ? 'white' : ''
-                                                                    }}
-                                                                    onClick={() => setOverrides(prev => ({ ...prev, [index]: true }))}
-                                                                    icon={Check}
-                                                                >
-                                                                    Mark Correct {aiIsCorrect === true && '(AI)'}
-                                                                </Button>
-                                                                <Button 
-                                                                    size="sm" 
-                                                                    variant={
-                                                                        (overrides[index] === false || overrides[index.toString()] === false) 
-                                                                            ? (aiIsCorrect === false ? 'primary' : 'danger')
-                                                                            : 'secondary'
-                                                                    }
-                                                                    style={{ 
-                                                                        flex: 1,
-                                                                        background: (overrides[index] === false || overrides[index.toString()] === false) 
-                                                                            ? (aiIsCorrect === false ? '#3b82f6' : 'var(--error-500)')
-                                                                            : '',
-                                                                        color: (overrides[index] === false || overrides[index.toString()] === false) ? 'white' : ''
-                                                                    }}
-                                                                    onClick={() => setOverrides(prev => ({ ...prev, [index]: false }))}
-                                                                    icon={X}
-                                                                >
-                                                                    Mark Wrong {aiIsCorrect === false && '(AI)'}
-                                                                </Button>
+                                                            <div className="flex flex-mobile-col gap-sm mt-md w-full">
+                                                                <div className="flex gap-sm w-full">
+                                                                    <Button 
+                                                                        size="md" 
+                                                                        variant={
+                                                                            (overrides[index] === true || overrides[index.toString()] === true) 
+                                                                                ? (aiIsCorrect === true ? 'primary' : 'success')
+                                                                                : 'secondary'
+                                                                        }
+                                                                        style={{ 
+                                                                            flex: 1,
+                                                                            minHeight: '48px',
+                                                                            background: (overrides[index] === true || overrides[index.toString()] === true) 
+                                                                                ? (aiIsCorrect === true ? '#3b82f6' : 'var(--success-500)')
+                                                                                : '',
+                                                                            color: (overrides[index] === true || overrides[index.toString()] === true) ? 'white' : ''
+                                                                        }}
+                                                                        onClick={() => setOverrides(prev => ({ ...prev, [index]: true }))}
+                                                                        icon={Check}
+                                                                    >
+                                                                        Correct {aiIsCorrect === true && '(AI)'}
+                                                                    </Button>
+                                                                    <Button 
+                                                                        size="md" 
+                                                                        variant={
+                                                                            (overrides[index] === false || overrides[index.toString()] === false) 
+                                                                                ? (aiIsCorrect === false ? 'primary' : 'danger')
+                                                                                : 'secondary'
+                                                                        }
+                                                                        style={{ 
+                                                                            flex: 1,
+                                                                            minHeight: '48px',
+                                                                            background: (overrides[index] === false || overrides[index.toString()] === false) 
+                                                                                ? (aiIsCorrect === false ? '#3b82f6' : 'var(--error-500)')
+                                                                                : '',
+                                                                            color: (overrides[index] === false || overrides[index.toString()] === false) ? 'white' : ''
+                                                                        }}
+                                                                        onClick={() => setOverrides(prev => ({ ...prev, [index]: false }))}
+                                                                        icon={X}
+                                                                    >
+                                                                        Wrong {aiIsCorrect === false && '(AI)'}
+                                                                    </Button>
+                                                                </div>
 
                                                                 {suggestion && (
                                                                     <Badge 

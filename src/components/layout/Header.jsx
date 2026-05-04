@@ -278,7 +278,9 @@ const Header = ({ onMenuClick, title }) => {
                 border: '1px solid var(--border, #e5e7eb)',
                 borderRadius: '16px',
                 boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
               }}
             >
               {/* Header */}
@@ -289,38 +291,41 @@ const Header = ({ onMenuClick, title }) => {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 background: 'color-mix(in srgb, var(--surface), transparent 50%)',
-                backdropFilter: 'blur(10px)'
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0
               }}>
                 <h4 style={{ margin: 0, fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base)' }}>Notifications</h4>
                 <button
                   onClick={() => setShowNotifications(false)}
                   style={{
-                    background: 'none',
-                    border: 'none',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
                     cursor: 'pointer',
                     padding: '8px',
-                    color: 'var(--text-muted)',
+                    color: 'var(--text)',
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    width: '36px',
+                    height: '36px'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  className="hover:scale-105 active:scale-95"
                 >
-                  <X size={18} />
+                  <X size={20} />
                 </button>
               </div>
 
               {/* Notifications List */}
               <div style={{ 
-                maxHeight: '420px', 
+                flex: 1,
                 overflowY: 'auto',
-                minHeight: '100px'
+                minHeight: '100px',
+                paddingBottom: 'var(--space-xl)'
               }}>
                 {notifications.length === 0 ? (
-                  <div style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     <Bell size={48} style={{ opacity: 0.2, marginBottom: 'var(--space-md)' }} />
                     <p style={{ margin: 0, fontWeight: 500 }}>No notifications yet</p>
                   </div>
@@ -411,7 +416,9 @@ const Header = ({ onMenuClick, title }) => {
                 padding: 'var(--space-md) var(--space-lg)',
                 borderTop: '1px solid var(--border)',
                 textAlign: 'center',
-                background: 'color-mix(in srgb, var(--surface), transparent 80%)'
+                background: 'var(--surface)',
+                marginTop: 'auto',
+                flexShrink: 0
               }}>
                 <button
                   onClick={() => {
@@ -419,24 +426,25 @@ const Header = ({ onMenuClick, title }) => {
                     navigate('/notifications');
                   }}
                   style={{
-                    background: 'none',
+                    background: 'var(--primary-500)',
                     border: 'none',
-                    color: 'var(--primary-500)',
+                    color: 'white',
                     fontWeight: 700,
                     fontSize: 'var(--text-sm)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '4px',
+                    gap: '8px',
                     width: '100%',
-                    padding: '8px',
+                    padding: '12px',
                     borderRadius: 'var(--radius-md)',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    boxShadow: 'var(--shadow-md)'
                   }}
-                  className="hover:underline"
+                  className="hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  View All Notifications <ArrowRight size={14} />
+                  View All Notifications <ArrowRight size={16} />
                 </button>
               </div>
             </div>
@@ -504,35 +512,68 @@ const Header = ({ onMenuClick, title }) => {
                 border: '2px solid var(--border, #e5e7eb)',
                 borderRadius: 'var(--radius-xl)',
                 boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                overflow: 'visible'
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
               }}
             >
               {/* User Info Header */}
               <div style={{
-                padding: 'var(--space-md)',
+                padding: 'var(--space-lg) var(--space-md)',
                 borderBottom: '1px solid var(--border)',
                 background: 'var(--surface)',
-                backdropFilter: 'blur(10px)'
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                position: 'relative',
+                flexShrink: 0
               }}>
-                <p style={{ margin: 0, fontWeight: 700, color: 'var(--text)' }}>{user?.name}</p>
-                <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{user?.email}</p>
+                {/* Mobile Close Button */}
+                <button
+                  onClick={() => setShowProfileMenu(false)}
+                  style={{
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    cursor: 'pointer',
+                    padding: '8px',
+                    color: 'var(--text)',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '36px',
+                    height: '36px'
+                  }}
+                  className="hover:scale-105"
+                >
+                  <X size={20} />
+                </button>
+
+                <Avatar name={user?.name} size="lg" style={{ marginBottom: 'var(--space-sm)' }} />
+                <p style={{ margin: 0, fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-lg)' }}>{user?.name}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{user?.email}</p>
                 <div style={{
                   display: 'inline-block',
-                  marginTop: '8px',
-                  padding: '2px 8px',
+                  marginTop: '12px',
+                  padding: '4px 12px',
                   borderRadius: '999px',
-                  background: 'var(--primary-100)',
-                  color: 'var(--primary-700)',
+                  background: 'var(--primary-500)',
+                  color: 'white',
                   fontSize: '10px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase'
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
                 }}>
-                  {isAdmin ? 'Admin' : 'Member'}
+                  {isAdmin ? '🛡️ Administrator' : '🎓 Member'}
                 </div>
               </div>
 
               {/* Menu Items */}
-              <div style={{ padding: 'var(--space-xs)', background: 'var(--card)' }}>
+              <div style={{ padding: 'var(--space-sm)', background: 'var(--card)', flex: 1, overflowY: 'auto' }}>
                 {!isAdmin && (
                   <button
                     onClick={() => {
@@ -541,22 +582,22 @@ const Header = ({ onMenuClick, title }) => {
                     }}
                     style={{
                       width: '100%',
-                      padding: '10px',
+                      padding: '12px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       border: 'none',
                       background: 'none',
                       color: 'var(--text)',
-                      borderRadius: 'var(--radius-md)',
+                      borderRadius: 'var(--radius-lg)',
                       cursor: 'pointer',
                       fontSize: 'var(--text-sm)',
-                      fontWeight: 500,
+                      fontWeight: 600,
                       textAlign: 'left'
                     }}
-                    className="hover:bg-surface-hover"
+                    className="hover:bg-surface"
                   >
-                    <User size={16} /> My Profile
+                    <User size={18} /> My Profile
                   </button>
                 )}
                 <button
@@ -566,22 +607,22 @@ const Header = ({ onMenuClick, title }) => {
                   }}
                   style={{
                     width: '100%',
-                    padding: '10px',
+                    padding: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
                     border: 'none',
                     background: 'none',
                     color: 'var(--text)',
-                    borderRadius: 'var(--radius-md)',
+                    borderRadius: 'var(--radius-lg)',
                     cursor: 'pointer',
                     fontSize: 'var(--text-sm)',
-                    fontWeight: 500,
+                    fontWeight: 600,
                     textAlign: 'left'
                   }}
-                  className="hover:bg-surface-hover"
+                  className="hover:bg-surface"
                 >
-                  <LayoutDashboard size={16} /> Dashboard
+                  <LayoutDashboard size={18} /> Dashboard
                 </button>
                 <button
                   onClick={() => {
@@ -590,25 +631,25 @@ const Header = ({ onMenuClick, title }) => {
                   }}
                   style={{
                     width: '100%',
-                    padding: '10px',
+                    padding: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
                     border: 'none',
                     background: 'none',
                     color: 'var(--text)',
-                    borderRadius: 'var(--radius-md)',
+                    borderRadius: 'var(--radius-lg)',
                     cursor: 'pointer',
                     fontSize: 'var(--text-sm)',
-                    fontWeight: 500,
+                    fontWeight: 600,
                     textAlign: 'left'
                   }}
-                  className="hover:bg-surface-hover"
+                  className="hover:bg-surface"
                 >
-                  <Settings size={16} /> Settings
+                  <Settings size={18} /> Settings
                 </button>
 
-                <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
+                <div style={{ height: '1px', background: 'var(--border)', margin: '8px 0' }} />
 
                 <button
                   onClick={() => {
@@ -617,22 +658,22 @@ const Header = ({ onMenuClick, title }) => {
                   }}
                   style={{
                     width: '100%',
-                    padding: '10px',
+                    padding: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
                     border: 'none',
                     background: 'none',
                     color: 'var(--error-500)',
-                    borderRadius: 'var(--radius-md)',
+                    borderRadius: 'var(--radius-lg)',
                     cursor: 'pointer',
                     fontSize: 'var(--text-sm)',
-                    fontWeight: 500,
+                    fontWeight: 600,
                     textAlign: 'left'
                   }}
                   className="hover:bg-error-500/10"
                 >
-                  <LogOut size={16} /> Sign Out
+                  <LogOut size={18} /> Sign Out
                 </button>
               </div>
             </div>
