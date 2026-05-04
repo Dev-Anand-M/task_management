@@ -306,55 +306,75 @@ export const validateAPIKey = async (providerId, key) => {
     }
 };
 
-// Helper: Call AI proxy
-const callAIProxy = async (provider, endpoint, apiKey, body) => {
+// Helper: Wait function for backoff
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper: Call AI proxy with retry logic
+const callAIProxy = async (provider, endpoint, apiKey, body, maxRetries = 2) => {
     const proxyUrl = '/api/ai-proxy';
+    let lastError;
     
-    console.log(`[callAIProxy] Making request to ${proxyUrl}`, {
-        provider,
-        endpoint,
-        hasApiKey: !!apiKey,
-        hasBody: !!body
-    });
-    
-    const response = await fetch(proxyUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            provider,
-            endpoint,
-            apiKey,
-            body,
-            method: 'POST'
-        })
-    });
-
-    console.log(`[callAIProxy] Response status: ${response.status}`);
-
-    if (!response.ok) {
-        let errorData;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-            errorData = await response.json();
-        } catch (e) {
-            const text = await response.text();
-            console.error(`[callAIProxy] Failed to parse error response:`, text);
-            throw new Error(`HTTP ${response.status}: ${text}`);
-        }
-        console.error(`[callAIProxy] Error response:`, errorData);
-        throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
-    }
+            if (attempt > 0) {
+                const backoff = Math.pow(2, attempt) * 1000;
+                console.log(`[callAIProxy] Retry attempt ${attempt} after ${backoff}ms...`);
+                await wait(backoff);
+            }
 
-    try {
-        const data = await response.json();
-        console.log(`[callAIProxy] Success, received data keys:`, Object.keys(data));
-        return data;
-    } catch (e) {
-        const text = await response.text();
-        console.error(`[callAIProxy] Failed to parse success response:`, text);
-        throw new Error(`Failed to parse response: ${e.message}`);
+            console.log(`[callAIProxy] Making request to ${proxyUrl} (Attempt ${attempt + 1})`, {
+                provider,
+                endpoint,
+                hasApiKey: !!apiKey
+            });
+            
+            const response = await fetch(proxyUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    provider,
+                    endpoint,
+                    apiKey,
+                    body,
+                    method: 'POST'
+                })
+            });
+
+            console.log(`[callAIProxy] Response status: ${response.status}`);
+
+            if (response.status === 429 && attempt < maxRetries) {
+                console.warn('[callAIProxy] Rate limit hit, will retry...');
+                continue;
+            }
+
+            if (!response.ok) {
+                let errorData;
+                try {
+                    errorData = await response.json();
+                } catch (e) {
+                    const text = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${text}`);
+                }
+                throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (err) {
+            lastError = err;
+            console.error(`[callAIProxy] Attempt ${attempt + 1} failed:`, err);
+            
+            if (attempt === maxRetries) break;
+            
+            // Only retry on rate limit errors
+            if (!err.message.includes('429') && !err.message.includes('Too Many Requests')) {
+                break;
+            }
+        }
     }
+    
+    throw lastError;
 };
 
 // Generic AI completion function

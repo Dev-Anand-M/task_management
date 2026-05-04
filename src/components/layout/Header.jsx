@@ -257,35 +257,31 @@ const Header = ({ onMenuClick, title }) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 padding: '0 4px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                zIndex: 1
               }}>
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </Button>
+          
+          {/* Mobile Backdrop */}
+          {showNotifications && (
+            <div 
+              className="mobile-backdrop"
+              onClick={() => setShowNotifications(false)}
+            />
+          )}
 
           {/* Notifications Dropdown */}
           {showNotifications && (
             <div 
-              className="header-dropdown animate-scale-in"
-              style={{
-                position: 'absolute',
-                top: 'calc(100% + 12px)',
-                right: '-8px',
-                width: '400px',
-                maxWidth: 'calc(100vw - 32px)',
-                minHeight: '200px',
-                background: 'var(--card, #ffffff)',
-                border: '1px solid var(--border, #e5e7eb)',
-                borderRadius: '16px',
-                boxShadow: 'var(--shadow-xl)',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                zIndex: 10001,
-                transformOrigin: 'top right'
-              }}
+              className="header-dropdown notification-dropdown animate-scale-in"
+              style={{ zIndex: 10001 }}
             >
+              {/* Mobile Drag Handle */}
+              <div className="mobile-handle hidden md:block" />
+
               {/* Header */}
               <div style={{
                 padding: 'var(--space-md) var(--space-lg)',
@@ -487,28 +483,23 @@ const Header = ({ onMenuClick, title }) => {
           >
             <Avatar name={user?.name} image={user?.avatar_url} size="md" />
           </button>
+          
+          {/* Mobile Backdrop */}
+          {showProfileMenu && (
+            <div 
+              className="mobile-backdrop"
+              onClick={() => setShowProfileMenu(false)}
+            />
+          )}
 
           {showProfileMenu && (
             <div 
-              className="header-dropdown animate-scale-in"
-              style={{
-                position: 'absolute',
-                top: 'calc(100% + 12px)',
-                right: '-8px',
-                width: '280px',
-                maxWidth: 'calc(100vw - 32px)',
-                minHeight: '200px',
-                background: 'var(--card, #ffffff)',
-                border: '2px solid var(--border, #e5e7eb)',
-                borderRadius: 'var(--radius-xl)',
-                boxShadow: 'var(--shadow-xl)',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                zIndex: 10001,
-                transformOrigin: 'top right'
-              }}
+              className="header-dropdown profile-dropdown animate-scale-in"
+              style={{ zIndex: 10001 }}
             >
+              {/* Mobile Drag Handle */}
+              <div className="mobile-handle hidden md:block" />
+
               {/* User Info Header */}
               <div style={{
                 padding: 'var(--space-lg) var(--space-md)',
@@ -670,40 +661,88 @@ const Header = ({ onMenuClick, title }) => {
           )}
         </div>
       </div>
-
       <style>{`
-        /* Hide hamburger menu on desktop, show on mobile */
-        .menu-button {
-          display: flex !important;
-        }
-        
-        @media (min-width: 768px) {
-          .header-search {
-            display: block !important;
-          }
-        }
-        
-        /* Improve button hover states */
-        .btn-icon:hover {
-          background: var(--surface-hover);
-          transform: scale(1.05);
-        }
-        
-        /* Better mobile spacing */
+        /* Premium Mobile Dropdowns */
         @media (max-width: 768px) {
-          .header {
-            padding: 0 var(--space-md);
+          .mobile-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(4px);
+            z-index: 10000;
+            animation: fade-in 0.3s ease;
           }
           
-          .flex.items-center.gap-sm {
-            gap: var(--space-xs);
+          .header-dropdown {
+            position: fixed !important;
+            top: auto !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            border-radius: 24px 24px 0 0 !important;
+            min-height: auto !important;
+            max-height: 85vh !important;
+            transform: none !important;
+            animation: slide-up-mobile 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            box-shadow: 0 -8px 32px rgba(0,0,0,0.15) !important;
+            border-left: none !important;
+            border-right: none !important;
+            border-bottom: none !important;
           }
           
-          /* Larger touch targets on mobile */
-          .btn-icon {
-            min-width: 48px;
-            min-height: 48px;
+          .notification-dropdown {
+            height: 70vh !important;
           }
+          
+          .profile-dropdown {
+            height: auto !important;
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+          }
+          
+          .mobile-handle {
+            display: block !important;
+            width: 40px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            margin: 12px auto 4px;
+            opacity: 0.5;
+          }
+        }
+        
+        /* Desktop Positioning (moved from inline to css for better override) */
+        @media (min-width: 769px) {
+          .header-dropdown {
+            position: absolute;
+            top: calc(100% + 12px);
+            right: -8px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: var(--shadow-xl);
+            overflow: hidden;
+            display: flex;
+            flexDirection: column;
+            transform-origin: top right;
+          }
+          .notification-dropdown { width: 400px; min-height: 200px; }
+          .profile-dropdown { width: 280px; min-height: 200px; border-width: 2px; }
+          .mobile-handle { display: none !important; }
+        }
+
+        @keyframes slide-up-mobile {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
       `}</style>
     </header>
