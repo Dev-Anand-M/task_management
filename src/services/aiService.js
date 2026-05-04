@@ -351,7 +351,6 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null) => {
                 }),
                 signal
             });
-            });
 
             console.log(`[callAIProxy] Response status: ${response.status}`);
 
