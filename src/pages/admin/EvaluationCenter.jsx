@@ -869,7 +869,12 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                 </div>
             </div>
 
-            <div className="grid-3-mobile-1" style={{ gap: 'var(--space-lg)', alignItems: 'start' }}>
+            <div style={{ 
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: 'var(--space-lg)', 
+                alignItems: 'start' 
+            }}>
                 {/* Summary Info */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
                     <Card>

@@ -222,22 +222,21 @@ const Header = ({ onMenuClick, title }) => {
             className="w-64"
             isAdmin={isAdmin}
           />
-        </div>
-
-        {/* Notifications */}
+        </div>        {/* Notifications */}
         <div ref={notifRef} style={{ position: 'relative', zIndex: 10000 }}>
-          <Button
-            variant="ghost"
-            size="icon"
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowNotifications(!showNotifications);
+              if (!showNotifications) loadNotificationData();
+            }}
             style={{ 
               position: 'relative',
               width: '44px',
               height: '44px',
               padding: '10px'
-            }}
-            onClick={() => {
-              setShowNotifications(!showNotifications);
-              if (!showNotifications) loadNotificationData();
             }}
           >
             <Bell size={28} />
@@ -280,7 +279,7 @@ const Header = ({ onMenuClick, title }) => {
               style={{ zIndex: 10001 }}
             >
               {/* Mobile Drag Handle */}
-              <div className="mobile-handle hidden md:block" />
+              <div className="mobile-handle md:hidden" />
 
               {/* Header */}
               <div style={{
@@ -498,7 +497,7 @@ const Header = ({ onMenuClick, title }) => {
               style={{ zIndex: 10001 }}
             >
               {/* Mobile Drag Handle */}
-              <div className="mobile-handle hidden md:block" />
+              <div className="mobile-handle md:hidden" />
 
               {/* User Info Header */}
               <div style={{
@@ -670,13 +669,7 @@ const Header = ({ onMenuClick, title }) => {
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(4px);
-            z-index: 10000;
-            animation: fade-in 0.3s ease;
-          }
-          
-          .header-dropdown {
+           .header-dropdown {
             position: fixed !important;
             top: auto !important;
             bottom: 0 !important;
@@ -686,15 +679,27 @@ const Header = ({ onMenuClick, title }) => {
             max-width: 100% !important;
             border-radius: 24px 24px 0 0 !important;
             min-height: auto !important;
-            max-height: 85vh !important;
+            max-height: 92vh !important;
             transform: none !important;
-            animation: slide-up-mobile 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-            box-shadow: 0 -8px 32px rgba(0,0,0,0.15) !important;
-            border-left: none !important;
-            border-right: none !important;
-            border-bottom: none !important;
+            animation: slide-up-mobile 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.4) !important;
+            border: none !important;
+            z-index: 10005 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
           }
           
+          .mobile-backdrop {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: rgba(0,0,0,0.6) !important;
+            backdrop-filter: blur(8px) !important;
+            z-index: 10000 !important;
+          }
           .notification-dropdown {
             height: 70vh !important;
           }

@@ -155,8 +155,10 @@ export const AuthProvider = ({ children }) => {
                 email: email.toLowerCase().trim(),
                 password
             });
+            
+            // INCREASED TIMEOUT: Mobile networks can be slow. 60s is safer.
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Sign in timeout. Please check your connection and try again.')), 30000) // 30 seconds
+                setTimeout(() => reject(new Error('Sign in is taking longer than expected. Please check your internet connection.')), 60000) 
             );
 
             const { data, error } = await Promise.race([signInPromise, timeoutPromise]);
@@ -192,8 +194,9 @@ export const AuthProvider = ({ children }) => {
                     }
                 }
             });
+            // INCREASED TIMEOUT: Mobile networks can be slow. 60s is safer.
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Sign up timeout. Please check your connection and try again.')), 30000) // 30 seconds
+                setTimeout(() => reject(new Error('Registration is taking longer than expected. Please check your internet connection.')), 60000) 
             );
 
             const { data, error } = await Promise.race([signUpPromise, timeoutPromise]);
