@@ -320,13 +320,9 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null) => {
 
         try {
             if (attempt > 0) {
-                // LIGHTWEIGHT BACKOFF: Constant 1s instead of exponential
-                const backoff = 1000; 
-                console.log(`[callAIProxy] Rate limit hit. Retrying in ${backoff}ms...`);
-                
-                // Wait with abort support
+                // SILENT BACKOFF: Don't spam the console
                 await new Promise((resolve, reject) => {
-                    const timer = setTimeout(resolve, backoff);
+                    const timer = setTimeout(resolve, 1000);
                     const onAbort = () => {
                         clearTimeout(timer);
                         reject(new Error('AbortError'));
@@ -355,7 +351,6 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null) => {
             console.log(`[callAIProxy] Response status: ${response.status}`);
 
             if (response.status === 429 && attempt < maxRetries) {
-                console.warn('[callAIProxy] Rate limit hit, will retry...');
                 continue;
             }
 
