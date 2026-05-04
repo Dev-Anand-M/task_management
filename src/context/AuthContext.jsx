@@ -109,7 +109,7 @@ export const AuthProvider = ({ children }) => {
 
             const { data: userProfile, error } = await supabase
                 .from('profiles')
-                .select('*, classrooms(name)')
+                .select('*')
                 .eq('id', userId)
                 .single();
 
@@ -119,9 +119,21 @@ export const AuthProvider = ({ children }) => {
             }
 
             if (userProfile) {
+                let classroom_name = null;
+                if (userProfile.classroom_id) {
+                    const { data: classroom } = await supabase
+                        .from('classrooms')
+                        .select('name')
+                        .eq('id', userProfile.classroom_id)
+                        .single();
+                    if (classroom) {
+                        classroom_name = classroom.name;
+                    }
+                }
+
                 setProfile({
                     ...userProfile,
-                    classroom_name: userProfile.classrooms?.name || null
+                    classroom_name
                 });
 
                 // Centralized AI Settings: Load from database into local storage cache
