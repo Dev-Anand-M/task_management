@@ -790,7 +790,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
             const report = await evaluateQuizAttempt(attempt.quiz, attempt.answers, selectedModel);
             setAiReport(report);
             
-            // "Intercept & Re-evaluate All" applies AI suggestions to ALL question types
+            // Auto-apply logic
             const newOverrides = { ...overrides };
             report.suggestions.forEach(s => {
                 let qIndex = Number(s.questionIndex);
@@ -800,22 +800,15 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                     qIndex -= 1;
                 }
 
-                const q = attempt.quiz.questions[qIndex];
-                
-                if (q) {
-                    // Apply AI suggestions to ALL question types when "Intercept" is clicked
+                if (qIndex >= 0 && qIndex < attempt.quiz.questions.length) {
                     newOverrides[qIndex] = s.isCorrect;
                 }
             });
-            
-            console.log('Intercept & Re-evaluate: Applying AI suggestions to ALL questions:', newOverrides);
             setOverrides(prev => ({ ...prev, ...newOverrides }));
 
-            // Calculate final score with AI suggestions applied to ALL question types
+            // Calculate final score with AI suggestions applied
             const finalCorrect = attempt.quiz.questions.reduce((acc, q, idx) => {
                 const override = newOverrides[idx];
-                
-                // Use AI override if available, otherwise use original quiz key
                 const isCorrect = override !== undefined ? override : (attempt.answers[idx] === q.correctAnswer);
                 return acc + (isCorrect ? 1 : 0);
             }, 0);
@@ -857,15 +850,39 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
 
     return (
         <div className="animate-fade-in">
-            <div className="flex items-center gap-md mb-lg">
-                <Button variant="ghost" size="icon" onClick={onBack}>
-                    <ArrowLeft size={20} />
-                </Button>
-                <div>
-                    <h2 style={{ margin: 0 }}>Quiz Results Review</h2>
-                    <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-                        {attempt.quiz?.title}
-                    </p>
+            <div className="flex items-center justify-between gap-md mb-lg">
+                <div className="flex items-center gap-md">
+                    <Button variant="ghost" size="icon" onClick={onBack}>
+                        <ArrowLeft size={20} />
+                    </Button>
+                    <div>
+                        <h2 style={{ margin: 0 }}>Quiz Results Review</h2>
+                        <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+                            {attempt.quiz?.title}
+                        </p>
+                    </div>
+                </div>
+                
+                {/* Quick Model Selector */}
+                <div className="flex items-center gap-sm">
+                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 600 }}>Model:</span>
+                    <select 
+                        value={selectedModel}
+                        onChange={(e) => setSelectedModel(e.target.value)}
+                        style={{ 
+                            padding: '4px 8px', 
+                            fontSize: 'var(--text-xs)', 
+                            background: 'var(--surface)', 
+                            border: '1px solid var(--border)',
+                            borderRadius: 'var(--radius-md)',
+                            color: 'var(--text)'
+                        }}
+                    >
+                        <option value="meta-llama/Llama-3.2-90B-Vision-Instruct">Sambanova Llama 90B</option>
+                        <option value="llama3-70b-8192">Groq Llama 70B</option>
+                        <option value="deepseek-chat">DeepSeek Chat</option>
+                        <option value="gpt-4o">OpenAI GPT-4o</option>
+                    </select>
                 </div>
             </div>
 
