@@ -1250,7 +1250,8 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                             })()}
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+                                        {q.type === 'multiple' ? (
+                                            q.options.map((opt, optIndex) => {
                                                 // State variables for clarity
                                                 const isCorrectKey = optIndex === q.correctAnswer;
                                                 const isStudentChoice = optIndex === userAnswer;
