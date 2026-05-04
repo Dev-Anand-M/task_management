@@ -2666,7 +2666,6 @@ input.bg-surface\/80 {
     height: 52px !important;
     padding: 12px !important;
   }
-  }
 
   /* Full screen modals on very small devices */
   .modal {
@@ -2796,10 +2795,6 @@ html, body {
   max-width: 100vw;
 }
 
-* {
-  box-sizing: border-box;
-}
-
 /* Quiz options styling */
 .quiz-option {
   display: flex;
@@ -2868,45 +2863,11 @@ html, body {
     padding: var(--space-sm);
   }
   
-  .quiz-header > div:first-child {
-    order: 1;
-  }
-  
-  .quiz-header > div:last-child {
-    order: 2;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-sm);
-  }
-  
   /* Mobile quiz navigation improvements */
   .quiz-container .flex.justify-between {
     flex-direction: column;
     gap: var(--space-md);
     align-items: stretch;
-  }
-  
-  .quiz-container .flex.justify-between > button {
-    width: 100%;
-    order: 3;
-  }
-  
-  .quiz-container .flex.justify-between > div {
-    order: 2;
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: var(--space-xs);
-    margin: var(--space-md) 0;
-  }
-  
-  /* Mobile progress dots */
-  .quiz-container .flex.justify-between > div > div {
-    width: 12px !important;
-    height: 12px !important;
-    margin: 2px;
   }
   
   /* Mobile modal full screen */
@@ -2921,24 +2882,12 @@ html, body {
     padding: 0;
   }
   
-  /* Mobile card improvements */
-  .card {
-    border-radius: var(--radius-lg);
-    margin: 0 0 var(--space-md) 0;
-  }
-  
   /* Mobile button improvements */
   .btn {
     min-height: 48px;
     font-size: var(--text-base);
     padding: var(--space-md) var(--space-lg);
     border-radius: var(--radius-lg);
-  }
-  
-  /* Mobile text improvements */
-  h1, h2, h3 {
-    line-height: 1.3;
-    word-wrap: break-word;
   }
   
   /* Mobile quiz question text */
