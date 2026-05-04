@@ -1148,19 +1148,37 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                 }}>
                                     {aiSuggestion?.isKeyError && (
                                         <div style={{ 
-                                            padding: 'var(--space-xs) var(--space-sm)', 
+                                            padding: 'var(--space-sm)', 
                                             background: 'var(--error-50)', 
                                             border: '1px solid var(--error-200)', 
-                                            borderRadius: 'var(--radius-sm)',
+                                            borderRadius: 'var(--radius-md)',
                                             marginBottom: 'var(--space-sm)',
                                             display: 'flex',
-                                            gap: '8px',
-                                            alignItems: 'center'
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.1)'
                                         }}>
-                                            <AlertTriangle size={14} color="var(--error-500)" />
-                                            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--error-700)', fontWeight: 600 }}>
-                                                AI ALERT: This Question Key may be wrong! ({aiSuggestion.feedback})
-                                            </span>
+                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                <AlertTriangle size={18} color="var(--error-500)" />
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--error-700)', fontWeight: 700 }}>
+                                                        AI ALERT: This Question Key may be wrong!
+                                                    </span>
+                                                    <span style={{ fontSize: '11px', color: 'var(--error-600)' }}>
+                                                        {aiSuggestion.feedback}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <Button 
+                                                size="xs" 
+                                                variant="success" 
+                                                icon={CheckCircle}
+                                                onClick={() => {
+                                                    setOverrides(prev => ({ ...prev, [index]: aiSuggestion.isCorrect }));
+                                                }}
+                                            >
+                                                Fix Key Suggestion
+                                            </Button>
                                         </div>
                                     )}
 
