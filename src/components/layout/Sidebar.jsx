@@ -20,8 +20,7 @@ import {
     Brain,
     Code,
     GraduationCap,
-    MessageSquare,
-    X
+    MessageSquare
 } from 'lucide-react';
 import Avatar from '../common/Avatar';
 
@@ -139,28 +138,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                         </div>
                     </div>
 
-                    <button 
-                        className="mobile-close-btn"
-                        onClick={onClose}
-                        aria-label="Close menu"
-                        style={{
-                            background: 'rgba(255,255,255,0.2)',
-                            border: '1px solid rgba(255,255,255,0.3)',
-                            color: 'white',
-                            padding: '12px',
-                            borderRadius: '50%',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s',
-                            zIndex: 100
-                        }}
-                        onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
-                        onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-                    >
-                        <X size={24} strokeWidth={2.5} />
-                    </button>
+                    </div>
                 </div>
 
                 <nav style={{ flex: 1, padding: 'var(--space-sm)', overflowY: 'auto' }}>
