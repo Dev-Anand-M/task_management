@@ -132,7 +132,7 @@ export const AuthProvider = ({ children }) => {
                 password
             });
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Sign in timeout. The server is taking too long to respond.')), 8000)
+                setTimeout(() => reject(new Error('Sign in timeout. The server is taking too long to respond.')), 15000) // Increased to 15 seconds
             );
 
             const { data, error } = await Promise.race([signInPromise, timeoutPromise]);
@@ -143,7 +143,8 @@ export const AuthProvider = ({ children }) => {
             }
 
             setUser(data.user);
-            await fetchProfile(data.user.id);
+            // Fetch profile in background, don't block login
+            fetchProfile(data.user.id).catch(err => console.error('Profile fetch error:', err));
             return { success: true };
         } catch (err) {
             console.error('Login error:', err);
@@ -165,7 +166,7 @@ export const AuthProvider = ({ children }) => {
                 }
             });
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Sign up timeout. The server is taking too long to respond.')), 8000)
+                setTimeout(() => reject(new Error('Sign up timeout. The server is taking too long to respond.')), 15000) // Increased to 15 seconds
             );
 
             const { data, error } = await Promise.race([signUpPromise, timeoutPromise]);
@@ -175,7 +176,8 @@ export const AuthProvider = ({ children }) => {
             }
 
             setUser(data.user);
-            await fetchProfile(data.user.id);
+            // Fetch profile in background, don't block registration
+            fetchProfile(data.user.id).catch(err => console.error('Profile fetch error:', err));
             return { success: true, user: data.user };
         } catch (err) {
             console.error('Registration error:', err);

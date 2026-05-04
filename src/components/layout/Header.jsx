@@ -268,6 +268,20 @@ const Header = ({ onMenuClick, title }) => {
           {showNotifications && (
             <div 
               className="notification-panel-mobile"
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 12px)',
+                right: 0,
+                width: '400px',
+                maxWidth: '90vw',
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-2xl)',
+                boxShadow: 'var(--shadow-xl)',
+                overflow: 'hidden',
+                zIndex: 1000,
+                animation: 'slideInUp 0.3s var(--transition-bounce)'
+              }}
             >
               {/* Header */}
               <div style={{
@@ -478,6 +492,20 @@ const Header = ({ onMenuClick, title }) => {
           {showProfileMenu && (
             <div 
               className="profile-dropdown-mobile"
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 12px)',
+                right: 0,
+                width: '280px',
+                maxWidth: '90vw',
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-xl)',
+                boxShadow: 'var(--shadow-xl)',
+                overflow: 'hidden',
+                zIndex: 1000,
+                animation: 'slideInUp 0.2s ease-out'
+              }}
             >
               {/* User Info Header */}
               <div style={{
