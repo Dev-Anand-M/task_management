@@ -310,24 +310,32 @@ export const validateAPIKey = async (providerId, key) => {
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Helper: Call AI proxy with retry logic
-const callAIProxy = async (provider, endpoint, apiKey, body, maxRetries = 5) => {
+const callAIProxy = async (provider, endpoint, apiKey, body, signal = null) => {
+    const maxRetries = 5;
     const proxyUrl = '/api/ai-proxy';
     let lastError;
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        if (signal?.aborted) throw new Error('AbortError');
+
         try {
             if (attempt > 0) {
-                // EXTREME BACKOFF for 429s: 10s, 20s, 40s...
-                const backoff = Math.pow(2, attempt - 1) * 10000;
+                // CAP BACKOFF at 30s: 10s, 20s, 30s, 30s...
+                const backoff = Math.min(Math.pow(2, attempt - 1) * 10000, 30000);
                 console.log(`[callAIProxy] Rate limit hit. Waiting ${backoff}ms...`);
-                await wait(backoff);
+                
+                // Wait with abort support
+                await new Promise((resolve, reject) => {
+                    const timer = setTimeout(resolve, backoff);
+                    const onAbort = () => {
+                        clearTimeout(timer);
+                        reject(new Error('AbortError'));
+                    };
+                    signal?.addEventListener('abort', onAbort, { once: true });
+                });
             }
 
-            console.log(`[callAIProxy] Making request to ${proxyUrl} (Attempt ${attempt + 1})`, {
-                provider,
-                endpoint,
-                hasApiKey: !!apiKey
-            });
+            console.log(`[callAIProxy] Making request to ${proxyUrl} (Attempt ${attempt + 1})`);
             
             const response = await fetch(proxyUrl, {
                 method: 'POST',
@@ -340,7 +348,9 @@ const callAIProxy = async (provider, endpoint, apiKey, body, maxRetries = 5) => 
                     apiKey,
                     body,
                     method: 'POST'
-                })
+                }),
+                signal
+            });
             });
 
             console.log(`[callAIProxy] Response status: ${response.status}`);
@@ -379,7 +389,7 @@ const callAIProxy = async (provider, endpoint, apiKey, body, maxRetries = 5) => 
 };
 
 // Generic AI completion function
-const generateContent = async (prompt, systemPrompt = '', modelId = null) => {
+const generateContent = async (prompt, systemPrompt = '', modelId = null, signal = null) => {
     let selectedModelId = modelId || getSelectedModel();
     let provider = getProviderForModel(selectedModelId);
 
@@ -428,7 +438,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null) => {
                 generationConfig: { temperature: 0.7, topK: 40, topP: 0.95, maxOutputTokens: 8192 }
             };
             
-            const data = await callAIProxy('gemini', endpoint, apiKey, body);
+            const data = await callAIProxy('gemini', endpoint, apiKey, body, signal);
             await incrementUsage();
             return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         }
@@ -445,7 +455,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null) => {
                 temperature: 0.7
             };
             
-            const data = await callAIProxy('openai', endpoint, apiKey, body);
+            const data = await callAIProxy('openai', endpoint, apiKey, body, signal);
             await incrementUsage();
             return data.choices?.[0]?.message?.content || '';
         }
@@ -460,7 +470,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null) => {
                 messages: [{ role: 'user', content: prompt }]
             };
             
-            const data = await callAIProxy('anthropic', endpoint, apiKey, body);
+            const data = await callAIProxy('anthropic', endpoint, apiKey, body, signal);
             await incrementUsage();
             return data.content?.[0]?.text || '';
         }
@@ -476,7 +486,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null) => {
                 ]
             };
             
-            const data = await callAIProxy('perplexity', endpoint, apiKey, body);
+            const data = await callAIProxy('perplexity', endpoint, apiKey, body, signal);
             await incrementUsage();
             return data.choices?.[0]?.message?.content || '';
         }
@@ -493,7 +503,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null) => {
                 temperature: 0.7
             };
             
-            const data = await callAIProxy('sambanova', endpoint, apiKey, body);
+            const data = await callAIProxy('sambanova', endpoint, apiKey, body, signal);
             await incrementUsage();
             return data.choices?.[0]?.message?.content || '';
         }
@@ -607,7 +617,7 @@ Format your response in markdown.`;
 };
 
 // AI Quiz Evaluator (For Admins)
-export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null) => {
+export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null, signal = null) => {
     const systemPrompt = `You are an expert academic evaluator and fact-checker reviewing a student's quiz submission.
 
 CRITICAL UNDERSTANDING - QUESTION TYPES:
@@ -699,7 +709,7 @@ Remember:
 - MCQ/TRUE-FALSE = You only flag potential quiz key errors for admin review
 `;
 
-    const response = await generateContent(prompt, systemPrompt, model);
+    const response = await generateContent(prompt, systemPrompt, model, signal);
 
     try {
         // Log the raw response for debugging

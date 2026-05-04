@@ -33,6 +33,7 @@ const EvaluationCenter = () => {
     const [filterStatus, setFilterStatus] = useState('pending');
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
+    const [evalAbortController, setEvalAbortController] = useState(null);
 
     const loadData = useCallback(async () => {
         try {
@@ -803,9 +804,11 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
             return;
         }
 
+        const controller = new AbortController();
+        setEvalAbortController(controller);
         setEvaluating(true);
         try {
-            const report = await evaluateQuizAttempt(attempt.quiz, attempt.answers, selectedModel);
+            const report = await evaluateQuizAttempt(attempt.quiz, attempt.answers, selectedModel, controller.signal);
             setAiReport(report);
             
             // Auto-apply logic
@@ -853,6 +856,15 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
             alert('❌ AI Review Failed: ' + (error.message.includes('not configured') ? 'Please check your API keys in Settings.' : error.message));
         } finally {
             setEvaluating(false);
+            setEvalAbortController(null);
+        }
+    };
+
+    const handleAbortEvaluation = () => {
+        if (evalAbortController) {
+            evalAbortController.abort();
+            setEvaluating(false);
+            setEvalAbortController(null);
         }
     };
 
@@ -923,16 +935,35 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                     </p>
                                 </div>
                             </div>
-                            <Button 
-                                size="sm" 
-                                variant={attempt.metadata?.has_key_error ? "danger" : "warning"} 
-                                icon={RefreshCw}
-                                loading={evaluating}
-                                onClick={handleAiEvaluation}
-                                className={attempt.metadata?.has_key_error ? "animate-pulse" : ""}
-                            >
-                                {attempt.metadata?.has_key_error ? "🚨 Intercept & Resolve Flagged" : "Intercept & Re-evaluate All"}
-                            </Button>
+                            {evaluating ? (
+                                <div className="flex flex-col gap-sm">
+                                    <Button 
+                                        variant="warning" 
+                                        size="sm"
+                                        loading={true}
+                                    >
+                                        AI is Reviewing...
+                                    </Button>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={handleAbortEvaluation}
+                                        style={{ color: 'var(--error-500)' }}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Button 
+                                    size="sm" 
+                                    variant={attempt.metadata?.has_key_error ? "danger" : "warning"} 
+                                    icon={RefreshCw}
+                                    onClick={handleAiEvaluation}
+                                    className={attempt.metadata?.has_key_error ? "animate-pulse" : ""}
+                                >
+                                    {attempt.metadata?.has_key_error ? "🚨 Intercept & Resolve Flagged" : "Intercept & Re-evaluate All"}
+                                </Button>
+                            )}
                         </div>
                         <div className="grid grid-cols-2 gap-sm mb-lg">
                             <div style={{ padding: 'var(--space-md)', background: 'var(--card)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
