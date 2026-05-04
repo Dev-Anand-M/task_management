@@ -1,24 +1,53 @@
-const CACHE_NAME = 'zenith-cache-v1';
+const CACHE_NAME = 'zenith-cache-v2';
 const urlsToCache = [
     '/',
     '/vite.svg'
 ];
 
 self.addEventListener('install', event => {
+    // Skip waiting to activate immediately
+    self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => cache.addAll(urlsToCache))
     );
 });
 
+self.addEventListener('activate', event => {
+    // Clean up old caches
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.map(cacheName => {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        })
+    );
+});
+
 self.addEventListener('fetch', event => {
+    // Only cache GET requests and avoid API calls
+    if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
+        return;
+    }
+
     event.respondWith(
-        caches.match(event.request)
+        fetch(event.request)
             .then(response => {
-                if (response) {
-                    return response;
+                // If fetch succeeds, return response and cache it
+                if (response.status === 200) {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME)
+                        .then(cache => cache.put(event.request, responseClone));
                 }
-                return fetch(event.request);
+                return response;
+            })
+            .catch(() => {
+                // If fetch fails, try to serve from cache
+                return caches.match(event.request);
             })
     );
 });
