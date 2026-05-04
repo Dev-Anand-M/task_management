@@ -745,6 +745,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
     const [evaluating, setEvaluating] = useState(false);
     const [selectedModel, setSelectedModel] = useState('');
     const [availableModels, setAvailableModels] = useState([]);
+    const [evalAbortController, setEvalAbortController] = useState(null);
 
     const loadAttempt = useCallback(async () => {
         try {
