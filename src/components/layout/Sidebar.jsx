@@ -20,7 +20,8 @@ import {
     Brain,
     Code,
     GraduationCap,
-    MessageSquare
+    MessageSquare,
+    Database
 } from 'lucide-react';
 import Avatar from '../common/Avatar';
 
@@ -63,6 +64,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: '/admin/team', icon: Users, label: 'Team' },
         { to: '/admin/invite-codes', icon: Key, label: 'Invite Codes' },
         { to: '/admin/classroom', icon: School, label: 'Classroom' },
+        { to: '/admin/knowledge-base', icon: Database, label: 'Knowledge Base' },
         { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
         { to: '/settings', icon: Settings, label: 'Settings' }
     ];

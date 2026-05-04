@@ -308,7 +308,8 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                         passed: existingAttempt.passed,
                         xpEarned: 0,
                         manually_evaluated: existingAttempt.metadata?.manually_evaluated,
-                        finalized: existingAttempt.metadata?.finalized
+                        finalized: existingAttempt.metadata?.finalized,
+                        aiReport: existingAttempt.metadata?.ai_report
                     });
                     setIsComplete(true);
                     setShowReview(existingAttempt.metadata?.finalized === true);
@@ -753,6 +754,32 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {/* AI Feedback */}
+                                            {results.aiReport && (
+                                                <div style={{ 
+                                                    marginTop: 'var(--space-md)',
+                                                    padding: 'var(--space-md)',
+                                                    background: 'rgba(99, 102, 241, 0.05)',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    border: '1px solid rgba(99, 102, 241, 0.1)'
+                                                }}>
+                                                    <div className="flex items-center gap-xs mb-xs">
+                                                        <Badge variant="primary" size="xs">🤖 AI Feedback</Badge>
+                                                        {results.aiReport.suggestions?.find(s => Number(s.questionIndex) === qIndex)?.isKeyError && (
+                                                            <Badge variant="warning" size="xs">🚩 Key Error Detected</Badge>
+                                                        )}
+                                                    </div>
+                                                    <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                                                        {results.aiReport.suggestions?.find(s => Number(s.questionIndex) === qIndex)?.feedback || 'No specific feedback for this question.'}
+                                                    </p>
+                                                    {results.aiReport.suggestions?.find(s => Number(s.questionIndex) === qIndex)?.improvementTip && (
+                                                        <p style={{ margin: '8px 0 0', fontSize: 'var(--text-xs)', color: 'var(--primary-400)', fontWeight: 500 }}>
+                                                            💡 Tip: {results.aiReport.suggestions.find(s => Number(s.questionIndex) === qIndex).improvementTip}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
                                         </Card>
                                     );
                                 })}

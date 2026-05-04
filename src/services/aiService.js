@@ -628,7 +628,31 @@ Format your response in markdown.`;
 
 // AI Quiz Evaluator (For Admins)
 export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null, signal = null, options = {}) => {
+    // 1. Fetch relevant knowledge (RAG)
+    let relevantContext = "";
+    try {
+        const knowledge = await db.getKnowledgeBase(quizData.classroom_id);
+        
+        // Simple keyword-based retrieval for context
+        const contextSnippets = knowledge.filter(k => {
+            const searchStr = (quizData.title + " " + (quizData.description || "") + " " + quizData.questions.map(q => q.question).join(" ")).toLowerCase();
+            return k.title.toLowerCase().split(' ').some(word => word.length > 3 && searchStr.includes(word)) ||
+                   k.tags?.some(tag => searchStr.includes(tag.toLowerCase()));
+        });
+
+        if (contextSnippets.length > 0) {
+            relevantContext = "\n--- GROUND TRUTH CONTEXT ---\n" + 
+                contextSnippets.map(k => `[Source: ${k.title}]\n${k.content}`).join("\n\n") + 
+                "\n--- END CONTEXT ---\n";
+            console.log(`[RAG] Injected ${contextSnippets.length} knowledge snippets into prompt.`);
+        }
+    } catch (err) {
+        console.warn('RAG Context fetch failed:', err);
+    }
+
     const systemPrompt = `You are an expert academic evaluator and fact-checker reviewing a student's quiz submission.
+
+${relevantContext}
 
 CRITICAL UNDERSTANDING - QUESTION TYPES:
 
@@ -637,6 +661,7 @@ CRITICAL UNDERSTANDING - QUESTION TYPES:
    - The quiz creator provides a "sample answer" but students may phrase it differently
    - YOU decide if the student's answer is factually correct (set isCorrect: true/false)
    - You can also flag if the quiz creator's sample answer is wrong (set isKeyError: true)
+   - Use the GROUND TRUTH CONTEXT as your primary source for factual verification.
 
 2. **MULTIPLE CHOICE (MCQ) Questions**:
    - These have designated correct options (A, B, C, D) set by the quiz creator
@@ -652,7 +677,8 @@ CRITICAL UNDERSTANDING - QUESTION TYPES:
    - If the quiz key is WRONG (set isKeyError: true): YOU MUST set isCorrect: true if the student's choice is factually correct according to the corrected key
 
 CRITICAL RULES FOR EVALUATION:
-- isKeyError: Set to true ONLY if the quiz creator's "correctAnswer" is factually wrong.
+- Use GROUND TRUTH CONTEXT as the final authority on facts.
+- isKeyError: Set to true ONLY if the quiz creator's "correctAnswer" is factually wrong according to the context or established science.
 - isCorrect: This is the FINAL DECISION on student marks for this question. Award the point if student is factually right.
 - IF isKeyError IS TRUE: You MUST evaluate the student's answer against the CORRECT fact. 
     - If the student's answer is factually correct, you MUST set "isCorrect": true.

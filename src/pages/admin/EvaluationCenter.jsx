@@ -37,42 +37,51 @@ const EvaluationCenter = () => {
 
     const loadData = useCallback(async () => {
         try {
+            console.log('[EvaluationCenter] loadData: Starting fetch...');
             setLoading(true);
-            console.log('Admin Fetching Evaluation Data...');
             const [subs, atts] = await Promise.all([
-                db.getSubmissions(),
-                db.getQuizAttempts()
+                db.getSubmissions().catch(e => { console.error('Submissions Fetch Error:', e); return []; }),
+                db.getQuizAttempts().catch(e => { console.error('Quiz Attempts Fetch Error:', e); return []; })
             ]);
             
-            console.log('Submissions found:', subs?.length);
-            console.log('Quiz attempts found:', atts?.length);
+            console.log('[EvaluationCenter] loadData: Data received', {
+                subsCount: subs?.length,
+                attsCount: atts?.length
+            });
             
             setSubmissions(subs || []);
             setQuizAttempts(atts || []);
+            console.log('[EvaluationCenter] loadData: State updated');
         } catch (error) {
-            console.error('CRITICAL: Evaluation Data Load Failed:', error);
+            console.error('[EvaluationCenter] CRITICAL: Evaluation Data Load Failed:', error);
         } finally {
+            console.log('[EvaluationCenter] loadData: Setting loading to false');
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
+        console.log('[EvaluationCenter] useEffect: Mounting and starting loadData');
         loadData();
         
         // GOD COMMAND: REALTIME UPDATES
+        console.log('[EvaluationCenter] useEffect: Setting up Realtime channel');
         const channel = supabase
-            .channel('evaluation-updates')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_attempts' }, () => {
-                console.log('Realtime: Quiz attempt update detected');
+            .channel(`evaluation-updates-${Math.random().toString(36).substring(7)}`) // Unique channel name per mount
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_attempts' }, (payload) => {
+                console.log('[EvaluationCenter] Realtime: Quiz attempt update detected', payload.eventType);
                 loadData();
             })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
-                console.log('Realtime: Task submission update detected');
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, (payload) => {
+                console.log('[EvaluationCenter] Realtime: Task submission update detected', payload.eventType);
                 loadData();
             })
-            .subscribe();
+            .subscribe((status) => {
+                console.log('[EvaluationCenter] Realtime Subscription Status:', status);
+            });
 
         return () => {
+            console.log('[EvaluationCenter] useEffect Cleanup: Removing Realtime channel');
             supabase.removeChannel(channel);
         };
     }, [loadData]);

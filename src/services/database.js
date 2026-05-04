@@ -4,15 +4,31 @@ export const supabase = supabaseClient;
 // ============================================
 // PROFILES
 // ============================================
+// Helper for safe user retrieval to avoid hangs
+const getActiveUser = async () => {
+    try {
+        // Try session first (fast, local)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) return session.user;
+        
+        // Fallback to getUser with a timeout
+        const userPromise = supabase.auth.getUser();
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Auth Timeout')), 3000)
+        );
+        
+        const { data: { user } } = await Promise.race([userPromise, timeoutPromise]);
+        return user;
+    } catch (e) {
+        console.error('getActiveUser failed:', e);
+        return null;
+    }
+};
+
 export const getMembers = async () => {
     try {
         // Filter by current classroom
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (error) {
-            console.error('Auth error in getMembers:', error);
-            return [];
-        }
-        if (!user) return [];
+        const user = await getActiveUser();
 
         const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
 
@@ -68,7 +84,7 @@ export const uploadAvatar = async (userId, file) => {
 // TASKS
 // ============================================
 export const getTasks = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getActiveUser();
     if (!user) return [];
 
     const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
@@ -249,7 +265,7 @@ export const updateSubmission = async (id, updates) => {
 // QUIZZES
 // ============================================
 export const getQuizzes = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getActiveUser();
     if (!user) return [];
 
     const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
@@ -300,7 +316,7 @@ export const getQuizById = async (id) => {
 };
 
 export const createQuiz = async (quiz) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getActiveUser();
     let classroomId = quiz.classroom_id;
 
     if (!classroomId && !quiz.is_global) {
@@ -365,7 +381,7 @@ export const deleteQuiz = async (id) => {
 export const getQuizAttempts = async () => {
     try {
         console.log('--- START QUIZ ATTEMPT FETCH ---');
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getActiveUser();
         if (!user) {
             console.error('No authenticated user found');
             return [];
@@ -676,7 +692,7 @@ export const getClassroom = async () => {
 };
 
 export const getClassrooms = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getActiveUser();
     if (!user) return [];
 
     const { data, error } = await supabase.from('classrooms').select('*').order('created_at', { ascending: false });
@@ -686,7 +702,7 @@ export const getClassrooms = async () => {
 };
 
 export const createClassroom = async (name, description) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getActiveUser();
 
     const { data, error } = await supabase.from('classrooms').insert({
         name,
@@ -705,7 +721,7 @@ export const updateClassroom = async (id, updates) => {
 };
 
 export const switchClassroom = async (classroomId) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getActiveUser();
 
     const { data, error } = await supabase.from('profiles').update({
         classroom_id: classroomId
@@ -848,7 +864,7 @@ export const getAnnouncementsByClassroom = async (classroomId) => {
 };
 
 export const createAnnouncement = async (announcement) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getActiveUser();
     const { data, error } = await supabase.from('announcements')
         .insert({
             ...announcement,
@@ -872,4 +888,47 @@ export const createAnnouncement = async (announcement) => {
     }
 
     return data;
+};
+// ============================================
+// KNOWLEDGE BASE (RAG)
+// ============================================
+export const getKnowledgeBase = async (classroomId = null) => {
+    try {
+        let query = supabase.from('knowledge_base').select('*').order('created_at', { ascending: false });
+        if (classroomId) {
+            query = query.eq('classroom_id', classroomId);
+        }
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error fetching knowledge base:', error);
+        return [];
+    }
+};
+
+export const addKnowledgeSnippet = async (snippet) => {
+    try {
+        const user = await getActiveUser();
+        const { data, error } = await supabase.from('knowledge_base').insert({
+            ...snippet,
+            created_by: user.id
+        }).select().single();
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error adding knowledge snippet:', error);
+        throw error;
+    }
+};
+
+export const deleteKnowledgeSnippet = async (id) => {
+    try {
+        const { error } = await supabase.from('knowledge_base').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    } catch (error) {
+        console.error('Error deleting knowledge snippet:', error);
+        throw error;
+    }
 };
