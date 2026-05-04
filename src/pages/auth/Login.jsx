@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Input } from '../../components/common';
+import * as db from '../../services/database';
 import { Mail, Lock, Zap, ArrowRight, Target, Award, TrendingUp, Users } from 'lucide-react';
 
 const Login = () => {
