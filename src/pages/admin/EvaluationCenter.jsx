@@ -19,6 +19,7 @@ import {
     Brain,
     ChevronRight
 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import * as db from '../../services/database';
 import { evaluateQuizAttempt } from '../../services/aiService';
 import { formatDate, formatRelativeTime, getStatusColor, EVALUATION_CRITERIA } from '../../utils/constants';
@@ -56,6 +57,23 @@ const EvaluationCenter = () => {
 
     useEffect(() => {
         loadData();
+        
+        // GOD COMMAND: REALTIME UPDATES
+        const channel = supabase
+            .channel('evaluation-updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_attempts' }, () => {
+                console.log('Realtime: Quiz attempt update detected');
+                loadData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
+                console.log('Realtime: Task submission update detected');
+                loadData();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [loadData]);
 
     const filteredSubmissions = submissions

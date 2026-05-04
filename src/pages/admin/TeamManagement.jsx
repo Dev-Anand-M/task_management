@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Badge, Avatar, Modal, Input, ProgressBar } from '../../components/common';
+import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import {
     Search,
@@ -30,6 +31,27 @@ const TeamManagement = () => {
 
     useEffect(() => {
         loadMembers();
+
+        // GOD COMMAND: REALTIME UPDATES
+        const channel = supabase
+            .channel('team-updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+                console.log('Realtime: Profile update detected');
+                loadMembers();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
+                console.log('Realtime: Submission update detected');
+                loadMembers();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_attempts' }, () => {
+                console.log('Realtime: Quiz attempt update detected');
+                loadMembers();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const handleResetPassword = async (email) => {

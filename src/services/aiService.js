@@ -317,9 +317,9 @@ const callAIProxy = async (provider, endpoint, apiKey, body, maxRetries = 5) => 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
             if (attempt > 0) {
-                // More aggressive backoff for 429s: 5s, 10s, 20s, 40s, 80s
-                const backoff = Math.pow(2, attempt - 1) * 5000;
-                console.log(`[callAIProxy] Rate limit hit. Waiting ${backoff}ms before retry ${attempt}/${maxRetries}...`);
+                // EXTREME BACKOFF for 429s: 10s, 20s, 40s...
+                const backoff = Math.pow(2, attempt - 1) * 10000;
+                console.log(`[callAIProxy] Rate limit hit. Waiting ${backoff}ms...`);
                 await wait(backoff);
             }
 

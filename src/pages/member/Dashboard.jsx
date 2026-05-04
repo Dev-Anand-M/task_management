@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Card, Badge, Avatar, Button, ProgressBar } from '../../components/common';
+import { supabase } from '../../lib/supabase';
 import { ProgressRing } from '../../components/common/Progress';
 import {
     ListTodo,
@@ -114,8 +115,35 @@ const MemberDashboard = () => {
     useEffect(() => {
         if (user?.id) {
             loadDashboardData();
+
+            // GOD COMMAND: REALTIME UPDATES
+            const channel = supabase
+                .channel(`dashboard-${user.id}`)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+                    console.log('Realtime: Task update detected');
+                    loadDashboardData();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions', filter: `user_id=eq.${user.id}` }, () => {
+                    console.log('Realtime: My submission update detected');
+                    loadDashboardData();
+                    refreshUser(); // Update XP if approved
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_attempts', filter: `user_id=eq.${user.id}` }, () => {
+                    console.log('Realtime: My quiz update detected');
+                    loadDashboardData();
+                    refreshUser(); // Update XP if passed
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, () => {
+                    console.log('Realtime: My profile update detected');
+                    refreshUser();
+                })
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
         }
-    }, [loadDashboardData, user?.id]);
+    }, [loadDashboardData, user?.id, refreshUser]);
 
     if (loading) {
         return (

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 import * as db from '../../services/database';
 import { Menu, Sun, Moon, Bell, X, Clock, CheckCircle, Award, AlertCircle, Info, ArrowRight, User, LogOut, Settings, LayoutDashboard } from 'lucide-react';
 import { Button, SearchBar, Avatar } from '../common';
@@ -37,19 +38,27 @@ const Header = ({ onMenuClick, title }) => {
   const [tickerItems, setTickerItems] = useState([]);
 
   useEffect(() => {
-    if (user && !isAdmin) {
+    if (user) {
       loadNotificationData();
-      loadTickerData();
-      const interval = setInterval(() => {
-        loadNotificationData();
-        loadTickerData();
-      }, 60000);
-      return () => clearInterval(interval);
-    } else if (user) {
-      // Just notifications for admins
-      loadNotificationData();
-      const interval = setInterval(loadNotificationData, 60000);
-      return () => clearInterval(interval);
+      if (!isAdmin) loadTickerData();
+      
+      // GOD COMMAND: REALTIME UPDATES
+      const channel = supabase
+          .channel(`header-updates-${user.id}`)
+          .on('postgres_changes', { 
+              event: '*', 
+              schema: 'public', 
+              table: 'notifications', 
+              filter: `user_id=eq.${user.id}` 
+          }, () => {
+              console.log('Realtime: Notification update detected');
+              loadNotificationData();
+          })
+          .subscribe();
+
+      return () => {
+          supabase.removeChannel(channel);
+      };
     }
   }, [user, isAdmin]);
 
