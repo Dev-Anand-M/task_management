@@ -144,7 +144,7 @@ export const AuthProvider = ({ children }) => {
                 password
             });
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Sign in timeout. The server is taking too long to respond.')), 15000) // Increased to 15 seconds
+                setTimeout(() => reject(new Error('Sign in timeout. Please check your connection and try again.')), 30000) // 30 seconds
             );
 
             const { data, error } = await Promise.race([signInPromise, timeoutPromise]);
@@ -154,10 +154,13 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, error: error.message };
             }
 
-            setUser(data.user);
-            // Fetch profile in background, don't block login
-            fetchProfile(data.user.id).catch(err => console.error('Profile fetch error:', err));
-            return { success: true };
+            if (data.user) {
+                setUser(data.user);
+                // Fetch profile in background, don't block the UI transition
+                fetchProfile(data.user.id).catch(err => console.error('Profile fetch error:', err));
+                return { success: true, user: data.user };
+            }
+            return { success: false, error: 'No user data returned' };
         } catch (err) {
             console.error('Login error:', err);
             return { success: false, error: err.message || 'Login failed. Please try again.' };
@@ -178,7 +181,7 @@ export const AuthProvider = ({ children }) => {
                 }
             });
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Sign up timeout. The server is taking too long to respond.')), 15000) // Increased to 15 seconds
+                setTimeout(() => reject(new Error('Sign up timeout. Please check your connection and try again.')), 30000) // 30 seconds
             );
 
             const { data, error } = await Promise.race([signUpPromise, timeoutPromise]);

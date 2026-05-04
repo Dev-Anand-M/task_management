@@ -66,12 +66,13 @@ const Register = () => {
         if (result.success) {
             // Mark invite code as used
             await inviteCodes.useInviteCode(inviteCode.toUpperCase(), result.user.id);
-            navigate('/dashboard');
+            // Manual navigation as a fallback
+            console.log('Registration success, manual redirect to dashboard');
+            navigate('/dashboard', { replace: true });
         } else {
             setError(result.error || 'Registration failed');
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     const benefits = [

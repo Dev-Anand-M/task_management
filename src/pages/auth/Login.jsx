@@ -21,12 +21,15 @@ const Login = () => {
         const result = await login(email, password);
 
         if (result.success) {
-            // Navigation will be handled by AuthRoute redirect
+            // Manual navigation as a fallback to AuthRoute redirect
+            const userRole = result.user?.user_metadata?.role || 'member';
+            const redirectPath = userRole === 'admin' ? '/admin' : '/dashboard';
+            console.log('Login success, manual redirect to:', redirectPath);
+            navigate(redirectPath, { replace: true });
         } else {
             setError(result.error || 'Invalid credentials');
+            setLoading(false); // Only set loading false if we didn't redirect
         }
-
-        setLoading(false);
     };
 
     const handleResetSubmit = async (e) => {
