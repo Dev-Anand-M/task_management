@@ -11,25 +11,71 @@
   <meta name="theme-color" content="#6366f1" />
   <title>Zenith - Skill Enhancement Platform</title>
   <link rel="manifest" href="/manifest.json">
-  <script>
-    // Temporarily disable service worker to fix caching issues
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for(let registration of registrations) {
-          registration.unregister();
+    <script>
+      // Global error handler to catch early crashes
+      window.onerror = function(msg, url, lineNo, columnNo, error) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.position = 'fixed';
+        errorDiv.style.bottom = '20px';
+        errorDiv.style.left = '20px';
+        errorDiv.style.right = '20px';
+        errorDiv.style.padding = '20px';
+        errorDiv.style.background = '#ef4444';
+        errorDiv.style.color = 'white';
+        errorDiv.style.borderRadius = '8px';
+        errorDiv.style.zIndex = '999999';
+        errorDiv.style.fontSize = '12px';
+        errorDiv.style.fontFamily = 'monospace';
+        errorDiv.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+        errorDiv.innerHTML = '<strong>App Crash Detected:</strong><br>' + msg + '<br>at ' + url + ':' + lineNo;
+        document.body.appendChild(errorDiv);
+        return false;
+      };
+
+      // Temporarily disable service worker to fix caching issues
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+      
+      // Clear all caches
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (let name of names) {
+            caches.delete(name);
+          }
+        });
+      }
+
+      // Emergency Reset after 10 seconds of white screen
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        if (root && root.innerHTML === '') {
+          const resetBtn = document.createElement('button');
+          resetBtn.innerText = 'App taking too long? Click here to Hard Refresh';
+          resetBtn.style.position = 'fixed';
+          resetBtn.style.top = '50%';
+          resetBtn.style.left = '50%';
+          resetBtn.style.transform = 'translate(-50%, -50%)';
+          resetBtn.style.padding = '15px 30px';
+          resetBtn.style.background = '#10b981';
+          resetBtn.style.color = 'white';
+          resetBtn.style.border = 'none';
+          resetBtn.style.borderRadius = '8px';
+          resetBtn.style.cursor = 'pointer';
+          resetBtn.style.zIndex = '999999';
+          resetBtn.onclick = () => {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload(true);
+          };
+          document.body.appendChild(resetBtn);
         }
-      });
-    }
-    
-    // Clear all caches
-    if ('caches' in window) {
-      caches.keys().then(function(names) {
-        for (let name of names) {
-          caches.delete(name);
-        }
-      });
-    }
-  </script>
+      }, 10000);
+    </script>
 </head>
 
 <body>

@@ -267,20 +267,23 @@ const Header = ({ onMenuClick, title }) => {
           {/* Notifications Dropdown */}
           {showNotifications && (
             <div 
-              className="header-dropdown"
+              className="header-dropdown animate-scale-in"
               style={{
+                position: 'absolute',
                 top: 'calc(100% + 12px)',
-                right: 0,
+                right: '-8px',
                 width: '400px',
-                maxWidth: '90vw',
+                maxWidth: 'calc(100vw - 32px)',
                 minHeight: '200px',
                 background: 'var(--card, #ffffff)',
                 border: '1px solid var(--border, #e5e7eb)',
                 borderRadius: '16px',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                boxShadow: 'var(--shadow-xl)',
                 overflow: 'hidden',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                zIndex: 10001,
+                transformOrigin: 'top right'
               }}
             >
               {/* Header */}
@@ -501,20 +504,23 @@ const Header = ({ onMenuClick, title }) => {
 
           {showProfileMenu && (
             <div 
-              className="header-dropdown"
+              className="header-dropdown animate-scale-in"
               style={{
+                position: 'absolute',
                 top: 'calc(100% + 12px)',
-                right: 0,
+                right: '-8px',
                 width: '280px',
-                maxWidth: '90vw',
+                maxWidth: 'calc(100vw - 32px)',
                 minHeight: '200px',
                 background: 'var(--card, #ffffff)',
                 border: '2px solid var(--border, #e5e7eb)',
                 borderRadius: 'var(--radius-xl)',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                boxShadow: 'var(--shadow-xl)',
                 overflow: 'hidden',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                zIndex: 10001,
+                transformOrigin: 'top right'
               }}
             >
               {/* User Info Header */}

@@ -588,10 +588,16 @@ a:hover {
   top: 0;
   left: 0;
   bottom: 0;
-  z-index: var(--z-sticky);
+  z-index: 1000; /* High enough to be above content, but below header on desktop if needed */
   transition: transform var(--transition-slow), width var(--transition-slow);
   box-shadow: 4px 0 20px rgba(217, 119, 6, 0.15);
   transform: translateX(0); /* Default desktop state */
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    z-index: 5000; /* Much higher on mobile to cover everything */
+  }
 }
 
 .sidebar.collapsed {
@@ -636,7 +642,7 @@ html[data-theme="dark"] .sidebar {
   padding: 0 var(--space-xl);
   position: sticky;
   top: 0;
-  z-index: var(--z-sticky);
+  z-index: 2000; /* Higher than sidebar default to ensure dropdowns work */
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
