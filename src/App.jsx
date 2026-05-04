@@ -176,11 +176,11 @@ function AppRoutes() {
           <Route path="/tasks/:taskId" element={<MyTasks />} />
           <Route path="/quizzes" element={<Quizzes />} />
           <Route path="/quizzes/:quizId" element={<Quizzes />} />
-          <Route path="/profile" element={<Profile />} />
           <Route path="/xp-history" element={<XPHistory />} />
         </Route>
 
         {/* Shared Routes */}
+        <Route path="/profile" element={<Profile />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/notifications" element={<Notifications />} />
