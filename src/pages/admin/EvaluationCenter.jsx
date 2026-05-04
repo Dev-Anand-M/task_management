@@ -16,7 +16,8 @@ import {
     AlertTriangle,
     Check,
     X,
-    Brain
+    Brain,
+    ChevronRight
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { evaluateQuizAttempt } from '../../services/aiService';
