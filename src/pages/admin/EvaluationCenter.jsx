@@ -1189,54 +1189,65 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                         <div style={{ 
                                             marginLeft: 'var(--space-md)',
                                             display: 'flex',
-                                            alignItems: 'center',
+                                            flexDirection: 'column',
+                                            alignItems: 'flex-end',
                                             gap: '8px'
                                         }}>
-                                            {/* Show original quiz key result */}
-                                            {(() => {
-                                                const originalCorrect = q.type === 'short' ? false : (attempt.answers[index] === q.correctAnswer);
-                                                
-                                                return (
-                                                    <div style={{
-                                                        padding: '6px 14px',
-                                                        borderRadius: 'var(--radius-md)',
-                                                        background: originalCorrect ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                                        border: `2px solid ${originalCorrect ? 'var(--success-500)' : 'var(--error-500)'}`,
-                                                        fontWeight: 700,
-                                                        fontSize: 'var(--text-lg)',
-                                                        color: originalCorrect ? 'var(--success-600)' : 'var(--error-600)',
-                                                        minWidth: '60px',
-                                                        textAlign: 'center'
-                                                    }}>
-                                                        {originalCorrect ? '+1' : '-1'}
-                                                    </div>
-                                                );
-                                            })()}
-                                            
-                                            {/* Show AI suggestion if it differs from original */}
-                                            {aiSuggestion && overrides[index] !== undefined && (() => {
-                                                const originalCorrect = q.type === 'short' ? false : (attempt.answers[index] === q.correctAnswer);
-                                                const aiCorrect = overrides[index];
-                                                
-                                                // Only show AI suggestion if it differs from original
-                                                if (q.type === 'short' || originalCorrect !== aiCorrect) {
+                                            {/* Original mark based on quiz key */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>
+                                                    Original Mark
+                                                </span>
+                                                {(() => {
+                                                    const originalCorrect = q.type === 'short' ? false : (attempt.answers[index] === q.correctAnswer);
+                                                    
                                                     return (
                                                         <div style={{
-                                                            padding: '6px 14px',
+                                                            padding: '4px 12px',
                                                             borderRadius: 'var(--radius-md)',
-                                                            background: 'rgba(59, 130, 246, 0.15)',
-                                                            border: '2px solid #3b82f6',
+                                                            background: originalCorrect ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                                            border: `1px solid ${originalCorrect ? 'var(--success-500)' : 'var(--error-500)'}`,
                                                             fontWeight: 700,
-                                                            fontSize: 'var(--text-lg)',
-                                                            color: '#3b82f6',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '6px',
-                                                            minWidth: '70px',
-                                                            justifyContent: 'center'
+                                                            fontSize: 'var(--text-base)',
+                                                            color: originalCorrect ? 'var(--success-600)' : 'var(--error-600)',
+                                                            minWidth: '50px',
+                                                            textAlign: 'center'
                                                         }}>
-                                                            <Brain size={16} />
-                                                            {aiCorrect ? '+1' : '-1'}
+                                                            {originalCorrect ? '+1' : '-1'}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                            
+                                            {/* AI/Updated mark if it differs or is a suggestion */}
+                                            {(aiSuggestion || overrides[index] !== undefined) && (() => {
+                                                const originalCorrect = q.type === 'short' ? false : (attempt.answers[index] === q.correctAnswer);
+                                                const currentCorrect = overrides[index] !== undefined ? overrides[index] : originalCorrect;
+                                                
+                                                // Only show if different OR if it's an AI suggestion
+                                                if (q.type === 'short' || originalCorrect !== currentCorrect || aiSuggestion) {
+                                                    return (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                                            <span style={{ fontSize: '10px', color: '#3b82f6', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>
+                                                                {overrides[index] !== undefined ? 'Updated Mark' : 'AI Suggestion'}
+                                                            </span>
+                                                            <div style={{
+                                                                padding: '4px 12px',
+                                                                borderRadius: 'var(--radius-md)',
+                                                                background: 'rgba(59, 130, 246, 0.1)',
+                                                                border: '1px solid #3b82f6',
+                                                                fontWeight: 700,
+                                                                fontSize: 'var(--text-base)',
+                                                                color: '#3b82f6',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '6px',
+                                                                minWidth: '50px',
+                                                                justifyContent: 'center'
+                                                            }}>
+                                                                {aiSuggestion && <Brain size={12} />}
+                                                                {currentCorrect ? '+1' : '-1'}
+                                                            </div>
                                                         </div>
                                                     );
                                                 }
@@ -1246,27 +1257,88 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
                                         {q.type === 'multiple' ? (
-                                            q.options.map((opt, optIndex) => (
-                                                <div key={optIndex} style={{
-                                                    fontSize: 'var(--text-sm)',
-                                                    color: optIndex === q.correctAnswer ? 'var(--success-500)' : optIndex === userAnswer ? 'var(--error-500)' : 'var(--text-muted)',
-                                                    fontWeight: (optIndex === q.correctAnswer || optIndex === userAnswer) ? 600 : 400,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '8px'
-                                                }}>
-                                                    {optIndex === q.correctAnswer && <Check size={14} />}
-                                                    {optIndex === userAnswer && !isCorrect && <X size={14} />}
-                                                    {opt}
-                                                </div>
-                                            ))
+                                            q.options.map((opt, optIndex) => {
+                                                const isCorrectKey = optIndex === q.correctAnswer;
+                                                const isStudentChoice = optIndex === userAnswer;
+                                                const aiCorrectIndex = aiSuggestion?.isCorrect === true ? userAnswer : (aiSuggestion?.isCorrect === false ? -1 : -1);
+                                                
+                                                // Determine color: Green (Correct Key), Red (Wrong Student Choice), Blue (AI Recommends)
+                                                let color = 'var(--text-muted)';
+                                                let fontWeight = 400;
+                                                let icon = null;
+
+                                                if (isCorrectKey) {
+                                                    color = 'var(--success-500)';
+                                                    fontWeight = 600;
+                                                    icon = <Check size={14} />;
+                                                }
+                                                
+                                                if (isStudentChoice && !isCorrectKey) {
+                                                    color = 'var(--error-500)';
+                                                    fontWeight = 600;
+                                                    icon = <X size={14} />;
+                                                }
+
+                                                // AI Override/Correction in BLUE
+                                                if (aiSuggestion && aiSuggestion.isCorrect && isStudentChoice) {
+                                                    color = '#3b82f6';
+                                                    fontWeight = 700;
+                                                }
+
+                                                return (
+                                                    <div key={optIndex} style={{
+                                                        fontSize: 'var(--text-sm)',
+                                                        color,
+                                                        fontWeight,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '4px',
+                                                        background: (aiSuggestion && aiSuggestion.isCorrect && isStudentChoice) ? 'rgba(59, 130, 246, 0.05)' : ''
+                                                    }}>
+                                                        {icon}
+                                                        {opt}
+                                                        {aiSuggestion && aiSuggestion.isCorrect && isStudentChoice && (
+                                                            <Badge size="xs" style={{ background: '#3b82f6', fontSize: '9px', padding: '1px 4px' }}>AI VALIDATED</Badge>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })
                                         ) : q.type === 'boolean' ? (
                                             <div style={{ fontSize: 'var(--text-sm)' }}>
-                                                <span style={{ color: q.correctAnswer === true ? 'var(--success-500)' : 'var(--text-muted)' }}>True</span> / 
-                                                <span style={{ color: q.correctAnswer === false ? 'var(--success-500)' : 'var(--text-muted)' }}> False</span>
-                                                <p style={{ marginTop: '8px', color: isCorrect ? 'var(--success-500)' : 'var(--error-500)', fontWeight: 600 }}>
-                                                    Student Choice: {userAnswer === true ? 'True' : userAnswer === false ? 'False' : 'No Answer'}
-                                                </p>
+                                                <div style={{ display: 'flex', gap: '12px', marginBottom: '8px' }}>
+                                                    <span style={{ 
+                                                        color: q.correctAnswer === true ? 'var(--success-500)' : 'var(--text-muted)',
+                                                        fontWeight: q.correctAnswer === true ? 600 : 400 
+                                                    }}>
+                                                        {q.correctAnswer === true && <Check size={12} style={{ marginRight: '4px' }} />}
+                                                        True
+                                                    </span>
+                                                    <span style={{ 
+                                                        color: q.correctAnswer === false ? 'var(--success-500)' : 'var(--text-muted)',
+                                                        fontWeight: q.correctAnswer === false ? 600 : 400 
+                                                    }}>
+                                                        {q.correctAnswer === false && <Check size={12} style={{ marginRight: '4px' }} />}
+                                                        False
+                                                    </span>
+                                                </div>
+                                                <div style={{ 
+                                                    padding: '8px 12px', 
+                                                    background: 'var(--surface)', 
+                                                    borderRadius: 'var(--radius-md)',
+                                                    border: `1px solid ${aiSuggestion?.isCorrect ? '#3b82f6' : (isCorrect ? 'var(--success-500)' : 'var(--error-500)')}`
+                                                }}>
+                                                    <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Student Choice:</p>
+                                                    <p style={{ 
+                                                        margin: 0, 
+                                                        fontWeight: 700, 
+                                                        color: aiSuggestion?.isCorrect ? '#3b82f6' : (isCorrect ? 'var(--success-500)' : 'var(--error-500)') 
+                                                    }}>
+                                                        {userAnswer === true ? 'True' : userAnswer === false ? 'False' : 'No Answer'}
+                                                        {aiSuggestion?.isCorrect && <Badge size="xs" style={{ marginLeft: '8px', background: '#3b82f6' }}>AI CORRECTED</Badge>}
+                                                    </p>
+                                                </div>
                                             </div>
                                         ) : (
                                             <div style={{ fontSize: 'var(--text-sm)' }}>
