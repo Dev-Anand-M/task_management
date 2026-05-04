@@ -310,15 +310,16 @@ export const validateAPIKey = async (providerId, key) => {
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Helper: Call AI proxy with retry logic
-const callAIProxy = async (provider, endpoint, apiKey, body, maxRetries = 2) => {
+const callAIProxy = async (provider, endpoint, apiKey, body, maxRetries = 5) => {
     const proxyUrl = '/api/ai-proxy';
     let lastError;
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
             if (attempt > 0) {
-                const backoff = Math.pow(2, attempt) * 1000;
-                console.log(`[callAIProxy] Retry attempt ${attempt} after ${backoff}ms...`);
+                // Exponential backoff: 2s, 4s, 8s, 16s, 32s
+                const backoff = Math.pow(2, attempt) * 2000;
+                console.log(`[callAIProxy] Rate limit / Error encountered. Retry attempt ${attempt} after ${backoff}ms...`);
                 await wait(backoff);
             }
 
@@ -632,10 +633,13 @@ CRITICAL UNDERSTANDING - QUESTION TYPES:
    - The admin will manually review flagged questions
 
 YOUR RESPONSIBILITIES BY QUESTION TYPE:
-- SHORT ANSWER: Evaluate correctness AND flag key errors
-- MCQ/TRUE-FALSE: Flag potential key errors. If isKeyError is true, set isCorrect based on the factually correct answer.
+- SHORT ANSWER: Evaluate correctness AND flag key errors.
+- MCQ/TRUE-FALSE: Flag potential key errors. 
+- CRITICAL: If isKeyError is true, you MUST re-evaluate the student's answer. If the student's answer is factually correct (according to your knowledge), you MUST set "isCorrect": true. 
+- NEVER set "isCorrect": false if the student's answer is factually correct, regardless of what the "correctAnswer" key says.
 
-RESPONSE FORMAT: Return ONLY a valid JSON object:
+SCHEMA REQUIREMENT:
+Your response must be a single JSON object with this structure:
 {
   "summary": "Overall performance summary",
   "suggestions": [
@@ -643,13 +647,18 @@ RESPONSE FORMAT: Return ONLY a valid JSON object:
       "questionIndex": 0,
       "isCorrect": true,
       "isKeyError": false,
-      "feedback": "For SHORT ANSWER: explain why answer is right/wrong. For MCQ/TRUE-FALSE: only provide feedback if isKeyError is true",
-      "improvementTip": "Constructive advice for the student"
+      "feedback": "Why the answer is right/wrong",
+      "improvementTip": "Advice for student"
     }
   ],
   "overallGrade": "B",
-  "mentorNote": "Private note for admin about student progress and any flagged answer key errors"
+  "mentorNote": "Note for admin"
 }
+
+CRITICAL FOR MCQ/TRUE-FALSE:
+- If you set isKeyError: true, you MUST evaluate if the student answer is correct against the REAL fact.
+- If student answer == factually correct answer, set isCorrect: true.
+- If student answer != factually correct answer, set isCorrect: false.
 
 CRITICAL RULES:
 - For SHORT ANSWER: Set isCorrect based on factual accuracy of student's response

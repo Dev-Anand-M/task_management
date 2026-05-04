@@ -1203,7 +1203,11 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                 icon={CheckCircle}
                                                 className="animate-bounce-subtle"
                                                 onClick={() => {
-                                                    setOverrides(prev => ({ ...prev, [index]: aiSuggestion.isCorrect }));
+                                                    console.log(`[FixKey] Index: ${index}, AISuggestion:`, aiSuggestion);
+                                                    // If AI flags a key error, we usually want to award the mark if the student was right
+                                                    // but we'll prioritize the AI's isCorrect field if it exists, fallback to true
+                                                    const newValue = aiSuggestion.isCorrect !== undefined ? aiSuggestion.isCorrect : true;
+                                                    setOverrides(prev => ({ ...prev, [index]: newValue }));
                                                 }}
                                             >
                                                 {aiSuggestion.isCorrect ? "Award Marks & Fix Key" : "Fix Key Suggestion"}
