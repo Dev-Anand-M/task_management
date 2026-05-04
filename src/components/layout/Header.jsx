@@ -225,7 +225,7 @@ const Header = ({ onMenuClick, title }) => {
         </div>
 
         {/* Notifications */}
-        <div ref={notifRef} style={{ position: 'relative' }}>
+        <div ref={notifRef} style={{ position: 'relative', zIndex: 10000 }}>
           <Button
             variant="ghost"
             size="icon"
@@ -274,16 +274,17 @@ const Header = ({ onMenuClick, title }) => {
                 right: 0,
                 width: '400px',
                 maxWidth: '90vw',
-                background: 'var(--card)',
-                border: '1px solid var(--border)',
+                background: 'var(--card, #ffffff)',
+                border: '2px solid var(--border, #e5e7eb)',
                 borderRadius: 'var(--radius-2xl)',
-                boxShadow: 'var(--shadow-xl)',
-                overflow: 'hidden',
-                zIndex: 1100,
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                overflow: 'visible',
+                zIndex: 9999,
                 animation: 'slideInUp 0.3s var(--transition-bounce)',
-                display: 'block',
-                visibility: 'visible',
-                opacity: 1
+                display: 'block !important',
+                visibility: 'visible !important',
+                opacity: '1 !important',
+                pointerEvents: 'auto'
               }}
             >
               {/* Header */}
@@ -459,7 +460,7 @@ const Header = ({ onMenuClick, title }) => {
         </Button>
 
         {/* Profile Dropdown */}
-        <div ref={profileRef} style={{ position: 'relative' }}>
+        <div ref={profileRef} style={{ position: 'relative', zIndex: 10000 }}>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -501,16 +502,17 @@ const Header = ({ onMenuClick, title }) => {
                 right: 0,
                 width: '280px',
                 maxWidth: '90vw',
-                background: 'var(--card)',
-                border: '1px solid var(--border)',
+                background: 'var(--card, #ffffff)',
+                border: '2px solid var(--border, #e5e7eb)',
                 borderRadius: 'var(--radius-xl)',
-                boxShadow: 'var(--shadow-xl)',
-                overflow: 'hidden',
-                zIndex: 1100,
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                overflow: 'visible',
+                zIndex: 9999,
                 animation: 'slideInUp 0.2s ease-out',
-                display: 'block',
-                visibility: 'visible',
-                opacity: 1
+                display: 'block !important',
+                visibility: 'visible !important',
+                opacity: '1 !important',
+                pointerEvents: 'auto'
               }}
             >
               {/* User Info Header */}
