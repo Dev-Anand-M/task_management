@@ -630,44 +630,33 @@ CRITICAL UNDERSTANDING - QUESTION TYPES:
    - The student selects True or False
    - If the quiz key is correct: DO NOT change the student's score based on your opinion
    - If the quiz key is WRONG (set isKeyError: true): YOU MUST set isCorrect: true if the student's choice is factually correct according to the corrected key
-   - The admin will manually review flagged questions
 
-YOUR RESPONSIBILITIES BY QUESTION TYPE:
-- SHORT ANSWER: Evaluate correctness AND flag key errors.
-- MCQ/TRUE-FALSE: Flag potential key errors. 
-- CRITICAL: If isKeyError is true, you MUST re-evaluate the student's answer. If the student's answer is factually correct (according to your knowledge), you MUST set "isCorrect": true. 
-- NEVER set "isCorrect": false if the student's answer is factually correct, regardless of what the "correctAnswer" key says.
+CRITICAL RULES FOR EVALUATION:
+- isKeyError: Set to true ONLY if the quiz creator's "correctAnswer" is factually wrong.
+- isCorrect: This is the FINAL DECISION on student marks for this question. Award the point if student is factually right.
+- IF isKeyError IS TRUE: You MUST evaluate the student's answer against the CORRECT fact. 
+    - If the student's answer is factually correct, you MUST set "isCorrect": true.
+    - Example: Key says 2+2=5. Student says 2+2=4. You MUST set isKeyError: true AND isCorrect: true.
+- IF isKeyError IS FALSE: Set "isCorrect" to match the original quiz key (true if student matched key, false otherwise).
+- NEVER penalize a student for a quiz creator's error. If the student is right and the key is wrong, AWARD THE POINT.
 
 SCHEMA REQUIREMENT:
-Your response must be a single JSON object with this structure:
+Return ONLY a valid JSON object:
 {
-  "summary": "Overall performance summary",
+  "summary": "Short summary of student performance",
   "suggestions": [
     {
-      "questionIndex": 0,
-      "isCorrect": true,
-      "isKeyError": false,
-      "feedback": "Why the answer is right/wrong",
-      "improvementTip": "Advice for student"
+      "questionIndex": number,
+      "isCorrect": boolean (Award the point? true/false),
+      "isKeyError": boolean (Is the quiz key wrong? true/false),
+      "feedback": "Explain reasoning",
+      "improvementTip": "Tip for student"
     }
   ],
-  "overallGrade": "B",
-  "mentorNote": "Note for admin"
+  "overallGrade": "A/B/C/D/F",
+  "mentorNote": "Internal note"
 }
-
-CRITICAL FOR MCQ/TRUE-FALSE:
-- If you set isKeyError: true, you MUST evaluate if the student answer is correct against the REAL fact.
-- If student answer == factually correct answer, set isCorrect: true.
-- If student answer != factually correct answer, set isCorrect: false.
-
-CRITICAL RULES:
-- For SHORT ANSWER: Set isCorrect based on factual accuracy of student's response
-- For MCQ/TRUE-FALSE: Leave isCorrect matching the quiz key UNLESS you set isKeyError: true
-- isKeyError: true means you believe the QUIZ CREATOR made an error in the answer key
-- Return ONLY the JSON object, no other text
-- Use proper JSON syntax with double quotes
-- Boolean values must be true/false (not "true"/"false")
-- Grade must be one of: A, B, C, D, F`;
+Final Rules: No other text. JSON only. Grade must be A, B, C, D, or F.`;
 
     // Prepare detailed question context with types
     const questionsWithContext = quizData.questions.map((q, idx) => ({

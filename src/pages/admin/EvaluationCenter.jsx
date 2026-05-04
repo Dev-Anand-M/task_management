@@ -87,7 +87,7 @@ const EvaluationCenter = () => {
     }
 
     if (mode === 'quizzes' && submissionId) {
-        return <QuizReviewDetail attemptId={submissionId} onBack={() => navigate('/admin/evaluations')} />;
+        return <QuizReviewDetail attemptId={submissionId} onBack={() => navigate('/admin/evaluations')} onUpdate={loadData} />;
     }
 
     // Handle legacy URLs or automatic routing based on type param
@@ -95,7 +95,7 @@ const EvaluationCenter = () => {
         return <EvaluationDetail submissionId={submissionId} onBack={() => navigate('/admin/evaluations')} onUpdate={loadData} />;
     }
     if (type === 'quizzes' && submissionId) {
-        return <QuizReviewDetail attemptId={submissionId} onBack={() => navigate('/admin/evaluations')} />;
+        return <QuizReviewDetail attemptId={submissionId} onBack={() => navigate('/admin/evaluations')} onUpdate={loadData} />;
     }
 
     if (loading && submissions.length === 0 && quizAttempts.length === 0) {
@@ -716,7 +716,7 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
 };
 
 // Detailed Quiz review view
-const QuizReviewDetail = ({ attemptId, onBack }) => {
+const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
     const [attempt, setAttempt] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -984,6 +984,7 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                             });
 
                                             setSuccess(true);
+                                            if (onUpdate) onUpdate(); // Real-time update parent list
                                             setTimeout(() => setSuccess(false), 3000);
                                             loadAttempt();
                                         } catch (e) {
@@ -1054,6 +1055,7 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                 });
 
                                                 setSuccess(true);
+                                                if (onUpdate) onUpdate(); // Real-time update parent list
                                                 setTimeout(() => {
                                                     setSuccess(false);
                                                     onBack(); // Return to list after finalization
