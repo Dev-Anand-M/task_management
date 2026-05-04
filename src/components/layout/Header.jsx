@@ -559,7 +559,7 @@ const Header = ({ onMenuClick, title }) => {
                   <X size={20} />
                 </button>
 
-                <Avatar name={user?.name} size="lg" style={{ marginBottom: 'var(--space-sm)' }} />
+                <Avatar name={user?.name} image={user?.avatar_url} size="lg" style={{ marginBottom: 'var(--space-sm)' }} />
                 <p style={{ margin: 0, fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-lg)' }}>{user?.name}</p>
                 <p style={{ margin: '2px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{user?.email}</p>
                 <div style={{
