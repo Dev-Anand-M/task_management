@@ -151,8 +151,7 @@ const Header = ({ onMenuClick, title }) => {
           variant="ghost"
           size="icon"
           onClick={onMenuClick}
-          className="menu-button lg:hidden"
-          style={{ display: 'none' }}
+          className="menu-button"
         >
           <Menu size={24} />
         </Button>
@@ -683,13 +682,7 @@ const Header = ({ onMenuClick, title }) => {
       <style>{`
         /* Hide hamburger menu on desktop, show on mobile */
         .menu-button {
-          display: none;
-        }
-        
-        @media (max-width: 1024px) {
-          .menu-button {
-            display: flex !important;
-          }
+          display: flex !important;
         }
         
         @media (min-width: 768px) {

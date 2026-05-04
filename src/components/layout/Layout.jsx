@@ -39,9 +39,9 @@ const Layout = () => {
                 isOpen={sidebarOpen}
                 onClose={() => setSidebarOpen(false)}
             />
-            <main className="main-content">
+            <main className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
                 <Header
-                    onMenuClick={() => setSidebarOpen(true)}
+                    onMenuClick={() => setSidebarOpen(!sidebarOpen)}
                     title={pageTitle}
                 />
                 <div className="page-content animate-fade-in">

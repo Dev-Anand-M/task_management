@@ -589,8 +589,18 @@ a:hover {
   left: 0;
   bottom: 0;
   z-index: var(--z-sticky);
-  transition: width var(--transition-slow);
+  transition: transform var(--transition-slow), width var(--transition-slow);
   box-shadow: 4px 0 20px rgba(217, 119, 6, 0.15);
+  transform: translateX(0); /* Default desktop state */
+}
+
+.sidebar.collapsed {
+  transform: translateX(-100%);
+  box-shadow: none;
+}
+
+.sidebar.open {
+  transform: translateX(0) !important;
 }
 
 html[data-theme="dark"] .sidebar {
@@ -607,6 +617,13 @@ html[data-theme="dark"] .sidebar {
   width: calc(100vw - var(--sidebar-width));
   max-width: calc(100vw - var(--sidebar-width));
   box-sizing: border-box;
+  transition: margin var(--transition-slow), width var(--transition-slow), max-width var(--transition-slow);
+}
+
+.main-content.sidebar-collapsed {
+  margin-left: 0;
+  width: 100vw;
+  max-width: 100vw;
 }
 
 .header {
@@ -2288,15 +2305,16 @@ input.bg-surface\/80 {
 }
 
 /* ---- Responsive Sidebar ---- */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .sidebar {
-    transform: translateX(-100%);
+    transform: translateX(-100%) !important;
     transition: transform var(--transition-slow);
     width: 280px;
+    z-index: 1000; /* Above overlay */
   }
 
   .sidebar.open {
-    transform: translateX(0);
+    transform: translateX(0) !important;
   }
 
   .main-content {

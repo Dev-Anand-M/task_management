@@ -96,7 +96,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 />
             )}
 
-            <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+            <aside className={`sidebar ${isOpen ? 'open' : 'collapsed'}`}>
                 {/* Logo */}
                 <div style={{
                     padding: 'var(--space-lg)',
@@ -142,17 +142,24 @@ const Sidebar = ({ isOpen, onClose }) => {
                     <button 
                         className="mobile-close-btn"
                         onClick={onClose}
+                        aria-label="Close menu"
                         style={{
-                            background: 'rgba(255,255,255,0.1)',
-                            border: 'none',
+                            background: 'rgba(255,255,255,0.2)',
+                            border: '1px solid rgba(255,255,255,0.3)',
                             color: 'white',
-                            padding: '8px',
+                            padding: '12px',
                             borderRadius: '50%',
                             cursor: 'pointer',
-                            display: 'none' // Hidden by default (CSS handles mobile)
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s',
+                            zIndex: 100
                         }}
+                        onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+                        onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
                     >
-                        <X size={20} />
+                        <X size={24} strokeWidth={2.5} />
                     </button>
                 </div>
 
