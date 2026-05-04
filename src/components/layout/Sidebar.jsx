@@ -313,7 +313,17 @@ const Sidebar = ({ isOpen, onClose }) => {
                     </div>
 
                     {showAiTools && (
-                        <ul className="animate-fade-in" style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <ul className="animate-fade-in" style={{ 
+                            listStyle: 'none', 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '4px',
+                            padding: 'var(--space-xs) 0',
+                            margin: '0 var(--space-xs)',
+                            background: 'rgba(167, 139, 250, 0.05)',
+                            borderRadius: 'var(--radius-lg)',
+                            border: '1px solid rgba(167, 139, 250, 0.1)'
+                        }}>
                             {aiLinks.map(link => (
                                 <li key={link.to}>
                                     <NavLink
@@ -323,16 +333,15 @@ const Sidebar = ({ isOpen, onClose }) => {
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: 'var(--space-sm)',
-                                            padding: '0.625rem var(--space-md)',
+                                            padding: '0.75rem var(--space-md)',
                                             borderRadius: 'var(--radius-md)',
-                                            color: isActive ? '#a78bfa' : 'rgba(255,255,255,0.8)',
-                                            background: isActive ? 'rgba(167, 139, 250, 0.2)' : 'transparent',
+                                            color: isActive ? 'white' : 'rgba(255,255,255,0.7)',
+                                            background: isActive ? 'linear-gradient(135deg, #a78bfa, #8b5cf6)' : 'transparent',
                                             textDecoration: 'none',
                                             fontSize: 'var(--text-sm)',
                                             fontWeight: isActive ? 600 : 500,
                                             transition: 'all var(--transition-fast)',
-                                            borderLeft: isActive ? '2px solid #a78bfa' : '2px solid transparent',
-                                            marginLeft: '0'
+                                            boxShadow: isActive ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none'
                                         })}
                                     >
                                         <link.icon size={18} />
@@ -352,7 +361,11 @@ const Sidebar = ({ isOpen, onClose }) => {
                 }}>
                     <div className="flex items-center gap-sm">
                         <Avatar name={user?.name} size="sm" />
-                        <div style={{ flex: 1, minWidth: 0 }}>
+                        <Link 
+                            to="/profile" 
+                            onClick={onClose}
+                            style={{ flex: 1, minWidth: 0, textDecoration: 'none' }}
+                        >
                             <p style={{
                                 fontWeight: 600,
                                 fontSize: 'var(--text-sm)',
@@ -374,7 +387,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                             }}>
                                 {user?.email}
                             </p>
-                        </div>
+                        </Link>
                         <button
                             onClick={() => setShowLogoutConfirm(true)}
                             style={{

@@ -39,14 +39,18 @@ const AdminDashboard = () => {
 
             // Fetch data from Supabase
             // functions in database.js now handle "no-classroom" (Global) case for admins automatically
-            const [tasks, submissions, members] = await Promise.all([
+            const [tasks, submissions, members, quizAttempts] = await Promise.all([
                 db.getTasks(),
                 db.getSubmissions(),
-                db.getMembers()
+                db.getMembers(),
+                db.getQuizAttempts()
             ]);
 
             // Calculate stats
-            const pendingReviews = submissions.filter(s => s.status === 'pending').length;
+            const pendingSubmissions = submissions.filter(s => s.status === 'pending').length;
+            const pendingQuizzes = quizAttempts.filter(q => q.status === 'pending').length;
+            const pendingReviews = pendingSubmissions + pendingQuizzes;
+
             const approvedSubmissions = submissions.filter(s => s.status === 'approved').length;
             const completionRate = submissions.length > 0
                 ? Math.round((approvedSubmissions / submissions.length) * 100)

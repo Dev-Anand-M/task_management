@@ -32,17 +32,23 @@ export const AuthProvider = ({ children }) => {
 
         const initializeAuth = async () => {
             try {
-                // Pre-emptively set loading to false if we take too long
                 const { data: { session } } = await supabase.auth.getSession();
 
                 if (session?.user && mounted) {
                     setUser(session.user);
-                    await fetchProfile(session.user.id);
+                    // Don't wait for profile to set loading to false if we have a session
+                    fetchProfile(session.user.id).finally(() => {
+                        if (mounted) setLoading(false);
+                        authInitialized = true;
+                        clearTimeout(timeoutId);
+                    });
+                } else {
+                    authInitialized = true;
+                    if (mounted) setLoading(false);
+                    clearTimeout(timeoutId);
                 }
             } catch (error) {
                 console.error('Auth initialization error:', error);
-            } finally {
-                authInitialized = true;
                 if (mounted) setLoading(false);
                 clearTimeout(timeoutId);
             }
@@ -62,26 +68,36 @@ export const AuthProvider = ({ children }) => {
                     setProfile(null);
                 }
 
-                // Only set loading to false if we haven't already from initializeAuth
-                // or if this is a subsequent change
-                if (authInitialized || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+                if (authInitialized || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
                     setLoading(false);
                     clearTimeout(timeoutId);
                 }
             }
         );
 
+        // Visibility Change listener to fix "stuck session" on mobile tab switching
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && !loading) {
+                console.log('App became visible, refreshing session...');
+                forceRefresh();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         return () => {
             mounted = false;
             subscription?.unsubscribe();
             clearTimeout(timeoutId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, []);
 
     const fetchProfile = async (userId) => {
+        if (!userId) return;
         try {
-            // First, set a basic profile from the auth user metadata as a fallback
-            if (user) {
+            // Optimistic profile from metadata if we don't have one yet
+            if (user && !profile) {
                 setProfile({
                     id: user.id,
                     email: user.email,
@@ -93,31 +109,19 @@ export const AuthProvider = ({ children }) => {
 
             const { data: userProfile, error } = await supabase
                 .from('profiles')
-                .select('*')
+                .select('*, classrooms(name)')
                 .eq('id', userId)
                 .single();
 
             if (error) {
-                console.warn('Profile fetch error, using fallback:', error);
+                console.warn('Profile fetch error:', error);
                 return;
             }
 
             if (userProfile) {
-                let classroom_name = null;
-                if (userProfile.classroom_id) {
-                    const { data: classroom } = await supabase
-                        .from('classrooms')
-                        .select('name')
-                        .eq('id', userProfile.classroom_id)
-                        .single();
-                    if (classroom) {
-                        classroom_name = classroom.name;
-                    }
-                }
-
                 setProfile({
                     ...userProfile,
-                    classroom_name
+                    classroom_name: userProfile.classrooms?.name || null
                 });
 
                 // Centralized AI Settings: Load from database into local storage cache
@@ -125,7 +129,7 @@ export const AuthProvider = ({ children }) => {
                     const { loadFromDatabase } = await import('../services/aiService');
                     await loadFromDatabase();
                 } catch (aiErr) {
-                    console.error('Failed to load AI settings:', aiErr);
+                    // Silently fail AI load to not block auth
                 }
             }
         } catch (err) {

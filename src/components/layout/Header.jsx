@@ -221,6 +221,7 @@ const Header = ({ onMenuClick, title }) => {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search platform..."
             className="w-64"
+            isAdmin={isAdmin}
           />
         </div>
 
@@ -574,32 +575,30 @@ const Header = ({ onMenuClick, title }) => {
 
               {/* Menu Items */}
               <div style={{ padding: 'var(--space-sm)', background: 'var(--card)', flex: 1, overflowY: 'auto' }}>
-                {!isAdmin && (
-                  <button
-                    onClick={() => {
-                      navigate('/profile');
-                      setShowProfileMenu(false);
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      border: 'none',
-                      background: 'none',
-                      color: 'var(--text)',
-                      borderRadius: 'var(--radius-lg)',
-                      cursor: 'pointer',
-                      fontSize: 'var(--text-sm)',
-                      fontWeight: 600,
-                      textAlign: 'left'
-                    }}
-                    className="hover:bg-surface"
-                  >
-                    <User size={18} /> My Profile
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    navigate('/profile');
+                    setShowProfileMenu(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    border: 'none',
+                    background: 'none',
+                    color: 'var(--text)',
+                    borderRadius: 'var(--radius-lg)',
+                    cursor: 'pointer',
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: 600,
+                    textAlign: 'left'
+                  }}
+                  className="hover:bg-surface"
+                >
+                  <User size={18} /> My Profile
+                </button>
                 <button
                   onClick={() => {
                     navigate(isAdmin ? '/admin' : '/dashboard');

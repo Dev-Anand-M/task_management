@@ -9,7 +9,8 @@ const SearchBar = ({
     className = "",
     expandable = false,
     onClear,
-    showRecommendations = true
+    showRecommendations = true,
+    isAdmin = false
 }) => {
     const [isFocused, setIsFocused] = useState(false);
     const [recommendations, setRecommendations] = useState([]);
@@ -19,24 +20,25 @@ const SearchBar = ({
 
     // Default recommendations when search is empty
     const defaultRecommendations = [
-        { icon: FileText, label: 'Tasks', path: '/tasks', type: 'page' },
-        { icon: HelpCircle, label: 'Quizzes', path: '/quizzes', type: 'page' },
+        { icon: FileText, label: 'Tasks', path: isAdmin ? '/admin/tasks' : '/tasks', type: 'page' },
+        { icon: HelpCircle, label: 'Quizzes', path: isAdmin ? '/admin/quizzes' : '/quizzes', type: 'page' },
         { icon: Trophy, label: 'Leaderboard', path: '/leaderboard', type: 'page' },
         { icon: Users, label: 'Team', path: '/admin/team', type: 'page', adminOnly: true },
     ];
 
     // Search suggestions based on common actions
     const searchSuggestions = [
-        { label: 'View my tasks', path: '/tasks', keywords: ['task', 'assignment', 'work'] },
-        { label: 'Take a quiz', path: '/quizzes', keywords: ['quiz', 'test', 'exam'] },
-        { label: 'Check leaderboard', path: '/leaderboard', keywords: ['leaderboard', 'rank', 'score', 'top'] },
-        { label: 'My profile', path: '/profile', keywords: ['profile', 'me', 'account'] },
-        { label: 'Settings', path: '/settings', keywords: ['settings', 'preferences', 'config'] },
-        { label: 'Dashboard', path: '/dashboard', keywords: ['dashboard', 'home', 'overview'] },
-        { label: 'Notifications', path: '/notifications', keywords: ['notifications', 'alerts', 'updates'] },
-        { label: 'AI Assistant', path: '/ai/assistant', keywords: ['ai', 'assistant', 'help', 'chat'] },
-        { label: 'Code Review', path: '/ai/code-review', keywords: ['code', 'review', 'feedback'] },
-        { label: 'Study Tools', path: '/ai/study-tools', keywords: ['study', 'learn', 'flashcard'] },
+        { label: 'View tasks', path: isAdmin ? '/admin/tasks' : '/tasks', keywords: ['task', 'assignment', 'work', 'todo'] },
+        { label: 'Take/View quizzes', path: isAdmin ? '/admin/quizzes' : '/quizzes', keywords: ['quiz', 'test', 'exam', 'questions'] },
+        { label: 'Check leaderboard', path: '/leaderboard', keywords: ['leaderboard', 'rank', 'score', 'top', 'players'] },
+        { label: 'My profile', path: '/profile', keywords: ['profile', 'me', 'account', 'user'] },
+        { label: 'Settings', path: '/settings', keywords: ['settings', 'preferences', 'config', 'theme', 'api'] },
+        { label: 'Dashboard', path: isAdmin ? '/admin' : '/dashboard', keywords: ['dashboard', 'home', 'overview', 'main'] },
+        { label: 'Notifications', path: '/notifications', keywords: ['notifications', 'alerts', 'updates', 'messages'] },
+        { label: 'AI Assistant', path: '/ai/assistant', keywords: ['ai', 'assistant', 'help', 'chat', 'bot'] },
+        { label: 'Code Review', path: '/ai/code-review', keywords: ['code', 'review', 'feedback', 'audit'] },
+        { label: 'Study Tools', path: '/ai/study-tools', keywords: ['study', 'learn', 'flashcard', 'summary'] },
+        { label: 'Quiz Generator', path: '/ai/quiz-generator', keywords: ['generator', 'create', 'ai quiz', 'build'] },
     ];
 
     // Filter results based on search query
