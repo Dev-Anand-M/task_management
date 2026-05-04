@@ -320,9 +320,9 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null) => {
 
         try {
             if (attempt > 0) {
-                // CAP BACKOFF at 30s: 10s, 20s, 30s, 30s...
-                const backoff = Math.min(Math.pow(2, attempt - 1) * 10000, 30000);
-                console.log(`[callAIProxy] Rate limit hit. Waiting ${backoff}ms...`);
+                // LIGHTWEIGHT BACKOFF: Constant 1s instead of exponential
+                const backoff = 1000; 
+                console.log(`[callAIProxy] Rate limit hit. Retrying in ${backoff}ms...`);
                 
                 // Wait with abort support
                 await new Promise((resolve, reject) => {
