@@ -145,7 +145,20 @@ const Header = ({ onMenuClick, title }) => {
   };
 
   return (
-    <header className="header">
+    <header style={{ 
+      height: '72px', 
+      minHeight: '72px', 
+      background: 'var(--card)', 
+      borderBottom: '1px solid var(--border)',
+      padding: '0 var(--space-lg)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      position: 'sticky',
+      top: 0,
+      zIndex: 1000,
+      flexShrink: 0
+    }}>
       <div className="flex items-center gap-md">
         <Button
           variant="ghost"
@@ -679,15 +692,18 @@ const Header = ({ onMenuClick, title }) => {
             max-width: 100% !important;
             border-radius: 24px 24px 0 0 !important;
             min-height: auto !important;
-            max-height: 92vh !important;
+            max-height: 75vh !important;
             transform: none !important;
             animation: slide-up-mobile 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
             box-shadow: 0 -10px 40px rgba(0,0,0,0.4) !important;
-            border: none !important;
+            border: 1px solid var(--border) !important;
+            border-bottom: none !important;
             z-index: 10005 !important;
             display: flex !important;
             flex-direction: column !important;
             overflow: hidden !important;
+            background: var(--card) !important;
+            color: var(--text) !important;
           }
           
           .mobile-backdrop {
