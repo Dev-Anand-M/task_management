@@ -32,6 +32,7 @@ const QuizBuilder = () => {
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [showCSVGuide, setShowCSVGuide] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -699,15 +700,28 @@ const QuizBuilder = () => {
                                         Add Question
                                     </Button>
                                 </div>
+                                <Button type="button" variant="ghost" size="sm" icon={HelpCircle} onClick={() => setShowCSVGuide(!showCSVGuide)}>
+                                    {showCSVGuide ? 'Hide Format Guide' : 'Show Format Guide'}
+                                </Button>
                             </div>
-                            <div className="text-xs text-muted mb-md p-sm bg-surface border border-border rounded-lg" style={{ opacity: 0.8 }}>
-                                <strong>CSV Format:</strong><br/>
-                                • <strong>Row 1:</strong> Title, Description, Category, Difficulty, TimeLimit<br/>
-                                • <strong>Row 2:</strong> Headers (Type, Question, Opt1, Opt2, Opt3, Opt4, Correct)<br/>
-                                • <strong>mcq:</strong> mcq, Question, Option 1, Option 2, Option 3, Option 4, Correct Index (0-3)<br/>
-                                • <strong>boolean:</strong> boolean, Question, True/False<br/>
-                                • <strong>short:</strong> short, Question, Expected Answer
-                            </div>
+                            
+                            {showCSVGuide && (
+                                <div className="text-xs text-muted mb-md p-md bg-surface border border-border rounded-lg animate-fade-in" style={{ opacity: 0.9 }}>
+                                    <h4 className="text-xs font-black uppercase tracking-widest mb-sm" style={{ color: 'var(--primary-500)' }}>CSV Import Format Guide</h4>
+                                    <p className="mb-sm">To import a quiz, upload a CSV with the following structure:</p>
+                                    <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <li>• <strong>Row 1:</strong> Title, Description, Category, Difficulty, TimeLimit</li>
+                                        <li>• <strong>Row 2:</strong> Headers (Type, Question, Opt1, Opt2, Opt3, Opt4, Correct)</li>
+                                        <li>• <strong>MCQ:</strong> mcq, Question, Opt 1, Opt 2, Opt 3, Opt 4, Correct Index (0-3)</li>
+                                        <li>• <strong>Boolean:</strong> boolean, Question, True/False</li>
+                                        <li>• <strong>Short Answer:</strong> short, Question, Expected Answer</li>
+                                    </ul>
+                                    <div className="mt-sm p-xs bg-card rounded border border-border/50 font-mono" style={{ fontSize: '10px' }}>
+                                        "HTML Basics","Intro to HTML","Frontend","easy",15<br/>
+                                        "mcq","What is HTML?","Language","Bird","Car","Plane",0
+                                    </div>
+                                </div>
+                            )}
 
                             {formData.questions.length === 0 ? (
                                 <div style={{
