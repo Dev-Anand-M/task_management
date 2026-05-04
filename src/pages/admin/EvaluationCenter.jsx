@@ -958,8 +958,13 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                 correct: finalCorrect,
                                                 score: finalScore,
                                                 passed: finalScore >= 70,
-                                                xp_earned: xpToAward,
-                                                metadata: { ...attempt.metadata, manually_evaluated: true, overrides, finalized: true }
+                                                metadata: { 
+                                                    ...attempt.metadata, 
+                                                    manually_evaluated: true, 
+                                                    overrides, 
+                                                    finalized: true,
+                                                    xp_earned: xpToAward
+                                                }
                                             });
 
                                             // Update the user's profile XP
@@ -1023,8 +1028,13 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                     correct: finalCorrect,
                                                     score: finalScore,
                                                     passed: finalScore >= 70,
-                                                    xp_earned: xpToAward,
-                                                    metadata: { ...attempt.metadata, manually_evaluated: true, overrides, finalized: true }
+                                                    metadata: { 
+                                                        ...attempt.metadata, 
+                                                        manually_evaluated: true, 
+                                                        overrides, 
+                                                        finalized: true,
+                                                        xp_earned: xpToAward
+                                                    }
                                                 });
 
                                                 // Update the user's profile XP

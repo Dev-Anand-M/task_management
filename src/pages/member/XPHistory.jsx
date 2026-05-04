@@ -62,7 +62,7 @@ const XPHistory = () => {
                     type: 'quiz',
                     title: a.quizzes?.title || 'Quiz Completion',
                     date: a.completed_at || a.created_at,
-                    xp: a.xp_earned || 0,
+                    xp: a.xp_earned || a.metadata?.xp_earned || 0,
                     score: a.score,
                     total: 100,
                     icon: <HelpCircle size={20} style={{ color: 'var(--primary-500)' }} />
