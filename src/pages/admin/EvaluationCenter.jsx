@@ -853,6 +853,11 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                 }
             });
         } catch (error) {
+            // SILENCE AbortError: Don't show alert if user cancelled
+            if (error.name === 'AbortError' || error.message?.includes('cancelled') || error.message?.includes('AbortError')) {
+                console.log('AI Evaluation cancelled by user.');
+                return;
+            }
             console.error('AI Eval Error:', error);
             alert('❌ AI Review Failed: ' + (error.message.includes('not configured') ? 'Please check your API keys in Settings.' : error.message));
         } finally {
