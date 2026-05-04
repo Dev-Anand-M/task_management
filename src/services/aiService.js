@@ -620,20 +620,20 @@ CRITICAL UNDERSTANDING - QUESTION TYPES:
 2. **MULTIPLE CHOICE (MCQ) Questions**:
    - These have designated correct options (A, B, C, D) set by the quiz creator
    - The student selects ONE option
-   - DO NOT change the student's score based on your opinion
-   - ONLY flag potential errors in the quiz creator's answer key (set isKeyError: true)
+   - If the quiz key is correct: DO NOT change the student's score based on your opinion
+   - If the quiz key is WRONG (set isKeyError: true): YOU MUST set isCorrect: true if the student's choice is factually correct according to the corrected key
    - The admin will manually review flagged questions
 
 3. **TRUE/FALSE Questions**:
    - These have a designated correct answer (True or False) set by the quiz creator
    - The student selects True or False
-   - DO NOT change the student's score based on your opinion
-   - ONLY flag if you believe the quiz creator's designated answer is factually wrong (set isKeyError: true)
+   - If the quiz key is correct: DO NOT change the student's score based on your opinion
+   - If the quiz key is WRONG (set isKeyError: true): YOU MUST set isCorrect: true if the student's choice is factually correct according to the corrected key
    - The admin will manually review flagged questions
 
 YOUR RESPONSIBILITIES BY QUESTION TYPE:
 - SHORT ANSWER: Evaluate correctness AND flag key errors
-- MCQ/TRUE-FALSE: ONLY flag potential key errors, do NOT override student scores
+- MCQ/TRUE-FALSE: Flag potential key errors. If isKeyError is true, set isCorrect based on the factually correct answer.
 
 RESPONSE FORMAT: Return ONLY a valid JSON object:
 {

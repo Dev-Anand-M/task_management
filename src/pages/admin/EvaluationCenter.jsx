@@ -1172,9 +1172,26 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                                 <AlertTriangle size={18} color="var(--error-500)" />
                                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--error-700)', fontWeight: 700 }}>
-                                                        AI ALERT: This Question Key may be wrong!
-                                                    </span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--error-700)', fontWeight: 700 }}>
+                                                            AI ALERT: This Question Key may be wrong!
+                                                        </span>
+                                                        {aiSuggestion.isCorrect && (
+                                                            <span style={{ 
+                                                                fontSize: '10px', 
+                                                                background: 'var(--success-500)', 
+                                                                color: 'white', 
+                                                                padding: '2px 8px', 
+                                                                borderRadius: '999px',
+                                                                fontWeight: 800,
+                                                                textTransform: 'uppercase',
+                                                                letterSpacing: '0.05em',
+                                                                boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)'
+                                                            }}>
+                                                                Student Deserves Points! 🏆
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <span style={{ fontSize: '11px', color: 'var(--error-600)' }}>
                                                         {aiSuggestion.feedback}
                                                     </span>
@@ -1184,11 +1201,12 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                 size="xs" 
                                                 variant="success" 
                                                 icon={CheckCircle}
+                                                className="animate-bounce-subtle"
                                                 onClick={() => {
                                                     setOverrides(prev => ({ ...prev, [index]: aiSuggestion.isCorrect }));
                                                 }}
                                             >
-                                                Fix Key Suggestion
+                                                {aiSuggestion.isCorrect ? "Award Marks & Fix Key" : "Fix Key Suggestion"}
                                             </Button>
                                         </div>
                                     )}
