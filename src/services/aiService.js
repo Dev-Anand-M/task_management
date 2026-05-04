@@ -331,7 +331,6 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null) => {
                 });
             }
 
-            console.log(`[callAIProxy] Making request to ${proxyUrl} (Attempt ${attempt + 1})`);
             
             const response = await fetch(proxyUrl, {
                 method: 'POST',
@@ -348,7 +347,7 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null) => {
                 signal
             });
 
-            console.log(`[callAIProxy] Response status: ${response.status}`);
+            
 
             if (response.status === 429 && attempt < maxRetries) {
                 continue;
