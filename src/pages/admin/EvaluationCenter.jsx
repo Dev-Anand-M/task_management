@@ -1191,67 +1191,62 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                             display: 'flex',
                                             flexDirection: 'column',
                                             alignItems: 'flex-end',
-                                            gap: '8px'
+                                            gap: '4px'
                                         }}>
-                                            {/* Original mark based on quiz key */}
-                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>
-                                                    Original Mark
-                                                </span>
-                                                {(() => {
-                                                    const originalCorrect = q.type === 'short' ? false : (attempt.answers[index] === q.correctAnswer);
-                                                    
-                                                    return (
-                                                        <div style={{
-                                                            padding: '4px 12px',
-                                                            borderRadius: 'var(--radius-md)',
-                                                            background: originalCorrect ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                                            border: `1px solid ${originalCorrect ? 'var(--success-500)' : 'var(--error-500)'}`,
-                                                            fontWeight: 700,
-                                                            fontSize: 'var(--text-base)',
-                                                            color: originalCorrect ? 'var(--success-600)' : 'var(--error-600)',
-                                                            minWidth: '50px',
-                                                            textAlign: 'center'
-                                                        }}>
-                                                            {originalCorrect ? '+1' : '-1'}
-                                                        </div>
-                                                    );
-                                                })()}
-                                            </div>
-                                            
-                                            {/* AI/Updated mark if it differs or is a suggestion */}
-                                            {(aiSuggestion || overrides[index] !== undefined) && (() => {
+                                            {(() => {
                                                 const originalCorrect = q.type === 'short' ? false : (attempt.answers[index] === q.correctAnswer);
                                                 const currentCorrect = overrides[index] !== undefined ? overrides[index] : originalCorrect;
-                                                
-                                                // Only show if different OR if it's an AI suggestion
-                                                if (q.type === 'short' || originalCorrect !== currentCorrect || aiSuggestion) {
-                                                    return (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                                            <span style={{ fontSize: '10px', color: '#3b82f6', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>
-                                                                {overrides[index] !== undefined ? 'Updated Mark' : 'AI Suggestion'}
-                                                            </span>
-                                                            <div style={{
-                                                                padding: '4px 12px',
-                                                                borderRadius: 'var(--radius-md)',
-                                                                background: 'rgba(59, 130, 246, 0.1)',
-                                                                border: '1px solid #3b82f6',
-                                                                fontWeight: 700,
-                                                                fontSize: 'var(--text-base)',
-                                                                color: '#3b82f6',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '6px',
-                                                                minWidth: '50px',
-                                                                justifyContent: 'center'
+                                                const hasChange = originalCorrect !== currentCorrect;
+
+                                                return (
+                                                    <div style={{ 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        gap: '8px',
+                                                        padding: '6px 12px',
+                                                        background: 'var(--surface)',
+                                                        borderRadius: 'var(--radius-lg)',
+                                                        border: '1px solid var(--border)'
+                                                    }}>
+                                                        {/* Original */}
+                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                            <span style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Org</span>
+                                                            <span style={{ 
+                                                                color: originalCorrect ? 'var(--success-500)' : 'var(--error-500)', 
+                                                                fontWeight: 800,
+                                                                fontSize: 'var(--text-lg)'
                                                             }}>
-                                                                {aiSuggestion && <Brain size={12} />}
-                                                                {currentCorrect ? '+1' : '-1'}
-                                                            </div>
+                                                                {originalCorrect ? '+1' : '-1'}
+                                                            </span>
                                                         </div>
-                                                    );
-                                                }
-                                                return null;
+
+                                                        {hasChange && (
+                                                            <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                                                                <ChevronRight size={16} />
+                                                            </div>
+                                                        )}
+
+                                                        {/* Current/AI */}
+                                                        {(hasChange || aiSuggestion) && (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                                <span style={{ fontSize: '9px', color: '#3b82f6', textTransform: 'uppercase', fontWeight: 700 }}>
+                                                                    {overrides[index] !== undefined ? 'New' : 'AI'}
+                                                                </span>
+                                                                <span style={{ 
+                                                                    color: currentCorrect ? 'var(--success-500)' : 'var(--error-500)', 
+                                                                    fontWeight: 800,
+                                                                    fontSize: 'var(--text-lg)',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '2px'
+                                                                }}>
+                                                                    {aiSuggestion && <Brain size={12} style={{ color: '#3b82f6' }} />}
+                                                                    {currentCorrect ? '+1' : '-1'}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
                                             })()}
                                         </div>
                                     </div>
