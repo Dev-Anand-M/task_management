@@ -1465,7 +1465,7 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                         )}
                                     </div>
                                 );
-                            });
+                            })}
                     </div>
                 </Card>
             </div>
