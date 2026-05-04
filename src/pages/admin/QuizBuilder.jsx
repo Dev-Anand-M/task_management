@@ -490,7 +490,7 @@ const QuizBuilder = () => {
                                                         zIndex: 3 - i
                                                     }}
                                                 >
-                                                    <Avatar name={member.name} size="sm" />
+                                                    <Avatar name={member.name} image={member.avatar_url} size="sm" />
                                                 </div>
                                             ))
                                         )}
@@ -669,7 +669,7 @@ const QuizBuilder = () => {
                                                 transition: 'all var(--transition-fast)'
                                             }}
                                         >
-                                            <Avatar name={member.name} size="sm" />
+                                            <Avatar name={member.name} image={member.avatar_url} size="sm" />
                                             <span style={{ fontSize: 'var(--text-sm)' }}>{member.name}</span>
                                         </div>
                                     ))}

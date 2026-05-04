@@ -116,7 +116,7 @@ const Leaderboard = () => {
                     {/* 2nd Place */}
                     <div className="podium-item">
                         <div className="podium-avatar">
-                            <Avatar name={topThree[1].name} size="lg" />
+                            <Avatar name={topThree[1].name} image={topThree[1].avatar_url} size="lg" />
                         </div>
                         <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)' }}>
                             {topThree[1].name}
@@ -143,7 +143,7 @@ const Leaderboard = () => {
                     <div className="podium-item">
                         <div className="podium-avatar">
                             <div className="podium-crown">👑</div>
-                            <Avatar name={topThree[0].name} size="xl" />
+                            <Avatar name={topThree[0].name} image={topThree[0].avatar_url} size="xl" />
                         </div>
                         <h4 style={{ margin: '0 0 4px' }}>{topThree[0].name}</h4>
                         <p style={{
@@ -169,7 +169,7 @@ const Leaderboard = () => {
                     {/* 3rd Place */}
                     <div className="podium-item">
                         <div className="podium-avatar">
-                            <Avatar name={topThree[2].name} size="lg" />
+                            <Avatar name={topThree[2].name} image={topThree[2].avatar_url} size="lg" />
                         </div>
                         <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)' }}>
                             {topThree[2].name}
@@ -243,7 +243,7 @@ const Leaderboard = () => {
 
                                 {/* Avatar & Name */}
                                 <div className="flex items-center gap-md" style={{ flex: 1, minWidth: 0 }}>
-                                    <Avatar name={member.name} size="md" />
+                                    <Avatar name={member.name} image={member.avatar_url} size="md" />
                                     <div style={{ minWidth: 0 }}>
                                         <div className="flex items-center gap-sm">
                                             <p style={{

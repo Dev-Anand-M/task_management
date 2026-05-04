@@ -343,7 +343,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                     background: 'rgba(0,0,0,0.15)'
                 }}>
                     <div className="flex items-center gap-sm">
-                        <Avatar name={user?.name} size="sm" />
+                        <Avatar name={user?.name} image={user?.avatar_url} size="sm" />
                         <Link 
                             to="/profile" 
                             onClick={onClose}

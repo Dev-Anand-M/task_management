@@ -243,7 +243,7 @@ const EvaluationCenter = () => {
                                 style={{ textDecoration: 'none' }}
                             >
                                 <Card className="evaluation-card">
-                                    <Avatar name={sub.profiles?.name} size="lg" />
+                                    <Avatar name={sub.profiles?.name} image={sub.profiles?.avatar_url} size="lg" />
 
                                     <div className="evaluation-card-content" style={{ flex: 1, minWidth: 0 }}>
                                         <div className="flex items-center gap-sm mb-xs">
@@ -305,7 +305,7 @@ const EvaluationCenter = () => {
                                 style={{ textDecoration: 'none' }}
                             >
                                 <Card className="evaluation-card">
-                                    <Avatar name={att.profiles?.name} size="lg" />
+                                    <Avatar name={att.profiles?.name} image={att.profiles?.avatar_url} size="lg" />
 
                                     <div className="evaluation-card-content" style={{ flex: 1, minWidth: 0 }}>
                                         <div className="flex items-center gap-sm mb-xs">
@@ -513,7 +513,7 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
                     {/* Submitter Info */}
                     <Card>
                         <div className="flex items-center gap-md">
-                            <Avatar name={submission.profiles?.name} size="lg" />
+                            <Avatar name={submission.profiles?.name} image={submission.profiles?.avatar_url} size="lg" />
                             <div>
                                 <h4 style={{ margin: 0 }}>{submission.profiles?.name}</h4>
                                 <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
@@ -875,7 +875,7 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                     <Card>
                         <div className="flex justify-between items-center mb-lg">
                             <div className="flex items-center gap-md">
-                                <Avatar name={attempt.profiles?.name} size="lg" />
+                                <Avatar name={attempt.profiles?.name} image={attempt.profiles?.avatar_url} size="lg" />
                                 <div>
                                     <h4 style={{ margin: 0 }}>{attempt.profiles?.name}</h4>
                                     <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>

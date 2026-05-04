@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
     Card,
     Button,
@@ -42,6 +43,7 @@ import * as db from '../../services/database';
 import { getStatusColor, calculateLevel } from '../../utils/constants';
 
 const ClassroomDetail = () => {
+    const { user } = useAuth();
     const { id: classroomId } = useParams();
     const [classroom, setClassroom] = useState(null);
     const [members, setMembers] = useState([]);
@@ -221,7 +223,7 @@ const ClassroomDetail = () => {
                         <div className="lg:col-span-3 flex flex-col gap-xl">
                             {/* Announce Something */}
                             <Card className="p-lg flex gap-lg items-start border-primary-500/20 shadow-lg shadow-primary-500/5 bg-gradient-to-br from-surface to-surface-muted">
-                                <Avatar name="Admin" size="lg" className="ring-2 ring-primary-500/20" />
+                                <Avatar name={user?.name || "Admin"} image={user?.avatar_url} size="lg" className="ring-2 ring-primary-500/20" />
                                 <div className="flex-1">
                                     <textarea
                                         placeholder="Announce something to your class..."
@@ -350,8 +352,8 @@ const ClassroomDetail = () => {
                                 </div>
                             </h2>
                             <div className="flex items-center gap-lg p-md">
-                                <Avatar name="Admin User" size="lg" className="ring-2 ring-primary-500" />
-                                <span className="font-bold text-lg">Admin (Me)</span>
+                                <Avatar name={user?.name || "Admin"} image={user?.avatar_url} size="lg" className="ring-2 ring-primary-500" />
+                                <span className="font-bold text-lg">{user?.name || "Admin"} (Me)</span>
                             </div>
                         </section>
 
@@ -374,7 +376,7 @@ const ClassroomDetail = () => {
                                 {filteredMembers.filter(m => m.role === 'member').map(member => (
                                     <div key={member.id} className="flex items-center justify-between p-lg border-b border-border/50 hover:bg-primary-500/5 transition-all group">
                                         <div className="flex items-center gap-lg">
-                                            <Avatar name={member.name} size="md" className="ring-2 ring-transparent group-hover:ring-primary-500/20" />
+                                            <Avatar name={member.name} image={member.avatar_url} size="md" className="ring-2 ring-transparent group-hover:ring-primary-500/20" />
                                             <div>
                                                 <div className="font-bold">{member.name}</div>
                                                 <div className="text-xs text-muted">{member.email}</div>
@@ -477,7 +479,7 @@ const ClassroomDetail = () => {
                 {selectedStudent && (
                     <div className="flex flex-col gap-xl">
                         <div className="flex items-center gap-xl p-xl bg-surface rounded-2xl border border-border border-l-4 border-l-primary-500">
-                            <Avatar name={selectedStudent.name} size="xl" className="ring-4 ring-primary-500/20" />
+                            <Avatar name={selectedStudent.name} image={selectedStudent.avatar_url} size="xl" className="ring-4 ring-primary-500/20" />
                             <div className="flex-1">
                                 <h2 className="m-0 text-2xl font-bold">{selectedStudent.name}</h2>
                                 <p className="text-muted mb-md">{selectedStudent.email}</p>

@@ -236,7 +236,7 @@ const AdminDashboard = () => {
                                             e.currentTarget.style.transform = 'translateX(0)';
                                         }}
                                     >
-                                        <Avatar name={sub.profiles?.name} size="sm" />
+                                        <Avatar name={sub.profiles?.name} image={sub.profiles?.avatar_url} size="sm" />
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <p style={{
                                                 margin: 0,
@@ -316,7 +316,7 @@ const AdminDashboard = () => {
                                     }}>
                                         #{index + 1}
                                     </span>
-                                    <Avatar name={member.name} size="sm" />
+                                    <Avatar name={member.name} image={member.avatar_url} size="sm" />
                                     <div style={{ flex: 1 }}>
                                         <div className="flex justify-between items-center mb-xs">
                                             <span style={{ fontWeight: 500, fontSize: 'var(--text-sm)' }}>

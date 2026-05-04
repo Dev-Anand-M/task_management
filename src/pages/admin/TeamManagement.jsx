@@ -200,7 +200,7 @@ const TeamManagement = () => {
                                     <tr key={member.id}>
                                         <td>
                                             <div className="flex items-center gap-md">
-                                                <Avatar name={member.name} size="md" />
+                                                <Avatar name={member.name} image={member.avatar_url} size="md" />
                                                 <div>
                                                     <p style={{ margin: 0, fontWeight: 500 }}>{member.name}</p>
                                                     <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>

@@ -485,21 +485,7 @@ const Header = ({ onMenuClick, title }) => {
             }}
             className="hover:scale-105 active:scale-95"
           >
-            {user?.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt={user.name}
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '2px solid var(--border)'
-                }}
-              />
-            ) : (
-              <Avatar name={user?.name} size="md" />
-            )}
+            <Avatar name={user?.name} image={user?.avatar_url} size="md" />
           </button>
 
           {showProfileMenu && (

@@ -172,21 +172,12 @@ const Profile = ({ userId = null, readonly = false }) => {
                 <div className="flex items-center gap-xl" style={{ position: 'relative' }}>
                     {/* Avatar */}
                     <div style={{ position: 'relative' }}>
-                        {profileData.avatar_url ? (
-                            <img
-                                src={profileData.avatar_url}
-                                alt={profileData.name}
-                                style={{
-                                    width: '96px',
-                                    height: '96px',
-                                    borderRadius: '50%',
-                                    objectFit: 'cover',
-                                    border: '4px solid rgba(255,255,255,0.2)'
-                                }}
-                            />
-                        ) : (
-                            <Avatar name={profileData.name} size="xl" />
-                        )}
+                        <Avatar
+                            name={profileData.name}
+                            image={profileData.avatar_url}
+                            size="xl"
+                            className="ring-4 ring-white/20 shadow-xl"
+                        />
 
                         {!readonly && (
                             <>
