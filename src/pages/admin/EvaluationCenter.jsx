@@ -928,10 +928,12 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                             color: 'var(--text)'
                         }}
                     >
-                        <option value="meta-llama/Llama-3.2-90B-Vision-Instruct">Sambanova Llama 90B</option>
-                        <option value="llama3-70b-8192">Groq Llama 70B</option>
-                        <option value="deepseek-chat">DeepSeek Chat</option>
-                        <option value="gpt-4o">OpenAI GPT-4o</option>
+                        {availableModels.map(model => (
+                            <option key={model.id} value={model.id}>
+                                {model.provider.charAt(0).toUpperCase() + model.provider.slice(1)}: {model.name}
+                            </option>
+                        ))}
+                        {availableModels.length === 0 && <option value="">No models configured</option>}
                     </select>
                 </div>
             </div>
