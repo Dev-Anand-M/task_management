@@ -137,7 +137,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                             </span>
                         </div>
                     </div>
-
+                </div>
 
                 <nav style={{ flex: 1, padding: 'var(--space-sm)', overflowY: 'auto' }}>
                     {isAdmin && (
