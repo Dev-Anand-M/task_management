@@ -653,11 +653,39 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                                         }}>
                                             <div className="flex justify-between items-start mb-sm">
                                                 <Badge variant="secondary">Question {qIndex + 1}</Badge>
-                                                {isCorrect ? (
-                                                    <Badge variant="success">Correct</Badge>
-                                                ) : (
-                                                    <Badge variant="danger">Incorrect</Badge>
-                                                )}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    {isCorrect ? (
+                                                        <>
+                                                            <div style={{
+                                                                padding: '2px 8px',
+                                                                borderRadius: 'var(--radius-sm)',
+                                                                background: 'rgba(34, 197, 94, 0.1)',
+                                                                border: '1px solid var(--success-500)',
+                                                                fontWeight: 600,
+                                                                fontSize: 'var(--text-xs)',
+                                                                color: 'var(--success-600)'
+                                                            }}>
+                                                                ✓ 1/1
+                                                            </div>
+                                                            <Badge variant="success">Correct</Badge>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div style={{
+                                                                padding: '2px 8px',
+                                                                borderRadius: 'var(--radius-sm)',
+                                                                background: 'rgba(239, 68, 68, 0.1)',
+                                                                border: '1px solid var(--error-500)',
+                                                                fontWeight: 600,
+                                                                fontSize: 'var(--text-xs)',
+                                                                color: 'var(--error-600)'
+                                                            }}>
+                                                                ✗ 0/1
+                                                            </div>
+                                                            <Badge variant="danger">Incorrect</Badge>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                             <p style={{ fontWeight: 600, marginBottom: 'var(--space-md)', color: 'var(--text)' }}>
                                                 {q.question}

@@ -1164,9 +1164,63 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                         </div>
                                     )}
 
-                                    <p style={{ fontWeight: 600, marginBottom: 'var(--space-md)' }}>
-                                        {index + 1}. {q.question}
-                                    </p>
+                                    <div className="flex justify-between items-start" style={{ marginBottom: 'var(--space-md)' }}>
+                                        <p style={{ fontWeight: 600, margin: 0, flex: 1 }}>
+                                            {index + 1}. {q.question}
+                                        </p>
+                                        <div style={{ 
+                                            marginLeft: 'var(--space-md)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
+                                        }}>
+                                            {/* Show marks with color coding */}
+                                            {aiSuggestion && overrides[index] !== undefined ? (
+                                                // AI suggestion applied - show in blue
+                                                <div style={{
+                                                    padding: '4px 12px',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    background: 'rgba(59, 130, 246, 0.1)',
+                                                    border: '2px solid #3b82f6',
+                                                    fontWeight: 700,
+                                                    fontSize: 'var(--text-sm)',
+                                                    color: '#3b82f6',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}>
+                                                    <Brain size={14} />
+                                                    {isCorrect ? '1' : '0'} / 1
+                                                </div>
+                                            ) : isCorrect ? (
+                                                // Correct - show in green
+                                                <div style={{
+                                                    padding: '4px 12px',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    background: 'rgba(34, 197, 94, 0.1)',
+                                                    border: '2px solid var(--success-500)',
+                                                    fontWeight: 700,
+                                                    fontSize: 'var(--text-sm)',
+                                                    color: 'var(--success-600)'
+                                                }}>
+                                                    ✓ 1 / 1
+                                                </div>
+                                            ) : (
+                                                // Wrong - show in red
+                                                <div style={{
+                                                    padding: '4px 12px',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                    border: '2px solid var(--error-500)',
+                                                    fontWeight: 700,
+                                                    fontSize: 'var(--text-sm)',
+                                                    color: 'var(--error-600)'
+                                                }}>
+                                                    ✗ 0 / 1
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
                                         {q.type === 'multiple' ? (
                                             q.options.map((opt, optIndex) => (
