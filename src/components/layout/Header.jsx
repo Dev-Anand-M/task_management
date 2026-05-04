@@ -267,24 +267,18 @@ const Header = ({ onMenuClick, title }) => {
           {/* Notifications Dropdown */}
           {showNotifications && (
             <div 
-              className="notification-panel-mobile"
+              className="header-dropdown"
               style={{
-                position: 'absolute',
                 top: 'calc(100% + 12px)',
                 right: 0,
                 width: '400px',
                 maxWidth: '90vw',
+                minHeight: '200px',
                 background: 'var(--card, #ffffff)',
-                border: '2px solid var(--border, #e5e7eb)',
-                borderRadius: 'var(--radius-2xl)',
+                border: '1px solid var(--border, #e5e7eb)',
+                borderRadius: '16px',
                 boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                overflow: 'visible',
-                zIndex: 9999,
-                animation: 'slideInUp 0.3s var(--transition-bounce)',
-                display: 'block !important',
-                visibility: 'visible !important',
-                opacity: '1 !important',
-                pointerEvents: 'auto'
+                overflow: 'hidden'
               }}
             >
               {/* Header */}
@@ -320,7 +314,11 @@ const Header = ({ onMenuClick, title }) => {
               </div>
 
               {/* Notifications List */}
-              <div style={{ maxHeight: '420px', overflowY: 'auto' }}>
+              <div style={{ 
+                maxHeight: '420px', 
+                overflowY: 'auto',
+                minHeight: '100px'
+              }}>
                 {notifications.length === 0 ? (
                   <div style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     <Bell size={48} style={{ opacity: 0.2, marginBottom: 'var(--space-md)' }} />
@@ -495,24 +493,18 @@ const Header = ({ onMenuClick, title }) => {
 
           {showProfileMenu && (
             <div 
-              className="profile-dropdown-mobile"
+              className="header-dropdown"
               style={{
-                position: 'absolute',
                 top: 'calc(100% + 12px)',
                 right: 0,
                 width: '280px',
                 maxWidth: '90vw',
+                minHeight: '200px',
                 background: 'var(--card, #ffffff)',
                 border: '2px solid var(--border, #e5e7eb)',
                 borderRadius: 'var(--radius-xl)',
                 boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                overflow: 'visible',
-                zIndex: 9999,
-                animation: 'slideInUp 0.2s ease-out',
-                display: 'block !important',
-                visibility: 'visible !important',
-                opacity: '1 !important',
-                pointerEvents: 'auto'
+                overflow: 'visible'
               }}
             >
               {/* User Info Header */}

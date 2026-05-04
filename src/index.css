@@ -1758,17 +1758,7 @@ html, body {
     display: none !important;
   }
   
-  /* Fix notification panels */
-  .notification-panel-mobile,
-  .profile-dropdown-mobile {
-    position: fixed !important;
-    top: 72px !important;
-    left: var(--space-sm) !important;
-    right: var(--space-sm) !important;
-    width: auto !important;
-    max-width: none !important;
-    z-index: 1100 !important;
-  }
+  /* Fix notification panels - removed conflicting dropdown styles */
   
   /* Mobile quiz navigation */
   .quiz-option span {
@@ -2591,12 +2581,7 @@ input.bg-surface\/80 {
   width: 380px;
 }
 
-.profile-dropdown-mobile {
-  position: absolute;
-  top: calc(100% + 12px);
-  right: 0;
-  width: 240px;
-}
+/* Removed conflicting profile-dropdown-mobile styles */
 
 
 
@@ -2689,16 +2674,6 @@ input.bg-surface\/80 {
     width: auto !important;
     max-width: none !important;
     margin: 0 !important;
-    z-index: 1100 !important;
-  }
-
-  .profile-dropdown-mobile {
-    position: fixed !important;
-    top: 72px !important;
-    left: 12px !important;
-    right: 12px !important;
-    width: auto !important;
-    max-width: none !important;
     z-index: 1100 !important;
   }
 
@@ -2928,5 +2903,26 @@ html, body {
   
   .quiz-header {
     padding: var(--space-xs);
+  }
+}
+
+/* Dropdown visibility fixes */
+.header-dropdown {
+  position: absolute;
+  z-index: 9999;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Mobile Dropdown Fixes */
+@media (max-width: 768px) {
+  .header-dropdown {
+    position: fixed !important;
+    top: 80px !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: none !important;
   }
 }
