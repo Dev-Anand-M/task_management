@@ -350,6 +350,18 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null) => {
             
 
             if (response.status === 429 && attempt < maxRetries) {
+                // Try to respect Retry-After header if provider sends it
+                const retryAfter = response.headers.get('Retry-After');
+                const delay = retryAfter ? (parseInt(retryAfter) * 1000) : 1000;
+                
+                await new Promise((resolve, reject) => {
+                    const timer = setTimeout(resolve, delay);
+                    const onAbort = () => {
+                        clearTimeout(timer);
+                        reject(new Error('AbortError'));
+                    };
+                    signal?.addEventListener('abort', onAbort, { once: true });
+                });
                 continue;
             }
 
