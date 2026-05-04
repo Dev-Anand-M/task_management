@@ -1251,88 +1251,115 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
-                                        {q.type === 'multiple' ? (
-                                            q.options.map((opt, optIndex) => {
+                                                // State variables for clarity
                                                 const isCorrectKey = optIndex === q.correctAnswer;
                                                 const isStudentChoice = optIndex === userAnswer;
-                                                const aiCorrectIndex = aiSuggestion?.isCorrect === true ? userAnswer : (aiSuggestion?.isCorrect === false ? -1 : -1);
+                                                const aiRecommendsCorrect = aiSuggestion?.isCorrect && isStudentChoice;
                                                 
-                                                // Determine color: Green (Correct Key), Red (Wrong Student Choice), Blue (AI Recommends)
-                                                let color = 'var(--text-muted)';
-                                                let fontWeight = 400;
-                                                let icon = null;
-
-                                                if (isCorrectKey) {
-                                                    color = 'var(--success-500)';
-                                                    fontWeight = 600;
-                                                    icon = <Check size={14} />;
-                                                }
-                                                
-                                                if (isStudentChoice && !isCorrectKey) {
-                                                    color = 'var(--error-500)';
-                                                    fontWeight = 600;
-                                                    icon = <X size={14} />;
-                                                }
-
-                                                // AI Override/Correction in BLUE
-                                                if (aiSuggestion && aiSuggestion.isCorrect && isStudentChoice) {
-                                                    color = '#3b82f6';
-                                                    fontWeight = 700;
-                                                }
-
                                                 return (
                                                     <div key={optIndex} style={{
                                                         fontSize: 'var(--text-sm)',
-                                                        color,
-                                                        fontWeight,
+                                                        padding: '6px 12px',
+                                                        borderRadius: 'var(--radius-md)',
+                                                        marginBottom: '4px',
                                                         display: 'flex',
                                                         alignItems: 'center',
-                                                        gap: '8px',
-                                                        padding: '4px 8px',
-                                                        borderRadius: '4px',
-                                                        background: (aiSuggestion && aiSuggestion.isCorrect && isStudentChoice) ? 'rgba(59, 130, 246, 0.05)' : ''
+                                                        gap: '12px',
+                                                        background: isStudentChoice ? 'var(--surface)' : 'transparent',
+                                                        border: isStudentChoice ? '1px solid var(--border)' : '1px solid transparent'
                                                     }}>
-                                                        {icon}
-                                                        {opt}
-                                                        {aiSuggestion && aiSuggestion.isCorrect && isStudentChoice && (
-                                                            <Badge size="xs" style={{ background: '#3b82f6', fontSize: '9px', padding: '1px 4px' }}>AI VALIDATED</Badge>
-                                                        )}
+                                                        <div style={{ display: 'flex', alignItems: 'center', minWidth: '80px', gap: '4px' }}>
+                                                            {isCorrectKey && (
+                                                                <Badge size="xs" variant="success" style={{ fontSize: '8px' }}>KEY</Badge>
+                                                            )}
+                                                            {isStudentChoice && (
+                                                                <Badge size="xs" variant="primary" style={{ fontSize: '8px' }}>CHOICE</Badge>
+                                                            )}
+                                                        </div>
+
+                                                        <span style={{ 
+                                                            flex: 1,
+                                                            color: isCorrectKey ? 'var(--success-500)' : (isStudentChoice && !aiRecommendsCorrect ? 'var(--error-500)' : 'var(--text-main)'),
+                                                            fontWeight: (isCorrectKey || isStudentChoice) ? 600 : 400
+                                                        }}>
+                                                            {opt}
+                                                        </span>
+
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            {/* Original System Status */}
+                                                            <div style={{ display: 'flex', alignItems: 'center', color: isCorrectKey ? 'var(--success-500)' : (isStudentChoice ? 'var(--error-500)' : 'var(--text-muted)') }}>
+                                                                {isCorrectKey ? <Check size={14} /> : (isStudentChoice ? <X size={14} /> : null)}
+                                                            </div>
+
+                                                            {/* AI Transition */}
+                                                            {aiRecommendsCorrect && (
+                                                                <>
+                                                                    <div style={{ color: 'var(--text-muted)' }}>➔</div>
+                                                                    <div style={{ 
+                                                                        display: 'flex', 
+                                                                        alignItems: 'center', 
+                                                                        gap: '4px', 
+                                                                        color: '#3b82f6',
+                                                                        fontWeight: 700,
+                                                                        padding: '2px 8px',
+                                                                        background: 'rgba(59, 130, 246, 0.1)',
+                                                                        borderRadius: '4px'
+                                                                    }}>
+                                                                        <Check size={14} />
+                                                                        <span style={{ fontSize: '10px' }}>AI VALIDATED</span>
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 );
                                             })
                                         ) : q.type === 'boolean' ? (
                                             <div style={{ fontSize: 'var(--text-sm)' }}>
-                                                <div style={{ display: 'flex', gap: '12px', marginBottom: '8px' }}>
-                                                    <span style={{ 
-                                                        color: q.correctAnswer === true ? 'var(--success-500)' : 'var(--text-muted)',
-                                                        fontWeight: q.correctAnswer === true ? 600 : 400 
-                                                    }}>
-                                                        {q.correctAnswer === true && <Check size={12} style={{ marginRight: '4px' }} />}
-                                                        True
-                                                    </span>
-                                                    <span style={{ 
-                                                        color: q.correctAnswer === false ? 'var(--success-500)' : 'var(--text-muted)',
-                                                        fontWeight: q.correctAnswer === false ? 600 : 400 
-                                                    }}>
-                                                        {q.correctAnswer === false && <Check size={12} style={{ marginRight: '4px' }} />}
-                                                        False
-                                                    </span>
+                                                <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        {q.correctAnswer === true && <Badge size="xs" variant="success" style={{ fontSize: '8px' }}>KEY</Badge>}
+                                                        <span style={{ color: q.correctAnswer === true ? 'var(--success-500)' : 'var(--text-muted)', fontWeight: q.correctAnswer === true ? 600 : 400 }}>True</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        {q.correctAnswer === false && <Badge size="xs" variant="success" style={{ fontSize: '8px' }}>KEY</Badge>}
+                                                        <span style={{ color: q.correctAnswer === false ? 'var(--success-500)' : 'var(--text-muted)', fontWeight: q.correctAnswer === false ? 600 : 400 }}>False</span>
+                                                    </div>
                                                 </div>
+                                                
                                                 <div style={{ 
-                                                    padding: '8px 12px', 
+                                                    padding: '12px', 
                                                     background: 'var(--surface)', 
                                                     borderRadius: 'var(--radius-md)',
-                                                    border: `1px solid ${aiSuggestion?.isCorrect ? '#3b82f6' : (isCorrect ? 'var(--success-500)' : 'var(--error-500)')}`
+                                                    border: '1px solid var(--border)',
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center'
                                                 }}>
-                                                    <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Student Choice:</p>
-                                                    <p style={{ 
-                                                        margin: 0, 
-                                                        fontWeight: 700, 
-                                                        color: aiSuggestion?.isCorrect ? '#3b82f6' : (isCorrect ? 'var(--success-500)' : 'var(--error-500)') 
-                                                    }}>
-                                                        {userAnswer === true ? 'True' : userAnswer === false ? 'False' : 'No Answer'}
-                                                        {aiSuggestion?.isCorrect && <Badge size="xs" style={{ marginLeft: '8px', background: '#3b82f6' }}>AI CORRECTED</Badge>}
-                                                    </p>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                        <Badge size="xs" variant="primary">STUDENT CHOICE</Badge>
+                                                        <span style={{ fontWeight: 600 }}>{userAnswer === true ? 'True' : 'False'}</span>
+                                                        {isCorrect ? <Check size={16} color="var(--success-500)" /> : <X size={16} color="var(--error-500)" />}
+                                                    </div>
+
+                                                    {aiSuggestion?.isCorrect && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <div style={{ color: 'var(--text-muted)' }}>➔</div>
+                                                            <div style={{ 
+                                                                display: 'flex', 
+                                                                alignItems: 'center', 
+                                                                gap: '6px',
+                                                                color: '#3b82f6',
+                                                                fontWeight: 700,
+                                                                padding: '4px 10px',
+                                                                background: 'rgba(59, 130, 246, 0.1)',
+                                                                borderRadius: '6px'
+                                                            }}>
+                                                                <Brain size={14} />
+                                                                <span>AI CORRECTED</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         ) : (
