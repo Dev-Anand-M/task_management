@@ -182,7 +182,7 @@ const Quizzes = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
                         {completedQuizzes.map(quiz => {
                             const attempt = attempts.find(a => a.quiz_id === quiz.id);
-                            const isFinalized = attempt?.metadata?.manually_evaluated === true;
+                            const isFinalized = attempt?.metadata?.finalized === true;
                             const score = attempt?.score || 0;
                             const passed = score >= 70;
 
@@ -198,7 +198,7 @@ const Quizzes = () => {
                                             {quiz.difficulty}
                                         </Badge>
                                         <Badge variant={!isFinalized ? 'warning' : (passed ? 'success' : 'error')}>
-                                            {!isFinalized ? 'In Review' : (passed ? 'Passed' : 'Failed')}
+                                            {!isFinalized ? '⏳ Under Review' : (passed ? '✓ Passed' : '✗ Failed')}
                                         </Badge>
                                     </div>
 
@@ -222,8 +222,18 @@ const Quizzes = () => {
                                             margin: 0,
                                             color: !isFinalized ? 'var(--text-muted)' : (passed ? 'var(--success-500)' : 'var(--error-500)')
                                         }}>
-                                            {!isFinalized ? 'Evaluation Pending...' : `${score}%`}
+                                            {!isFinalized ? '🔍 Evaluation in Progress...' : `${score}%`}
                                         </p>
+                                        {!isFinalized && (
+                                            <p style={{ 
+                                                fontSize: 'var(--text-xs)', 
+                                                color: 'var(--text-muted)', 
+                                                margin: '4px 0 0',
+                                                fontStyle: 'italic'
+                                            }}>
+                                                Your instructor is reviewing your answers
+                                            </p>
+                                        )}
                                     </div>
                                     <Button 
                                         variant="secondary" 
@@ -233,7 +243,7 @@ const Quizzes = () => {
                                         style={{ width: '100%', opacity: !isFinalized ? 0.6 : 1, cursor: !isFinalized ? 'default' : 'pointer' }}
                                         disabled={!isFinalized}
                                     >
-                                        {!isFinalized ? 'Waiting for Review' : 'View Review'}
+                                        {!isFinalized ? 'Waiting for Finalization' : 'View Detailed Results'}
                                     </Button>
                                 </Card>
                             );
@@ -297,10 +307,11 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                         total: existingAttempt.total,
                         passed: existingAttempt.passed,
                         xpEarned: 0,
-                        manually_evaluated: existingAttempt.metadata?.manually_evaluated
+                        manually_evaluated: existingAttempt.metadata?.manually_evaluated,
+                        finalized: existingAttempt.metadata?.finalized
                     });
                     setIsComplete(true);
-                    setShowReview(true);
+                    setShowReview(existingAttempt.metadata?.finalized === true);
                 }
                 // Load from localStorage if available
                 try {
@@ -407,18 +418,25 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                             const isLocallyCorrect = q.type !== 'short' && answers[idx] === q.correctAnswer;
 
                             if (q.type === 'short') {
-                                if (aiSuggestion?.isCorrect) finalCorrect++;
+                                // SHORT ANSWER: AI evaluates and applies to score
+                                if (aiSuggestion?.isCorrect) {
+                                    finalCorrect++;
+                                    autoOverrides[Number(idx)] = true;
+                                } else {
+                                    autoOverrides[Number(idx)] = false;
+                                }
                             } else {
-                                if (isLocallyCorrect || (aiSuggestion?.isCorrect)) finalCorrect++;
-                            }
-                            
-                            if (aiSuggestion) {
-                                autoOverrides[Number(idx)] = aiSuggestion.isCorrect;
+                                // MCQ/TRUE-FALSE: Use original quiz key, AI only flags issues
+                                if (isLocallyCorrect) {
+                                    finalCorrect++;
+                                }
+                                // Don't apply AI suggestions to score yet, just store them for flagging
+                                // Admin will use "Intercept & Re-evaluate All" to apply them
                             }
                         });
 
                         const aiScore = Math.round((finalCorrect / quiz.questions.length) * 100);
-                        console.log('Calculated AI Score:', aiScore);
+                        console.log('Calculated AI Score (SHORT ANSWER only):', aiScore);
                         
                         // Check for Key Errors to flag for Admin
                         const hasKeyError = report.suggestions.some(s => s.isKeyError === true);
@@ -435,7 +453,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                                     ai_evaluated: true, 
                                     ai_report: report, 
                                     model_used: modelToUse,
-                                    overrides: autoOverrides,
+                                    overrides: autoOverrides, // Only SHORT ANSWER overrides applied
                                     status: 'ai_reviewed',
                                     has_key_error: hasKeyError // FLAG FOR ADMIN
                                 }
@@ -537,7 +555,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
 
     // Result screen
     if (isComplete && results) {
-        const isFinalized = results.manually_evaluated === true;
+        const isFinalized = results.manually_evaluated === true || results.finalized === true;
 
         return (
             <div className="quiz-container animate-fade-in" style={{ width: '100%' }}>
@@ -564,13 +582,18 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                     </div>
 
                     <h2 style={{ marginBottom: 'var(--space-sm)' }}>
-                        {!isFinalized ? 'Quiz Submitted! 📄' : (results.passed ? 'Congratulations! 🎉' : 'Keep Practicing!')}
+                        {!isFinalized ? 'Quiz Submitted Successfully! 📄' : (results.passed ? 'Congratulations! 🎉' : 'Keep Practicing!')}
                     </h2>
                     
                     {!isFinalized ? (
                         <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-xl)', fontSize: 'var(--text-lg)' }}>
-                            Your quiz is currently **under review**. 
-                            You will receive a notification as soon as the evaluator has finalized your grade.
+                            Your quiz is currently **under review** by your instructor. 
+                            <br />
+                            You will receive a notification when your final grade is ready.
+                            <br /><br />
+                            <span style={{ fontSize: 'var(--text-sm)', fontStyle: 'italic' }}>
+                                💡 AI has provided an initial evaluation, but your instructor will finalize your grade.
+                            </span>
                         </p>
                     ) : (
                         <>

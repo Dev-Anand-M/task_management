@@ -587,60 +587,99 @@ Format your response in markdown.`;
 
 // AI Quiz Evaluator (For Admins)
 export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null) => {
-    const systemPrompt = `You are an expert academic evaluator and fact-checker. 
-    You are reviewing a student's quiz submission where the quiz creator has already set what they think are the "correct answers."
-    
-    YOUR JOB:
-    1. Check if the quiz creator's "correct answers" are actually factually accurate
-    2. Evaluate the student's answers against the real facts (not just the quiz creator's answers)
-    3. If the quiz creator made a mistake in their answer key, flag it as an error
-    
-    IMPORTANT CONTEXT:
-    - The quiz has pre-set "correct answers" that the quiz creator believes are right
-    - You need to fact-check these pre-set answers for accuracy
-    - The student should be graded based on factual correctness, not just matching the quiz's answer key
-    - If the quiz creator's answer key is wrong, the student might be right even if they don't match the quiz's answer
-    
-    RESPONSE FORMAT: Return ONLY a valid JSON object with this EXACT structure:
+    const systemPrompt = `You are an expert academic evaluator and fact-checker reviewing a student's quiz submission.
+
+CRITICAL UNDERSTANDING - QUESTION TYPES:
+
+1. **SHORT ANSWER Questions**: 
+   - These require written responses that you MUST evaluate for correctness
+   - The quiz creator provides a "sample answer" but students may phrase it differently
+   - YOU decide if the student's answer is factually correct (set isCorrect: true/false)
+   - You can also flag if the quiz creator's sample answer is wrong (set isKeyError: true)
+
+2. **MULTIPLE CHOICE (MCQ) Questions**:
+   - These have designated correct options (A, B, C, D) set by the quiz creator
+   - The student selects ONE option
+   - DO NOT change the student's score based on your opinion
+   - ONLY flag potential errors in the quiz creator's answer key (set isKeyError: true)
+   - The admin will manually review flagged questions
+
+3. **TRUE/FALSE Questions**:
+   - These have a designated correct answer (True or False) set by the quiz creator
+   - The student selects True or False
+   - DO NOT change the student's score based on your opinion
+   - ONLY flag if you believe the quiz creator's designated answer is factually wrong (set isKeyError: true)
+   - The admin will manually review flagged questions
+
+YOUR RESPONSIBILITIES BY QUESTION TYPE:
+- SHORT ANSWER: Evaluate correctness AND flag key errors
+- MCQ/TRUE-FALSE: ONLY flag potential key errors, do NOT override student scores
+
+RESPONSE FORMAT: Return ONLY a valid JSON object:
+{
+  "summary": "Overall performance summary",
+  "suggestions": [
     {
-      "summary": "Overall performance summary",
-      "suggestions": [
-        {
-          "questionIndex": 0,
-          "isCorrect": true,
-          "isKeyError": false,
-          "feedback": "Detailed feedback - if isKeyError is true, explain that the quiz creator's answer key is factually incorrect",
-          "improvementTip": "How the student can improve"
-        }
-      ],
-      "overallGrade": "B",
-      "mentorNote": "Private note for admin about student progress and any errors in the quiz's answer key"
+      "questionIndex": 0,
+      "isCorrect": true,
+      "isKeyError": false,
+      "feedback": "For SHORT ANSWER: explain why answer is right/wrong. For MCQ/TRUE-FALSE: only provide feedback if isKeyError is true",
+      "improvementTip": "Constructive advice for the student"
     }
-    
-    CRITICAL RULES:
-    - When isKeyError is true, it means the QUIZ CREATOR made an error in the answer key
-    - The student should not be penalized for quiz creator errors
-    - Focus on factual accuracy, not just matching the quiz's predetermined answers
-    - Return ONLY the JSON object, no other text
-    - Use proper JSON syntax with double quotes
-    - Boolean values must be true/false (not "true"/"false")
-    - Grade must be one of: A, B, C, D, F`;
+  ],
+  "overallGrade": "B",
+  "mentorNote": "Private note for admin about student progress and any flagged answer key errors"
+}
+
+CRITICAL RULES:
+- For SHORT ANSWER: Set isCorrect based on factual accuracy of student's response
+- For MCQ/TRUE-FALSE: Leave isCorrect matching the quiz key UNLESS you set isKeyError: true
+- isKeyError: true means you believe the QUIZ CREATOR made an error in the answer key
+- Return ONLY the JSON object, no other text
+- Use proper JSON syntax with double quotes
+- Boolean values must be true/false (not "true"/"false")
+- Grade must be one of: A, B, C, D, F`;
+
+    // Prepare detailed question context with types
+    const questionsWithContext = quizData.questions.map((q, idx) => ({
+        questionIndex: idx,
+        type: q.type, // 'short', 'multiple', 'boolean'
+        question: q.question,
+        ...(q.type === 'multiple' && {
+            options: q.options,
+            designatedCorrectOption: q.correctAnswer,
+            note: "This is a MULTIPLE CHOICE question. The quiz creator designated option index " + q.correctAnswer + " as correct. Only flag isKeyError if this designation is factually wrong."
+        }),
+        ...(q.type === 'boolean' && {
+            designatedCorrectAnswer: q.correctAnswer,
+            note: "This is a TRUE/FALSE question. The quiz creator designated '" + (q.correctAnswer ? "True" : "False") + "' as correct. Only flag isKeyError if this is factually wrong."
+        }),
+        ...(q.type === 'short' && {
+            sampleCorrectAnswer: q.correctAnswer,
+            note: "This is a SHORT ANSWER question. Evaluate if the student's response is factually correct, even if worded differently from the sample answer."
+        }),
+        studentAnswer: studentAnswers[idx]
+    }));
 
     const prompt = `
-    QUIZ TO EVALUATE:
-    Title: ${quizData.title}
-    
-    QUIZ CREATOR'S ANSWER KEY (what they think is correct):
-    ${JSON.stringify(quizData.questions, null, 2)}
-    
-    STUDENT'S ACTUAL ANSWERS:
-    ${JSON.stringify(studentAnswers, null, 2)}
-    
-    TASK: Evaluate each question by:
-    1. Checking if the quiz creator's "correctAnswer" is factually accurate
-    2. Comparing the student's answer to the actual facts
-    3. If the quiz creator's answer key is wrong, set "isKeyError": true for that question
-    `;
+QUIZ TO EVALUATE:
+Title: ${quizData.title}
+Description: ${quizData.description || 'N/A'}
+
+QUESTIONS WITH FULL CONTEXT:
+${JSON.stringify(questionsWithContext, null, 2)}
+
+TASK: For each question:
+1. Identify the question type (short, multiple, boolean)
+2. For SHORT ANSWER: Evaluate if student's answer is factually correct
+3. For MCQ/TRUE-FALSE: Check if the quiz creator's designated answer is factually correct
+4. Set isKeyError: true ONLY if you believe the quiz creator made a mistake in the answer key
+5. Provide constructive feedback and improvement tips
+
+Remember: 
+- SHORT ANSWER = You grade the student
+- MCQ/TRUE-FALSE = You only flag potential quiz key errors for admin review
+`;
 
     const response = await generateContent(prompt, systemPrompt, model);
 

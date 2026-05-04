@@ -56,7 +56,7 @@ const XPHistory = () => {
 
             // Format Quiz XP
             const quizHistory = quizAttempts
-                .filter(a => a.metadata?.manually_evaluated === true)
+                .filter(a => a.metadata?.finalized === true)
                 .map(a => ({
                     id: `quiz-${a.id}`,
                     type: 'quiz',

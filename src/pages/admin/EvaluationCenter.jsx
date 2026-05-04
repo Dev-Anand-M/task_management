@@ -317,9 +317,11 @@ const EvaluationCenter = () => {
                                             ) : (
                                                 <Badge variant="warning">🤖 AI Processing...</Badge>
                                             )}
-                                            {att.metadata?.manually_evaluated && (
-                                                <Badge variant="success">Finalized</Badge>
-                                            )}
+                                            {att.metadata?.finalized ? (
+                                                <Badge variant="success">✓ Finalized</Badge>
+                                            ) : att.metadata?.manually_evaluated ? (
+                                                <Badge variant="accent">Draft Saved</Badge>
+                                            ) : null}
                                             {att.metadata?.has_key_error && (
                                                 <Badge variant="error">🚩 Key Error?</Badge>
                                             )}
@@ -787,49 +789,33 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
             const report = await evaluateQuizAttempt(attempt.quiz, attempt.answers, selectedModel);
             setAiReport(report);
             
-            // Auto-apply suggestions with 'Safety Net' logic and 0/1 base handling
+            // "Intercept & Re-evaluate All" applies AI suggestions to ALL question types
             const newOverrides = { ...overrides };
             report.suggestions.forEach(s => {
                 let qIndex = Number(s.questionIndex);
                 
                 // If AI used 1-based indexing (Common LLM quirk), adjust to 0-based
-                // We check if qIndex exists in attempt.quiz.questions. 
-                // If qIndex is 1 and questions[1] doesn't exist but questions[0] does, it's likely 1-based.
-                // Or simply, if qIndex > 0 and qIndex === attempt.quiz.questions.length, it's 1-based.
                 if (qIndex > 0 && qIndex >= attempt.quiz.questions.length) {
                     qIndex -= 1;
                 }
 
                 const q = attempt.quiz.questions[qIndex];
-                const userAnswer = attempt.answers[qIndex];
                 
                 if (q) {
-                    if (q.type === 'short') {
-                        newOverrides[qIndex] = s.isCorrect;
-                    } else {
-                        const isLocallyCorrect = userAnswer === q.correctAnswer;
-                        if (!isLocallyCorrect) {
-                            newOverrides[qIndex] = s.isCorrect;
-                        }
-                    }
+                    // Apply AI suggestions to ALL question types when "Intercept" is clicked
+                    newOverrides[qIndex] = s.isCorrect;
                 }
             });
             
-            console.log('Final Overrides to set:', newOverrides);
+            console.log('Intercept & Re-evaluate: Applying AI suggestions to ALL questions:', newOverrides);
             setOverrides(prev => ({ ...prev, ...newOverrides }));
 
-            // PERSIST to Database immediately so it's not lost
+            // Calculate final score with AI suggestions applied to ALL question types
             const finalCorrect = attempt.quiz.questions.reduce((acc, q, idx) => {
-                const userAnswer = attempt.answers[idx];
                 const override = newOverrides[idx];
                 
-                if (q.type === 'short') {
-                    const isCorrect = override !== undefined ? override : false;
-                    return acc + (isCorrect ? 1 : 0);
-                }
-                // MCQ/Boolean: AI suggestions are ignored for the final mark calculation
-                // but admins can still manually override if they REALLY want to via the UI
-                const isCorrect = override !== undefined ? override : (userAnswer === q.correctAnswer);
+                // Use AI override if available, otherwise use original quiz key
+                const isCorrect = override !== undefined ? override : (attempt.answers[idx] === q.correctAnswer);
                 return acc + (isCorrect ? 1 : 0);
             }, 0);
             const finalScore = Math.round((finalCorrect / attempt.total) * 100);
@@ -944,65 +930,151 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                         </div>
 
                         {Object.keys(overrides).length > 0 && (
-                            <Button 
-                                variant="success" 
-                                style={{ width: '100%' }} 
-                                loading={saving}
-                                onClick={async () => {
-                                    setSaving(true);
-                                    try {
-                                        const finalCorrect = attempt.quiz.questions.reduce((acc, q, idx) => {
-                                            const userAnswer = attempt.answers[idx];
-                                            const override = overrides[idx];
-                                            
-                                            if (q.type === 'short') {
-                                                const isCorrect = override !== undefined ? override : false;
+                            <>
+                                <Button 
+                                    variant="success" 
+                                    style={{ width: '100%' }} 
+                                    loading={saving}
+                                    onClick={async () => {
+                                        setSaving(true);
+                                        try {
+                                            const finalCorrect = attempt.quiz.questions.reduce((acc, q, idx) => {
+                                                const userAnswer = attempt.answers[idx];
+                                                const override = overrides[idx];
+                                                
+                                                if (q.type === 'short') {
+                                                    const isCorrect = override !== undefined ? override : false;
+                                                    return acc + (isCorrect ? 1 : 0);
+                                                }
+                                                const isCorrect = override !== undefined ? override : (userAnswer === q.correctAnswer);
                                                 return acc + (isCorrect ? 1 : 0);
+                                            }, 0);
+                                            const finalScore = Math.round((finalCorrect / attempt.total) * 100);
+                                            const xpToAward = Math.round((finalCorrect / attempt.total) * (attempt.quizzes?.points || 100));
+                                            
+                                            // Update the saved attempt with Manual results
+                                            await db.updateQuizAttempt(attempt.id, {
+                                                correct: finalCorrect,
+                                                score: finalScore,
+                                                passed: finalScore >= 70,
+                                                xp_earned: xpToAward,
+                                                metadata: { ...attempt.metadata, manually_evaluated: true, overrides, finalized: true }
+                                            });
+
+                                            // Update the user's profile XP
+                                            await db.updateProfile(attempt.user_id, {
+                                                xp: (attempt.profiles?.xp || 0) + xpToAward
+                                            });
+
+                                            // --- NOTIFY STUDENT ---
+                                            await db.createNotification({
+                                                user_id: attempt.user_id,
+                                                title: 'Quiz Evaluated! 🧠',
+                                                message: `Your attempt on "${attempt.quizzes?.title}" has been reviewed. Final Score: ${finalScore}% (+${xpToAward} XP)`,
+                                                type: 'success',
+                                                link: `/quizzes`,
+                                                is_read: false,
+                                                created_at: new Date().toISOString()
+                                            });
+
+                                            setSuccess(true);
+                                            setTimeout(() => setSuccess(false), 3000);
+                                            loadAttempt();
+                                        } catch (e) {
+                                            console.error('Save Error:', e);
+                                            alert('Failed to save evaluation');
+                                        } finally {
+                                            setSaving(false);
+                                        }
+                                    }}
+                                >
+                                    {success ? '✓ Saved Successfully!' : '💾 Save Changes (Draft)'}
+                                </Button>
+                                
+                                {!attempt.metadata?.finalized && (
+                                    <Button 
+                                        variant="primary" 
+                                        style={{ width: '100%' }} 
+                                        loading={saving}
+                                        onClick={async () => {
+                                            if (!window.confirm('Finalize this evaluation? The student will be able to see their final score and this cannot be undone.')) {
+                                                return;
                                             }
-                                            const isCorrect = override !== undefined ? override : (userAnswer === q.correctAnswer);
-                                            return acc + (isCorrect ? 1 : 0);
-                                        }, 0);
-                                        const finalScore = Math.round((finalCorrect / attempt.total) * 100);
-                                        const xpToAward = Math.round((finalCorrect / attempt.total) * (attempt.quizzes?.points || 100));
-                                        
-                                        // Update the saved attempt with Manual results
-                                        await db.updateQuizAttempt(attempt.id, {
-                                            correct: finalCorrect,
-                                            score: finalScore,
-                                            passed: finalScore >= 70,
-                                            xp_earned: xpToAward,
-                                            metadata: { ...attempt.metadata, manually_evaluated: true, overrides }
-                                        });
+                                            
+                                            setSaving(true);
+                                            try {
+                                                const finalCorrect = attempt.quiz.questions.reduce((acc, q, idx) => {
+                                                    const userAnswer = attempt.answers[idx];
+                                                    const override = overrides[idx];
+                                                    
+                                                    if (q.type === 'short') {
+                                                        const isCorrect = override !== undefined ? override : false;
+                                                        return acc + (isCorrect ? 1 : 0);
+                                                    }
+                                                    const isCorrect = override !== undefined ? override : (userAnswer === q.correctAnswer);
+                                                    return acc + (isCorrect ? 1 : 0);
+                                                }, 0);
+                                                const finalScore = Math.round((finalCorrect / attempt.total) * 100);
+                                                const xpToAward = Math.round((finalCorrect / attempt.total) * (attempt.quizzes?.points || 100));
+                                                
+                                                // Update the saved attempt with Manual results AND finalize
+                                                await db.updateQuizAttempt(attempt.id, {
+                                                    correct: finalCorrect,
+                                                    score: finalScore,
+                                                    passed: finalScore >= 70,
+                                                    xp_earned: xpToAward,
+                                                    metadata: { ...attempt.metadata, manually_evaluated: true, overrides, finalized: true }
+                                                });
 
-                                        // Update the user's profile XP
-                                        await db.updateProfile(attempt.user_id, {
-                                            xp: (attempt.profiles?.xp || 0) + xpToAward
-                                        });
+                                                // Update the user's profile XP
+                                                await db.updateProfile(attempt.user_id, {
+                                                    xp: (attempt.profiles?.xp || 0) + xpToAward
+                                                });
 
-                                        // --- NOTIFY STUDENT ---
-                                        await db.createNotification({
-                                            user_id: attempt.user_id,
-                                            title: 'Quiz Evaluated! 🧠',
-                                            message: `Your attempt on "${attempt.quizzes?.title}" has been reviewed. Final Score: ${finalScore}% (+${xpToAward} XP)`,
-                                            type: 'success',
-                                            link: `/quizzes`,
-                                            is_read: false,
-                                            created_at: new Date().toISOString()
-                                        });
+                                                // --- NOTIFY STUDENT ---
+                                                await db.createNotification({
+                                                    user_id: attempt.user_id,
+                                                    title: '✅ Quiz Finalized!',
+                                                    message: `Your quiz "${attempt.quizzes?.title}" has been finalized! Final Score: ${finalScore}% (+${xpToAward} XP). You can now view your detailed results.`,
+                                                    type: 'success',
+                                                    link: `/quizzes/${attempt.quiz_id}`,
+                                                    is_read: false,
+                                                    created_at: new Date().toISOString()
+                                                });
 
-                                        setSuccess(true);
-                                        setTimeout(() => setSuccess(false), 3000);
-                                        loadAttempt();
-                                    } catch (e) {
-                                        console.error('Save Error:', e);
-                                        alert('Failed to save evaluation');
-                                    } finally {
-                                        setSaving(false);
-                                    }
-                                }}
-                            >
-                                {success ? 'Saved Successfully!' : 'Save Manual Evaluation'}
-                            </Button>
+                                                setSuccess(true);
+                                                setTimeout(() => {
+                                                    setSuccess(false);
+                                                    onBack(); // Return to list after finalization
+                                                }, 2000);
+                                                loadAttempt();
+                                            } catch (e) {
+                                                console.error('Finalize Error:', e);
+                                                alert('Failed to finalize evaluation');
+                                            } finally {
+                                                setSaving(false);
+                                            }
+                                        }}
+                                    >
+                                        {success ? '✓ Finalized!' : '🎯 Finalize & Release to Student'}
+                                    </Button>
+                                )}
+                                
+                                {attempt.metadata?.finalized && (
+                                    <div style={{ 
+                                        padding: 'var(--space-md)', 
+                                        background: 'rgba(34, 197, 94, 0.1)', 
+                                        borderRadius: 'var(--radius-md)',
+                                        border: '1px solid rgba(34, 197, 94, 0.3)',
+                                        textAlign: 'center',
+                                        fontSize: 'var(--text-sm)',
+                                        color: 'var(--success-600)',
+                                        fontWeight: 600
+                                    }}>
+                                        ✓ This evaluation has been finalized. Student can view their results.
+                                    </div>
+                                )}
+                            </>
                         )}
 
 
@@ -1028,7 +1100,31 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
 
                 {/* Answers Review */}
                 <Card>
-                    <h4 style={{ marginBottom: 'var(--space-lg)' }}>Question Review</h4>
+                    <div style={{ marginBottom: 'var(--space-md)' }}>
+                        <h4 style={{ marginBottom: 'var(--space-sm)' }}>Question Review</h4>
+                        <div style={{ 
+                            display: 'flex', 
+                            gap: 'var(--space-md)', 
+                            fontSize: 'var(--text-xs)', 
+                            color: 'var(--text-muted)',
+                            padding: 'var(--space-sm)',
+                            background: 'var(--surface)',
+                            borderRadius: 'var(--radius-md)'
+                        }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <div style={{ width: '12px', height: '12px', background: 'var(--success-500)', borderRadius: '2px' }}></div>
+                                Correct
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <div style={{ width: '12px', height: '12px', background: 'var(--error-500)', borderRadius: '2px' }}></div>
+                                Wrong
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <div style={{ width: '12px', height: '12px', background: '#3b82f6', borderRadius: '2px' }}></div>
+                                AI Suggestion
+                            </span>
+                        </div>
+                    </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
                         {attempt.quiz?.questions.map((q, index) => {
                             const userAnswer = attempt.answers[index];
@@ -1044,7 +1140,11 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                     padding: 'var(--space-md)',
                                     background: 'var(--card)',
                                     borderRadius: 'var(--radius-lg)',
-                                    borderLeft: `4px solid ${isCorrect ? 'var(--success-500)' : 'var(--error-500)'}`
+                                    borderLeft: `4px solid ${
+                                        aiSuggestion && overrides[index] !== undefined 
+                                            ? '#3b82f6' // Blue for AI-suggested changes
+                                            : isCorrect ? 'var(--success-500)' : 'var(--error-500)'
+                                    }`
                                 }}>
                                     {aiSuggestion?.isKeyError && (
                                         <div style={{ 
@@ -1111,46 +1211,59 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                                             <div className="flex items-center gap-sm mt-md w-full">
                                                                 <Button 
                                                                     size="sm" 
-                                                                    variant={(overrides[index] === true || overrides[index.toString()] === true) ? 'success' : 'secondary'}
+                                                                    variant={
+                                                                        (overrides[index] === true || overrides[index.toString()] === true) 
+                                                                            ? (aiIsCorrect === true ? 'primary' : 'success')
+                                                                            : 'secondary'
+                                                                    }
                                                                     style={{ 
                                                                         flex: 1,
-                                                                        background: (overrides[index] === true || overrides[index.toString()] === true) ? 'var(--success-500)' : '',
+                                                                        background: (overrides[index] === true || overrides[index.toString()] === true) 
+                                                                            ? (aiIsCorrect === true ? '#3b82f6' : 'var(--success-500)')
+                                                                            : '',
                                                                         color: (overrides[index] === true || overrides[index.toString()] === true) ? 'white' : ''
                                                                     }}
                                                                     onClick={() => setOverrides(prev => ({ ...prev, [index]: true }))}
                                                                     icon={Check}
                                                                 >
-                                                                    Mark Correct
+                                                                    Mark Correct {aiIsCorrect === true && '(AI)'}
                                                                 </Button>
                                                                 <Button 
                                                                     size="sm" 
-                                                                    variant={(overrides[index] === false || overrides[index.toString()] === false) ? 'danger' : 'secondary'}
+                                                                    variant={
+                                                                        (overrides[index] === false || overrides[index.toString()] === false) 
+                                                                            ? (aiIsCorrect === false ? 'primary' : 'danger')
+                                                                            : 'secondary'
+                                                                    }
                                                                     style={{ 
                                                                         flex: 1,
-                                                                        background: (overrides[index] === false || overrides[index.toString()] === false) ? 'var(--error-500)' : '',
+                                                                        background: (overrides[index] === false || overrides[index.toString()] === false) 
+                                                                            ? (aiIsCorrect === false ? '#3b82f6' : 'var(--error-500)')
+                                                                            : '',
                                                                         color: (overrides[index] === false || overrides[index.toString()] === false) ? 'white' : ''
                                                                     }}
                                                                     onClick={() => setOverrides(prev => ({ ...prev, [index]: false }))}
                                                                     icon={X}
                                                                 >
-                                                                    Mark Wrong
+                                                                    Mark Wrong {aiIsCorrect === false && '(AI)'}
                                                                 </Button>
 
                                                                 {suggestion && (
                                                                     <Badge 
                                                                         variant="outline"
                                                                         style={{ 
-                                                                            borderColor: aiIsCorrect ? 'var(--success-500)' : 'var(--error-500)',
-                                                                            color: aiIsCorrect ? 'var(--success-600)' : 'var(--error-600)',
-                                                                            background: aiIsCorrect ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                                                            borderColor: '#3b82f6',
+                                                                            color: '#3b82f6',
+                                                                            background: 'rgba(59, 130, 246, 0.1)',
                                                                             display: 'flex',
                                                                             alignItems: 'center',
                                                                             gap: '4px',
-                                                                            padding: '4px 8px'
+                                                                            padding: '4px 8px',
+                                                                            fontWeight: 600
                                                                         }}
                                                                     >
                                                                         <Brain size={12} />
-                                                                        AI Suggests {aiIsCorrect ? 'Correct' : 'Wrong'}
+                                                                        AI: {aiIsCorrect ? '✓ Correct' : '✗ Wrong'}
                                                                     </Badge>
                                                                 )}
                                                             </div>
