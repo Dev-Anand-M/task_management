@@ -746,6 +746,8 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
     const [selectedModel, setSelectedModel] = useState('');
     const [availableModels, setAvailableModels] = useState([]);
     const [evalAbortController, setEvalAbortController] = useState(null);
+    const [evalStatus, setEvalStatus] = useState(''); // 'busy', 'retrying', etc.
+    const [retryCount, setRetryCount] = useState(0);
 
     const loadAttempt = useCallback(async () => {
         try {
@@ -808,8 +810,18 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
         const controller = new AbortController();
         setEvalAbortController(controller);
         setEvaluating(true);
+        setEvalStatus('Evaluating...');
+        setRetryCount(0);
+        
         try {
-            const report = await evaluateQuizAttempt(attempt.quiz, attempt.answers, selectedModel, controller.signal);
+            // Define a local interceptor for the signal to track retries if possible
+            // But since evaluateQuizAttempt is a service call, we'll just handle it there
+            const report = await evaluateQuizAttempt(attempt.quiz, attempt.answers, selectedModel, controller.signal, {
+                onRetry: (attempt, delay) => {
+                    setEvalStatus(`Busy... Retrying in ${Math.round(delay/1000)}s`);
+                    setRetryCount(attempt);
+                }
+            });
             setAiReport(report);
             
             // Auto-apply logic
@@ -863,6 +875,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
         } finally {
             setEvaluating(false);
             setEvalAbortController(null);
+            setEvalStatus('');
         }
     };
 
@@ -871,6 +884,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
             evalAbortController.abort();
             setEvaluating(false);
             setEvalAbortController(null);
+            setEvalStatus('');
         }
     };
 
@@ -948,8 +962,13 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                         size="sm"
                                         loading={true}
                                     >
-                                        AI is Reviewing...
+                                        {evalStatus || 'AI is Reviewing...'}
                                     </Button>
+                                    {evalStatus.includes('busy') && (
+                                        <p style={{ fontSize: '10px', color: 'var(--warning-500)', margin: 0, textAlign: 'center', fontWeight: 600 }}>
+                                            ⚠️ AI Provider is busy. Retrying...
+                                        </p>
+                                    )}
                                     <Button 
                                         variant="ghost" 
                                         size="sm" 

@@ -310,7 +310,7 @@ export const validateAPIKey = async (providerId, key) => {
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Helper: Call AI proxy with retry logic
-const callAIProxy = async (provider, endpoint, apiKey, body, signal = null) => {
+const callAIProxy = async (provider, endpoint, apiKey, body, signal = null, options = {}) => {
     const maxRetries = 5;
     const proxyUrl = '/api/ai-proxy';
     let lastError;
@@ -354,6 +354,11 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null) => {
                 const retryAfter = response.headers.get('Retry-After');
                 const delay = retryAfter ? (parseInt(retryAfter) * 1000) : 1000;
                 
+                // Report retry to UI
+                if (options?.onRetry) {
+                    options.onRetry(attempt + 1, delay);
+                }
+
                 await new Promise((resolve, reject) => {
                     const timer = setTimeout(resolve, delay);
                     const onAbort = () => {
@@ -394,7 +399,7 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null) => {
 };
 
 // Generic AI completion function
-const generateContent = async (prompt, systemPrompt = '', modelId = null, signal = null) => {
+const generateContent = async (prompt, systemPrompt = '', modelId = null, signal = null, options = {}) => {
     let selectedModelId = modelId || getSelectedModel();
     let provider = getProviderForModel(selectedModelId);
 
@@ -443,7 +448,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
                 generationConfig: { temperature: 0.7, topK: 40, topP: 0.95, maxOutputTokens: 8192 }
             };
             
-            const data = await callAIProxy('gemini', endpoint, apiKey, body, signal);
+            const data = await callAIProxy('gemini', endpoint, apiKey, body, signal, options);
             await incrementUsage();
             return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         }
@@ -460,7 +465,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
                 temperature: 0.7
             };
             
-            const data = await callAIProxy('openai', endpoint, apiKey, body, signal);
+            const data = await callAIProxy('openai', endpoint, apiKey, body, signal, options);
             await incrementUsage();
             return data.choices?.[0]?.message?.content || '';
         }
@@ -475,7 +480,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
                 messages: [{ role: 'user', content: prompt }]
             };
             
-            const data = await callAIProxy('anthropic', endpoint, apiKey, body, signal);
+            const data = await callAIProxy('anthropic', endpoint, apiKey, body, signal, options);
             await incrementUsage();
             return data.content?.[0]?.text || '';
         }
@@ -491,7 +496,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
                 ]
             };
             
-            const data = await callAIProxy('perplexity', endpoint, apiKey, body, signal);
+            const data = await callAIProxy('perplexity', endpoint, apiKey, body, signal, options);
             await incrementUsage();
             return data.choices?.[0]?.message?.content || '';
         }
@@ -508,7 +513,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
                 temperature: 0.7
             };
             
-            const data = await callAIProxy('sambanova', endpoint, apiKey, body, signal);
+            const data = await callAIProxy('sambanova', endpoint, apiKey, body, signal, options);
             await incrementUsage();
             return data.choices?.[0]?.message?.content || '';
         }
@@ -622,7 +627,7 @@ Format your response in markdown.`;
 };
 
 // AI Quiz Evaluator (For Admins)
-export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null, signal = null) => {
+export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null, signal = null, options = {}) => {
     const systemPrompt = `You are an expert academic evaluator and fact-checker reviewing a student's quiz submission.
 
 CRITICAL UNDERSTANDING - QUESTION TYPES:
@@ -714,7 +719,7 @@ Remember:
 - MCQ/TRUE-FALSE = You only flag potential quiz key errors for admin review
 `;
 
-    const response = await generateContent(prompt, systemPrompt, model, signal);
+    const response = await generateContent(prompt, systemPrompt, model, signal, options);
 
     try {
         // Log the raw response for debugging
