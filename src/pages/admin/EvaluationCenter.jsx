@@ -1174,51 +1174,56 @@ const QuizReviewDetail = ({ attemptId, onBack }) => {
                                             alignItems: 'center',
                                             gap: '8px'
                                         }}>
-                                            {/* Show marks with color coding */}
-                                            {aiSuggestion && overrides[index] !== undefined ? (
-                                                // AI suggestion applied - show in blue
-                                                <div style={{
-                                                    padding: '4px 12px',
-                                                    borderRadius: 'var(--radius-md)',
-                                                    background: 'rgba(59, 130, 246, 0.1)',
-                                                    border: '2px solid #3b82f6',
-                                                    fontWeight: 700,
-                                                    fontSize: 'var(--text-sm)',
-                                                    color: '#3b82f6',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '4px'
-                                                }}>
-                                                    <Brain size={14} />
-                                                    {isCorrect ? '1' : '0'} / 1
-                                                </div>
-                                            ) : isCorrect ? (
-                                                // Correct - show in green
-                                                <div style={{
-                                                    padding: '4px 12px',
-                                                    borderRadius: 'var(--radius-md)',
-                                                    background: 'rgba(34, 197, 94, 0.1)',
-                                                    border: '2px solid var(--success-500)',
-                                                    fontWeight: 700,
-                                                    fontSize: 'var(--text-sm)',
-                                                    color: 'var(--success-600)'
-                                                }}>
-                                                    ✓ 1 / 1
-                                                </div>
-                                            ) : (
-                                                // Wrong - show in red
-                                                <div style={{
-                                                    padding: '4px 12px',
-                                                    borderRadius: 'var(--radius-md)',
-                                                    background: 'rgba(239, 68, 68, 0.1)',
-                                                    border: '2px solid var(--error-500)',
-                                                    fontWeight: 700,
-                                                    fontSize: 'var(--text-sm)',
-                                                    color: 'var(--error-600)'
-                                                }}>
-                                                    ✗ 0 / 1
-                                                </div>
-                                            )}
+                                            {/* Show original quiz key result */}
+                                            {(() => {
+                                                const originalCorrect = q.type === 'short' ? false : (attempt.answers[index] === q.correctAnswer);
+                                                
+                                                return (
+                                                    <div style={{
+                                                        padding: '6px 14px',
+                                                        borderRadius: 'var(--radius-md)',
+                                                        background: originalCorrect ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                        border: `2px solid ${originalCorrect ? 'var(--success-500)' : 'var(--error-500)'}`,
+                                                        fontWeight: 700,
+                                                        fontSize: 'var(--text-lg)',
+                                                        color: originalCorrect ? 'var(--success-600)' : 'var(--error-600)',
+                                                        minWidth: '60px',
+                                                        textAlign: 'center'
+                                                    }}>
+                                                        {originalCorrect ? '+1' : '-1'}
+                                                    </div>
+                                                );
+                                            })()}
+                                            
+                                            {/* Show AI suggestion if it differs from original */}
+                                            {aiSuggestion && overrides[index] !== undefined && (() => {
+                                                const originalCorrect = q.type === 'short' ? false : (attempt.answers[index] === q.correctAnswer);
+                                                const aiCorrect = overrides[index];
+                                                
+                                                // Only show AI suggestion if it differs from original
+                                                if (q.type === 'short' || originalCorrect !== aiCorrect) {
+                                                    return (
+                                                        <div style={{
+                                                            padding: '6px 14px',
+                                                            borderRadius: 'var(--radius-md)',
+                                                            background: 'rgba(59, 130, 246, 0.15)',
+                                                            border: '2px solid #3b82f6',
+                                                            fontWeight: 700,
+                                                            fontSize: 'var(--text-lg)',
+                                                            color: '#3b82f6',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px',
+                                                            minWidth: '70px',
+                                                            justifyContent: 'center'
+                                                        }}>
+                                                            <Brain size={16} />
+                                                            {aiCorrect ? '+1' : '-1'}
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>

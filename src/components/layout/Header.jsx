@@ -268,15 +268,6 @@ const Header = ({ onMenuClick, title }) => {
           {showNotifications && (
             <div 
               className="notification-panel-mobile"
-              style={{
-                animation: 'slideInUp 0.3s var(--transition-bounce)',
-                zIndex: 1000,
-                background: 'var(--card)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-2xl)',
-                boxShadow: 'var(--shadow-xl)',
-                overflow: 'hidden'
-              }}
             >
               {/* Header */}
               <div style={{
@@ -487,15 +478,6 @@ const Header = ({ onMenuClick, title }) => {
           {showProfileMenu && (
             <div 
               className="profile-dropdown-mobile"
-              style={{
-                animation: 'slideInUp 0.2s ease-out',
-                zIndex: 1000,
-                background: 'var(--card)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-xl)',
-                boxShadow: 'var(--shadow-xl)',
-                overflow: 'hidden'
-              }}
             >
               {/* User Info Header */}
               <div style={{

@@ -20,19 +20,35 @@ export const formatDate = (date) => {
 // Format relative time
 export const formatRelativeTime = (date) => {
     if (!date) return 'Just now';
-    const d = new Date(date);
+    
+    // Handle both ISO strings and Date objects
+    const d = typeof date === 'string' ? new Date(date) : date;
     if (isNaN(d.getTime())) return 'Just now';
     
     const now = new Date();
-    const diff = now - d;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
+    const diff = now.getTime() - d.getTime(); // Use getTime() for accurate milliseconds
+    
+    // If diff is negative, the date is in the future (clock skew or bad data)
+    if (diff < 0) return 'Just now';
+    
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    const weeks = Math.floor(days / 7);
+    const months = Math.floor(days / 30);
+    const years = Math.floor(days / 365);
 
-    if (minutes < 1) return 'Just now';
+    if (seconds < 10) return 'Just now';
+    if (seconds < 60) return `${seconds}s ago`;
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
+    if (weeks < 4) return `${weeks}w ago`;
+    if (months < 12) return `${months}mo ago`;
+    if (years === 1) return '1 year ago';
+    if (years > 1) return `${years} years ago`;
+    
     return formatDate(date);
 };
 

@@ -2690,6 +2690,12 @@ input.bg-surface\/80 {
     max-width: none !important;
     margin: 0 !important;
     z-index: 1100 !important;
+    animation: slideInUp 0.3s var(--transition-bounce);
+    background: var(--card);
+    border: 1px solid var(--border);
+    borderRadius: var(--radius-2xl);
+    box-shadow: var(--shadow-xl);
+    overflow: hidden;
   }
 
   .profile-dropdown-mobile {
@@ -2700,6 +2706,12 @@ input.bg-surface\/80 {
     width: auto !important;
     max-width: none !important;
     z-index: 1100 !important;
+    animation: slideInUp 0.2s ease-out;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    overflow: hidden;
   }
 
   .tabs-scrollable {

@@ -657,30 +657,30 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                                                     {isCorrect ? (
                                                         <>
                                                             <div style={{
-                                                                padding: '2px 8px',
+                                                                padding: '4px 10px',
                                                                 borderRadius: 'var(--radius-sm)',
-                                                                background: 'rgba(34, 197, 94, 0.1)',
-                                                                border: '1px solid var(--success-500)',
-                                                                fontWeight: 600,
-                                                                fontSize: 'var(--text-xs)',
+                                                                background: 'rgba(34, 197, 94, 0.15)',
+                                                                border: '2px solid var(--success-500)',
+                                                                fontWeight: 700,
+                                                                fontSize: 'var(--text-base)',
                                                                 color: 'var(--success-600)'
                                                             }}>
-                                                                ✓ 1/1
+                                                                +1
                                                             </div>
                                                             <Badge variant="success">Correct</Badge>
                                                         </>
                                                     ) : (
                                                         <>
                                                             <div style={{
-                                                                padding: '2px 8px',
+                                                                padding: '4px 10px',
                                                                 borderRadius: 'var(--radius-sm)',
-                                                                background: 'rgba(239, 68, 68, 0.1)',
-                                                                border: '1px solid var(--error-500)',
-                                                                fontWeight: 600,
-                                                                fontSize: 'var(--text-xs)',
+                                                                background: 'rgba(239, 68, 68, 0.15)',
+                                                                border: '2px solid var(--error-500)',
+                                                                fontWeight: 700,
+                                                                fontSize: 'var(--text-base)',
                                                                 color: 'var(--error-600)'
                                                             }}>
-                                                                ✗ 0/1
+                                                                -1
                                                             </div>
                                                             <Badge variant="danger">Incorrect</Badge>
                                                         </>
