@@ -374,23 +374,25 @@ const TaskDetail = ({ taskId, onBack, onUpdate }) => {
     return (
         <div className="animate-fade-in">
             {/* Header */}
-            <div className="flex items-center gap-md mb-lg">
-                <Button variant="ghost" size="icon" onClick={onBack}>
-                    <ArrowLeft size={20} />
-                </Button>
-                <div className="flex-1">
-                    <div className="flex items-center gap-sm mb-xs">
-                        <Badge variant={getDifficultyColor(task.difficulty)}>{task.difficulty}</Badge>
-                        <Badge variant="primary">{task.category}</Badge>
-                        {submission && (
-                            <Badge variant={getStatusColor(submission.status)}>
-                                {submission.status === 'pending' && submission.is_resubmission
-                                    ? 'Resubmitted'
-                                    : submission.status}
-                            </Badge>
-                        )}
+            <div className="flex-mobile-col flex items-center justify-between gap-md mb-lg" style={{ flexWrap: 'wrap' }}>
+                <div className="flex items-center gap-md" style={{ minWidth: 0, flex: 1 }}>
+                    <Button variant="ghost" size="icon" onClick={onBack} style={{ flexShrink: 0 }}>
+                        <ArrowLeft size={20} />
+                    </Button>
+                    <div style={{ minWidth: 0 }}>
+                        <div className="flex items-center gap-sm mb-xs" style={{ flexWrap: 'wrap' }}>
+                            <Badge variant={getDifficultyColor(task.difficulty)}>{task.difficulty}</Badge>
+                            <Badge variant="primary">{task.category}</Badge>
+                            {submission && (
+                                <Badge variant={getStatusColor(submission.status)}>
+                                    {submission.status === 'pending' && submission.is_resubmission
+                                        ? 'Resubmitted'
+                                        : submission.status}
+                                </Badge>
+                            )}
+                        </div>
+                        <h2 style={{ margin: 0, fontSize: 'var(--text-xl)', wordBreak: 'break-word' }}>{task.title}</h2>
                     </div>
-                    <h2 style={{ margin: 0 }}>{task.title}</h2>
                 </div>
                 {(() => {
                     const isDeadlinePassed = task.deadline && new Date(task.deadline) < new Date();
@@ -417,14 +419,16 @@ const TaskDetail = ({ taskId, onBack, onUpdate }) => {
                     if (!canSubmit) return null;
 
                     return (
-                        <Button icon={Send} onClick={() => setShowSubmitModal(true)}>
-                            {!submission ? 'Submit Task' : submission.status === 'rejected' ? 'Resubmit' : 'Update Submission'}
-                        </Button>
+                        <div className="mobile-full-width">
+                            <Button icon={Send} onClick={() => setShowSubmitModal(true)} style={{ width: '100%' }}>
+                                {!submission ? 'Submit Task' : submission.status === 'rejected' ? 'Resubmit' : 'Update Submission'}
+                            </Button>
+                        </div>
                     );
                 })()}
             </div>
 
-            <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-lg)' }}>
+            <div className="grid-2-1 dashboard-grid">
                 {/* Left Column */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
                     {/* Description */}

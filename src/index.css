@@ -2781,6 +2781,10 @@ input.bg-surface\/80 {
   .card {
     padding: var(--space-md);
   }
+
+  .mobile-full-width {
+    width: 100% !important;
+  }
 }
 
 

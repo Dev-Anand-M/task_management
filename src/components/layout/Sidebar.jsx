@@ -74,7 +74,6 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: '/tasks', icon: ListTodo, label: 'Tasks' },
         { to: '/quizzes', icon: HelpCircle, label: 'Quizzes' },
         { to: '/admin/knowledge-base', icon: Database, label: 'Study Materials' },
-        { to: '/ai/tools', icon: Brain, label: 'AI Tools' },
         { to: '/profile', icon: User, label: 'Profile' },
         { to: '/settings', icon: Settings, label: 'Settings' }
     ];
@@ -411,7 +410,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                     inset: 0,
                     background: 'rgba(0,0,0,0.6)',
                     backdropFilter: 'blur(4px)',
-                    zIndex: 300,
+                    zIndex: 2000,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
