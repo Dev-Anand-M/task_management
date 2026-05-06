@@ -438,30 +438,38 @@ const ClassroomDetail = () => {
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-xl">
                             <Card className="lg:col-span-2 p-xl overflow-hidden relative">
                                 <h3 className="m-0 mb-xl font-black text-xl">Module Completion Distribution</h3>
-                                <div className="flex items-end justify-between h-48 gap-px">
-                                    {tasks.map((t, idx) => {
-                                        const rate = Math.round((submissions.filter(s => s.task_id === t.id && s.status === 'approved').length / (members.filter(m => m.role === 'member').length || 1)) * 100);
+                                <div className="flex items-end justify-between h-48 gap-px px-md">
+                                    {(tasks || []).length > 0 ? tasks.map((t, idx) => {
+                                        const studentCount = (members || []).filter(m => m.role === 'member').length || 1;
+                                        const approvedSubs = (submissions || []).filter(s => s.task_id === t.id && s.status === 'approved').length;
+                                        const rate = Math.round((approvedSubs / studentCount) * 100);
                                         return (
-                                            <div key={t.id} className="flex-1 flex flex-col items-center gap-sm group">
+                                            <div key={t.id || idx} className="flex-1 flex flex-col items-center gap-sm group">
                                                 <div
                                                     className="w-full bg-primary-500/20 rounded-t-lg group-hover:bg-primary-500 transition-all flex items-end justify-center pb-2 cursor-help"
-                                                    style={{ height: `${Math.max(rate, 20)}%` }}
-                                                    title={`${t.title}: ${rate}%`}
+                                                    style={{ height: `${Math.max(rate, 10)}%` }}
+                                                    title={`${t.title || 'Task'}: ${rate}%`}
                                                 >
                                                     <span className="text-[10px] font-black text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md">{rate}%</span>
                                                 </div>
                                                 <div className="w-1.5 h-1.5 rounded-full bg-border" />
                                             </div>
                                         );
-                                    })}
+                                    }) : (
+                                        <div className="w-full h-full flex items-center justify-center text-muted italic text-xs">
+                                            No modules to display
+                                        </div>
+                                    )}
                                 </div>
                             </Card>
                             <Card className="p-xl">
                                 <h3 className="m-0 mb-xl font-black text-xl">Quick Actions</h3>
                                 <div className="flex flex-col gap-sm">
-                                    <Button className="w-full justify-start" icon={Plus}>Add New Student</Button>
-                                    <Button className="w-full justify-start" variant="secondary" icon={Share2}>Export Performance</Button>
-                                    <Button className="w-full justify-start" variant="ghost" icon={Calendar}>Quarterly Review</Button>
+                                    <Link to="/admin/invite-codes">
+                                        <Button className="w-full justify-start" icon={Plus}>Add New Student</Button>
+                                    </Link>
+                                    <Button className="w-full justify-start" variant="secondary" icon={Share2} onClick={() => alert('Exporting performance data...')}>Export Performance</Button>
+                                    <Button className="w-full justify-start" variant="ghost" icon={Calendar} onClick={() => setActiveTab('stream')}>Quarterly Review</Button>
                                 </div>
                             </Card>
                         </div>

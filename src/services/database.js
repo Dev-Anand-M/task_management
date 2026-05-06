@@ -475,10 +475,12 @@ export const getInviteCodes = async (classroomId = null) => {
 
         if (!targetId) return [];
 
-        const { data, error } = await supabase.from('invite_codes')
-            .select('*')
-            .eq('classroom_id', targetId)
-            .order('created_at', { ascending: false });
+        const { data, error } = await withTimeout(
+            supabase.from('invite_codes')
+                .select('*')
+                .eq('classroom_id', targetId)
+                .order('created_at', { ascending: false })
+        );
 
         if (error) throw error;
         return data || [];
@@ -502,11 +504,13 @@ export const createInviteCode = async (codeData, targetClassroomId) => {
 
         if (!classroomId) throw new Error('A classroom must be selected for this invite code.');
 
-        const { data, error } = await supabase.from('invite_codes').insert({
-            code: codeData,
-            classroom_id: classroomId,
-            created_by: user.id
-        }).select().single();
+        const { data, error } = await withTimeout(
+            supabase.from('invite_codes').insert({
+                code: codeData,
+                classroom_id: classroomId,
+                created_by: user.id
+            }).select().single()
+        );
 
         if (error) {
             if (error.code === '23505') {
@@ -809,19 +813,23 @@ export const getMembersByClassroom = async (classroomId) => {
 };
 
 export const getTasksByClassroom = async (classroomId) => {
-    const { data, error } = await supabase.from('tasks')
-        .select('*')
-        .eq('classroom_id', classroomId)
-        .order('created_at', { ascending: false });
+    const { data, error } = await withTimeout(
+        supabase.from('tasks')
+            .select('*')
+            .eq('classroom_id', classroomId)
+            .order('created_at', { ascending: false })
+    );
     if (error) throw error;
     return data || [];
 };
 
 export const getSubmissionsByClassroom = async (classroomId) => {
-    const { data, error } = await supabase.from('submissions')
-        .select('*, tasks!inner(*), profiles(*)')
-        .eq('tasks.classroom_id', classroomId)
-        .order('submitted_at', { ascending: false });
+    const { data, error } = await withTimeout(
+        supabase.from('submissions')
+            .select('*, tasks!inner(*), profiles(*)')
+            .eq('tasks.classroom_id', classroomId)
+            .order('submitted_at', { ascending: false })
+    );
     if (error) throw error;
     return data || [];
 };
