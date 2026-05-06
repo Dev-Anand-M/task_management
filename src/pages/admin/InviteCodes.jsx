@@ -52,14 +52,24 @@ const InviteCodes = () => {
 
     const handleCreateCode = async () => {
         setLoading(true);
+        console.log('InviteCodes: Starting creation process...', { useCustom, quantity, selectedClassroom, userClassroom: user?.classroom_id });
+        
         try {
             const targetClassroomId = selectedClassroom || user?.classroom_id;
+            
+            if (!targetClassroomId) {
+                console.warn('InviteCodes: No classroom ID found.');
+                throw new Error('Please select a classroom first.');
+            }
 
             if (useCustom) {
+                if (!customCode) throw new Error('Please enter a custom code.');
                 const code = customCode.toUpperCase();
+                console.log('InviteCodes: Creating custom code:', code);
                 await inviteCodes.createInviteCode(code, targetClassroomId);
             } else {
                 // Bulk or Single Random
+                console.log(`InviteCodes: Creating ${quantity} random codes for classroom ${targetClassroomId}`);
                 const promises = [];
                 for (let i = 0; i < quantity; i++) {
                     const code = (i === 0 && newCode) ? newCode : Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -68,14 +78,17 @@ const InviteCodes = () => {
                 await Promise.all(promises);
             }
 
+            console.log('InviteCodes: Success! Reloading data...');
             await loadData();
             setShowCreateModal(false);
             setNewCode('');
             setCustomCode('');
             setUseCustom(false);
             setQuantity(1);
+            alert('Invite code(s) created successfully!');
         } catch (error) {
-            alert(error.message);
+            console.error('InviteCodes: Creation failed:', error);
+            alert('Failed to create invite code: ' + error.message);
         } finally {
             setLoading(false);
         }
@@ -295,9 +308,8 @@ const InviteCodes = () => {
                                     className="input pl-10"
                                     value={selectedClassroom}
                                     onChange={(e) => setSelectedClassroom(e.target.value)}
-                                    required
                                 >
-                                    <option value="" disabled>Select a classroom</option>
+                                    <option value="">Global (No Classroom)</option>
                                     {classrooms.map(c => (
                                         <option key={c.id} value={c.id}>
                                             {c.name} {c.id === user?.classroom_id ? '(Current)' : ''}

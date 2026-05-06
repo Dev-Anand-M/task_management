@@ -502,7 +502,9 @@ export const createInviteCode = async (codeData, targetClassroomId) => {
             classroomId = profile?.classroom_id;
         }
 
-        if (!classroomId) throw new Error('A classroom must be selected for this invite code.');
+        if (!classroomId && profile?.role !== 'admin') {
+            throw new Error('A classroom must be selected for this invite code.');
+        }
 
         const { data, error } = await withTimeout(
             supabase.from('invite_codes').insert({
