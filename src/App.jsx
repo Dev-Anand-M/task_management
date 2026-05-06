@@ -18,7 +18,7 @@ import TeamManagement from './pages/admin/TeamManagement';
 import InviteCodes from './pages/admin/InviteCodes';
 import ClassroomSettings from './pages/admin/ClassroomSettings';
 import ClassroomDetail from './pages/admin/ClassroomDetail';
-import KnowledgeBase from './pages/admin/KnowledgeBase';
+import KnowledgeBase from './pages/shared/KnowledgeBase';
 
 // Member Pages
 import MemberDashboard from './pages/member/Dashboard';
@@ -162,7 +162,6 @@ function AppRoutes() {
           <Route path="invite-codes" element={<InviteCodes />} />
           <Route path="classroom" element={<ClassroomSettings />} />
           <Route path="classroom/:id" element={<ClassroomDetail />} />
-          <Route path="knowledge-base" element={<KnowledgeBase />} />
           <Route path="member/:userId" element={<AdminMemberProfile />} />
         </Route>
 
@@ -193,6 +192,8 @@ function AppRoutes() {
         <Route path="/ai/study-tools" element={<StudyTools />} />
         <Route path="/ai/quiz-generator" element={<QuizGenerator />} />
 
+        <Route path="/knowledge-base" element={<KnowledgeBase />} />
+        
         {/* Debug Route */}
         <Route path="/debug" element={<DebugConnection />} />
       </Route>

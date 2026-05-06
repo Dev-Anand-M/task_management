@@ -1,4 +1,7 @@
--- Create announcements table
+-- ROBUST ANNOUNCEMENTS MIGRATION
+-- This script ensures the table exists and policies are correctly applied.
+
+-- 1. Create table if missing
 CREATE TABLE IF NOT EXISTS announcements (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   classroom_id UUID REFERENCES classrooms(id) ON DELETE CASCADE,
@@ -7,11 +10,15 @@ CREATE TABLE IF NOT EXISTS announcements (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable RLS
+-- 2. Enable RLS
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 
--- Policies
--- Anyone can view classroom announcements
+-- 3. DROP EXISTING POLICIES (to prevent "already exists" errors)
+DROP POLICY IF EXISTS "Anyone can view classroom announcements" ON announcements;
+DROP POLICY IF EXISTS "Admins can manage classroom announcements" ON announcements;
+
+-- 4. CREATE POLICIES
+-- Anyone can view classroom announcements (if they are in the classroom or an admin)
 CREATE POLICY "Anyone can view classroom announcements" ON announcements
   FOR SELECT USING (
     classroom_id = (SELECT classroom_id FROM profiles WHERE id = auth.uid()) OR
@@ -23,3 +30,6 @@ CREATE POLICY "Admins can manage classroom announcements" ON announcements
   FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
   );
+
+-- 5. REFRESH SCHEMA CACHE (Optional but helpful for PostgREST)
+-- NOTIFY pgrst, 'reload schema';

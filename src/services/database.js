@@ -467,20 +467,22 @@ export const getInviteCodes = async (classroomId = null) => {
         const user = await getActiveUser();
         if (!user) return [];
 
-        let targetId = classroomId;
-        if (!targetId) {
-            const { data: profile } = await supabase.from('profiles').select('classroom_id').eq('id', user.id).single();
-            targetId = profile?.classroom_id;
+        // Get profile to check role and classroom
+        const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
+        
+        let targetId = classroomId || profile?.classroom_id;
+        let query = supabase.from('invite_codes').select('*').order('created_at', { ascending: false });
+
+        // If not admin, strictly filter by classroom
+        if (profile?.role !== 'admin') {
+            if (!targetId) return [];
+            query = query.eq('classroom_id', targetId);
+        } else if (targetId) {
+            // Admin can filter if they want, but if no targetId provided, they see all
+            query = query.eq('classroom_id', targetId);
         }
 
-        if (!targetId) return [];
-
-        const { data, error } = await withTimeout(
-            supabase.from('invite_codes')
-                .select('*')
-                .eq('classroom_id', targetId)
-                .order('created_at', { ascending: false })
-        );
+        const { data, error } = await withTimeout(query);
 
         if (error) throw error;
         return data || [];
@@ -497,8 +499,9 @@ export const createInviteCode = async (codeData, targetClassroomId) => {
 
         // Use passed classroomId or fallback to user's current one
         let classroomId = targetClassroomId;
+        const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
+
         if (!classroomId) {
-            const { data: profile } = await supabase.from('profiles').select('classroom_id').eq('id', user.id).single();
             classroomId = profile?.classroom_id;
         }
 
@@ -923,7 +926,7 @@ export const createAnnouncement = async (announcement) => {
     try {
         await notifyClassroom(announcement.classroom_id, {
             title: 'New Announcement',
-            message: `A new announcement was posted in your classroom.`,
+            message: announcement.content.substring(0, 50) + (announcement.content.length > 50 ? '...' : ''),
             type: 'info',
             link: `/dashboard`
         });
@@ -932,6 +935,30 @@ export const createAnnouncement = async (announcement) => {
     }
 
     return data;
+};
+
+export const getAnnouncements = async () => {
+    try {
+        const user = await getActiveUser();
+        if (!user) return [];
+
+        const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
+        
+        let query = supabase.from('announcements').select('*, profiles(*)').order('created_at', { ascending: false });
+
+        if (profile?.classroom_id) {
+            query = query.eq('classroom_id', profile.classroom_id);
+        } else if (profile?.role !== 'admin') {
+            return [];
+        }
+
+        const { data, error } = await withTimeout(query.limit(20));
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error in getAnnouncements:', error);
+        return [];
+    }
 };
 // ============================================
 // KNOWLEDGE BASE (RAG)

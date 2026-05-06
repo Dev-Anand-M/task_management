@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import * as db from '../services/database';
 
@@ -180,14 +180,13 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const login = async (email, password) => {
+    const login = useCallback(async (email, password) => {
         try {
             const signInPromise = supabase.auth.signInWithPassword({
                 email: email.toLowerCase().trim(),
                 password
             });
             
-            // INCREASED TIMEOUT: Mobile networks can be slow. 60s is safer.
             const timeoutPromise = new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Sign in is taking longer than expected. Please check your internet connection.')), 60000) 
             );
@@ -201,7 +200,6 @@ export const AuthProvider = ({ children }) => {
 
             if (data.user) {
                 setUser(data.user);
-                // Fetch profile in background, don't block the UI transition
                 fetchProfile(data.user.id).catch(err => console.error('Profile fetch error:', err));
                 return { success: true, user: data.user };
             }
@@ -210,9 +208,9 @@ export const AuthProvider = ({ children }) => {
             console.error('Login error:', err);
             return { success: false, error: err.message || 'Login failed. Please try again.' };
         }
-    };
+    }, [user]);
 
-    const register = async (name, email, password, classroomId) => {
+    const register = useCallback(async (name, email, password, classroomId) => {
         try {
             const signUpPromise = supabase.auth.signUp({
                 email: email.toLowerCase().trim(),
@@ -225,7 +223,6 @@ export const AuthProvider = ({ children }) => {
                     }
                 }
             });
-            // INCREASED TIMEOUT: Mobile networks can be slow. 60s is safer.
             const timeoutPromise = new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Registration is taking longer than expected. Please check your internet connection.')), 60000) 
             );
@@ -237,36 +234,35 @@ export const AuthProvider = ({ children }) => {
             }
 
             setUser(data.user);
-            // Fetch profile in background, don't block registration
             fetchProfile(data.user.id).catch(err => console.error('Profile fetch error:', err));
             return { success: true, user: data.user };
         } catch (err) {
             console.error('Registration error:', err);
             return { success: false, error: err.message || 'Registration failed. Please try again.' };
         }
-    };
+    }, []);
 
-    const logout = async () => {
+    const logout = useCallback(async () => {
         await supabase.auth.signOut();
         setUser(null);
         setProfile(null);
-    };
+    }, []);
 
-    const refreshUser = async () => {
+    const refreshUser = useCallback(async () => {
         if (user?.id) {
             await fetchProfile(user.id);
         }
-    };
+    }, [user?.id]);
 
-    const forceRefresh = async () => {
+    const forceRefresh = useCallback(async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
             setUser(session.user);
             await fetchProfile(session.user.id);
         }
-    };
+    }, []);
 
-    const updateProfile = async (updates) => {
+    const updateProfile = useCallback(async (updates) => {
         if (!user?.id) return;
 
         const updated = await db.updateProfile(user.id, updates);
@@ -274,23 +270,23 @@ export const AuthProvider = ({ children }) => {
             setProfile(prev => ({ ...prev, ...updated }));
         }
         return updated;
-    };
+    }, [user?.id]);
 
-    const addXP = async (amount) => {
+    const addXP = useCallback(async (amount) => {
         if (!profile) return;
         const newXP = (profile.xp || 0) + amount;
         await updateProfile({ xp: newXP });
-    };
+    }, [profile, updateProfile]);
 
-    const addBadge = async (badgeId) => {
+    const addBadge = useCallback(async (badgeId) => {
         if (!profile) return;
         const currentBadges = profile.badges || [];
         if (!currentBadges.includes(badgeId)) {
             await updateProfile({ badges: [...currentBadges, badgeId] });
         }
-    };
+    }, [profile, updateProfile]);
 
-    const value = {
+    const value = useMemo(() => ({
         user: profile,
         authUser: user,
         loading,
@@ -304,7 +300,7 @@ export const AuthProvider = ({ children }) => {
         addXP,
         addBadge,
         currentClassroomName: profile?.classroom_name
-    };
+    }), [profile, user, loading, login, register, logout, refreshUser, forceRefresh, updateProfile, addXP, addBadge]);
 
     return (
         <AuthContext.Provider value={value}>

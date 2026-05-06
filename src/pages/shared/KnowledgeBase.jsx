@@ -28,6 +28,7 @@ const KnowledgeBase = () => {
         title: '',
         content: '',
         tags: '',
+        subject: '',
         classroom_id: ''
     });
     const [classrooms, setClassrooms] = useState([]);
@@ -102,16 +103,16 @@ const KnowledgeBase = () => {
             <div className="flex flex-mobile-col justify-between items-center mb-lg">
                 <div>
                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <Database className="text-primary-400" />
-                        AI Knowledge Base (RAG)
+                        <BookOpen className="text-primary-400" />
+                        Learning Resource Center
                     </h2>
                     <p style={{ color: 'var(--text-muted)', margin: 0 }}>
-                        Add "Ground Truth" context to improve AI quiz evaluation accuracy.
+                        Educational materials and "Ground Truth" context for AI calibration.
                     </p>
                 </div>
                 {user?.role === 'admin' && (
                     <Button variant="primary" icon={Plus} onClick={() => setShowAddModal(true)}>
-                        Add Context Snippet
+                        Add Material
                     </Button>
                 )}
             </div>
@@ -156,15 +157,20 @@ const KnowledgeBase = () => {
                     gap: 'var(--space-md)' 
                 }}>
                     {filteredKnowledge.map(item => (
-                        <Card key={item.id} className="hover-lift h-full flex flex-col">
+                        <Card key={item.id} className="h-full flex flex-col" style={{ position: 'relative', overflow: 'hidden', cursor: 'default' }}>
                             <div className="flex justify-between items-start mb-md">
-                                <h4 style={{ margin: 0, color: 'var(--primary-400)' }}>{item.title}</h4>
+                                <div style={{ minWidth: 0 }}>
+                                    <Badge variant="accent" size="xs" style={{ marginBottom: '4px' }}>
+                                        {item.subject || 'General'}
+                                    </Badge>
+                                    <h4 style={{ margin: 0, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</h4>
+                                </div>
                                 {user?.role === 'admin' && (
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
-                                        onClick={() => handleDeleteSnippet(item.id)}
-                                        style={{ color: 'var(--error-500)' }}
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteSnippet(item.id); }}
+                                        style={{ color: 'var(--error-500)', flexShrink: 0, position: 'relative', zIndex: 10 }}
                                     >
                                         <Trash2 size={16} />
                                     </Button>
@@ -173,7 +179,7 @@ const KnowledgeBase = () => {
                             
                             <p style={{ 
                                 fontSize: 'var(--text-sm)', 
-                                color: 'var(--text-main)',
+                                color: 'var(--text-muted)',
                                 flex: 1,
                                 marginBottom: 'var(--space-md)',
                                 display: '-webkit-box',
@@ -187,18 +193,14 @@ const KnowledgeBase = () => {
                             <div className="flex flex-wrap gap-xs mb-md">
                                 {item.tags?.map((tag, i) => (
                                     <Badge key={i} variant="outline" size="xs">
-                                        <Tag size={10} style={{ marginRight: '4px' }} />
-                                        {tag}
+                                        #{tag}
                                     </Badge>
                                 ))}
-                                {(!item.tags || item.tags.length === 0) && (
-                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>No tags</span>
-                                )}
                             </div>
 
                             <div className="flex justify-between items-center pt-md" style={{ borderTop: '1px solid var(--border)' }}>
                                 <div className="flex items-center gap-xs">
-                                    <BookOpen size={12} className="text-muted" />
+                                    <Layout size={12} className="text-muted" />
                                     <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                                         {classrooms.find(c => c.id === item.classroom_id)?.name || 'Global'}
                                     </span>
@@ -267,7 +269,7 @@ const KnowledgeBase = () => {
                     </div>
 
                     <div>
-                        <label className="label">Knowledge Title</label>
+                        <label className="label">Resource Title</label>
                         <Input 
                             placeholder="e.g. Frenkel vs Schottky Defect Rules"
                             value={newSnippet.title}
@@ -277,7 +279,17 @@ const KnowledgeBase = () => {
                     </div>
 
                     <div>
-                        <label className="label">Ground Truth Content</label>
+                        <label className="label">Subject / Category</label>
+                        <Input 
+                            placeholder="e.g. Physics, Chemistry, React JS"
+                            value={newSnippet.subject}
+                            onChange={(e) => setNewSnippet({ ...newSnippet, subject: e.target.value })}
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="label">Content / Definition</label>
                         <textarea 
                             className="input"
                             style={{ minHeight: '150px' }}

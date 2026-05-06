@@ -303,7 +303,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                     setAnswers(existingAttempt.answers || {});
                     setResults({
                         score: existingAttempt.score,
-                        xpEarned: existingAttempt.metadata?.xp_awarded || 0,
+                        xpEarned: existingAttempt.metadata?.xp_earned || existingAttempt.metadata?.xp_awarded || 0,
                         correct: existingAttempt.correct,
                         total: existingAttempt.total,
                         passed: existingAttempt.passed,
@@ -350,7 +350,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
         let correct = 0;
         quiz.questions.forEach((q, index) => {
             if (q.type === 'boolean') {
-                if (answers[index] === q.correctAnswer) correct++;
+                if (String(answers[index]) === String(q.correctAnswer)) correct++;
             } else if (q.type === 'multiple') {
                 if (answers[index] === q.correctAnswer) correct++;
             }

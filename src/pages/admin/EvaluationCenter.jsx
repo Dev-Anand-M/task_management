@@ -1059,16 +1059,16 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                             }, 0);
                                             const finalScore = Math.round((finalCorrect / attempt.total) * 100);
                                             const xpToAward = Math.round((finalCorrect / attempt.total) * (attempt.quizzes?.points || 100));
-                                            
+
                                             // Update the saved attempt with Manual results
                                             await db.updateQuizAttempt(attempt.id, {
                                                 correct: finalCorrect,
                                                 score: finalScore,
                                                 passed: finalScore >= 70,
-                                                metadata: { 
-                                                    ...attempt.metadata, 
-                                                    manually_evaluated: true, 
-                                                    overrides, 
+                                                metadata: {
+                                                    ...attempt.metadata,
+                                                    manually_evaluated: true,
+                                                    overrides,
                                                     finalized: true,
                                                     xp_earned: xpToAward
                                                 }
@@ -1258,7 +1258,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                             // Check manual override first, then AI suggestion, then basic match
                             const isCorrect = overrides[index] !== undefined 
                                 ? overrides[index] 
-                                : (q.type === 'short' ? false : userAnswer === q.correctAnswer);
+                                : (q.type === 'short' ? false : (q.type === 'boolean' ? String(userAnswer) === String(q.correctAnswer) : userAnswer === q.correctAnswer));
                             
                             const aiSuggestion = aiReport?.suggestions?.find(s => Number(s.questionIndex) === Number(index));
                             

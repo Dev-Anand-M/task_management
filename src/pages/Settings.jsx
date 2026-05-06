@@ -873,9 +873,13 @@ const Settings = () => {
                             borderRadius: 'var(--radius-md)',
                             marginBottom: 'var(--space-lg)'
                         }}>
-                            <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-md)', color: 'var(--text-muted)' }}>
-                                USAGE STATISTICS
-                            </h4>
+                            <div className="flex justify-between items-center mb-md">
+                                <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, margin: 0, color: 'var(--text-muted)' }}>
+                                    USAGE STATISTICS
+                                </h4>
+                                <Badge variant="primary" size="xs">Provider: {selectedProvider.toUpperCase()}</Badge>
+                            </div>
+                            
                             <div className="grid-3-mobile-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-md)' }}>
                                 {(() => {
                                     const pStats = usageStats.providers?.[selectedProvider] || { requestsToday: 0, totalRequests: 0 };
@@ -886,7 +890,7 @@ const Settings = () => {
                                                     {pStats.requestsToday || 0}
                                                 </div>
                                                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                                                    Requests Today
+                                                    Today
                                                 </div>
                                             </div>
                                             <div style={{ textAlign: 'center' }}>
@@ -894,7 +898,7 @@ const Settings = () => {
                                                     {pStats.totalRequests || 0}
                                                 </div>
                                                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                                                    Total Requests
+                                                    Total
                                                 </div>
                                             </div>
                                         </>
@@ -905,7 +909,25 @@ const Settings = () => {
                                         <span style={{ fontSize: '14px' }}>varies</span>
                                     </div>
                                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                                        Provider Limits
+                                        Limits
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Global Aggregator */}
+                            <div style={{ 
+                                marginTop: 'var(--space-lg)', 
+                                paddingTop: 'var(--space-md)', 
+                                borderTop: '1px dotted var(--border)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-muted)' }}>PLATFORM-WIDE LIFETIME USAGE:</span>
+                                <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700 }}>{usageStats.totalRequests || 0}</span>
+                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>REQ</span>
                                     </div>
                                 </div>
                             </div>

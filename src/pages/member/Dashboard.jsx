@@ -35,22 +35,21 @@ const MemberDashboard = () => {
     const [activeTasks, setActiveTasks] = useState([]);
     const [recentActivity, setRecentActivity] = useState([]);
     const [upcomingQuizzes, setUpcomingQuizzes] = useState([]);
+    const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const loadDashboardData = useCallback(async () => {
+    const loadDashboardData = useCallback(async (silent = false) => {
         if (!user?.id) return;
 
         try {
-            // Only set loading true if we aren't already loading (though we initialized to true, 
-            // this is for re-fetches or if we change logic later). 
-            // Actually, simply setting it ensures the spinner shows.
-            setLoading(true);
+            if (!silent) setLoading(true);
 
-            const [tasks, submissions, quizzes, quizAttempts] = await Promise.all([
+            const [tasks, submissions, quizzes, quizAttempts, ann] = await Promise.all([
                 db.getTasks().catch(err => { console.error('Error loading tasks:', err); return []; }),
                 db.getSubmissionsByUser(user.id).catch(err => { console.error('Error loading submissions:', err); return []; }),
                 db.getQuizzes().catch(err => { console.error('Error loading quizzes:', err); return []; }),
-                db.getQuizAttemptsByUser(user.id).catch(err => { console.error('Error loading quiz attempts:', err); return []; })
+                db.getQuizAttemptsByUser(user.id).catch(err => { console.error('Error loading quiz attempts:', err); return []; }),
+                db.getAnnouncements().catch(err => { console.error('Error loading announcements:', err); return []; })
             ]);
 
             // Get tasks assigned to current user (or global tasks)
@@ -105,32 +104,33 @@ const MemberDashboard = () => {
                 )
                 .slice(0, 3);
             setUpcomingQuizzes(upcoming);
+            setAnnouncements(ann || []);
         } catch (error) {
             console.error('Error loading dashboard data:', error);
         } finally {
             setLoading(false);
         }
-    }, [user?.id]); // Only recreate if user ID changes
+    }, [user?.id]);
 
     useEffect(() => {
         if (user?.id) {
-            loadDashboardData();
+            loadDashboardData(true);
 
             // GOD COMMAND: REALTIME UPDATES
             const channel = supabase
                 .channel(`dashboard-${user.id}`)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
                     console.log('Realtime: Task update detected');
-                    loadDashboardData();
+                    loadDashboardData(true);
                 })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions', filter: `user_id=eq.${user.id}` }, () => {
                     console.log('Realtime: My submission update detected');
-                    loadDashboardData();
+                    loadDashboardData(true);
                     refreshUser(); // Update XP if approved
                 })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_attempts', filter: `user_id=eq.${user.id}` }, () => {
                     console.log('Realtime: My quiz update detected');
-                    loadDashboardData();
+                    loadDashboardData(true);
                     refreshUser(); // Update XP if passed
                 })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, () => {
@@ -235,34 +235,64 @@ const MemberDashboard = () => {
             </Link>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-4 mb-xl">
+            <div className="grid-4-mobile-2 mb-xl" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-md)' }}>
                 {[
                     { label: 'Assigned Tasks', value: stats.assignedTasks, icon: ListTodo, color: 'var(--primary-500)' },
                     { label: 'Completed', value: stats.completedTasks, icon: CheckCircle, color: 'var(--success-500)' },
                     { label: 'Pending Quizzes', value: stats.pendingQuizzes, icon: HelpCircle, color: 'var(--warning-500)' },
                     { label: 'Total XP', value: (user?.xp || 0).toLocaleString(), icon: Award, color: 'var(--accent-500)' }
                 ].map((stat, index) => (
-                    <Card key={index} style={{ textAlign: 'center' }}>
+                    <Card key={index} style={{ textAlign: 'center', padding: 'var(--space-md)' }}>
                         <stat.icon
-                            size={24}
-                            style={{ color: stat.color, marginBottom: 'var(--space-sm)' }}
+                            size={20}
+                            style={{ color: stat.color, marginBottom: 'var(--space-xs)' }}
                         />
                         <h3 style={{
-                            fontSize: 'var(--text-2xl)',
+                            fontSize: 'var(--text-xl)',
                             margin: 0
                         }}>
                             {stat.value}
                         </h3>
                         <p style={{
-                            fontSize: 'var(--text-sm)',
+                            fontSize: '10px',
                             color: 'var(--text-muted)',
-                            margin: 0
+                            margin: 0,
+                            textTransform: 'uppercase',
+                            fontWeight: 700
                         }}>
                             {stat.label}
                         </p>
                     </Card>
                 ))}
             </div>
+
+            {/* Announcements Section */}
+            {announcements.length > 0 && (
+                <div style={{ marginBottom: 'var(--space-xl)' }}>
+                    <div className="flex justify-between items-center mb-md">
+                        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Badge variant="primary" style={{ padding: '4px' }}><Star size={14} /></Badge>
+                            Announcements
+                        </h3>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                        {announcements.slice(0, 2).map(ann => (
+                            <Card key={ann.id} style={{ borderLeft: '4px solid var(--primary-500)', background: 'var(--surface)' }}>
+                                <div className="flex gap-md">
+                                    <Avatar name={ann.profiles?.name} image={ann.profiles?.avatar_url} size="sm" />
+                                    <div style={{ flex: 1 }}>
+                                        <div className="flex justify-between items-center mb-xs">
+                                            <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)' }}>{ann.profiles?.name || 'Admin'}</span>
+                                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatRelativeTime(ann.created_at)}</span>
+                                        </div>
+                                        <p style={{ margin: 0, fontSize: 'var(--text-sm)', lineHeight: 1.5 }}>{ann.content}</p>
+                                    </div>
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Main Grid */}
             <div className="dashboard-grid">

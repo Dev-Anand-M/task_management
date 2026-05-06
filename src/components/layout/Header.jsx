@@ -699,19 +699,18 @@ const Header = ({ onMenuClick, title }) => {
           .header-dropdown {
             position: fixed !important;
             top: auto !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            border-radius: 20px 20px 0 0 !important;
+            bottom: 20px !important;
+            left: 5% !important;
+            right: 5% !important;
+            width: 90% !important;
+            max-width: 90% !important;
+            border-radius: 20px !important;
             min-height: auto !important;
-            max-height: 70vh !important;
+            max-height: 60vh !important;
             transform: none !important;
             animation: slide-up-mobile 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.4) !important;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
             border: 1px solid var(--border) !important;
-            border-bottom: none !important;
             z-index: 10005 !important;
             display: flex !important;
             flex-direction: column !important;
