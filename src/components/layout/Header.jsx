@@ -200,37 +200,38 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
           </div>
 
           <div className="flex items-center gap-sm">
-        <h1 style={{
-          fontSize: 'var(--text-xl)',
-          fontWeight: 600,
-          margin: 0,
-          whiteSpace: 'nowrap'
-        }}>
-          {title}
-        </h1>
+            <h1 style={{
+              fontSize: 'var(--text-xl)',
+              fontWeight: 600,
+              margin: 0,
+              whiteSpace: 'nowrap'
+            }}>
+              {title}
+            </h1>
 
-        {!isAdmin && (
-          <div className="header-ticker hidden lg:block" style={{ height: '40px', marginLeft: '1rem' }}>
-            <div className="ticker-container">
-              <div className="ticker-wrapper">
-                {tickerItems.length > 0 ? (
-                  tickerItems.map((item, i) => (
-                    <span key={i} className="ticker-item text-sm text-muted font-medium flex items-center gap-xs">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
-                      {item}
-                    </span>
-                  ))
-                ) : (
-                  <span className="ticker-item text-sm text-muted font-medium flex items-center gap-xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    You completed everything! 🎉
-                  </span>
-                )}
+            {!isAdmin && (
+              <div className="header-ticker hidden lg:block" style={{ height: '40px', marginLeft: '1rem' }}>
+                <div className="ticker-container">
+                  <div className="ticker-wrapper">
+                    {tickerItems.length > 0 ? (
+                      tickerItems.map((item, i) => (
+                        <span key={i} className="ticker-item text-sm text-muted font-medium flex items-center gap-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
+                          {item}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="ticker-item text-sm text-muted font-medium flex items-center gap-xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        You completed everything! 🎉
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
 
       <style>{`
         .ticker-container {
