@@ -69,11 +69,21 @@ const ClassroomDetail = () => {
             setLoading(true);
             
             // Fetch classroom first so we can at least show the classroom exists
-            const cls = await db.getClassroomById(classroomId);
-            if (!cls) {
-                setClassroom(null);
-                return;
-            }
+            const safetyTimeout = setTimeout(() => {
+                if (loading) {
+                    console.warn('ClassroomDetail: loadData is taking too long, forcing recovery.');
+                    setLoading(false);
+                }
+            }, 8000);
+
+            try {
+                const cls = await db.getClassroomById(classroomId);
+                if (!cls) {
+                    setClassroom(null);
+                    setLoading(false);
+                    clearTimeout(safetyTimeout);
+                    return;
+                }
 
             // Fetch related data, catching errors individually so one failure 
             // (e.g. missing announcements table) doesn't break the whole page
@@ -96,6 +106,7 @@ const ClassroomDetail = () => {
             setClassroom(null);
         } finally {
             setLoading(false);
+            clearTimeout(safetyTimeout);
         }
     };
 

@@ -894,10 +894,12 @@ export const getAllSubmissions = async () => {
 // ANNOUNCEMENTS
 // ============================================
 export const getAnnouncementsByClassroom = async (classroomId) => {
-    const { data, error } = await supabase.from('announcements')
-        .select('*, profiles(*)')
-        .eq('classroom_id', classroomId)
-        .order('created_at', { ascending: false });
+    const { data, error } = await withTimeout(
+        supabase.from('announcements')
+            .select('*, profiles(*)')
+            .eq('classroom_id', classroomId)
+            .order('created_at', { ascending: false })
+    );
 
     if (error) throw error;
     return data || [];
@@ -905,13 +907,15 @@ export const getAnnouncementsByClassroom = async (classroomId) => {
 
 export const createAnnouncement = async (announcement) => {
     const user = await getActiveUser();
-    const { data, error } = await supabase.from('announcements')
-        .insert({
-            ...announcement,
-            created_by: user.id
-        })
-        .select('*, profiles(*)')
-        .single();
+    const { data, error } = await withTimeout(
+        supabase.from('announcements')
+            .insert({
+                ...announcement,
+                created_by: user.id
+            })
+            .select('*, profiles(*)')
+            .single()
+    );
 
     if (error) throw error;
 
