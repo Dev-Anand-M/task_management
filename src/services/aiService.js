@@ -98,6 +98,12 @@ export const getUsageStats = () => {
         const parsed = JSON.parse(stats);
         if (parsed.lastDate !== today) {
             parsed.requestsToday = 0;
+            // Reset per-provider today stats too
+            if (parsed.providers) {
+                Object.keys(parsed.providers).forEach(pid => {
+                    parsed.providers[pid].requestsToday = 0;
+                });
+            }
             parsed.lastDate = today;
             localStorage.setItem('ai_usage_stats', JSON.stringify(parsed));
         }
@@ -196,11 +202,22 @@ const getProviderForModel = (modelId) => {
 };
 
 // Increment usage
-export const incrementUsage = async () => {
+export const incrementUsage = async (providerId = 'sambanova') => {
     const stats = getUsageStats();
+    
+    // Global stats
     stats.requestsToday += 1;
     stats.totalRequests += 1;
     stats.lastDate = new Date().toISOString().split('T')[0];
+    
+    // Per-provider stats
+    if (!stats.providers) stats.providers = {};
+    if (!stats.providers[providerId]) {
+        stats.providers[providerId] = { requestsToday: 0, totalRequests: 0 };
+    }
+    stats.providers[providerId].requestsToday += 1;
+    stats.providers[providerId].totalRequests += 1;
+
     localStorage.setItem('ai_usage_stats', JSON.stringify(stats));
     await syncToDatabase();
 };
@@ -449,7 +466,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
             };
             
             const data = await callAIProxy('gemini', endpoint, apiKey, body, signal, options);
-            await incrementUsage();
+            await incrementUsage('gemini');
             return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         }
 
@@ -466,7 +483,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
             };
             
             const data = await callAIProxy('openai', endpoint, apiKey, body, signal, options);
-            await incrementUsage();
+            await incrementUsage('openai');
             return data.choices?.[0]?.message?.content || '';
         }
 
@@ -481,7 +498,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
             };
             
             const data = await callAIProxy('anthropic', endpoint, apiKey, body, signal, options);
-            await incrementUsage();
+            await incrementUsage('anthropic');
             return data.content?.[0]?.text || '';
         }
 
@@ -497,7 +514,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
             };
             
             const data = await callAIProxy('perplexity', endpoint, apiKey, body, signal, options);
-            await incrementUsage();
+            await incrementUsage('perplexity');
             return data.choices?.[0]?.message?.content || '';
         }
 
@@ -514,7 +531,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
             };
             
             const data = await callAIProxy('sambanova', endpoint, apiKey, body, signal, options);
-            await incrementUsage();
+            await incrementUsage('sambanova');
             return data.choices?.[0]?.message?.content || '';
         }
 
@@ -668,23 +685,23 @@ CRITICAL UNDERSTANDING - QUESTION TYPES:
    - The student selects ONE option
    - If the quiz key is correct: DO NOT change the student's score based on your opinion
    - If the quiz key is WRONG (set isKeyError: true): YOU MUST set isCorrect: true if the student's choice is factually correct according to the corrected key
-   - The admin will manually review flagged questions
+   - The admin will manually review flagged questions.
 
 3. **TRUE/FALSE Questions**:
    - These have a designated correct answer (True or False) set by the quiz creator
    - The student selects True or False
-   - If the quiz key is correct: DO NOT change the student's score based on your opinion
-   - If the quiz key is WRONG (set isKeyError: true): YOU MUST set isCorrect: true if the student's choice is factually correct according to the corrected key
+   - **CRITICAL**: You MUST compare values as strings to avoid type-mismatch errors. "true" (string) == true (boolean).
+   - If the quiz key is correct: DO NOT change the student's score based on your opinion.
+   - If the quiz key is WRONG (set isKeyError: true): YOU MUST set isCorrect: true if the student's choice is factually correct according to the corrected key.
 
 CRITICAL RULES FOR EVALUATION:
-- Use GROUND TRUTH CONTEXT as the final authority on facts.
-- isKeyError: Set to true ONLY if the quiz creator's "correctAnswer" is factually wrong according to the context or established science.
-- isCorrect: This is the FINAL DECISION on student marks for this question. Award the point if student is factually right.
-- IF isKeyError IS TRUE: You MUST evaluate the student's answer against the CORRECT fact. 
-    - If the student's answer is factually correct, you MUST set "isCorrect": true.
-    - Example: Key says 2+2=5. Student says 2+2=4. You MUST set isKeyError: true AND isCorrect: true.
-- IF isKeyError IS FALSE: Set "isCorrect" to match the original quiz key (true if student matched key, false otherwise).
-- NEVER penalize a student for a quiz creator's error. If the student is right and the key is wrong, AWARD THE POINT.
+- **GROUND TRUTH CONTEXT IS LAW**: Use it as the final authority on facts. If the context says X and the quiz key says Y, the key is WRONG (isKeyError: true).
+- **isKeyError**: Set to true ONLY if the quiz creator's "correctAnswer" is factually wrong according to the context or established science.
+- **isCorrect**: This is the FINAL DECISION on student marks for this question. 
+    - For SHORT ANSWER: Award true if student is factually right.
+    - For MCQ/TF: Award true IF (student matches original key AND key is correct) OR (student choice is factually right AND original key is wrong).
+- **NEVER penalize a student for a quiz creator's error**. If the student is right and the key is wrong, AWARD THE POINT.
+- **Explain EVERYTHING**: In "feedback", explain exactly why a key is wrong or why a student is right.
 
 SCHEMA REQUIREMENT:
 Return ONLY a valid JSON object:

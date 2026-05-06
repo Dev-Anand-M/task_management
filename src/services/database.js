@@ -459,40 +459,63 @@ export const createQuizAttempt = async (attempt) => {
 // ============================================
 // INVITE CODES
 // ============================================
-export const getInviteCodes = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+export const getInviteCodes = async (classroomId = null) => {
+    try {
+        const user = await getActiveUser();
+        if (!user) return [];
 
-    const { data: profile } = await supabase.from('profiles').select('classroom_id').eq('id', user.id).single();
-    if (!profile?.classroom_id) return [];
+        let targetId = classroomId;
+        if (!targetId) {
+            const { data: profile } = await supabase.from('profiles').select('classroom_id').eq('id', user.id).single();
+            targetId = profile?.classroom_id;
+        }
 
-    const { data, error } = await supabase.from('invite_codes')
-        .select('*')
-        .eq('classroom_id', profile.classroom_id)
-        .order('created_at', { ascending: false });
+        if (!targetId) return [];
 
-    if (error) throw error;
-    return data || [];
+        const { data, error } = await supabase.from('invite_codes')
+            .select('*')
+            .eq('classroom_id', targetId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error fetching invite codes:', err);
+        return [];
+    }
 };
 
 export const createInviteCode = async (codeData, targetClassroomId) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    try {
+        const user = await getActiveUser();
+        if (!user) throw new Error('Authentication required');
 
-    // Use passed classroomId or fallback to user's current one
-    let classroomId = targetClassroomId;
-    if (!classroomId) {
-        const { data: profile } = await supabase.from('profiles').select('classroom_id').eq('id', user.id).single();
-        classroomId = profile?.classroom_id;
+        // Use passed classroomId or fallback to user's current one
+        let classroomId = targetClassroomId;
+        if (!classroomId) {
+            const { data: profile } = await supabase.from('profiles').select('classroom_id').eq('id', user.id).single();
+            classroomId = profile?.classroom_id;
+        }
+
+        if (!classroomId) throw new Error('A classroom must be selected for this invite code.');
+
+        const { data, error } = await supabase.from('invite_codes').insert({
+            code: codeData,
+            classroom_id: classroomId,
+            created_by: user.id
+        }).select().single();
+
+        if (error) {
+            if (error.code === '23505') {
+                throw new Error(`The code "${codeData}" already exists. Please choose a unique code.`);
+            }
+            throw error;
+        }
+        return data;
+    } catch (err) {
+        console.error('Error creating invite code:', err);
+        throw err;
     }
-
-    const { data, error } = await supabase.from('invite_codes').insert({
-        code: codeData,
-        classroom_id: classroomId,
-        created_by: user.id
-    }).select().single();
-
-    if (error) throw error;
-    return data;
 };
 
 export const deleteInviteCode = async (id) => {

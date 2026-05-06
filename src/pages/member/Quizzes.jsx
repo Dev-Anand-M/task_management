@@ -303,10 +303,10 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                     setAnswers(existingAttempt.answers || {});
                     setResults({
                         score: existingAttempt.score,
+                        xpEarned: existingAttempt.metadata?.xp_awarded || 0,
                         correct: existingAttempt.correct,
                         total: existingAttempt.total,
                         passed: existingAttempt.passed,
-                        xpEarned: 0,
                         manually_evaluated: existingAttempt.metadata?.manually_evaluated,
                         finalized: existingAttempt.metadata?.finalized,
                         aiReport: existingAttempt.metadata?.ai_report
@@ -383,6 +383,22 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
             if (dbError) throw dbError;
 
             const attemptId = attempt.id;
+
+            // 1b. NOTIFY ADMINS
+            try {
+                // Get classroom_id from quiz if not available directly
+                const cid = quiz.classroom_id || user.classroom_id;
+                if (cid) {
+                    await db.notifyAdmins(cid, {
+                        title: '📝 New Quiz Submission',
+                        message: `${user.name} submitted "${quiz.title}". Score: ${score}%`,
+                        type: 'info',
+                        link: `/admin/evaluations/${attemptId}`
+                    });
+                }
+            } catch (notifyErr) {
+                console.error('Failed to notify admins:', notifyErr);
+            }
 
             // 2. SHOW SUCCESS UI IMMEDIATELY
             setSubmitting(false);
@@ -644,7 +660,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                                 {quiz.questions.map((q, qIndex) => {
                                     const userAnswer = answers[qIndex];
                                     const isCorrect = q.type === 'boolean' 
-                                        ? userAnswer === q.correctAnswer 
+                                        ? String(userAnswer) === String(q.correctAnswer)
                                         : userAnswer === q.correctAnswer;
                                     
                                     return (
@@ -731,9 +747,9 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                                                                 background: val === q.correctAnswer 
                                                                     ? 'rgba(16, 185, 129, 0.1)' 
                                                                     : (val === userAnswer ? 'rgba(239, 68, 68, 0.1)' : 'transparent'),
-                                                                border: `1px solid ${val === q.correctAnswer 
+                                                                border: `1px solid ${String(val) === String(q.correctAnswer) 
                                                                     ? 'var(--success-500)' 
-                                                                    : (val === userAnswer ? 'var(--error-500)' : 'var(--border)')}`,
+                                                                    : (String(val) === String(userAnswer) ? 'var(--error-500)' : 'var(--border)')}`,
                                                                 fontSize: 'var(--text-sm)',
                                                                 color: val === q.correctAnswer ? 'var(--success-500)' : 'var(--text-muted)'
                                                             }}>

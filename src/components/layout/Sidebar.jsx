@@ -73,7 +73,8 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
         { to: '/tasks', icon: ListTodo, label: 'Tasks' },
         { to: '/quizzes', icon: HelpCircle, label: 'Quizzes' },
-        { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+        { to: '/admin/knowledge-base', icon: Database, label: 'Study Materials' },
+        { to: '/ai/tools', icon: Brain, label: 'AI Tools' },
         { to: '/profile', icon: User, label: 'Profile' },
         { to: '/settings', icon: Settings, label: 'Settings' }
     ];

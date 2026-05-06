@@ -109,9 +109,11 @@ const KnowledgeBase = () => {
                         Add "Ground Truth" context to improve AI quiz evaluation accuracy.
                     </p>
                 </div>
-                <Button variant="primary" icon={Plus} onClick={() => setShowAddModal(true)}>
-                    Add Context Snippet
-                </Button>
+                {user?.role === 'admin' && (
+                    <Button variant="primary" icon={Plus} onClick={() => setShowAddModal(true)}>
+                        Add Context Snippet
+                    </Button>
+                )}
             </div>
 
             <Card style={{ marginBottom: 'var(--space-lg)', padding: 'var(--space-md)' }}>
@@ -157,14 +159,16 @@ const KnowledgeBase = () => {
                         <Card key={item.id} className="hover-lift h-full flex flex-col">
                             <div className="flex justify-between items-start mb-md">
                                 <h4 style={{ margin: 0, color: 'var(--primary-400)' }}>{item.title}</h4>
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={() => handleDeleteSnippet(item.id)}
-                                    style={{ color: 'var(--error-500)' }}
-                                >
-                                    <Trash2 size={16} />
-                                </Button>
+                                {user?.role === 'admin' && (
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => handleDeleteSnippet(item.id)}
+                                        style={{ color: 'var(--error-500)' }}
+                                    >
+                                        <Trash2 size={16} />
+                                    </Button>
+                                )}
                             </div>
                             
                             <p style={{ 
@@ -242,7 +246,7 @@ const KnowledgeBase = () => {
 
             {/* Add Snippet Modal */}
             <Modal 
-                show={showAddModal} 
+                isOpen={showAddModal} 
                 onClose={() => setShowAddModal(false)}
                 title="Add Ground Truth Knowledge"
             >

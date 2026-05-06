@@ -686,12 +686,17 @@ const Header = ({ onMenuClick, title }) => {
         /* Premium Mobile Dropdowns */
         @media (max-width: 768px) {
           .mobile-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-           .header-dropdown {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: rgba(0,0,0,0.6) !important;
+            backdrop-filter: blur(8px) !important;
+            z-index: 10000 !important;
+          }
+
+          .header-dropdown {
             position: fixed !important;
             top: auto !important;
             bottom: 0 !important;
@@ -701,7 +706,7 @@ const Header = ({ onMenuClick, title }) => {
             max-width: 100% !important;
             border-radius: 24px 24px 0 0 !important;
             min-height: auto !important;
-            max-height: 75vh !important;
+            max-height: 85vh !important;
             transform: none !important;
             animation: slide-up-mobile 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
             box-shadow: 0 -10px 40px rgba(0,0,0,0.4) !important;
@@ -715,18 +720,8 @@ const Header = ({ onMenuClick, title }) => {
             color: var(--text) !important;
           }
           
-          .mobile-backdrop {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            background: rgba(0,0,0,0.6) !important;
-            backdrop-filter: blur(8px) !important;
-            z-index: 10000 !important;
-          }
           .notification-dropdown {
-            height: 70vh !important;
+            height: 75vh !important;
           }
           
           .profile-dropdown {
@@ -745,23 +740,23 @@ const Header = ({ onMenuClick, title }) => {
           }
         }
         
-        /* Desktop Positioning (moved from inline to css for better override) */
+        /* Desktop Positioning */
         @media (min-width: 769px) {
           .header-dropdown {
             position: absolute;
             top: calc(100% + 12px);
-            right: -8px;
+            right: 0;
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: 16px;
             box-shadow: var(--shadow-xl);
             overflow: hidden;
             display: flex;
-            flexDirection: column;
+            flex-direction: column;
             transform-origin: top right;
           }
           .notification-dropdown { width: 400px; min-height: 200px; }
-          .profile-dropdown { width: 280px; min-height: 200px; border-width: 2px; }
+          .profile-dropdown { width: 280px; min-height: 200px; }
           .mobile-handle { display: none !important; }
         }
 

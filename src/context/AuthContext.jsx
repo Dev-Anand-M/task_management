@@ -78,13 +78,28 @@ export const AuthProvider = ({ children }) => {
         // Visibility Change listener to fix "stuck session" on mobile tab switching
         const handleVisibilityChange = async () => {
             if (document.visibilityState === 'visible') {
+                // SAFETY: If we are stuck in a loading state, force release it after 2 seconds of being visible
+                const stuckTimeout = setTimeout(() => {
+                    if (loading) {
+                        console.warn('Recovering from stuck loading state on visibility change');
+                        setLoading(false);
+                    }
+                }, 2000);
+
                 // Non-blocking refresh to avoid "infinite loading" hangs
                 supabase.auth.getSession().then(({ data: { session } }) => {
                     if (session?.user) {
                         setUser(session.user);
                         fetchProfile(session.user.id);
                     }
-                }).catch(err => console.warn('Visibility refresh failed:', err));
+                    // Release loading once we have any answer from Supabase
+                    setLoading(false);
+                    clearTimeout(stuckTimeout);
+                }).catch(err => {
+                    console.warn('Visibility refresh failed:', err);
+                    setLoading(false);
+                    clearTimeout(stuckTimeout);
+                });
             }
         };
 

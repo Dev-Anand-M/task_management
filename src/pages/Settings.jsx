@@ -877,22 +877,29 @@ const Settings = () => {
                                 USAGE STATISTICS
                             </h4>
                             <div className="grid-3-mobile-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-md)' }}>
-                                <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--primary-500)' }}>
-                                        {usageStats.requestsToday || 0}
-                                    </div>
-                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                                        Requests Today
-                                    </div>
-                                </div>
-                                <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--text-main)' }}>
-                                        {usageStats.totalRequests || 0}
-                                    </div>
-                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                                        Total Requests
-                                    </div>
-                                </div>
+                                {(() => {
+                                    const pStats = usageStats.providers?.[selectedProvider] || { requestsToday: 0, totalRequests: 0 };
+                                    return (
+                                        <>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--primary-500)' }}>
+                                                    {pStats.requestsToday || 0}
+                                                </div>
+                                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                                    Requests Today
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--text-main)' }}>
+                                                    {pStats.totalRequests || 0}
+                                                </div>
+                                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                                    Total Requests
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                                 <div style={{ textAlign: 'center' }}>
                                     <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--success-500)' }}>
                                         <span style={{ fontSize: '14px' }}>varies</span>

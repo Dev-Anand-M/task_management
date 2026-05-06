@@ -1125,7 +1125,14 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                                         const isCorrect = override !== undefined ? override : false;
                                                         return acc + (isCorrect ? 1 : 0);
                                                     }
-                                                    const isCorrect = override !== undefined ? override : (userAnswer === q.correctAnswer);
+                                                    
+                                                    // Standardize for boolean and multiple choice
+                                                    const isCorrect = override !== undefined 
+                                                        ? override 
+                                                        : (q.type === 'boolean' 
+                                                            ? String(userAnswer) === String(q.correctAnswer)
+                                                            : userAnswer === q.correctAnswer);
+                                                            
                                                     return acc + (isCorrect ? 1 : 0);
                                                 }, 0);
                                                 const finalScore = Math.round((finalCorrect / attempt.total) * 100);
@@ -1336,7 +1343,11 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                             gap: '4px'
                                         }}>
                                             {(() => {
-                                                const originalCorrect = q.type === 'short' ? false : (attempt.answers[index] === q.correctAnswer);
+                                                const originalCorrect = q.type === 'short' 
+                                                    ? false 
+                                                    : (q.type === 'boolean' 
+                                                        ? String(attempt.answers[index]) === String(q.correctAnswer)
+                                                        : attempt.answers[index] === q.correctAnswer);
                                                 const currentCorrect = overrides[index] !== undefined ? overrides[index] : originalCorrect;
                                                 const hasChange = originalCorrect !== currentCorrect;
 
@@ -1395,8 +1406,12 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                         {q.type === 'multiple' ? (
                                             q.options.map((opt, optIndex) => {
                                                 // State variables for clarity
-                                                const isCorrectKey = optIndex === q.correctAnswer;
-                                                const isStudentChoice = optIndex === userAnswer;
+                                                const isCorrectKey = q.type === 'boolean' 
+                                                    ? String(optIndex) === String(q.correctAnswer)
+                                                    : optIndex === q.correctAnswer;
+                                                const isStudentChoice = q.type === 'boolean'
+                                                    ? String(optIndex) === String(userAnswer)
+                                                    : optIndex === userAnswer;
                                                 const aiRecommendsCorrect = aiSuggestion?.isCorrect && isStudentChoice;
                                                 
                                                 return (
