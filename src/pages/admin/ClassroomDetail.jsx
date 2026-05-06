@@ -65,48 +65,49 @@ const ClassroomDetail = () => {
     }, [classroomId]);
 
     const loadData = async () => {
+        setLoading(true);
+        setError(null);
+        
+        // Safety timeout to prevent infinite loading
+        const safetyTimeout = setTimeout(() => {
+            setLoading(false);
+        }, 10000);
+
         try {
-            setLoading(true);
-            
-            // Fetch classroom first so we can at least show the classroom exists
-            const safetyTimeout = setTimeout(() => {
-                if (loading) {
-                    console.warn('ClassroomDetail: loadData is taking too long, forcing recovery.');
-                    setLoading(false);
-                }
-            }, 8000);
+            const cls = await db.getClassroomById(classroomId);
+            if (!cls) {
+                setClassroom(null);
+                setLoading(false);
+                clearTimeout(safetyTimeout);
+                return;
+            }
 
-            try {
-                const cls = await db.getClassroomById(classroomId);
-                if (!cls) {
-                    setClassroom(null);
-                    setLoading(false);
-                    clearTimeout(safetyTimeout);
-                    return;
-                }
-
-            // Fetch related data, catching errors individually so one failure 
-            // (e.g. missing announcements table) doesn't break the whole page
-            const [mems, tks, subs, st, ann] = await Promise.all([
-                db.getMembersByClassroom(classroomId).catch(e => { console.error('Members error:', e); return []; }),
-                db.getTasksByClassroom(classroomId).catch(e => { console.error('Tasks error:', e); return []; }),
-                db.getSubmissionsByClassroom(classroomId).catch(e => { console.error('Subs error:', e); return []; }),
-                db.getClassroomStats(classroomId).catch(e => { console.error('Stats error:', e); return null; }),
-                db.getAnnouncementsByClassroom ? db.getAnnouncementsByClassroom(classroomId).catch(e => { console.error('Announcements error:', e); return []; }) : Promise.resolve([])
+            // Fetch related data
+            // We catch individual errors to prevent the entire page from breaking if one table is missing
+            const results = await Promise.allSettled([
+                db.getMembersByClassroom(classroomId),
+                db.getTasksByClassroom(classroomId),
+                db.getSubmissionsByClassroom(classroomId),
+                db.getClassroomStats(classroomId),
+                db.getAnnouncementsByClassroom ? db.getAnnouncementsByClassroom(classroomId) : Promise.resolve([])
             ]);
 
             setClassroom(cls);
-            setMembers(mems);
-            setTasks(tks);
-            setSubmissions(subs);
-            setStats(st);
-            setAnnouncements(ann);
+            
+            // Map results safely
+            if (results[0].status === 'fulfilled') setMembers(results[0].value || []);
+            if (results[1].status === 'fulfilled') setTasks(results[1].value || []);
+            if (results[2].status === 'fulfilled') setSubmissions(results[2].value || []);
+            if (results[3].status === 'fulfilled') setStats(results[3].value || null);
+            if (results[4].status === 'fulfilled') setAnnouncements(results[4].value || []);
+
+            clearTimeout(safetyTimeout);
         } catch (error) {
             console.error('Error loading classroom detail:', error);
-            setClassroom(null);
+            setError('Failed to load classroom details');
+            clearTimeout(safetyTimeout);
         } finally {
             setLoading(false);
-            clearTimeout(safetyTimeout);
         }
     };
 

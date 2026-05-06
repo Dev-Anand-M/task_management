@@ -470,16 +470,16 @@ export const getInviteCodes = async (classroomId = null) => {
         // Get profile to check role and classroom
         const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
         
-        let targetId = classroomId || profile?.classroom_id;
         let query = supabase.from('invite_codes').select('*').order('created_at', { ascending: false });
 
         // If not admin, strictly filter by classroom
         if (profile?.role !== 'admin') {
+            const targetId = classroomId || profile?.classroom_id;
             if (!targetId) return [];
             query = query.eq('classroom_id', targetId);
-        } else if (targetId) {
-            // Admin can filter if they want, but if no targetId provided, they see all
-            query = query.eq('classroom_id', targetId);
+        } else if (classroomId) {
+            // Admin only filters if they specifically passed a classroomId
+            query = query.eq('classroom_id', classroomId);
         }
 
         const { data, error } = await withTimeout(query);
@@ -928,7 +928,7 @@ export const createAnnouncement = async (announcement) => {
             title: 'New Announcement',
             message: announcement.content.substring(0, 50) + (announcement.content.length > 50 ? '...' : ''),
             type: 'info',
-            link: `/dashboard`
+            link: `/dashboard?t=${Date.now()}`
         });
     } catch (err) {
         console.error('Notification error:', err);

@@ -2713,9 +2713,20 @@ input.bg-surface\/80 {
     display: none !important;
   }
 
+@media (max-width: 1024px) {
   .grid-2-mobile-1, .grid-2-1 {
     grid-template-columns: 1fr !important;
   }
+}
+
+@media (max-width: 768px) {
+  .mobile-full-width {
+    width: 100% !important;
+  }
+  .mobile-full-width button {
+    width: 100% !important;
+  }
+}
 
   .grid-3-mobile-1 {
     grid-template-columns: 1fr !important;

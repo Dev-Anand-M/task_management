@@ -372,7 +372,7 @@ const TaskDetail = ({ taskId, onBack, onUpdate }) => {
     }
 
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in" style={{ padding: '0 var(--space-xs) var(--space-xl)' }}>
             {/* Header */}
             <div className="flex-mobile-col flex items-center justify-between gap-md mb-lg" style={{ flexWrap: 'wrap' }}>
                 <div className="flex items-center gap-md" style={{ minWidth: 0, flex: 1 }}>

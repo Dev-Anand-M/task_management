@@ -4,10 +4,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import * as db from '../../services/database';
-import { Menu, Sun, Moon, Bell, X, Clock, CheckCircle, Award, AlertCircle, Info, ArrowRight, User, LogOut, Settings, LayoutDashboard } from 'lucide-react';
+import { Menu, Bell, Search, User, LogOut, Settings, Clock, Check, ChevronRight, LayoutDashboard, Database, HelpCircle, LogOut as SignOut, ArrowLeft, Sun, Moon, CheckCircle, Award, AlertCircle, Info, X } from 'lucide-react';
 import { Button, SearchBar, Avatar } from '../common';
 
-const Header = ({ onMenuClick, title }) => {
+const Header = ({ onMenuClick, title, onToggleSidebar }) => {
   const { isDark, toggleTheme } = useTheme();
   const { user, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
@@ -168,16 +168,38 @@ const Header = ({ onMenuClick, title }) => {
       zIndex: 1000,
       flexShrink: 0
     }}>
-      <div className="flex items-center gap-md">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onMenuClick}
-          className="menu-button"
-        >
-          <Menu size={24} />
-        </Button>
+        <div className="flex items-center gap-md" style={{ flex: 1, minWidth: 0 }}>
+          <button
+            onClick={onToggleSidebar}
+            className="header-icon-btn p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all"
+            aria-label="Toggle Sidebar"
+          >
+            <Menu size={24} />
+          </button>
 
+          {/* Mobile Exit Button */}
+          <div className="mobile-only">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate('/dashboard')}
+              style={{
+                background: 'rgba(239, 68, 68, 0.1)',
+                color: '#ef4444',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                fontWeight: 700,
+                fontSize: '11px',
+                padding: '4px 10px',
+                borderRadius: '8px',
+                height: '32px'
+              }}
+            >
+              <ArrowLeft size={12} style={{ marginRight: '4px' }} />
+              Exit
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-sm">
         <h1 style={{
           fontSize: 'var(--text-xl)',
           fontWeight: 600,
@@ -353,10 +375,17 @@ const Header = ({ onMenuClick, title }) => {
                   notifications.map((notif) => (
                     <div
                       key={notif.id}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         if (!notif.is_read) markAsRead(notif.id);
                         if (notif.link) {
-                          navigate(notif.link, { replace: true });
+                          // Force page refresh for dashboard links to ensure state updates
+                          if (notif.link.includes('/dashboard')) {
+                            window.location.href = notif.link;
+                          } else {
+                            navigate(notif.link);
+                          }
                           setShowNotifications(false);
                         }
                       }}

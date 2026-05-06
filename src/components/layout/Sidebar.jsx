@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import * as db from '../../services/database';
@@ -73,6 +74,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
         { to: '/tasks', icon: ListTodo, label: 'Tasks' },
         { to: '/quizzes', icon: HelpCircle, label: 'Quizzes' },
+        { to: '/ai/assistant', icon: MessageSquare, label: 'AI Assistant' },
         { to: '/admin/knowledge-base', icon: Database, label: 'Study Materials' },
         { to: '/profile', icon: User, label: 'Profile' },
         { to: '/settings', icon: Settings, label: 'Settings' }
@@ -256,87 +258,91 @@ const Sidebar = ({ isOpen, onClose }) => {
                         ))}
                     </ul>
 
-                    {/* AI Tools Section */}
-                    <div
-                        onClick={() => setShowAiTools(!showAiTools)}
-                        style={{
-                            fontSize: '10px',
-                            color: 'rgba(255,255,255,0.6)',
-                            padding: 'var(--space-md) var(--space-sm) var(--space-xs)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.1em',
-                            fontWeight: 600,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            cursor: 'pointer',
-                            userSelect: 'none'
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
-                            <Brain size={12} />
-                            AI Tools
-                            <span style={{
-                                background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
-                                color: 'white',
-                                fontSize: '8px',
-                                padding: '2px 6px',
-                                borderRadius: '10px',
-                                fontWeight: 700,
-                                letterSpacing: '0.05em',
-                                marginLeft: '4px'
-                            }}>
-                                BETA
-                            </span>
-                        </div>
-                        <ChevronRight
-                            size={14}
-                            style={{
-                                transform: showAiTools ? 'rotate(90deg)' : 'none',
-                                transition: 'transform 0.2s'
-                            }}
-                        />
-                    </div>
+                    {/* AI Tools Section - Only for Admins to manage or view advanced tools */}
+                    {isAdmin && (
+                        <>
+                            <div
+                                onClick={() => setShowAiTools(!showAiTools)}
+                                style={{
+                                    fontSize: '10px',
+                                    color: 'rgba(255,255,255,0.6)',
+                                    padding: 'var(--space-md) var(--space-sm) var(--space-xs)',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.1em',
+                                    fontWeight: 600,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    cursor: 'pointer',
+                                    userSelect: 'none'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+                                    <Brain size={12} />
+                                    AI Tools
+                                    <span style={{
+                                        background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
+                                        color: 'white',
+                                        fontSize: '8px',
+                                        padding: '2px 6px',
+                                        borderRadius: '10px',
+                                        fontWeight: 700,
+                                        letterSpacing: '0.05em',
+                                        marginLeft: '4px'
+                                    }}>
+                                        BETA
+                                    </span>
+                                </div>
+                                <ChevronRight
+                                    size={14}
+                                    style={{
+                                        transform: showAiTools ? 'rotate(90deg)' : 'none',
+                                        transition: 'transform 0.2s'
+                                    }}
+                                />
+                            </div>
 
-                    {showAiTools && (
-                        <ul className="animate-fade-in" style={{ 
-                            listStyle: 'none', 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            gap: '4px',
-                            padding: 'var(--space-xs) 0',
-                            margin: '0 var(--space-xs)',
-                            background: 'rgba(167, 139, 250, 0.05)',
-                            borderRadius: 'var(--radius-lg)',
-                            border: '1px solid rgba(167, 139, 250, 0.1)'
-                        }}>
-                            {aiLinks.map(link => (
-                                <li key={link.to}>
-                                    <NavLink
-                                        to={link.to}
-                                        replace={true}
-                                        onClick={onClose}
-                                        style={({ isActive }) => ({
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 'var(--space-sm)',
-                                            padding: '0.75rem var(--space-md)',
-                                            borderRadius: 'var(--radius-md)',
-                                            color: isActive ? 'white' : 'rgba(255,255,255,0.7)',
-                                            background: isActive ? 'linear-gradient(135deg, #a78bfa, #8b5cf6)' : 'transparent',
-                                            textDecoration: 'none',
-                                            fontSize: 'var(--text-sm)',
-                                            fontWeight: isActive ? 600 : 500,
-                                            transition: 'all var(--transition-fast)',
-                                            boxShadow: isActive ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none'
-                                        })}
-                                    >
-                                        <link.icon size={18} />
-                                        <span style={{ flex: 1 }}>{link.label}</span>
-                                    </NavLink>
-                                </li>
-                            ))}
-                        </ul>
+                            {showAiTools && (
+                                <ul className="animate-fade-in" style={{ 
+                                    listStyle: 'none', 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    gap: '4px',
+                                    padding: 'var(--space-xs) 0',
+                                    margin: '0 var(--space-xs)',
+                                    background: 'rgba(167, 139, 250, 0.05)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    border: '1px solid rgba(167, 139, 250, 0.1)'
+                                }}>
+                                    {aiLinks.map(link => (
+                                        <li key={link.to}>
+                                            <NavLink
+                                                to={link.to}
+                                                replace={true}
+                                                onClick={onClose}
+                                                style={({ isActive }) => ({
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 'var(--space-sm)',
+                                                    padding: '0.75rem var(--space-md)',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    color: isActive ? 'white' : 'rgba(255,255,255,0.7)',
+                                                    background: isActive ? 'linear-gradient(135deg, #a78bfa, #8b5cf6)' : 'transparent',
+                                                    textDecoration: 'none',
+                                                    fontSize: 'var(--text-sm)',
+                                                    fontWeight: isActive ? 600 : 500,
+                                                    transition: 'all var(--transition-fast)',
+                                                    boxShadow: isActive ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none'
+                                                })}
+                                            >
+                                                <link.icon size={18} />
+                                                <span style={{ flex: 1 }}>{link.label}</span>
+                                            </NavLink>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </>
                     )}
                 </nav>
 
@@ -404,49 +410,63 @@ const Sidebar = ({ isOpen, onClose }) => {
           }
         }
       `}</style>
-            {showLogoutConfirm && (
+            {showLogoutConfirm && createPortal(
                 <div style={{
                     position: 'fixed',
                     inset: 0,
-                    background: 'rgba(0,0,0,0.6)',
-                    backdropFilter: 'blur(4px)',
-                    zIndex: 2000,
+                    background: 'rgba(0,0,0,0.7)',
+                    backdropFilter: 'blur(8px)',
+                    zIndex: 99999,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    padding: 'var(--space-md)'
                 }}>
                     <div className="animate-slide-up" style={{
-                        background: '#1c1917',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '16px',
-                        padding: '24px',
-                        width: '90%',
-                        maxWidth: '320px',
-                        boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+                        background: 'var(--dark-surface)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '24px',
+                        padding: '32px',
+                        width: '100%',
+                        maxWidth: '360px',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                        position: 'relative',
+                        zIndex: 100000
                     }}>
-                        <h3 style={{ color: 'white', marginTop: 0, marginBottom: '8px', fontSize: '18px', fontWeight: 600 }}>Sign Out?</h3>
-                        <p style={{ color: '#a8a29e', marginBottom: '24px', fontSize: '14px', lineHeight: '1.5' }}>
-                            Are you sure you want to sign out of your account?
+                        <div style={{
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '16px',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#ef4444',
+                            marginBottom: '20px'
+                        }}>
+                            <LogOut size={24} />
+                        </div>
+                        <h3 style={{ color: 'white', marginTop: 0, marginBottom: '8px', fontSize: '20px', fontWeight: 700 }}>Sign Out?</h3>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '28px', fontSize: '15px', lineHeight: '1.6' }}>
+                            Are you sure you want to end your session? You'll need to log back in to access your dashboard.
                         </p>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <button
                                 onClick={() => setShowLogoutConfirm(false)}
                                 style={{
                                     flex: 1,
-                                    padding: '10px',
-                                    borderRadius: '8px',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    background: 'rgba(255,255,255,0.05)',
+                                    padding: '12px',
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--border)',
+                                    background: 'transparent',
                                     color: 'white',
                                     cursor: 'pointer',
-                                    fontWeight: 500,
+                                    fontWeight: 600,
                                     fontSize: '14px',
-                                    transition: 'background 0.2s'
+                                    transition: 'all 0.2s'
                                 }}
-                                onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.1)'}
-                                onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.05)'}
                             >
-                                Cancel
+                                Stay
                             </button>
                             <button
                                 onClick={() => {
@@ -455,31 +475,24 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 }}
                                 style={{
                                     flex: 1,
-                                    padding: '10px',
-                                    borderRadius: '8px',
+                                    padding: '12px',
+                                    borderRadius: '12px',
                                     border: 'none',
-                                    background: 'linear-gradient(to right, #ea580c, #d97706)',
+                                    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
                                     color: 'white',
                                     cursor: 'pointer',
-                                    fontWeight: 600,
+                                    fontWeight: 700,
                                     fontSize: '14px',
-                                    boxShadow: '0 4px 12px rgba(234, 88, 12, 0.3)',
-                                    transition: 'transform 0.2s, box-shadow 0.2s'
-                                }}
-                                onMouseOver={(e) => {
-                                    e.target.style.transform = 'translateY(-1px)';
-                                    e.target.style.boxShadow = '0 6px 16px rgba(234, 88, 12, 0.4)';
-                                }}
-                                onMouseOut={(e) => {
-                                    e.target.style.transform = 'none';
-                                    e.target.style.boxShadow = '0 4px 12px rgba(234, 88, 12, 0.3)';
+                                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                                    transition: 'all 0.2s'
                                 }}
                             >
                                 Sign Out
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </>
     );

@@ -258,7 +258,16 @@ const InviteCodes = () => {
                                         </div>
                                         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
                                             {code.is_used ? 'Used' : 'Available'}
-                                            {/* Optional: Show which classroom this code belongs to if viewing all */}
+                                            {code.classroom_id && (
+                                                <span style={{ marginLeft: '8px', opacity: 0.8 }}>
+                                                    • {classrooms.find(c => c.id === code.classroom_id)?.name || 'Classroom'}
+                                                </span>
+                                            )}
+                                            {!code.classroom_id && (
+                                                <span style={{ marginLeft: '8px', opacity: 0.8 }}>
+                                                    • Global
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

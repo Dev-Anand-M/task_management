@@ -154,7 +154,7 @@ const MemberDashboard = () => {
     }
 
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in" style={{ paddingBottom: 'var(--space-2xl)' }}>
             {/* Welcome Header */}
             <div style={{ marginBottom: 'var(--space-xl)' }}>
                 <h2 style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-xs)' }}>
