@@ -232,6 +232,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 <NavLink
                                     to={link.to}
                                     end={link.exact}
+                                    replace={true}
                                     onClick={onClose}
                                     style={({ isActive }) => ({
                                         display: 'flex',
@@ -314,6 +315,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 <li key={link.to}>
                                     <NavLink
                                         to={link.to}
+                                        replace={true}
                                         onClick={onClose}
                                         style={({ isActive }) => ({
                                             display: 'flex',

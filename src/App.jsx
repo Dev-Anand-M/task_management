@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/layout';
 import { ErrorBoundary, LoadingSpinner } from './components/common';
+import BackHandler from './components/layout/BackHandler';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -209,6 +210,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
+          <BackHandler />
           <AppRoutes />
         </AuthProvider>
       </ThemeProvider>

@@ -356,7 +356,7 @@ const Header = ({ onMenuClick, title }) => {
                       onClick={() => {
                         if (!notif.is_read) markAsRead(notif.id);
                         if (notif.link) {
-                          navigate(notif.link);
+                          navigate(notif.link, { replace: true });
                           setShowNotifications(false);
                         }
                       }}
@@ -443,7 +443,7 @@ const Header = ({ onMenuClick, title }) => {
                 <button
                   onClick={() => {
                     setShowNotifications(false);
-                    navigate('/notifications');
+                    navigate('/notifications', { replace: true });
                   }}
                   style={{
                     background: 'var(--primary-500)',
@@ -580,7 +580,7 @@ const Header = ({ onMenuClick, title }) => {
               <div style={{ padding: 'var(--space-sm)', background: 'var(--card)', flex: 1, overflowY: 'auto' }}>
                 <button
                   onClick={() => {
-                    navigate('/profile');
+                    navigate('/profile', { replace: true });
                     setShowProfileMenu(false);
                   }}
                   style={{
@@ -604,7 +604,7 @@ const Header = ({ onMenuClick, title }) => {
                 </button>
                 <button
                   onClick={() => {
-                    navigate(isAdmin ? '/admin' : '/dashboard');
+                    navigate(isAdmin ? '/admin' : '/dashboard', { replace: true });
                     setShowProfileMenu(false);
                   }}
                   style={{
@@ -628,7 +628,7 @@ const Header = ({ onMenuClick, title }) => {
                 </button>
                 <button
                   onClick={() => {
-                    navigate('/settings');
+                    navigate('/settings', { replace: true });
                     setShowProfileMenu(false);
                   }}
                   style={{
