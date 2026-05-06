@@ -12,17 +12,20 @@ const getActiveUser = async () => {
         if (session?.user) return session.user;
         
         // Fallback to getUser with a timeout
-        const userPromise = supabase.auth.getUser();
-        const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Auth Timeout')), 3000)
-        );
-        
-        const { data: { user } } = await Promise.race([userPromise, timeoutPromise]);
+        const { data: { user } } = await withTimeout(supabase.auth.getUser(), 5000);
         return user;
     } catch (e) {
         console.error('getActiveUser failed:', e);
         return null;
     }
+};
+
+// GLOBAL QUERY TIMEOUT WRAPPER
+export const withTimeout = async (promise, ms = 10000) => {
+    const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('DATABASE_TIMEOUT')), ms)
+    );
+    return Promise.race([promise, timeout]);
 };
 
 export const getMembers = async () => {
@@ -101,7 +104,7 @@ export const getTasks = async () => {
         return [];
     }
 
-    const { data, error } = await query;
+    const { data, error } = await withTimeout(query);
     if (error) throw error;
 
     // Filter based on assignment (Everyone vs Specific)
@@ -198,7 +201,7 @@ export const getSubmissions = async () => {
             .order('submitted_at', { ascending: false });
     }
 
-    const { data, error } = await query;
+    const { data, error } = await withTimeout(query);
     if (error) throw error;
     return data || [];
 };
@@ -413,7 +416,7 @@ export const getQuizAttempts = async () => {
             console.log('Admin detected. Fetching global records.');
         }
 
-        const { data, error } = await query.order('completed_at', { ascending: false });
+        const { data, error } = await withTimeout(query.order('completed_at', { ascending: false }));
         
         if (error) {
             console.error('DATABASE ERROR during fetch:', error);
@@ -854,7 +857,11 @@ export const getClassroomStats = async (classroomId) => {
 // GLOBAL ADMIN DATA (ALL CLASSROOMS)
 // ============================================
 export const getAllMembers = async () => {
-    const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    const { data, error } = await withTimeout(
+        supabase.from('profiles')
+            .select('*')
+            .order('created_at', { ascending: false })
+    );
     if (error) throw error;
     return data || [];
 };

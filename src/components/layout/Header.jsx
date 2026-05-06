@@ -704,9 +704,9 @@ const Header = ({ onMenuClick, title }) => {
             right: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
-            border-radius: 24px 24px 0 0 !important;
+            border-radius: 20px 20px 0 0 !important;
             min-height: auto !important;
-            max-height: 85vh !important;
+            max-height: 70vh !important;
             transform: none !important;
             animation: slide-up-mobile 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
             box-shadow: 0 -10px 40px rgba(0,0,0,0.4) !important;
@@ -721,7 +721,7 @@ const Header = ({ onMenuClick, title }) => {
           }
           
           .notification-dropdown {
-            height: 75vh !important;
+            height: 60vh !important;
           }
           
           .profile-dropdown {
@@ -731,12 +731,12 @@ const Header = ({ onMenuClick, title }) => {
           
           .mobile-handle {
             display: block !important;
-            width: 40px;
+            width: 36px;
             height: 4px;
             background: var(--border);
             border-radius: 2px;
-            margin: 12px auto 4px;
-            opacity: 0.5;
+            margin: 10px auto 2px;
+            opacity: 0.4;
           }
         }
         
@@ -754,9 +754,10 @@ const Header = ({ onMenuClick, title }) => {
             display: flex;
             flex-direction: column;
             transform-origin: top right;
+            max-width: calc(100vw - 32px);
           }
-          .notification-dropdown { width: 400px; min-height: 200px; }
-          .profile-dropdown { width: 280px; min-height: 200px; }
+          .notification-dropdown { width: 380px; min-height: 200px; max-height: 500px; }
+          .profile-dropdown { width: 260px; min-height: 100px; }
           .mobile-handle { display: none !important; }
         }
 

@@ -113,6 +113,17 @@ export const AuthProvider = ({ children }) => {
         };
     }, []);
 
+    // Dedicated Loading Safety Effect
+    useEffect(() => {
+        if (loading) {
+            const timer = setTimeout(() => {
+                console.warn('CRITICAL: Stuck loading state detected (10s), forcing recovery.');
+                setLoading(false);
+            }, 10000);
+            return () => clearTimeout(timer);
+        }
+    }, [loading]);
+
     const fetchProfile = async (userId) => {
         if (!userId) return;
         try {
