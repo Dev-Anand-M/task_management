@@ -37,11 +37,20 @@ export const AuthProvider = ({ children }) => {
                 if (session?.user && mounted) {
                     setUser(session.user);
                     // Don't wait for profile to set loading to false if we have a session
-                    fetchProfile(session.user.id).finally(() => {
-                        if (mounted) setLoading(false);
-                        authInitialized = true;
-                        clearTimeout(timeoutId);
-                    });
+                    // But wrap in a timeout to prevent hanging
+                    const fetchWithTimeout = async () => {
+                        try {
+                            const { withTimeout } = await import('../services/database');
+                            await withTimeout(fetchProfile(session.user.id), 8000);
+                        } catch (e) {
+                            console.warn('Initial profile fetch timed out or failed:', e);
+                        } finally {
+                            if (mounted) setLoading(false);
+                            authInitialized = true;
+                            clearTimeout(timeoutId);
+                        }
+                    };
+                    fetchWithTimeout();
                 } else {
                     authInitialized = true;
                     if (mounted) setLoading(false);
@@ -93,14 +102,17 @@ export const AuthProvider = ({ children }) => {
                 }, 1500);
 
                 try {
-                    const { data: { session }, error } = await supabase.auth.getSession();
+                    const { withTimeout } = await import('../services/database');
+                    const { data: { session }, error } = await withTimeout(supabase.auth.getSession(), 5000);
+                    
                     if (error) {
                         console.error('Visibility check session error:', error);
                         setLoading(false);
                     } else if (session?.user) {
                         console.log('Session verified on visibility change');
                         setUser(session.user);
-                        fetchProfile(session.user.id);
+                        // Use a non-blocking timeout for profile fetch to avoid reactivity locks
+                        withTimeout(fetchProfile(session.user.id), 8000).catch(e => console.warn('Visibility profile fetch failed:', e));
                         setLoading(false);
                     } else {
                         // No session, but we should still stop loading

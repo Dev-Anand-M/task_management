@@ -129,7 +129,8 @@ export const getTaskById = async (id) => {
 
 export const createTask = async (task) => {
     // Inject current classroom_id
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getActiveUser();
+    if (!user) throw new Error('Authentication required');
     let classroomId = task.classroom_id;
 
     if (!classroomId && !task.is_global) {
@@ -186,7 +187,7 @@ export const deleteTask = async (id) => {
 };
 
 export const getSubmissions = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getActiveUser();
     if (!user) return [];
 
     const { data: profile } = await supabase.from('profiles').select('classroom_id').eq('id', user.id).single();
@@ -715,7 +716,7 @@ export const checkDeadlines = async (userId) => {
 // CLASSROOMS
 // ============================================
 export const getClassroom = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getActiveUser();
     if (!user) return null;
 
     const { data: profile } = await supabase.from('profiles').select('classroom_id').eq('id', user.id).single();

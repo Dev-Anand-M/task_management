@@ -34,7 +34,14 @@ const Profile = ({ userId = null, readonly = false }) => {
     const targetUserId = userId || authUser?.id;
 
     const loadProfileData = useCallback(async () => {
-        if (!targetUserId) return;
+        if (!targetUserId) {
+            // If we don't have a target ID yet, don't just hang in loading
+            // Wait a bit then stop loading if still no ID
+            setTimeout(() => {
+                if (!targetUserId) setLoading(false);
+            }, 3000);
+            return;
+        }
         setLoading(true);
         try {
             // If viewing self, use authUser which is already loaded (mostly), but simple getProfileById ensures fresh data
@@ -106,11 +113,22 @@ const Profile = ({ userId = null, readonly = false }) => {
         } finally {
             setLoading(false);
         }
-    }, [userId, authUser, targetUserId]);
+    }, [userId, targetUserId]); // Removed authUser from dependencies as we use it inside but only need re-fetch on ID change
 
     useEffect(() => {
         loadProfileData();
     }, [loadProfileData]);
+
+    // Safety timeout to prevent infinite loading state
+    useEffect(() => {
+        if (loading) {
+            const timer = setTimeout(() => {
+                console.warn('Profile loading safety timeout triggered');
+                setLoading(false);
+            }, 8000);
+            return () => clearTimeout(timer);
+        }
+    }, [loading]);
 
     const handleSave = async () => {
         if (readonly) return;
