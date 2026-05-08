@@ -23,6 +23,7 @@ import {
     getDifficultyColor,
     getStatusColor
 } from '../../utils/constants';
+import { useMiniReload } from '../../hooks/useMiniReload';
 
 const MemberDashboard = () => {
     const { user, refreshUser } = useAuth();
@@ -111,6 +112,9 @@ const MemberDashboard = () => {
             setLoading(false);
         }
     }, [user?.id]);
+
+    // MINI RELOAD: Listen for global refresh events
+    useMiniReload(() => loadDashboardData(false));
 
     useEffect(() => {
         if (user?.id) {

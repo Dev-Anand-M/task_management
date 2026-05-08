@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import * as db from '../../services/database';
-import { Menu, Bell, Search, User, LogOut, Settings, Clock, Check, ChevronRight, LayoutDashboard, Database, HelpCircle, ArrowRight, ArrowLeft, Sun, Moon, CheckCircle, Award, AlertCircle, Info, X } from 'lucide-react';
+import { Menu, Bell, Search, User, LogOut, Settings, Clock, Check, ChevronRight, LayoutDashboard, Database, HelpCircle, ArrowRight, ArrowLeft, Sun, Moon, CheckCircle, Award, AlertCircle, Info, X, RefreshCw } from 'lucide-react';
 import { Button, SearchBar, Avatar } from '../common';
 
 const Header = ({ onMenuClick, title }) => {
@@ -484,6 +484,20 @@ const Header = ({ onMenuClick, title }) => {
             </div>
           )}
         </div>
+
+        {/* Refresh Button (Mini Reload) */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => {
+            // Dispatch a custom event that pages can listen to for "mini reload"
+            window.dispatchEvent(new CustomEvent('zenith-refresh'));
+          }}
+          style={{ width: '44px', height: '44px', padding: '10px' }}
+          aria-label="Refresh Data"
+        >
+          <RefreshCw size={24} className="hover:rotate-180 transition-all duration-500" />
+        </Button>
 
         <Button 
           variant="ghost" 

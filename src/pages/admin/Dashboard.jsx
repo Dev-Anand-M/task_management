@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { formatRelativeTime, getStatusColor, calculateLevelProgress, calculateLevel } from '../../utils/constants';
+import { useMiniReload } from '../../hooks/useMiniReload';
 
 const AdminDashboard = () => {
     const { user } = useAuth();
@@ -32,6 +33,9 @@ const AdminDashboard = () => {
     useEffect(() => {
         loadDashboardData();
     }, []);
+
+    // MINI RELOAD: Listen for global refresh events
+    useMiniReload(loadDashboardData);
 
     const loadDashboardData = async () => {
         try {

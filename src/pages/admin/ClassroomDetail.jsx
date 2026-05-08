@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { getStatusColor, calculateLevel } from '../../utils/constants';
+import { useMiniReload } from '../../hooks/useMiniReload';
 
 const ClassroomDetail = () => {
     const { user } = useAuth();
@@ -63,6 +64,9 @@ const ClassroomDetail = () => {
     useEffect(() => {
         loadData();
     }, [classroomId]);
+
+    // MINI RELOAD: Listen for global refresh events
+    useMiniReload(loadData);
 
     const loadData = async () => {
         setLoading(true);
