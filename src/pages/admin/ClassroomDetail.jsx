@@ -60,13 +60,7 @@ const ClassroomDetail = () => {
 
     // Selected Student for detailed view
     const [selectedStudent, setSelectedStudent] = useState(null);
-
-    useEffect(() => {
-        loadData();
-    }, [classroomId]);
-
-    // MINI RELOAD: Listen for global refresh events
-    useMiniReload(loadData);
+    const [error, setError] = useState(null);
 
     const loadData = async () => {
         setLoading(true);
@@ -87,7 +81,6 @@ const ClassroomDetail = () => {
             }
 
             // Fetch related data
-            // We catch individual errors to prevent the entire page from breaking if one table is missing
             const results = await Promise.allSettled([
                 db.getMembersByClassroom(classroomId),
                 db.getTasksByClassroom(classroomId),
@@ -114,6 +107,13 @@ const ClassroomDetail = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        loadData();
+    }, [classroomId]);
+
+    // MINI RELOAD: Listen for global refresh events
+    useMiniReload(loadData);
 
     const handlePostAnnouncement = async () => {
         if (!announcementText.trim()) return;

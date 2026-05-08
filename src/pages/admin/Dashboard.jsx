@@ -30,13 +30,6 @@ const AdminDashboard = () => {
     const [teamProgress, setTeamProgress] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        loadDashboardData();
-    }, []);
-
-    // MINI RELOAD: Listen for global refresh events
-    useMiniReload(loadDashboardData);
-
     const loadDashboardData = async () => {
         try {
             setLoading(true);
@@ -93,6 +86,13 @@ const AdminDashboard = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        loadDashboardData();
+    }, []);
+
+    // MINI RELOAD: Listen for global refresh events
+    useMiniReload(loadDashboardData);
 
     const statCards = [
         {
