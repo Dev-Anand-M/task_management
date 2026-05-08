@@ -2947,17 +2947,38 @@ html, body {
 /* Dropdown visibility fixes */
 .header-dropdown {
   position: absolute;
+  top: calc(100% + 12px);
+  right: 0; /* Anchor to right to prevent overflow */
+  width: 320px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
   z-index: 9999;
   display: flex !important;
   flex-direction: column;
   visibility: visible !important;
   opacity: 1 !important;
+  overflow: hidden;
   animation: slideInDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes slideInDown {
   from { transform: translateY(-10px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
+}
+
+/* Visibility Utilities (Vanilla CSS replacement for Tailwind) */
+.hidden { display: none !important; }
+
+@media (max-width: 768px) {
+  .hidden-mobile { display: none !important; }
+  .visible-mobile { display: flex !important; }
+}
+
+@media (min-width: 769px) {
+  .hidden-desktop { display: none !important; }
+  .visible-desktop { display: flex !important; }
 }
 
 /* Mobile Dropdown Fixes */
@@ -2971,7 +2992,7 @@ html, body {
     width: 90% !important;
     height: auto !important;
     max-width: 90% !important;
-    max-height: 60vh !important;
+    max-height: 80vh !important;
     border-radius: 20px !important;
     margin: 0 !important;
     z-index: 10001 !important;

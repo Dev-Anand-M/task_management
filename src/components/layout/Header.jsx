@@ -156,9 +156,9 @@ const Header = ({ onMenuClick, title }) => {
       flexShrink: 0
     }}>
       <div className="flex items-center gap-md" style={{ flex: 1, minWidth: 0 }}>
+        {/* Mobile Menu Button */}
         <button
           onClick={(e) => {
-            console.log('Header: Menu clicked');
             if (onMenuClick) onMenuClick(e);
           }}
           style={{
@@ -173,22 +173,24 @@ const Header = ({ onMenuClick, title }) => {
             borderRadius: 'var(--radius-md)',
             transition: 'background 0.2s'
           }}
-          className="hover:bg-surface active:scale-95 md:hidden"
-          aria-label="Toggle Sidebar"
+          className="hover:bg-surface active:scale-95 visible-mobile hidden-desktop"
+          aria-label="Toggle Sidebar Mobile"
         >
           <Menu size={24} />
         </button>
 
+        {/* Desktop Menu Button */}
         <button
           onClick={onMenuClick}
-          className="hidden md:flex p-2 rounded-xl text-muted hover:text-text hover:bg-surface transition-all"
+          className="hidden-mobile visible-desktop p-2 rounded-xl text-muted hover:text-text hover:bg-surface transition-all"
           style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+          aria-label="Toggle Sidebar Desktop"
         >
           <Menu size={24} />
         </button>
 
         {/* Mobile Exit Button */}
-        <div className="md:hidden">
+        <div className="visible-mobile hidden-desktop">
           <Button
             variant="secondary"
             size="sm"
@@ -223,7 +225,7 @@ const Header = ({ onMenuClick, title }) => {
           </h1>
 
           {!isAdmin && (
-            <div className="header-ticker hidden lg:block" style={{ height: '40px', marginLeft: '1rem' }}>
+            <div className="header-ticker hidden-mobile visible-desktop" style={{ height: '40px', marginLeft: '1rem' }}>
               <div className="ticker-container">
                 <div className="ticker-wrapper">
                   {tickerItems.length > 0 ? (
@@ -271,7 +273,7 @@ const Header = ({ onMenuClick, title }) => {
       `}</style>
 
       <div className="flex items-center gap-sm">
-        <div className="header-search hidden md:block">
+        <div className="header-search hidden-mobile visible-desktop">
           <SearchBar
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
