@@ -11,8 +11,8 @@ const getActiveUser = async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) return session.user;
         
-        // Fallback to getUser with a timeout
-        const { data: { user } } = await withTimeout(supabase.auth.getUser(), 5000);
+        // Fallback to getUser without aggressive timeout
+        const { data: { user } } = await supabase.auth.getUser();
         return user;
     } catch (e) {
         console.error('getActiveUser failed:', e);
@@ -20,8 +20,8 @@ const getActiveUser = async () => {
     }
 };
 
-// GLOBAL QUERY TIMEOUT WRAPPER
-export const withTimeout = async (promise, ms = 10000) => {
+// GLOBAL QUERY TIMEOUT WRAPPER (increased for reliability)
+export const withTimeout = async (promise, ms = 30000) => {
     const timeout = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('DATABASE_TIMEOUT')), ms)
     );

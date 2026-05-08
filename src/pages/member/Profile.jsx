@@ -35,11 +35,7 @@ const Profile = ({ userId = null, readonly = false }) => {
 
     const loadProfileData = useCallback(async () => {
         if (!targetUserId) {
-            // If we don't have a target ID yet, don't just hang in loading
-            // Wait a bit then stop loading if still no ID
-            setTimeout(() => {
-                if (!targetUserId) setLoading(false);
-            }, 3000);
+            setLoading(false);
             return;
         }
         setLoading(true);

@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
+    const lastFetchRef = useRef(0);
 
     useEffect(() => {
         let mounted = true;
@@ -32,34 +33,16 @@ export const AuthProvider = ({ children }) => {
 
         const initializeAuth = async () => {
             try {
+                // Non-blocking session check
                 const { data: { session } } = await supabase.auth.getSession();
-
                 if (session?.user && mounted) {
                     setUser(session.user);
-                    // Don't wait for profile to set loading to false if we have a session
-                    // But wrap in a timeout to prevent hanging
-                    const fetchWithTimeout = async () => {
-                        try {
-                            const { withTimeout } = await import('../services/database');
-                            await withTimeout(fetchProfile(session.user.id), 8000);
-                        } catch (e) {
-                            console.warn('Initial profile fetch timed out or failed:', e);
-                        } finally {
-                            if (mounted) setLoading(false);
-                            authInitialized = true;
-                            clearTimeout(timeoutId);
-                        }
-                    };
-                    fetchWithTimeout();
-                } else {
-                    authInitialized = true;
-                    if (mounted) setLoading(false);
-                    clearTimeout(timeoutId);
+                    fetchProfile(session.user.id);
                 }
             } catch (error) {
-                console.error('Auth initialization error:', error);
+                console.error('Auth init error:', error);
+            } finally {
                 if (mounted) setLoading(false);
-                clearTimeout(timeoutId);
             }
         };
 
@@ -68,62 +51,28 @@ export const AuthProvider = ({ children }) => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
                 if (!mounted) return;
+                console.log('Auth state change:', event);
 
                 if (session?.user) {
                     setUser(session.user);
-                    await fetchProfile(session.user.id);
+                    fetchProfile(session.user.id);
                 } else {
                     setUser(null);
                     setProfile(null);
                 }
-
-                if (authInitialized || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-                    setLoading(false);
-                    clearTimeout(timeoutId);
-                }
+                setLoading(false);
             }
         );
 
-        // Visibility Change listener to fix "stuck session" on mobile tab switching
-        const handleVisibilityChange = async () => {
+        // Simple visibility check - just refresh session in background, don't block UI
+        const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
-                console.log('Tab became visible, checking session state...');
-                
-                // SAFETY: If we are stuck in a loading state, force release it after 1.5 seconds of being visible
-                // This prevents the "infinite loading" issue reported by the user
-                const stuckTimeout = setTimeout(() => {
-                    setLoading(prev => {
-                        if (prev) {
-                            console.warn('Recovering from stuck loading state on visibility change (forced)');
-                            return false;
-                        }
-                        return prev;
-                    });
-                }, 1500);
-
-                try {
-                    const { withTimeout } = await import('../services/database');
-                    const { data: { session }, error } = await withTimeout(supabase.auth.getSession(), 5000);
-                    
-                    if (error) {
-                        console.error('Visibility check session error:', error);
-                        setLoading(false);
-                    } else if (session?.user) {
-                        console.log('Session verified on visibility change');
+                supabase.auth.getSession().then(({ data: { session } }) => {
+                    if (session?.user && mounted) {
                         setUser(session.user);
-                        // Use a non-blocking timeout for profile fetch to avoid reactivity locks
-                        withTimeout(fetchProfile(session.user.id), 8000).catch(e => console.warn('Visibility profile fetch failed:', e));
-                        setLoading(false);
-                    } else {
-                        // No session, but we should still stop loading
-                        setLoading(false);
+                        fetchProfile(session.user.id);
                     }
-                } catch (e) {
-                    console.error('Visibility check unexpected error:', e);
-                    setLoading(false);
-                } finally {
-                    clearTimeout(stuckTimeout);
-                }
+                }).catch(() => {});
             }
         };
 
@@ -132,7 +81,6 @@ export const AuthProvider = ({ children }) => {
         return () => {
             mounted = false;
             subscription?.unsubscribe();
-            clearTimeout(timeoutId);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, []);
@@ -148,8 +96,17 @@ export const AuthProvider = ({ children }) => {
         }
     }, [loading]);
 
-    const fetchProfile = async (userId) => {
+    const fetchProfile = async (userId, force = false) => {
         if (!userId) return;
+        
+        // Throttling: Skip if fetched in the last 30 seconds, unless forced
+        const now = Date.now();
+        if (!force && profile && profile.id === userId && (now - lastFetchRef.current < 30000)) {
+            console.log('Skipping redundant profile fetch (throttled)');
+            return;
+        }
+        
+        lastFetchRef.current = now;
         try {
             // Optimistic profile from metadata if we don't have one yet
             if (user && !profile) {
