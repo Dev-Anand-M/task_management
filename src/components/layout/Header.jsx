@@ -4,10 +4,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import * as db from '../../services/database';
-import { Menu, Bell, Search, User, LogOut, Settings, Clock, Check, ChevronRight, LayoutDashboard, Database, HelpCircle, LogOut as SignOut, ArrowLeft, Sun, Moon, CheckCircle, Award, AlertCircle, Info, X } from 'lucide-react';
+import { Menu, Bell, Search, User, LogOut, Settings, Clock, Check, ChevronRight, LayoutDashboard, Database, HelpCircle, ArrowRight, ArrowLeft, Sun, Moon, CheckCircle, Award, AlertCircle, Info, X } from 'lucide-react';
 import { Button, SearchBar, Avatar } from '../common';
 
-const Header = ({ onMenuClick, title, onToggleSidebar }) => {
+const Header = ({ onMenuClick, title }) => {
   const { isDark, toggleTheme } = useTheme();
   const { user, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
@@ -26,8 +26,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
       const count = await db.getUnreadNotificationCount(user.id);
       setUnreadCount(count || 0);
 
-      // Only fetch full list if we need a preview, but to keep it simple locally
-      // we can fetch the top 5 for dropdown preview
       const recent = await db.getNotifications(user.id);
       setNotifications(recent.slice(0, 5));
     } catch (err) {
@@ -42,7 +40,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
       loadNotificationData();
       if (!isAdmin) loadTickerData();
       
-      // GOD COMMAND: REALTIME UPDATES
       const channel = supabase
           .channel(`header-updates-${user.id}`)
           .on('postgres_changes', { 
@@ -72,11 +69,7 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
       ]);
 
       const now = new Date();
-
-      // Filter tasks assigned to user
       const myTasks = tasks.filter(t => !t.assigned_to || t.assigned_to.length === 0 || t.assigned_to.includes(user.id));
-
-      // Filter for actionable tasks (No submission or Rejected status)
       const actionItems = myTasks.filter(task => {
         const sub = submissions.find(s => s.task_id === task.id);
         if (!sub) return true;
@@ -84,11 +77,7 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
       });
 
       const pendingTasksCount = actionItems.length;
-
-      // Pending Quizzes
       const pendingQuizzesCount = quizzes.filter(q => !attempts.some(a => a.quiz_id === q.id)).length;
-
-      // Count deadlines only for these actionable items
       const upcomingDeadlines = actionItems.filter(t => {
         if (!t.deadline) return false;
         const d = new Date(t.deadline);
@@ -111,7 +100,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
     toggleTheme();
   };
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notifRef.current && !notifRef.current.contains(event.target)) {
@@ -128,7 +116,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
   const markAsRead = async (id) => {
     try {
       await db.markNotificationRead(id);
-      // Update local state
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
@@ -168,70 +155,96 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
       zIndex: 1000,
       flexShrink: 0
     }}>
-        <div className="flex items-center gap-md" style={{ flex: 1, minWidth: 0 }}>
-          <button
-            onClick={onToggleSidebar}
-            className="header-icon-btn p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all"
-            aria-label="Toggle Sidebar"
+      <div className="flex items-center gap-md" style={{ flex: 1, minWidth: 0 }}>
+        <button
+          onClick={(e) => {
+            console.log('Header: Menu clicked');
+            if (onMenuClick) onMenuClick(e);
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '8px',
+            cursor: 'pointer',
+            color: 'var(--text)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 'var(--radius-md)',
+            transition: 'background 0.2s'
+          }}
+          className="hover:bg-surface active:scale-95 md:hidden"
+          aria-label="Toggle Sidebar"
+        >
+          <Menu size={24} />
+        </button>
+
+        <button
+          onClick={onMenuClick}
+          className="hidden md:flex p-2 rounded-xl text-muted hover:text-text hover:bg-surface transition-all"
+          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+        >
+          <Menu size={24} />
+        </button>
+
+        {/* Mobile Exit Button */}
+        <div className="md:hidden">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => navigate(isAdmin ? '/admin' : '/dashboard')}
+            style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              color: '#ef4444',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              fontWeight: 700,
+              fontSize: '11px',
+              padding: '4px 10px',
+              borderRadius: '8px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
           >
-            <Menu size={24} />
-          </button>
+            <ArrowLeft size={12} />
+            Exit
+          </Button>
+        </div>
 
-          {/* Mobile Exit Button */}
-          <div className="mobile-only">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => navigate('/dashboard')}
-              style={{
-                background: 'rgba(239, 68, 68, 0.1)',
-                color: '#ef4444',
-                border: '1px solid rgba(239, 68, 68, 0.2)',
-                fontWeight: 700,
-                fontSize: '11px',
-                padding: '4px 10px',
-                borderRadius: '8px',
-                height: '32px'
-              }}
-            >
-              <ArrowLeft size={12} style={{ marginRight: '4px' }} />
-              Exit
-            </Button>
-          </div>
+        <div className="flex items-center gap-sm">
+          <h1 style={{
+            fontSize: 'var(--text-xl)',
+            fontWeight: 600,
+            margin: 0,
+            whiteSpace: 'nowrap'
+          }}>
+            {title}
+          </h1>
 
-          <div className="flex items-center gap-sm">
-            <h1 style={{
-              fontSize: 'var(--text-xl)',
-              fontWeight: 600,
-              margin: 0,
-              whiteSpace: 'nowrap'
-            }}>
-              {title}
-            </h1>
-
-            {!isAdmin && (
-              <div className="header-ticker hidden lg:block" style={{ height: '40px', marginLeft: '1rem' }}>
-                <div className="ticker-container">
-                  <div className="ticker-wrapper">
-                    {tickerItems.length > 0 ? (
-                      tickerItems.map((item, i) => (
-                        <span key={i} className="ticker-item text-sm text-muted font-medium flex items-center gap-xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
-                          {item}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="ticker-item text-sm text-muted font-medium flex items-center gap-xs">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                        You completed everything! 🎉
+          {!isAdmin && (
+            <div className="header-ticker hidden lg:block" style={{ height: '40px', marginLeft: '1rem' }}>
+              <div className="ticker-container">
+                <div className="ticker-wrapper">
+                  {tickerItems.length > 0 ? (
+                    tickerItems.map((item, i) => (
+                      <span key={i} className="ticker-item text-sm text-muted font-medium flex items-center gap-xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
+                        {item}
                       </span>
-                    )}
-                  </div>
+                    ))
+                  ) : (
+                    <span className="ticker-item text-sm text-muted font-medium flex items-center gap-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                      You completed everything! 🎉
+                    </span>
+                  )}
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
+      </div>
 
       <style>{`
         .ticker-container {
@@ -258,7 +271,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
       `}</style>
 
       <div className="flex items-center gap-sm">
-        {/* Global Search */}
         <div className="header-search hidden md:block">
           <SearchBar
             value={searchQuery}
@@ -267,7 +279,7 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
             className="w-64"
             isAdmin={isAdmin}
           />
-        </div>        {/* Notifications */}
+        </div>
         <div ref={notifRef} style={{ position: 'relative', zIndex: 10000 }}>
           <Button 
             variant="ghost" 
@@ -309,7 +321,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
             )}
           </Button>
           
-          {/* Mobile Backdrop */}
           {showNotifications && (
             <div 
               className="mobile-backdrop"
@@ -317,16 +328,12 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
             />
           )}
 
-          {/* Notifications Dropdown */}
           {showNotifications && (
             <div 
               className="header-dropdown notification-dropdown animate-scale-in"
               style={{ zIndex: 10001 }}
             >
-              {/* Mobile Drag Handle */}
               <div className="mobile-handle md:hidden" />
-
-              {/* Header */}
               <div style={{
                 padding: 'var(--space-md) var(--space-lg)',
                 borderBottom: '1px solid var(--border)',
@@ -350,7 +357,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    transition: 'all 0.2s',
                     width: '36px',
                     height: '36px'
                   }}
@@ -360,7 +366,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
                 </button>
               </div>
 
-              {/* Notifications List */}
               <div style={{ 
                 flex: 1,
                 overflowY: 'auto',
@@ -381,7 +386,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
                         e.stopPropagation();
                         if (!notif.is_read) markAsRead(notif.id);
                         if (notif.link) {
-                          // Force page refresh for dashboard links to ensure state updates
                           if (notif.link.includes('/dashboard')) {
                             window.location.href = notif.link;
                           } else {
@@ -417,32 +421,11 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
                         {getNotificationIcon(notif.type)}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{
-                          margin: 0,
-                          fontWeight: 700,
-                          fontSize: 'var(--text-sm)',
-                          color: 'var(--text)'
-                        }}>
-                          {notif.title}
-                        </p>
-                        <p style={{
-                          margin: '2px 0 0',
-                          fontSize: 'var(--text-xs)',
-                          color: 'var(--text-muted)',
-                          lineHeight: 1.4
-                        }}>
-                          {notif.message}
-                        </p>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          marginTop: '6px'
-                        }}>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text)' }}>{notif.title}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', lineHeight: 1.4 }}>{notif.message}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
                           <Clock size={12} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
-                          <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                            {formatTime(notif.created_at)}
-                          </span>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>{formatTime(notif.created_at)}</span>
                         </div>
                       </div>
                       {!notif.is_read && (
@@ -461,7 +444,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
                 )}
               </div>
 
-              {/* Footer */}
               <div style={{
                 padding: 'var(--space-md) var(--space-lg)',
                 borderTop: '1px solid var(--border)',
@@ -501,21 +483,15 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
           )}
         </div>
 
-        {/* Theme Toggle */}
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={handleThemeToggle}
-          style={{ 
-            width: '44px',
-            height: '44px',
-            padding: '10px'
-          }}
+          style={{ width: '44px', height: '44px', padding: '10px' }}
         >
           {isDark ? <Sun size={28} /> : <Moon size={28} />}
         </Button>
 
-        {/* Profile Dropdown */}
         <div ref={profileRef} style={{ position: 'relative', zIndex: 10000 }}>
           <button
             onClick={(e) => {
@@ -535,7 +511,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
             <Avatar name={user?.name} image={user?.avatar_url} size="md" />
           </button>
           
-          {/* Mobile Backdrop */}
           {showProfileMenu && (
             <div 
               className="mobile-backdrop"
@@ -548,10 +523,7 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
               className="header-dropdown profile-dropdown animate-scale-in"
               style={{ zIndex: 10001 }}
             >
-              {/* Mobile Drag Handle */}
               <div className="mobile-handle md:hidden" />
-
-              {/* User Info Header */}
               <div style={{
                 padding: 'var(--space-lg) var(--space-md)',
                 borderBottom: '1px solid var(--border)',
@@ -563,7 +535,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
                 position: 'relative',
                 flexShrink: 0
               }}>
-                {/* Mobile Close Button */}
                 <button
                   onClick={() => setShowProfileMenu(false)}
                   style={{
@@ -606,7 +577,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
                 </div>
               </div>
 
-              {/* Menu Items */}
               <div style={{ padding: 'var(--space-sm)', background: 'var(--card)', flex: 1, overflowY: 'auto' }}>
                 <button
                   onClick={() => {
@@ -703,7 +673,7 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
                     fontWeight: 600,
                     textAlign: 'left'
                   }}
-                  className="hover:bg-error-500/10"
+                  className="hover:bg-error-50/10"
                 >
                   <LogOut size={18} /> Sign Out
                 </button>
@@ -712,94 +682,6 @@ const Header = ({ onMenuClick, title, onToggleSidebar }) => {
           )}
         </div>
       </div>
-      <style>{`
-        /* Premium Mobile Dropdowns */
-        @media (max-width: 768px) {
-          .mobile-backdrop {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            background: rgba(0,0,0,0.6) !important;
-            backdrop-filter: blur(8px) !important;
-            z-index: 10000 !important;
-          }
-
-          .header-dropdown {
-            position: fixed !important;
-            top: auto !important;
-            bottom: 20px !important;
-            left: 5% !important;
-            right: 5% !important;
-            width: 90% !important;
-            max-width: 90% !important;
-            border-radius: 20px !important;
-            min-height: auto !important;
-            max-height: 60vh !important;
-            transform: none !important;
-            animation: slide-up-mobile 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
-            border: 1px solid var(--border) !important;
-            z-index: 10005 !important;
-            display: flex !important;
-            flex-direction: column !important;
-            overflow: hidden !important;
-            background: var(--card) !important;
-            color: var(--text) !important;
-          }
-          
-          .notification-dropdown {
-            height: 60vh !important;
-          }
-          
-          .profile-dropdown {
-            height: auto !important;
-            padding-bottom: env(safe-area-inset-bottom, 20px);
-          }
-          
-          .mobile-handle {
-            display: block !important;
-            width: 36px;
-            height: 4px;
-            background: var(--border);
-            border-radius: 2px;
-            margin: 10px auto 2px;
-            opacity: 0.4;
-          }
-        }
-        
-        /* Desktop Positioning */
-        @media (min-width: 769px) {
-          .header-dropdown {
-            position: absolute;
-            top: calc(100% + 12px);
-            right: 0;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            box-shadow: var(--shadow-xl);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            transform-origin: top right;
-            max-width: calc(100vw - 32px);
-          }
-          .notification-dropdown { width: 380px; min-height: 200px; max-height: 500px; }
-          .profile-dropdown { width: 260px; min-height: 100px; }
-          .mobile-handle { display: none !important; }
-        }
-
-        @keyframes slide-up-mobile {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
-        }
-        
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
     </header>
   );
 };
