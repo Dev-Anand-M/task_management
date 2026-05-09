@@ -625,10 +625,16 @@ const Register = () => {
                         height: 100vh;
                         padding: var(--space-md); /* Very reduced padding */
                         background: #1c1917;
-                        overflow: hidden;
+                        overflow: hidden !important; /* Force hide overflow */
                         display: flex;
                         align-items: center;
                         justify-content: center;
+                        scrollbar-width: none; /* Firefox */
+                        -ms-overflow-style: none; /* IE/Edge */
+                    }
+                    
+                    .auth-right::-webkit-scrollbar {
+                        display: none; /* Chrome/Safari/Webkit */
                     }
 
                     .auth-form-container {
