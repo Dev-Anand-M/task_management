@@ -62,6 +62,17 @@ const saveTokenToDatabase = async (userId, token) => {
       .single();
 
     const prefs = profile?.preferences || {};
+    
+    // Store multiple tokens for multi-device support
+    if (!prefs.fcm_tokens) {
+      prefs.fcm_tokens = [];
+    }
+    
+    if (!prefs.fcm_tokens.includes(token)) {
+      prefs.fcm_tokens.push(token);
+    }
+    
+    // Backward compatibility
     prefs.fcm_token = token;
 
     await supabase

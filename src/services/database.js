@@ -690,14 +690,19 @@ export const createNotification = async (notification) => {
             .eq('id', notification.user_id)
             .single();
             
-        const token = profile?.preferences?.fcm_token;
-        if (token) {
-            console.log('[Push] Triggering push for user:', notification.user_id);
+        const prefs = profile?.preferences || {};
+        const tokens = [
+            ...(prefs.fcm_tokens || []),
+            prefs.fcm_token
+        ].filter(t => !!t);
+
+        if (tokens.length > 0) {
+            console.log(`[Push] Triggering push to ${tokens.length} devices for user:`, notification.user_id);
             fetch(`${window.location.origin}/api/push`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    tokens: [token],
+                    tokens: tokens,
                     title: notification.title,
                     body: notification.message,
                     link: notification.link,
@@ -707,7 +712,7 @@ export const createNotification = async (notification) => {
                 if (!res.success) console.warn('[Push] API returned error:', res.error);
             }).catch(e => console.warn('[Push] Fetch error:', e));
         } else {
-            console.log('[Push] No token found for user:', notification.user_id);
+            console.log('[Push] No tokens found for user:', notification.user_id);
         }
     } catch (e) {
         console.warn('[Push] Logic error:', e);
@@ -740,11 +745,16 @@ export const notifyClassroom = async (classroomId, notification) => {
     if (error) console.error('Error sending classroom notifications:', error);
 
     // 4. Trigger Push
-    const tokens = students
-        .map(s => s.preferences?.fcm_token)
-        .filter(t => !!t);
+    const tokens = students.reduce((acc, s) => {
+        const prefs = s.preferences || {};
+        const sTokens = [
+            ...(prefs.fcm_tokens || []),
+            prefs.fcm_token
+        ].filter(t => !!t);
+        return [...acc, ...sTokens];
+    }, []);
 
-    console.log(`[Push] Triggering classroom push to ${tokens.length} tokens.`);
+    console.log(`[Push] Triggering classroom push to ${tokens.length} devices.`);
 
     if (tokens.length > 0) {
         fetch(`${window.location.origin}/api/push`, {
@@ -789,11 +799,16 @@ export const notifyAdmins = async (classroomId, notification) => {
     if (error) console.error('Error notifying admins:', error);
 
     // 4. Trigger Push
-    const tokens = admins
-        .map(a => a.preferences?.fcm_token)
-        .filter(t => !!t);
+    const tokens = admins.reduce((acc, a) => {
+        const prefs = a.preferences || {};
+        const aTokens = [
+            ...(prefs.fcm_tokens || []),
+            prefs.fcm_token
+        ].filter(t => !!t);
+        return [...acc, ...aTokens];
+    }, []);
 
-    console.log(`[Push] Triggering admin push to ${tokens.length} admins.`);
+    console.log(`[Push] Triggering admin push to ${tokens.length} devices.`);
 
     if (tokens.length > 0) {
         fetch(`${window.location.origin}/api/push`, {
