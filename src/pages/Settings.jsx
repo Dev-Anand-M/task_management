@@ -638,10 +638,22 @@ const Settings = () => {
                                         console.log("[TestPush] API Response:", data);
                                         
                                         if (data.success) {
-                                            if (data.results?.failureCount > 0) {
-                                                alert("FCM partially failed. Details: " + JSON.stringify(data.details || data.results));
+                                            // Auto-cleanup failed tokens if any
+                                            if (data.failedTokens && data.failedTokens.length > 0) {
+                                                console.log("[TestPush] Cleaning up failed tokens:", data.failedTokens);
+                                                const { data: profile } = await supabase.from('profiles').select('preferences').eq('id', user.id).single();
+                                                if (profile?.preferences?.fcm_tokens) {
+                                                    const updatedTokens = profile.preferences.fcm_tokens.filter(t => !data.failedTokens.includes(t));
+                                                    await supabase.from('profiles').update({ 
+                                                        preferences: { ...profile.preferences, fcm_tokens: updatedTokens } 
+                                                    }).eq('id', user.id);
+                                                }
+                                            }
+
+                                            if (data.results?.successCount > 0 || (tokens.length === 1 && !data.results?.failureCount)) {
+                                                alert("✅ Success! " + data.summary);
                                             } else {
-                                                alert("Test notification sent successfully! Check your phone/PC.");
+                                                alert("❌ Failed! " + data.summary + "\n\nDetails: " + JSON.stringify(data.details));
                                             }
                                         } else {
                                             alert("Error from API: " + JSON.stringify(data));

@@ -75,19 +75,25 @@ export default async function handler(req, res) {
                     failedTokens.push(tokens[idx]);
                 }
             });
+        } else if (tokens.length === 1 && !results.success) {
+            // Check if it's a registration error
+             if (results.error?.code === 'messaging/registration-token-not-registered') {
+                 failedTokens.push(tokens[0]);
+             }
         }
 
         return res.status(200).json({ 
             success: true, 
             results: results,
             failedTokens: failedTokens,
+            summary: `Sent to ${results.successCount || (tokens.length === 1 ? 1 : 0)} devices. Failed for ${results.failureCount || (tokens.length === 1 && !results.success ? 1 : 0)} devices.`,
             details: results.responses ? results.responses.map(r => ({
                 success: r.success,
                 error: r.error ? {
                     code: r.error.code,
                     message: r.error.message
                 } : null
-            })) : null
+            })) : (tokens.length === 1 ? [{ success: true }] : [])
         });
     } catch (error) {
         console.error('Push Error:', error);
