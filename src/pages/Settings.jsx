@@ -74,8 +74,7 @@ const Settings = () => {
     const { isDark, toggleTheme, colorScheme, setColorScheme } = useTheme();
     const { user, forceRefresh } = useAuth();
     const [notifications, setNotifications] = useState({
-        email: true,
-        push: true,
+        push: false,
         taskReminders: true,
         quizResults: true
     });
@@ -172,10 +171,12 @@ const Settings = () => {
 
     // Initial load from profile
     useEffect(() => {
-        if (user?.preferences?.notifications) {
+        if (user) {
+            const hasToken = !!user.preferences?.fcm_token;
             setNotifications(prev => ({
                 ...prev,
-                ...user.preferences.notifications
+                ...(user.preferences?.notifications || {}),
+                push: hasToken // Override push state based on token existence
             }));
         }
     }, [user]);
@@ -491,8 +492,7 @@ const Settings = () => {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
                         {[
-                            { key: 'email', label: 'Email Notifications', desc: 'Receive updates via email' },
-                            { key: 'push', label: 'Push Notifications', desc: 'Browser push notifications' },
+                            { key: 'push', label: 'Push Notifications', desc: 'Native device/browser notifications' },
                             { key: 'taskReminders', label: 'Task Reminders', desc: 'Get reminded about pending tasks' },
                             { key: 'quizResults', label: 'Quiz Results', desc: 'Notify when quiz is evaluated' }
                         ].map((item) => (
@@ -518,7 +518,32 @@ const Settings = () => {
                                     <input
                                         type="checkbox"
                                         checked={notifications[item.key]}
-                                        onChange={(e) => handleNotificationChange(item.key, e.target.checked)}
+                                        onChange={async (e) => {
+                                            const isChecked = e.target.checked;
+                                            
+                                            if (item.key === 'push') {
+                                                try {
+                                                    const { requestNotificationPermission, clearTokenFromDatabase } = await import('../lib/firebase');
+                                                    if (isChecked) {
+                                                        const success = await requestNotificationPermission(user.id);
+                                                        if (success) {
+                                                            setNotifications(prev => ({ ...prev, push: true }));
+                                                            forceRefresh(); // Update local profile state
+                                                        } else {
+                                                            alert("Could not enable push notifications. Check browser permissions.");
+                                                        }
+                                                    } else {
+                                                        await clearTokenFromDatabase(user.id);
+                                                        setNotifications(prev => ({ ...prev, push: false }));
+                                                        forceRefresh();
+                                                    }
+                                                } catch (err) {
+                                                    console.error("Push toggle error:", err);
+                                                }
+                                            } else {
+                                                handleNotificationChange(item.key, isChecked);
+                                            }
+                                        }}
                                         style={{ opacity: 0, width: 0, height: 0 }}
                                     />
                                     <span style={{
@@ -549,36 +574,7 @@ const Settings = () => {
                         ))}
                     </div>
 
-                    <div style={{ marginTop: 'var(--space-lg)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div>
-                                <h4 style={{ margin: 0, fontWeight: 600 }}>Push Notifications</h4>
-                                <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                                    Enable native push notifications for your mobile device or browser.
-                                </p>
-                            </div>
-                            <Button 
-                                variant="secondary" 
-                                size="sm"
-                                onClick={async () => {
-                                    try {
-                                        const { requestNotificationPermission } = await import('../lib/firebase');
-                                        const success = await requestNotificationPermission(user.id);
-                                        if (success) {
-                                            alert("Push notifications enabled successfully!");
-                                        } else {
-                                            alert("Failed to enable push notifications. Check your browser permissions or Firebase configuration.");
-                                        }
-                                    } catch (e) {
-                                        console.error(e);
-                                        alert("An error occurred. Check the console.");
-                                    }
-                                }}
-                            >
-                                Setup Device
-                            </Button>
-                        </div>
-                    </div>
+
 
                     {saving && <p style={{
                         marginTop: 'var(--space-md)',

@@ -112,6 +112,16 @@ export const AuthProvider = ({ children }) => {
                     setUser(session.user);
                     if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
                         fetchProfileRef.current(session.user.id, true);
+                        
+                        // Automatically request notification permission on login
+                        setTimeout(async () => {
+                            try {
+                                const { requestNotificationPermission } = await import('../lib/firebase');
+                                await requestNotificationPermission(session.user.id);
+                            } catch (e) {
+                                console.warn("Notification registration failed:", e);
+                            }
+                        }, 2000); // Small delay to ensure everything is loaded
                     }
                 }
 
