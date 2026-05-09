@@ -125,7 +125,14 @@ const Register = () => {
 
             {/* Right Side - Register Form */}
             <div className="auth-right">
-                <div className="auth-form-container">
+                {/* Liquid Background */}
+                <div className="liquid-bg">
+                    <div className="liquid-wave liquid-wave-1"></div>
+                    <div className="liquid-wave liquid-wave-2"></div>
+                    <div className="liquid-wave liquid-wave-3"></div>
+                </div>
+
+                <div className="auth-form-container" style={{ position: 'relative', zIndex: 10 }}>
                     {/* Mobile Logo */}
                     <div className="mobile-logo">
                         <div className="mobile-logo-icon">
@@ -546,10 +553,66 @@ const Register = () => {
                     }
                 }
 
+                /* Liquid Wave Animation */
+                .liquid-bg {
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    overflow: hidden;
+                    z-index: 0;
+                    pointer-events: none;
+                }
+
+                .liquid-wave {
+                    position: absolute;
+                    width: 250vw;
+                    height: 250vw;
+                    bottom: -230vw;
+                    left: -75vw;
+                    border-radius: 40%;
+                    animation: liquid-spin 10s linear infinite;
+                    opacity: 0.8;
+                }
+
+                @media (min-width: 1025px) {
+                    .liquid-wave {
+                        width: 150vh;
+                        height: 150vh;
+                        bottom: -130vh;
+                        left: -25vh;
+                    }
+                }
+
+                .liquid-wave-1 {
+                    background: rgba(244, 63, 94, 0.15); /* Red liquid */
+                    border-radius: 42%;
+                }
+
+                .liquid-wave-2 {
+                    background: rgba(244, 63, 94, 0.1);
+                    border-radius: 38%;
+                    animation: liquid-spin 15s linear infinite reverse;
+                }
+
+                .liquid-wave-3 {
+                    background: rgba(244, 63, 94, 0.05);
+                    border-radius: 45%;
+                    animation: liquid-spin 12s linear infinite;
+                }
+
+                @keyframes liquid-spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+
                 /* Responsive */
                 @media (max-width: 1024px) {
                     .auth-page {
                         flex-direction: column;
+                        overflow: hidden;
+                        height: 100vh;
                     }
 
                     .auth-left {
@@ -561,13 +624,18 @@ const Register = () => {
                         width: 100%;
                         height: 100vh;
                         padding: var(--space-xl);
-                        background: #1c1917; /* Solid background on mobile */
+                        background: #1c1917;
+                        overflow: hidden;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
                     }
 
                     .auth-form-container {
                         width: 100%;
                         max-width: 420px;
                         margin: 0 auto;
+                        transform: translateY(-20px); /* Adjust to fit better without scroll */
                     }
 
                     .mobile-logo {
