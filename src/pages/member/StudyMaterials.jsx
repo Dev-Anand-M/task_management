@@ -34,7 +34,7 @@ const StudyMaterials = () => {
     const [editingNote, setEditingNote] = useState(null);
     const [viewingItem, setViewingItem] = useState(null);
     const [saving, setSaving] = useState(false);
-    const [noteForm, setNoteForm] = useState({ title: '', content: '', category: 'General', color: null });
+    const [noteForm, setNoteForm] = useState({ title: '', content: '', category: 'General', color: null, material_type: 'text', file: null, url: '' });
 
     const loadData = useCallback(async (silent = false) => {
         if (!user?.id) return;
@@ -73,17 +73,37 @@ const StudyMaterials = () => {
     // Note CRUD
     const handleSaveNote = async (e) => {
         e.preventDefault();
-        if (!noteForm.title || !noteForm.content) return;
+        if (!noteForm.title) return;
+        if (noteForm.material_type === 'text' && !noteForm.content) return;
+        if (noteForm.material_type === 'link' && !noteForm.url) return;
+        if (noteForm.material_type === 'file' && !noteForm.file && !editingNote?.file_url) return;
+
         setSaving(true);
         try {
+            let file_url = noteForm.url;
+            if (noteForm.material_type === 'file' && noteForm.file) {
+                file_url = await db.uploadStudyMaterial(noteForm.file);
+            } else if (editingNote && noteForm.material_type === editingNote.material_type && !noteForm.file) {
+                file_url = noteForm.url || editingNote.file_url;
+            }
+
+            const payload = {
+                title: noteForm.title,
+                content: noteForm.content || 'Attached Note',
+                category: noteForm.category,
+                color: noteForm.color,
+                material_type: noteForm.material_type,
+                file_url: file_url
+            };
+
             if (editingNote) {
-                await db.updateStudyNote(editingNote.id, noteForm);
+                await db.updateStudyNote(editingNote.id, payload);
             } else {
-                await db.addStudyNote(noteForm);
+                await db.addStudyNote(payload);
             }
             setShowAddModal(false);
             setEditingNote(null);
-            setNoteForm({ title: '', content: '', category: 'General', color: null });
+            setNoteForm({ title: '', content: '', category: 'General', color: null, material_type: 'text', file: null, url: '' });
             loadData(true);
         } catch (err) {
             console.error('Save note error:', err);
@@ -110,7 +130,7 @@ const StudyMaterials = () => {
 
     const openEdit = (note) => {
         setEditingNote(note);
-        setNoteForm({ title: note.title, content: note.content, category: note.category, color: note.color });
+        setNoteForm({ title: note.title, content: note.content, category: note.category, color: note.color, material_type: note.material_type || 'text', file: null, url: note.file_url || '' });
         setShowAddModal(true);
     };
 
@@ -347,9 +367,27 @@ const StudyMaterials = () => {
                             <Badge variant="accent">{viewingItem.subject || viewingItem.category || 'General'}</Badge>
                             {viewingItem.color && <div style={{ width: 12, height: 12, borderRadius: '50%', background: viewingItem.color }} />}
                         </div>
-                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, color: 'var(--text)', fontSize: 'var(--text-sm)', maxHeight: '60vh', overflowY: 'auto', padding: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)' }}>
-                            {viewingItem.content}
-                        </div>
+                        {viewingItem.file_url && viewingItem.material_type === 'file' ? (
+                            <div style={{ marginTop: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                                {viewingItem.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                    <img src={viewingItem.file_url} alt="Attached Material" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', display: 'block' }} />
+                                ) : (
+                                    <iframe src={viewingItem.file_url} width="100%" height="600px" style={{ border: 'none', display: 'block' }} title="Attached Document" />
+                                )}
+                            </div>
+                        ) : viewingItem.file_url && viewingItem.material_type === 'link' ? (
+                            <div style={{ marginTop: 'var(--space-md)' }}>
+                                <a href={viewingItem.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+                                    <ExternalLink size={16} /> Open External Link
+                                </a>
+                            </div>
+                        ) : null}
+
+                        {viewingItem.content && viewingItem.content !== 'Attached Material' && viewingItem.content !== 'Attached Note' && (
+                            <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, color: 'var(--text)', fontSize: 'var(--text-sm)', maxHeight: '60vh', overflowY: 'auto', padding: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', marginTop: 'var(--space-md)' }}>
+                                {viewingItem.content}
+                            </div>
+                        )}
                         {viewingItem.tags?.length > 0 && (
                             <div className="flex flex-wrap gap-xs mt-md">
                                 {viewingItem.tags.map((tag, i) => <Badge key={i} variant="outline" size="xs">#{tag}</Badge>)}
@@ -366,6 +404,19 @@ const StudyMaterials = () => {
             {/* Add/Edit Note Modal */}
             <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); setEditingNote(null); }} title={editingNote ? 'Edit Note' : 'New Study Note'}>
                 <form onSubmit={handleSaveNote} className="flex flex-col gap-md">
+                    {/* Material Type Selector */}
+                    <div style={{ display: 'flex', gap: '8px', background: 'var(--surface)', padding: '4px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
+                        <button type="button" onClick={() => setNoteForm({ ...noteForm, material_type: 'file' })} style={{ flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: noteForm.material_type === 'file' ? 'var(--primary-500)' : 'transparent', color: noteForm.material_type === 'file' ? 'white' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <File size={16} /> File
+                        </button>
+                        <button type="button" onClick={() => setNoteForm({ ...noteForm, material_type: 'link' })} style={{ flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: noteForm.material_type === 'link' ? 'var(--primary-500)' : 'transparent', color: noteForm.material_type === 'link' ? 'white' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <LinkIcon size={16} /> Link
+                        </button>
+                        <button type="button" onClick={() => setNoteForm({ ...noteForm, material_type: 'text' })} style={{ flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: noteForm.material_type === 'text' ? 'var(--primary-500)' : 'transparent', color: noteForm.material_type === 'text' ? 'white' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <FileText size={16} /> Text
+                        </button>
+                    </div>
+
                     <div>
                         <label className="label">Title</label>
                         <Input placeholder="e.g. React Hooks Summary" value={noteForm.title} onChange={(e) => setNoteForm({ ...noteForm, title: e.target.value })} required />
@@ -374,17 +425,49 @@ const StudyMaterials = () => {
                         <label className="label">Category</label>
                         <Input placeholder="e.g. Physics, React, DSA" value={noteForm.category} onChange={(e) => setNoteForm({ ...noteForm, category: e.target.value })} />
                     </div>
-                    <div>
-                        <label className="label">Content</label>
-                        <textarea
-                            className="input"
-                            style={{ minHeight: '200px', lineHeight: 1.7 }}
-                            placeholder="Write your notes here..."
-                            value={noteForm.content}
-                            onChange={(e) => setNoteForm({ ...noteForm, content: e.target.value })}
-                            required
-                        />
-                    </div>
+
+                    {noteForm.material_type === 'file' && (
+                        <div>
+                            <label className="label">Upload File (PDF, Image, Doc)</label>
+                            {editingNote?.file_url && !noteForm.file && (
+                                <p style={{ fontSize: '12px', color: 'var(--primary-500)', marginBottom: '4px' }}>Current file will be kept. Upload new to replace.</p>
+                            )}
+                            <input 
+                                type="file" 
+                                className="input" 
+                                style={{ padding: '8px' }}
+                                onChange={(e) => setNoteForm({ ...noteForm, file: e.target.files[0] })}
+                                required={!editingNote?.file_url}
+                            />
+                        </div>
+                    )}
+
+                    {noteForm.material_type === 'link' && (
+                        <div>
+                            <label className="label">Resource Link (URL)</label>
+                            <Input 
+                                type="url"
+                                placeholder="https://..."
+                                value={noteForm.url}
+                                onChange={(e) => setNoteForm({ ...noteForm, url: e.target.value })}
+                                required
+                            />
+                        </div>
+                    )}
+
+                    {(noteForm.material_type === 'text' || noteForm.material_type !== 'file') && (
+                        <div>
+                            <label className="label">{noteForm.material_type === 'text' ? 'Content / Notes' : 'Description (Optional)'}</label>
+                            <textarea
+                                className="input"
+                                style={{ minHeight: '150px', lineHeight: 1.7 }}
+                                placeholder={noteForm.material_type === 'text' ? "Write your notes here..." : "Add a short description..."}
+                                value={noteForm.content}
+                                onChange={(e) => setNoteForm({ ...noteForm, content: e.target.value })}
+                                required={noteForm.material_type === 'text'}
+                            />
+                        </div>
+                    )}
                     <div>
                         <label className="label" style={{ marginBottom: '8px' }}>Color Label</label>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -430,11 +513,15 @@ const NoteCard = ({ note, onEdit, onDelete, onTogglePin, onView }) => {
                     </button>
                 </div>
             </div>
-            <h4 style={{ margin: '0 0 6px', fontSize: 'var(--text-sm)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {note.title}
-            </h4>
+            <div className="flex items-center gap-xs mb-xs">
+                {note.material_type === 'file' && <File size={14} className="text-primary-500" />}
+                {note.material_type === 'link' && <LinkIcon size={14} className="text-primary-500" />}
+                <h4 style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {note.title}
+                </h4>
+            </div>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.6, margin: '0 0 8px' }}>
-                {note.content}
+                {note.content !== 'Attached Note' ? note.content : 'View attached resource.'}
             </p>
             <div className="flex items-center gap-xs" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                 <Clock size={10} />
