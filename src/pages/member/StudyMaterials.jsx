@@ -416,7 +416,7 @@ const StudyMaterials = () => {
             )}
 
             {/* View Item Modal */}
-            <Modal isOpen={!!viewingItem} onClose={() => setViewingItem(null)} title={viewingItem?.title || ''}>
+            <Modal isOpen={!!viewingItem} onClose={() => setViewingItem(null)} title={viewingItem?.title || ''} size="full">
                 {viewingItem && (
                     <div>
                         <div className="flex flex-wrap gap-sm mb-md">
@@ -426,9 +426,9 @@ const StudyMaterials = () => {
                         {viewingItem.file_url && viewingItem.material_type === 'file' ? (
                             <div style={{ marginTop: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
                                 {viewingItem.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
-                                    <img src={viewingItem.file_url} alt="Attached Material" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', display: 'block' }} />
+                                    <img src={viewingItem.file_url} alt="Attached Material" style={{ width: '100%', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
                                 ) : (
-                                    <iframe src={viewingItem.file_url} width="100%" height="600px" style={{ border: 'none', display: 'block' }} title="Attached Document" />
+                                    <iframe src={viewingItem.file_url} width="100%" height="800px" style={{ border: 'none', display: 'block', maxHeight: '85vh' }} title="Attached Document" />
                                 )}
                             </div>
                         ) : viewingItem.file_url && viewingItem.material_type === 'link' ? (
