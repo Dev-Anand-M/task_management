@@ -15,6 +15,7 @@ import {
     Shield
 } from 'lucide-react';
 import * as db from '../../services/database';
+import { useMiniReload } from '../../hooks/useMiniReload';
 
 const Profile = ({ userId = null, readonly = false }) => {
     const { user: authUser, updateProfile, refreshUser } = useAuth();
@@ -118,6 +119,9 @@ const Profile = ({ userId = null, readonly = false }) => {
     useEffect(() => {
         loadProfileData();
     }, [loadProfileData]);
+
+    // Refresh on tab switch
+    useMiniReload(() => loadProfileData(true));
 
     // Safety timeout to prevent infinite loading state
     useEffect(() => {

@@ -88,37 +88,42 @@ export const ThemeProvider = ({ children }) => {
         }
     };
 
-    // Load preferences from DB on mount/auth change
+    // Apply theme attributes on mount — preferences come from localStorage (already persisted)
+    // No auth listener here to avoid competing with AuthContext for Supabase locks
     useEffect(() => {
-        // Initial set attrs
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.setAttribute('data-color-scheme', colorScheme);
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-                // Fetch preferences
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('preferences')
-                    .eq('id', session.user.id)
-                    .single();
-                    
-                if (profile?.preferences) {
-                    if (profile.preferences.theme) {
-                        setThemeState(profile.preferences.theme);
-                        storage.setTheme(profile.preferences.theme);
-                        document.documentElement.setAttribute('data-theme', profile.preferences.theme);
-                    }
-                    if (profile.preferences.colorScheme) {
-                        setColorSchemeState(profile.preferences.colorScheme);
-                        localStorage.setItem('skillquest_color_scheme', profile.preferences.colorScheme);
-                        document.documentElement.setAttribute('data-color-scheme', profile.preferences.colorScheme);
+        // One-time preference load from DB (fire-and-forget, no auth listener)
+        const loadPrefsFromDb = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                    const { data: profileData } = await supabase
+                        .from('profiles')
+                        .select('preferences')
+                        .eq('id', session.user.id)
+                        .single();
+
+                    if (profileData?.preferences) {
+                        if (profileData.preferences.theme) {
+                            setThemeState(profileData.preferences.theme);
+                            storage.setTheme(profileData.preferences.theme);
+                            document.documentElement.setAttribute('data-theme', profileData.preferences.theme);
+                        }
+                        if (profileData.preferences.colorScheme) {
+                            setColorSchemeState(profileData.preferences.colorScheme);
+                            localStorage.setItem('skillquest_color_scheme', profileData.preferences.colorScheme);
+                            document.documentElement.setAttribute('data-color-scheme', profileData.preferences.colorScheme);
+                        }
                     }
                 }
+            } catch (err) {
+                // Non-critical — localStorage values are fine as fallback
             }
-        });
+        };
 
-        return () => subscription?.unsubscribe();
+        loadPrefsFromDb();
     }, []);
 
     const toggleTheme = () => {

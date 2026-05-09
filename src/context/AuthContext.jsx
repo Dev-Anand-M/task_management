@@ -18,129 +18,19 @@ export const AuthProvider = ({ children }) => {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const lastFetchRef = useRef(0);
+    const fetchProfileRef = useRef(null);
 
-    useEffect(() => {
-        let mounted = true;
-        let authInitialized = false;
-
-        // EMERGENCY TIMEOUT: If auth takes more than 5 seconds (common on mobile), force stop loading
-        const timeoutId = setTimeout(() => {
-            if (mounted && !authInitialized) {
-                console.warn('Auth initialization timed out, forcing loading to false');
-                setLoading(false);
-            }
-        }, 6000);
-
-        const initializeAuth = async () => {
-            try {
-                // Initial session check
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session?.user && mounted) {
-                    console.log('[AuthContext] Initial session found:', session.user.id);
-                    setUser(session.user);
-                    fetchProfile(session.user.id);
-                }
-            } catch (error) {
-                console.error('[AuthContext] Initial session check error:', error);
-            } finally {
-                if (mounted) setLoading(false);
-                authInitialized = true;
-            }
-        };
-
-        initializeAuth();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
-                try {
-                    if (!mounted) return;
-                    console.log('[AuthContext] Auth State Event:', event, session?.user?.id);
-
-                    if (session?.user) {
-                        // Avoid redundant state updates if same user
-                        setUser(prevUser => {
-                            if (prevUser?.id === session.user.id) return prevUser;
-                            return session.user;
-                        });
-                        fetchProfile(session.user.id);
-                    } else {
-                        setUser(null);
-                        setProfile(null);
-                    }
-                    
-                    // Only flip loading to false here if it wasn't already flipped
-                    if (loading) setLoading(false);
-                } catch (err) {
-                    console.error('[AuthContext] onAuthStateChange Error:', err);
-                }
-            }
-        );
-
-        // Visibility check - Just ensure session is still valid, onAuthStateChange will handle results
-        const handleVisibilityChange = async () => {
-            if (document.visibilityState === 'visible') {
-                console.log('[AuthContext] Tab became visible. Verifying session...');
-                try {
-                    // getSession() will trigger onAuthStateChange if session refreshes/changes
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (session?.user && mounted) {
-                        // Even if same user, force a profile refresh to ensure reactivity
-                        fetchProfile(session.user.id, false);
-                    }
-                } catch (err) {
-                    console.error('[AuthContext] Visibility session check failed:', err);
-                }
-            }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        return () => {
-            mounted = false;
-            subscription?.unsubscribe();
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-        };
-    }, []);
-
-    // Dedicated Loading Safety Effect
-    useEffect(() => {
-        if (loading) {
-            const timer = setTimeout(() => {
-                console.warn('CRITICAL: Stuck loading state detected (10s), forcing recovery.');
-                setLoading(false);
-            }, 10000);
-            return () => clearTimeout(timer);
-        }
-    }, [loading]);
-
-    // DEBUG: Monitor state changes
-    useEffect(() => {
-        console.log('[AuthContext] State Update - Loading:', loading, 'User ID:', user?.id, 'Profile ID:', profile?.id);
-    }, [loading, user, profile]);
-
-    const fetchProfile = async (userId, force = false) => {
+    // fetchProfile as useCallback — stored in ref so closures never go stale
+    const fetchProfile = useCallback(async (userId, force = false) => {
         if (!userId) return;
-        
-        // Throttling: Skip if fetched in the last 30 seconds, unless forced
+
         const now = Date.now();
-        if (!force && profile && profile.id === userId && (now - lastFetchRef.current < 30000)) {
-            console.log('Skipping redundant profile fetch (throttled)');
+        if (!force && lastFetchRef.current > 0 && (now - lastFetchRef.current < 30000)) {
             return;
         }
-        
+
         lastFetchRef.current = now;
         try {
-            // Optimistic profile from metadata if we don't have one yet
-            if (user && !profile) {
-                setProfile({
-                    id: user.id,
-                    email: user.email,
-                    name: user.user_metadata?.name || user.email?.split('@')[0],
-                    role: user.user_metadata?.role || 'member',
-                    classroom_id: user.user_metadata?.classroom_id
-                });
-            }
-
             const { data: userProfile, error } = await supabase
                 .from('profiles')
                 .select('*')
@@ -148,7 +38,7 @@ export const AuthProvider = ({ children }) => {
                 .single();
 
             if (error) {
-                console.warn('Profile fetch error:', error);
+                console.warn('[AuthContext] Profile fetch error:', error);
                 return;
             }
 
@@ -160,125 +50,179 @@ export const AuthProvider = ({ children }) => {
                         .select('name')
                         .eq('id', userProfile.classroom_id)
                         .single();
-                    if (classroom) {
-                        classroom_name = classroom.name;
+                    if (classroom) classroom_name = classroom.name;
+                }
+
+                setProfile({ ...userProfile, classroom_name });
+
+                // Load AI settings in background
+                import('../services/aiService')
+                    .then(({ loadFromDatabase }) => loadFromDatabase())
+                    .catch(() => {});
+            }
+        } catch (err) {
+            console.error('[AuthContext] Profile fetch error:', err);
+        }
+    }, []);
+
+    // Always keep ref pointing to latest
+    fetchProfileRef.current = fetchProfile;
+
+    useEffect(() => {
+        let mounted = true;
+
+        // 1. Initial session check (cold start only)
+        const initializeAuth = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user && mounted) {
+                    setUser(session.user);
+                    // Optimistic profile so UI is never blank
+                    setProfile({
+                        id: session.user.id,
+                        email: session.user.email,
+                        name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
+                        role: session.user.user_metadata?.role || 'member',
+                        classroom_id: session.user.user_metadata?.classroom_id
+                    });
+                    fetchProfileRef.current(session.user.id, true);
+                }
+            } catch (error) {
+                console.error('[AuthContext] Init error:', error);
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        };
+
+        initializeAuth();
+
+        // 2. Auth state listener — single source of truth
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, session) => {
+                if (!mounted) return;
+
+                if (event === 'SIGNED_OUT') {
+                    setUser(null);
+                    setProfile(null);
+                    setLoading(false);
+                    return;
+                }
+
+                if (session?.user) {
+                    setUser(session.user);
+                    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                        fetchProfileRef.current(session.user.id, true);
                     }
                 }
 
-                setProfile({
-                    ...userProfile,
-                    classroom_name
-                });
-
-                // Centralized AI Settings: Load from database into local storage cache
-                try {
-                    const { loadFromDatabase } = await import('../services/aiService');
-                    await loadFromDatabase();
-                } catch (aiErr) {
-                    // Silently fail AI load to not block auth
-                }
+                setLoading(false);
             }
-        } catch (err) {
-            console.error('Profile fetch error:', err);
-        }
-    };
+        );
+
+        // 3. Visibility change — DO NOT call supabase.auth here!
+        //    Just tell components to re-fetch their own data.
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('zenith-refresh'));
+                }, 300);
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Emergency timeout
+        const emergencyTimeout = setTimeout(() => {
+            if (mounted) setLoading(false);
+        }, 5000);
+
+        return () => {
+            mounted = false;
+            subscription?.unsubscribe();
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            clearTimeout(emergencyTimeout);
+        };
+    }, []);
 
     const login = useCallback(async (email, password) => {
         try {
-            const signInPromise = supabase.auth.signInWithPassword({
-                email: email.toLowerCase().trim(),
-                password
-            });
-            
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Sign in is taking longer than expected. Please check your internet connection.')), 60000) 
-            );
+            const { data, error } = await Promise.race([
+                supabase.auth.signInWithPassword({ email: email.toLowerCase().trim(), password }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Sign in timed out.')), 60000))
+            ]);
 
-            const { data, error } = await Promise.race([signInPromise, timeoutPromise]);
-
-            if (error) {
-                console.error('Login error:', error);
-                return { success: false, error: error.message };
-            }
-
+            if (error) return { success: false, error: error.message };
             if (data.user) {
                 setUser(data.user);
-                fetchProfile(data.user.id).catch(err => console.error('Profile fetch error:', err));
+                fetchProfileRef.current(data.user.id, true);
                 return { success: true, user: data.user };
             }
             return { success: false, error: 'No user data returned' };
         } catch (err) {
-            console.error('Login error:', err);
-            return { success: false, error: err.message || 'Login failed. Please try again.' };
-        }
-    }, [user]);
-
-    const register = useCallback(async (name, email, password, classroomId) => {
-        try {
-            const signUpPromise = supabase.auth.signUp({
-                email: email.toLowerCase().trim(),
-                password,
-                options: {
-                    data: {
-                        name,
-                        role: 'member',
-                        classroom_id: classroomId
-                    }
-                }
-            });
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Registration is taking longer than expected. Please check your internet connection.')), 60000) 
-            );
-
-            const { data, error } = await Promise.race([signUpPromise, timeoutPromise]);
-
-            if (error) {
-                return { success: false, error: error.message };
-            }
-
-            setUser(data.user);
-            fetchProfile(data.user.id).catch(err => console.error('Profile fetch error:', err));
-            return { success: true, user: data.user };
-        } catch (err) {
-            console.error('Registration error:', err);
-            return { success: false, error: err.message || 'Registration failed. Please try again.' };
+            return { success: false, error: err.message || 'Login failed.' };
         }
     }, []);
 
+    const register = useCallback(async (name, email, password, classroomId) => {
+        try {
+            const { data, error } = await Promise.race([
+                supabase.auth.signUp({
+                    email: email.toLowerCase().trim(),
+                    password,
+                    options: { data: { name, role: 'member', classroom_id: classroomId } }
+                }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Registration timed out.')), 60000))
+            ]);
+
+            if (error) return { success: false, error: error.message };
+            setUser(data.user);
+            fetchProfileRef.current(data.user.id, true);
+            return { success: true, user: data.user };
+        } catch (err) {
+            return { success: false, error: err.message || 'Registration failed.' };
+        }
+    }, []);
+
+    // logout with timeout — can NEVER hang
     const logout = useCallback(async () => {
-        await supabase.auth.signOut();
+        try {
+            await Promise.race([
+                supabase.auth.signOut(),
+                new Promise(resolve => setTimeout(resolve, 3000))
+            ]);
+        } catch (err) {
+            console.error('[AuthContext] Sign out error:', err);
+        }
         setUser(null);
         setProfile(null);
     }, []);
 
     const refreshUser = useCallback(async () => {
-        if (user?.id) {
-            await fetchProfile(user.id);
-        }
+        if (user?.id) await fetchProfileRef.current(user.id, true);
     }, [user?.id]);
 
     const forceRefresh = useCallback(async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-            setUser(session.user);
-            await fetchProfile(session.user.id);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                setUser(session.user);
+                await fetchProfileRef.current(session.user.id, true);
+            }
+        } catch (err) {
+            console.error('[AuthContext] Force refresh error:', err);
         }
     }, []);
 
     const updateProfile = useCallback(async (updates) => {
         if (!user?.id) return;
-
         const updated = await db.updateProfile(user.id, updates);
-        if (updated) {
-            setProfile(prev => ({ ...prev, ...updated }));
-        }
+        if (updated) setProfile(prev => ({ ...prev, ...updated }));
         return updated;
     }, [user?.id]);
 
     const addXP = useCallback(async (amount) => {
         if (!profile) return;
-        const newXP = (profile.xp || 0) + amount;
-        await updateProfile({ xp: newXP });
+        await updateProfile({ xp: (profile.xp || 0) + amount });
     }, [profile, updateProfile]);
 
     const addBadge = useCallback(async (badgeId) => {
@@ -294,14 +238,8 @@ export const AuthProvider = ({ children }) => {
         authUser: user,
         loading,
         isAdmin: profile?.role === 'admin',
-        login,
-        register,
-        logout,
-        refreshUser,
-        forceRefresh,
-        updateProfile,
-        addXP,
-        addBadge,
+        login, register, logout, refreshUser, forceRefresh,
+        updateProfile, addXP, addBadge,
         currentClassroomName: profile?.classroom_name
     }), [profile, user, loading, login, register, logout, refreshUser, forceRefresh, updateProfile, addXP, addBadge]);
 
