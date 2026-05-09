@@ -1,0 +1,414 @@
+import { useState, useEffect, useCallback } from 'react';
+import { Card, Button, Badge, Input, Modal } from '../../components/common';
+import {
+    BookOpen, Plus, Trash2, Search, Edit3, Pin, PinOff,
+    FolderOpen, Clock, Tag, Sparkles, Eye, ChevronDown,
+    BookMarked, StickyNote, Filter, X
+} from 'lucide-react';
+import * as db from '../../services/database';
+import { useAuth } from '../../context/AuthContext';
+import { formatDate, formatRelativeTime } from '../../utils/constants';
+import { supabase } from '../../lib/supabase';
+import { useMiniReload } from '../../hooks/useMiniReload';
+
+const NOTE_COLORS = [
+    { name: 'Default', value: null },
+    { name: 'Blue', value: '#3b82f6' },
+    { name: 'Purple', value: '#8b5cf6' },
+    { name: 'Green', value: '#10b981' },
+    { name: 'Orange', value: '#f97316' },
+    { name: 'Rose', value: '#f43f5e' },
+    { name: 'Cyan', value: '#06b6d4' },
+];
+
+const StudyMaterials = () => {
+    const { user } = useAuth();
+    const [activeTab, setActiveTab] = useState('shared');
+    const [sharedMaterials, setSharedMaterials] = useState([]);
+    const [myNotes, setMyNotes] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [editingNote, setEditingNote] = useState(null);
+    const [viewingItem, setViewingItem] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [noteForm, setNoteForm] = useState({ title: '', content: '', category: 'General', color: null });
+
+    const loadData = useCallback(async (silent = false) => {
+        if (!user?.id) return;
+        try {
+            if (!silent) setLoading(true);
+            const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 10000));
+            const [shared, notes] = await Promise.race([
+                Promise.all([
+                    db.getKnowledgeBase().catch(() => []),
+                    db.getStudyNotes(user.id).catch(() => [])
+                ]),
+                timeout
+            ]);
+            setSharedMaterials(shared || []);
+            setMyNotes(notes || []);
+        } catch (e) {
+            console.error('[StudyMaterials] Load error:', e);
+        } finally {
+            setLoading(false);
+        }
+    }, [user?.id]);
+
+    useEffect(() => { loadData(); }, [loadData]);
+    useMiniReload(() => loadData(true));
+
+    useEffect(() => {
+        if (!user?.id) return;
+        const channel = supabase
+            .channel(`study-${user.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'knowledge_base' }, () => loadData(true))
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'study_notes', filter: `user_id=eq.${user.id}` }, () => loadData(true))
+            .subscribe();
+        return () => supabase.removeChannel(channel);
+    }, [user?.id, loadData]);
+
+    // Note CRUD
+    const handleSaveNote = async (e) => {
+        e.preventDefault();
+        if (!noteForm.title || !noteForm.content) return;
+        setSaving(true);
+        try {
+            if (editingNote) {
+                await db.updateStudyNote(editingNote.id, noteForm);
+            } else {
+                await db.addStudyNote(noteForm);
+            }
+            setShowAddModal(false);
+            setEditingNote(null);
+            setNoteForm({ title: '', content: '', category: 'General', color: null });
+            loadData(true);
+        } catch (err) {
+            console.error('Save note error:', err);
+            alert('Failed to save note. Make sure the study_notes table exists in Supabase.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDeleteNote = async (id) => {
+        if (!window.confirm('Delete this note?')) return;
+        try {
+            await db.deleteStudyNote(id);
+            loadData(true);
+        } catch (err) { console.error(err); }
+    };
+
+    const handleTogglePin = async (note) => {
+        try {
+            await db.updateStudyNote(note.id, { is_pinned: !note.is_pinned });
+            loadData(true);
+        } catch (err) { console.error(err); }
+    };
+
+    const openEdit = (note) => {
+        setEditingNote(note);
+        setNoteForm({ title: note.title, content: note.content, category: note.category, color: note.color });
+        setShowAddModal(true);
+    };
+
+    // Filtering
+    const allCategories = ['All', ...new Set(
+        activeTab === 'shared'
+            ? sharedMaterials.map(m => m.subject || 'General')
+            : myNotes.map(n => n.category || 'General')
+    )];
+
+    const items = activeTab === 'shared' ? sharedMaterials : myNotes;
+    const filtered = items.filter(item => {
+        const q = searchQuery.toLowerCase();
+        const matchesSearch = !q ||
+            item.title?.toLowerCase().includes(q) ||
+            item.content?.toLowerCase().includes(q) ||
+            (item.tags || []).some(t => t.toLowerCase().includes(q));
+        const cat = activeTab === 'shared' ? (item.subject || 'General') : (item.category || 'General');
+        const matchesCat = selectedCategory === 'All' || cat === selectedCategory;
+        return matchesSearch && matchesCat;
+    });
+
+    const pinnedNotes = activeTab === 'notes' ? filtered.filter(n => n.is_pinned) : [];
+    const unpinnedNotes = activeTab === 'notes' ? filtered.filter(n => !n.is_pinned) : [];
+
+    const tabStyle = (tab) => ({
+        padding: '10px 20px',
+        background: activeTab === tab ? 'var(--primary-500)' : 'transparent',
+        color: activeTab === tab ? 'white' : 'var(--text-muted)',
+        border: activeTab === tab ? 'none' : '1px solid var(--border)',
+        borderRadius: 'var(--radius-full)',
+        cursor: 'pointer',
+        fontWeight: 600,
+        fontSize: 'var(--text-sm)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        transition: 'all 0.3s ease'
+    });
+
+    return (
+        <div className="animate-fade-in" style={{ paddingBottom: 'var(--space-2xl)' }}>
+            {/* Header */}
+            <div className="flex flex-mobile-col justify-between items-center mb-lg" style={{ gap: 'var(--space-md)' }}>
+                <div>
+                    <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <BookMarked className="text-primary-400" />
+                        Study Materials
+                    </h2>
+                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>
+                        {activeTab === 'shared'
+                            ? 'Resources shared by your instructor'
+                            : 'Your personal study notes & categorized files'}
+                    </p>
+                </div>
+                {activeTab === 'notes' && (
+                    <Button variant="primary" icon={Plus} onClick={() => { setEditingNote(null); setNoteForm({ title: '', content: '', category: 'General', color: null }); setShowAddModal(true); }}>
+                        New Note
+                    </Button>
+                )}
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
+                <button onClick={() => { setActiveTab('shared'); setSelectedCategory('All'); }} style={tabStyle('shared')}>
+                    <BookOpen size={16} /> Shared Materials
+                    <span style={{ background: 'rgba(255,255,255,0.2)', padding: '1px 8px', borderRadius: '10px', fontSize: '11px' }}>
+                        {sharedMaterials.length}
+                    </span>
+                </button>
+                <button onClick={() => { setActiveTab('notes'); setSelectedCategory('All'); }} style={tabStyle('notes')}>
+                    <StickyNote size={16} /> My Notes
+                    <span style={{ background: 'rgba(255,255,255,0.2)', padding: '1px 8px', borderRadius: '10px', fontSize: '11px' }}>
+                        {myNotes.length}
+                    </span>
+                </button>
+            </div>
+
+            {/* Search + Filter */}
+            <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)', flexWrap: 'wrap' }}>
+                <Card style={{ flex: 1, minWidth: '200px', padding: 'var(--space-sm) var(--space-md)' }}>
+                    <div className="flex items-center gap-sm">
+                        <Search className="text-muted" size={18} />
+                        <input
+                            placeholder={activeTab === 'shared' ? 'Search shared materials...' : 'Search your notes...'}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: 'var(--text)', fontSize: 'var(--text-sm)' }}
+                        />
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}>
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
+                </Card>
+                {allCategories.length > 2 && (
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Filter size={14} style={{ color: 'var(--text-muted)' }} />
+                        {allCategories.map(cat => (
+                            <button key={cat} onClick={() => setSelectedCategory(cat)} style={{
+                                padding: '4px 12px',
+                                borderRadius: 'var(--radius-full)',
+                                border: selectedCategory === cat ? '1px solid var(--primary-500)' : '1px solid var(--border)',
+                                background: selectedCategory === cat ? 'color-mix(in srgb, var(--primary-500), transparent 85%)' : 'transparent',
+                                color: selectedCategory === cat ? 'var(--primary-500)' : 'var(--text-muted)',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                transition: 'all 0.2s ease'
+                            }}>
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Content */}
+            {loading ? (
+                <div className="flex items-center justify-center p-xl"><div className="loading-spinner" /></div>
+            ) : filtered.length === 0 ? (
+                <Card style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
+                    {activeTab === 'shared' ? <BookOpen size={48} className="text-muted mb-md" /> : <StickyNote size={48} className="text-muted mb-md" />}
+                    <h3>{activeTab === 'shared' ? 'No Shared Materials Yet' : 'No Notes Yet'}</h3>
+                    <p className="text-muted mb-lg">
+                        {activeTab === 'shared'
+                            ? 'Your instructor hasn\'t shared any materials yet. Check back later!'
+                            : 'Start building your personal study library.'}
+                    </p>
+                    {activeTab === 'notes' && (
+                        <Button variant="primary" icon={Plus} onClick={() => { setEditingNote(null); setNoteForm({ title: '', content: '', category: 'General', color: null }); setShowAddModal(true); }}>
+                            Create First Note
+                        </Button>
+                    )}
+                </Card>
+            ) : activeTab === 'shared' ? (
+                /* Shared Materials Grid */
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
+                    {filtered.map(item => (
+                        <Card key={item.id} style={{ cursor: 'pointer', position: 'relative' }} onClick={() => setViewingItem(item)}>
+                            <div className="flex justify-between items-start mb-sm">
+                                <Badge variant="accent" size="xs">{item.subject || 'General'}</Badge>
+                                <div className="flex items-center gap-xs">
+                                    <Clock size={12} className="text-muted" />
+                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatDate(item.created_at)}</span>
+                                </div>
+                            </div>
+                            <h4 style={{ margin: '0 0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</h4>
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 'var(--space-sm)', lineHeight: 1.6 }}>
+                                {item.content}
+                            </p>
+                            {item.tags?.length > 0 && (
+                                <div className="flex flex-wrap gap-xs">
+                                    {item.tags.slice(0, 4).map((tag, i) => (
+                                        <Badge key={i} variant="outline" size="xs">#{tag}</Badge>
+                                    ))}
+                                    {item.tags.length > 4 && <Badge variant="outline" size="xs">+{item.tags.length - 4}</Badge>}
+                                </div>
+                            )}
+                            <div style={{ position: 'absolute', bottom: '12px', right: '12px', opacity: 0.3 }}>
+                                <Eye size={16} />
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+                /* My Notes */
+                <div>
+                    {pinnedNotes.length > 0 && (
+                        <>
+                            <div className="flex items-center gap-sm mb-md">
+                                <Pin size={14} className="text-primary-400" />
+                                <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pinned</span>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+                                {pinnedNotes.map(note => <NoteCard key={note.id} note={note} onEdit={openEdit} onDelete={handleDeleteNote} onTogglePin={handleTogglePin} onView={setViewingItem} />)}
+                            </div>
+                        </>
+                    )}
+                    {unpinnedNotes.length > 0 && (
+                        <>
+                            {pinnedNotes.length > 0 && (
+                                <div className="flex items-center gap-sm mb-md">
+                                    <FolderOpen size={14} className="text-muted" />
+                                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>All Notes</span>
+                                </div>
+                            )}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)' }}>
+                                {unpinnedNotes.map(note => <NoteCard key={note.id} note={note} onEdit={openEdit} onDelete={handleDeleteNote} onTogglePin={handleTogglePin} onView={setViewingItem} />)}
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* View Item Modal */}
+            <Modal isOpen={!!viewingItem} onClose={() => setViewingItem(null)} title={viewingItem?.title || ''}>
+                {viewingItem && (
+                    <div>
+                        <div className="flex flex-wrap gap-sm mb-md">
+                            <Badge variant="accent">{viewingItem.subject || viewingItem.category || 'General'}</Badge>
+                            {viewingItem.color && <div style={{ width: 12, height: 12, borderRadius: '50%', background: viewingItem.color }} />}
+                        </div>
+                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, color: 'var(--text)', fontSize: 'var(--text-sm)', maxHeight: '60vh', overflowY: 'auto', padding: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)' }}>
+                            {viewingItem.content}
+                        </div>
+                        {viewingItem.tags?.length > 0 && (
+                            <div className="flex flex-wrap gap-xs mt-md">
+                                {viewingItem.tags.map((tag, i) => <Badge key={i} variant="outline" size="xs">#{tag}</Badge>)}
+                            </div>
+                        )}
+                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 'var(--space-md)' }}>
+                            {viewingItem.created_at && `Created ${formatDate(viewingItem.created_at)}`}
+                            {viewingItem.updated_at && ` · Updated ${formatRelativeTime(viewingItem.updated_at)}`}
+                        </p>
+                    </div>
+                )}
+            </Modal>
+
+            {/* Add/Edit Note Modal */}
+            <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); setEditingNote(null); }} title={editingNote ? 'Edit Note' : 'New Study Note'}>
+                <form onSubmit={handleSaveNote} className="flex flex-col gap-md">
+                    <div>
+                        <label className="label">Title</label>
+                        <Input placeholder="e.g. React Hooks Summary" value={noteForm.title} onChange={(e) => setNoteForm({ ...noteForm, title: e.target.value })} required />
+                    </div>
+                    <div>
+                        <label className="label">Category</label>
+                        <Input placeholder="e.g. Physics, React, DSA" value={noteForm.category} onChange={(e) => setNoteForm({ ...noteForm, category: e.target.value })} />
+                    </div>
+                    <div>
+                        <label className="label">Content</label>
+                        <textarea
+                            className="input"
+                            style={{ minHeight: '200px', lineHeight: 1.7 }}
+                            placeholder="Write your notes here..."
+                            value={noteForm.content}
+                            onChange={(e) => setNoteForm({ ...noteForm, content: e.target.value })}
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="label" style={{ marginBottom: '8px' }}>Color Label</label>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {NOTE_COLORS.map(c => (
+                                <button key={c.name} type="button" onClick={() => setNoteForm({ ...noteForm, color: c.value })} style={{
+                                    width: '28px', height: '28px', borderRadius: '50%',
+                                    background: c.value || 'var(--border)',
+                                    border: noteForm.color === c.value ? '3px solid var(--primary-500)' : '2px solid transparent',
+                                    cursor: 'pointer', transition: 'all 0.2s ease',
+                                    outline: noteForm.color === c.value ? '2px solid var(--primary-300)' : 'none',
+                                    outlineOffset: '2px'
+                                }} title={c.name} />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex gap-sm justify-end mt-md">
+                        <Button variant="ghost" onClick={() => { setShowAddModal(false); setEditingNote(null); }}>Cancel</Button>
+                        <Button variant="primary" type="submit" loading={saving}>{editingNote ? 'Save Changes' : 'Create Note'}</Button>
+                    </div>
+                </form>
+            </Modal>
+        </div>
+    );
+};
+
+// Note Card Component
+const NoteCard = ({ note, onEdit, onDelete, onTogglePin, onView }) => {
+    const accentBorder = note.color ? `3px solid ${note.color}` : '1px solid var(--border)';
+
+    return (
+        <Card style={{ borderLeft: accentBorder, cursor: 'pointer', position: 'relative' }} onClick={() => onView(note)}>
+            <div className="flex justify-between items-start mb-sm">
+                <Badge variant="secondary" size="xs">{note.category || 'General'}</Badge>
+                <div style={{ display: 'flex', gap: '2px' }} onClick={e => e.stopPropagation()}>
+                    <button onClick={() => onTogglePin(note)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: note.is_pinned ? 'var(--primary-500)' : 'var(--text-muted)', transition: 'color 0.2s' }} title={note.is_pinned ? 'Unpin' : 'Pin'}>
+                        {note.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                    </button>
+                    <button onClick={() => onEdit(note)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-muted)' }} title="Edit">
+                        <Edit3 size={14} />
+                    </button>
+                    <button onClick={() => onDelete(note.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--error-500)' }} title="Delete">
+                        <Trash2 size={14} />
+                    </button>
+                </div>
+            </div>
+            <h4 style={{ margin: '0 0 6px', fontSize: 'var(--text-sm)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {note.title}
+            </h4>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.6, margin: '0 0 8px' }}>
+                {note.content}
+            </p>
+            <div className="flex items-center gap-xs" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                <Clock size={10} />
+                {formatRelativeTime(note.updated_at || note.created_at)}
+            </div>
+        </Card>
+    );
+};
+
+export default StudyMaterials;

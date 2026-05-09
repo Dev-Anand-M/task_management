@@ -1014,3 +1014,71 @@ export const deleteKnowledgeSnippet = async (id) => {
         throw error;
     }
 };
+
+// ============================================
+// STUDY NOTES (Personal Member Notes)
+// ============================================
+export const getStudyNotes = async (userId) => {
+    try {
+        const { data, error } = await supabase
+            .from('study_notes')
+            .select('*')
+            .eq('user_id', userId)
+            .order('updated_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error fetching study notes:', error);
+        return [];
+    }
+};
+
+export const addStudyNote = async (note) => {
+    try {
+        const user = await getActiveUser();
+        const { data, error } = await supabase
+            .from('study_notes')
+            .insert({
+                user_id: user.id,
+                title: note.title,
+                content: note.content,
+                category: note.category || 'General',
+                color: note.color || null,
+                is_pinned: false
+            })
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error adding study note:', error);
+        throw error;
+    }
+};
+
+export const updateStudyNote = async (id, updates) => {
+    try {
+        const { data, error } = await supabase
+            .from('study_notes')
+            .update({ ...updates, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error updating study note:', error);
+        throw error;
+    }
+};
+
+export const deleteStudyNote = async (id) => {
+    try {
+        const { error } = await supabase.from('study_notes').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+    } catch (error) {
+        console.error('Error deleting study note:', error);
+        throw error;
+    }
+};

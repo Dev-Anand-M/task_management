@@ -116,7 +116,7 @@ const KnowledgeBase = () => {
                         Learning Resource Center
                     </h2>
                     <p style={{ color: 'var(--text-muted)', margin: 0 }}>
-                        Educational materials and "Ground Truth" context for AI calibration.
+                        Share study resources, reference materials, and documents with your team members.
                     </p>
                 </div>
                 {user?.role === 'admin' && (
@@ -153,7 +153,7 @@ const KnowledgeBase = () => {
                     <Brain size={48} className="text-muted mb-md" />
                     <h3>No Knowledge Found</h3>
                     <p className="text-muted mb-lg">
-                        Add textbook definitions, course rules, or fact sheets to help the AI grade better.
+                        Share textbook notes, reference sheets, or course materials with your members.
                     </p>
                     <Button variant="outline" onClick={() => setShowAddModal(true)}>
                         Create First Snippet
@@ -226,40 +226,13 @@ const KnowledgeBase = () => {
                 </div>
             )}
 
-            {/* AI RAG INFO BOX */}
-            <div style={{ 
-                marginTop: 'var(--space-xl)', 
-                padding: 'var(--space-lg)', 
-                background: 'rgba(99, 102, 241, 0.05)', 
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid rgba(99, 102, 241, 0.1)',
-                display: 'flex',
-                gap: 'var(--space-md)',
-                alignItems: 'flex-start'
-            }}>
-                <div style={{ 
-                    padding: '12px', 
-                    background: 'var(--primary-500)', 
-                    borderRadius: 'var(--radius-md)',
-                    color: 'white'
-                }}>
-                    <Sparkles size={24} />
-                </div>
-                <div>
-                    <h4 style={{ margin: '0 0 8px' }}>How AI Knowledge (RAG) Works</h4>
-                    <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                        When an AI evaluates a quiz, it automatically searches this Knowledge Base for keywords matching the quiz title and questions. 
-                        It injects the matching snippets as <strong>Ground Truth</strong> into its thinking process. 
-                        This prevents AI hallucinations and ensures it grades based on <em>your</em> definitions, not general internet data.
-                    </p>
-                </div>
-            </div>
+
 
             {/* Add Snippet Modal */}
             <Modal 
                 isOpen={showAddModal} 
                 onClose={() => setShowAddModal(false)}
-                title="Add Ground Truth Knowledge"
+                title="Add Shared Material"
             >
                 <form onSubmit={handleAddSnippet} className="flex flex-col gap-md">
                     <div>
@@ -320,7 +293,7 @@ const KnowledgeBase = () => {
 
                     <div className="flex gap-sm justify-end mt-md">
                         <Button variant="ghost" onClick={() => setShowAddModal(false)}>Cancel</Button>
-                        <Button variant="primary" type="submit" loading={saving}>Add to AI Brain</Button>
+                        <Button variant="primary" type="submit" loading={saving}>Share Material</Button>
                     </div>
                 </form>
             </Modal>

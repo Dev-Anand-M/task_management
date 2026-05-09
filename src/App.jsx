@@ -27,6 +27,7 @@ import MyTasks from './pages/member/MyTasks';
 import Quizzes from './pages/member/Quizzes';
 import Profile from './pages/member/Profile';
 import XPHistory from './pages/member/XPHistory';
+import StudyMaterials from './pages/member/StudyMaterials';
 
 // AI Pages
 import AIAssistant from './pages/ai/AIAssistant';
@@ -185,6 +186,7 @@ function AppRoutes() {
           <Route path="/quizzes" element={<Quizzes />} />
           <Route path="/quizzes/:quizId" element={<Quizzes />} />
           <Route path="/xp-history" element={<XPHistory />} />
+          <Route path="/study-materials" element={<StudyMaterials />} />
         </Route>
 
         {/* Shared Routes */}
