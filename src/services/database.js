@@ -1014,6 +1014,21 @@ export const addKnowledgeSnippet = async (snippet) => {
             created_by: user.id
         }).select().single();
         if (error) throw error;
+
+        // Notify students about the new material
+        try {
+            if (snippet.classroom_id) {
+                await notifyClassroom(snippet.classroom_id, {
+                    title: 'New Study Material',
+                    message: `A new material "${snippet.title}" has been shared.`,
+                    type: 'info',
+                    link: '/study-materials'
+                });
+            }
+        } catch (notifErr) {
+            console.error('Failed to send material notification:', notifErr);
+        }
+
         return data;
     } catch (error) {
         console.error('Error adding knowledge snippet:', error);
