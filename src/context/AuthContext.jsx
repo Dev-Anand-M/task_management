@@ -50,17 +50,22 @@ export const AuthProvider = ({ children }) => {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
-                if (!mounted) return;
-                console.log('Auth state change:', event);
+                try {
+                    if (!mounted) return;
+                    console.log('Auth state change:', event, session?.user?.id);
 
-                if (session?.user) {
-                    setUser(session.user);
-                    fetchProfile(session.user.id);
-                } else {
-                    setUser(null);
-                    setProfile(null);
+                    if (session?.user) {
+                        setUser(session.user);
+                        fetchProfile(session.user.id);
+                    } else {
+                        setUser(null);
+                        setProfile(null);
+                    }
+                } catch (err) {
+                    console.error('Error in onAuthStateChange handler:', err);
+                } finally {
+                    if (mounted) setLoading(false);
                 }
-                setLoading(false);
             }
         );
 
@@ -95,6 +100,11 @@ export const AuthProvider = ({ children }) => {
             return () => clearTimeout(timer);
         }
     }, [loading]);
+
+    // DEBUG: Monitor state changes
+    useEffect(() => {
+        console.log('[AuthContext] State Update - Loading:', loading, 'User ID:', user?.id, 'Profile ID:', profile?.id);
+    }, [loading, user, profile]);
 
     const fetchProfile = async (userId, force = false) => {
         if (!userId) return;

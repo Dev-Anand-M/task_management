@@ -30,9 +30,17 @@ const AdminDashboard = () => {
     const [teamProgress, setTeamProgress] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const loadDashboardData = async () => {
+    const loadDashboardData = async (isRefresh = false) => {
         try {
-            setLoading(true);
+            if (!isRefresh) setLoading(true);
+
+            // Safety timeout for loading state
+            const safetyTimeout = setTimeout(() => {
+                if (loading) {
+                    console.warn('Dashboard load taking too long, forcing loading to false');
+                    setLoading(false);
+                }
+            }, 8000);
 
             // Fetch data from Supabase
             // functions in database.js now handle "no-classroom" (Global) case for admins automatically
@@ -92,7 +100,7 @@ const AdminDashboard = () => {
     }, []);
 
     // MINI RELOAD: Listen for global refresh events
-    useMiniReload(loadDashboardData);
+    useMiniReload(() => loadDashboardData(true));
 
     const statCards = [
         {

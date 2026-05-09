@@ -62,8 +62,8 @@ const ClassroomDetail = () => {
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [error, setError] = useState(null);
 
-    const loadData = async () => {
-        setLoading(true);
+    const loadData = async (isRefresh = false) => {
+        if (!isRefresh) setLoading(true);
         setError(null);
         
         // Safety timeout to prevent infinite loading
@@ -113,7 +113,7 @@ const ClassroomDetail = () => {
     }, [classroomId]);
 
     // MINI RELOAD: Listen for global refresh events
-    useMiniReload(loadData);
+    useMiniReload(() => loadData(true));
 
     const handlePostAnnouncement = async () => {
         if (!announcementText.trim()) return;

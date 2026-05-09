@@ -44,6 +44,15 @@ const MyTasks = () => {
 
         try {
             setLoading(true);
+
+            // Safety timeout to prevent infinite loading
+            const safetyTimeout = setTimeout(() => {
+                if (loading) {
+                    console.warn('MyTasks load taking too long, forcing loading to false');
+                    setLoading(false);
+                }
+            }, 8000);
+
             const [allTasks, mySubs] = await Promise.all([
                 db.getTasks(),
                 db.getSubmissionsByUser(user.id)
@@ -248,6 +257,15 @@ const TaskDetail = ({ taskId, onBack, onUpdate }) => {
     const loadTask = useCallback(async () => {
         try {
             setLoading(true);
+
+            // Safety timeout to prevent infinite loading
+            const safetyTimeout = setTimeout(() => {
+                if (loading) {
+                    console.warn('Task detail load taking too long, forcing loading to false');
+                    setLoading(false);
+                }
+            }, 8000);
+
             const [taskData, submissionsData] = await Promise.all([
                 db.getTaskById(taskId),
                 db.getSubmissionsByUser(user.id)

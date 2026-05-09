@@ -45,6 +45,14 @@ const MemberDashboard = () => {
         try {
             if (!silent) setLoading(true);
 
+            // Safety timeout to prevent infinite loading
+            const safetyTimeout = setTimeout(() => {
+                if (loading) {
+                    console.warn('Member dashboard load taking too long, forcing loading to false');
+                    setLoading(false);
+                }
+            }, 8000);
+
             const [tasks, submissions, quizzes, quizAttempts, ann] = await Promise.all([
                 db.getTasks().catch(err => { console.error('Error loading tasks:', err); return []; }),
                 db.getSubmissionsByUser(user.id).catch(err => { console.error('Error loading submissions:', err); return []; }),

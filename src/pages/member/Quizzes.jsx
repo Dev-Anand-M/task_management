@@ -35,6 +35,15 @@ const Quizzes = () => {
 
         try {
             setLoading(true);
+
+            // Safety timeout to prevent infinite loading
+            const safetyTimeout = setTimeout(() => {
+                if (loading) {
+                    console.warn('Quizzes load taking too long, forcing loading to false');
+                    setLoading(false);
+                }
+            }, 8000);
+
             const [allQuizzes, myAttempts] = await Promise.all([
                 db.getQuizzes(),
                 db.getQuizAttemptsByUser(user.id)
@@ -288,6 +297,15 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
     const loadQuiz = useCallback(async () => {
         try {
             setLoading(true);
+
+            // Safety timeout to prevent infinite loading
+            const safetyTimeout = setTimeout(() => {
+                if (loading) {
+                    console.warn('Quiz detail load taking too long, forcing loading to false');
+                    setLoading(false);
+                }
+            }, 8000);
+
             const [q, atts] = await Promise.all([
                 db.getQuizById(quizId),
                 db.getQuizAttemptsByUser(user.id)

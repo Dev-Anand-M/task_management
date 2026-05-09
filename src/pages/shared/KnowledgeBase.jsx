@@ -12,7 +12,8 @@ import {
     Database,
     Clock,
     FileText,
-    Sparkles
+    Sparkles,
+    Layout
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { useAuth } from '../../context/AuthContext';
@@ -37,6 +38,14 @@ const KnowledgeBase = () => {
     const loadData = useCallback(async () => {
         try {
             setLoading(true);
+
+            // Safety timeout to prevent infinite loading
+            const safetyTimeout = setTimeout(() => {
+                if (loading) {
+                    console.warn('KnowledgeBase load taking too long, forcing loading to false');
+                    setLoading(false);
+                }
+            }, 8000);
             const [data, classes] = await Promise.all([
                 db.getKnowledgeBase(),
                 db.getClassrooms()

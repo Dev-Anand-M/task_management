@@ -39,6 +39,14 @@ const EvaluationCenter = () => {
         try {
             console.log('[EvaluationCenter] loadData: Starting fetch...');
             setLoading(true);
+
+            // Safety timeout to prevent infinite loading
+            const safetyTimeout = setTimeout(() => {
+                if (loading) {
+                    console.warn('[EvaluationCenter] loadData taking too long, forcing loading to false');
+                    setLoading(false);
+                }
+            }, 10000);
             const [subs, atts] = await Promise.all([
                 db.getSubmissions().catch(e => { console.error('Submissions Fetch Error:', e); return []; }),
                 db.getQuizAttempts().catch(e => { console.error('Quiz Attempts Fetch Error:', e); return []; })
@@ -404,6 +412,15 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
     const loadSubmission = useCallback(async () => {
         try {
             setLoading(true);
+
+            // Safety timeout
+            const safetyTimeout = setTimeout(() => {
+                if (loading) {
+                    console.warn('[EvaluationDetail] loadSubmission taking too long, forcing loading to false');
+                    setLoading(false);
+                }
+            }, 8000);
+
             const sub = await db.getSubmissionById(submissionId);
             if (sub) {
                 setSubmission(sub);
@@ -761,6 +778,14 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
     const loadAttempt = useCallback(async () => {
         try {
             setLoading(true);
+
+            // Safety timeout
+            const safetyTimeout = setTimeout(() => {
+                if (loading) {
+                    console.warn('[QuizReviewDetail] loadAttempt taking too long, forcing loading to false');
+                    setLoading(false);
+                }
+            }, 8000);
             const data = await db.getQuizAttempts();
             const att = data.find(a => a.id === attemptId);
             if (att) {

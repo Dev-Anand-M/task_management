@@ -25,6 +25,14 @@ const Leaderboard = () => {
     const loadLeaderboard = async () => {
         try {
             setLoading(true);
+
+            // Safety timeout to prevent infinite loading
+            const safetyTimeout = setTimeout(() => {
+                if (loading) {
+                    console.warn('Leaderboard load taking too long, forcing loading to false');
+                    setLoading(false);
+                }
+            }, 8000);
             const [profiles, submissions, quizAttempts] = await Promise.all([
                 db.getMembers(),
                 db.getSubmissions(),

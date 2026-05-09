@@ -33,13 +33,20 @@ const Profile = ({ userId = null, readonly = false }) => {
     // If userId prop is passed, use that (Admin View). Otherwise use logged-in user (Self View).
     const targetUserId = userId || authUser?.id;
 
-    const loadProfileData = useCallback(async () => {
+    const loadProfileData = useCallback(async (isRefresh = false) => {
         if (!targetUserId) {
             setLoading(false);
             return;
         }
-        setLoading(true);
+
+        // Safety timeout to prevent infinite loading state
+        const safetyTimeout = setTimeout(() => {
+            setLoading(false);
+        }, 8000);
+
         try {
+            if (!isRefresh) setLoading(true);
+            
             // If viewing self, use authUser which is already loaded (mostly), but simple getProfileById ensures fresh data
             // If viewing others, must fetch
             let data = null;

@@ -29,6 +29,15 @@ const Notifications = () => {
 
     const loadNotifications = async () => {
         setLoading(true);
+
+        // Safety timeout to prevent infinite loading
+        const safetyTimeout = setTimeout(() => {
+            if (loading) {
+                console.warn('Notifications load taking too long, forcing loading to false');
+                setLoading(false);
+            }
+        }, 8000);
+
         try {
             const data = await db.getNotifications(user.id);
             setNotifications(data);
