@@ -23,7 +23,7 @@ const AdminProfile = () => {
     const loadProfileData = async (silent = false) => {
         if (!silent) setLoading(true);
         try {
-            const data = await db.getProfile(authUser.id);
+            const data = await db.getProfileById(authUser.id);
             if (data) {
                 setProfileData(data);
                 setName(data.name || '');
