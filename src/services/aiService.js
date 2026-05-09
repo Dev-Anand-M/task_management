@@ -729,7 +729,7 @@ Return ONLY a valid JSON object:
   "overallGrade": "A/B/C/D/F",
   "mentorNote": "Internal note"
 }
-Final Rules: No other text. JSON only. Do NOT wrap the JSON in markdown code blocks like ```json. Grade must be A, B, C, D, or F.`;
+Final Rules: No other text. JSON only. Do NOT wrap the JSON in markdown code blocks like \`\`\`json. Grade must be A, B, C, D, or F.\`;
 
     // Prepare detailed question context with types
     const questionsWithContext = quizData.questions.map((q, idx) => ({
