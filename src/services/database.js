@@ -1076,7 +1076,9 @@ export const addStudyNote = async (note) => {
                 content: note.content,
                 category: note.category || 'General',
                 color: note.color || null,
-                is_pinned: false
+                is_pinned: false,
+                material_type: note.material_type || 'text',
+                file_url: note.file_url || null
             })
             .select()
             .single();
