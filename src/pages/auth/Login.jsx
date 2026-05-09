@@ -96,6 +96,10 @@ const Login = () => {
 
             {/* Right Side - Login Form */}
             <div className="auth-right">
+                {/* Mobile Background Overlays */}
+                <div className="mobile-deco mobile-deco-1"></div>
+                <div className="mobile-deco mobile-deco-2"></div>
+                
                 <div className="auth-form-container">
                     {/* Mobile Logo */}
                     <div className="mobile-logo">
@@ -195,24 +199,20 @@ const Login = () => {
 
             <style>{`
                 body {
-                    background: 
-                        linear-gradient(135deg, rgba(255,255,255,0.08) 25%, transparent 25%),
-                        linear-gradient(225deg, rgba(255,255,255,0.08) 25%, transparent 25%),
-                        linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%),
-                        linear-gradient(315deg, rgba(255,255,255,0.05) 25%, transparent 25%),
-                        linear-gradient(to right, #047857 0%, #059669 15%, #10b981 35%, #34d399 40%, #1c1917 60%, #1c1917 100%) !important;
-                    background-size: 10px 10px, 10px 10px, 10px 10px, 10px 10px, 100% 100%;
+                    background: #1c1917 !important;
+                    margin: 0;
+                    padding: 0;
                 }
 
                 .auth-page {
                     display: flex;
                     flex-direction: row;
-                    height: 100vh;
+                    min-height: 100vh;
                     width: 100%;
-                    overflow: hidden;
+                    background: #1c1917;
                 }
 
-                /* LEFT SIDE - Green Brand Area */
+                /* LEFT SIDE - Brand Area */
                 .auth-left {
                     width: 50%;
                     display: flex;
@@ -222,7 +222,6 @@ const Login = () => {
                     background: linear-gradient(135deg, #047857 0%, #059669 30%, #10b981 60%, #34d399 100%);
                     position: relative;
                     overflow: hidden;
-                    height: 100%;
                 }
 
                 .auth-left-overlay {
@@ -247,27 +246,27 @@ const Login = () => {
                     background: rgba(255,255,255,0.2);
                     backdrop-filter: blur(10px);
                     border: 2px solid rgba(255,255,255,0.3);
-                    border-radius: 20px;
+                    border-radius: 24px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     margin: 0 auto var(--space-lg);
                     color: white;
-                    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+                    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
                 }
 
                 .brand-title {
-                    font-size: 3rem;
+                    font-size: 3.5rem;
                     font-weight: 800;
                     margin: 0 0 var(--space-md);
-                    letter-spacing: -0.03em;
-                    text-shadow: 0 2px 20px rgba(0,0,0,0.2);
+                    letter-spacing: -0.04em;
+                    text-shadow: 0 4px 30px rgba(0,0,0,0.3);
                     color: white;
                 }
 
                 .brand-tagline {
-                    font-size: 1.1rem;
-                    color: rgba(255,255,255,0.95);
+                    font-size: 1.15rem;
+                    color: rgba(255,255,255,0.9);
                     line-height: 1.6;
                     margin: 0 0 var(--space-2xl);
                 }
@@ -285,92 +284,38 @@ const Login = () => {
                     gap: var(--space-sm);
                     padding: var(--space-md);
                     background: rgba(255,255,255,0.1);
-                    backdrop-filter: blur(10px);
+                    backdrop-filter: blur(12px);
                     border: 1px solid rgba(255,255,255,0.2);
-                    border-radius: var(--radius-lg);
-                    animation: fadeInUp 0.5s ease forwards;
+                    border-radius: var(--radius-xl);
+                    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                     opacity: 0;
-                }
-
-                .feature-card h4 {
-                    font-size: 0.875rem;
-                    font-weight: 600;
-                    margin: 0 0 2px;
-                }
-
-                .feature-card p {
-                    font-size: 0.75rem;
-                    opacity: 0.8;
-                    margin: 0;
                 }
 
                 /* Decorative Circles */
                 .deco-circle {
                     position: absolute;
                     border-radius: 50%;
-                    border: 1px solid rgba(255,255,255,0.1);
+                    filter: blur(60px);
                 }
 
-                .deco-1 {
-                    width: 400px;
-                    height: 400px;
-                    top: -100px;
-                    left: -100px;
-                    background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
-                }
-
-                .deco-2 {
-                    width: 300px;
-                    height: 300px;
-                    bottom: -50px;
-                    right: -50px;
-                    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
-                }
-
-                .deco-3 {
-                    width: 150px;
-                    height: 150px;
-                    top: 40%;
-                    right: 10%;
-                    background: rgba(255,255,255,0.05);
-                }
+                .deco-1 { width: 400px; height: 400px; top: -100px; left: -100px; background: rgba(52, 211, 153, 0.2); }
+                .deco-2 { width: 300px; height: 300px; bottom: -50px; right: -50px; background: rgba(16, 185, 129, 0.2); }
 
                 /* RIGHT SIDE - Form Area */
                 .auth-right {
                     width: 50%;
-                    height: 100%;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     padding: var(--space-2xl);
-                    background: linear-gradient(to right, transparent, #1c1917 40px);
-                    overflow-y: auto;
+                    background: #1c1917;
                     position: relative;
-                    border-radius: 0 40px 40px 0;
-                    z-index: 10;
-                }
-
-                /* Custom Scrollbar for the right side */
-                .auth-right::-webkit-scrollbar {
-                    width: 6px;
-                }
-                
-                .auth-right::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                
-                .auth-right::-webkit-scrollbar-thumb {
-                    background: rgba(255, 255, 255, 0.1);
-                    border-radius: 3px;
-                }
-                
-                .auth-right::-webkit-scrollbar-thumb:hover {
-                    background: rgba(255, 255, 255, 0.2);
                 }
 
                 .auth-form-container {
                     width: 100%;
-                    max-width: 380px;
+                    max-width: 400px;
+                    z-index: 2;
                 }
 
                 .mobile-logo {
@@ -378,116 +323,82 @@ const Login = () => {
                     align-items: center;
                     justify-content: center;
                     gap: var(--space-sm);
-                    margin-bottom: var(--space-xl);
+                    margin-bottom: var(--space-2xl);
                 }
 
                 .mobile-logo-icon {
-                    width: 40px;
-                    height: 40px;
-                    background: var(--gradient-primary);
-                    border-radius: var(--radius-lg);
+                    width: 48px;
+                    height: 48px;
+                    background: linear-gradient(135deg, #10b981, #059669);
+                    border-radius: 14px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     color: white;
+                    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
                 }
 
                 .mobile-logo span {
-                    font-size: var(--text-xl);
-                    font-weight: 700;
-                    color: var(--text);
+                    font-size: 1.5rem;
+                    font-weight: 800;
+                    letter-spacing: -0.02em;
+                    background: linear-gradient(to bottom, #fff, #a8a29e);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
                 }
 
                 .form-header {
-                    margin-bottom: var(--space-xl);
+                    margin-bottom: var(--space-2xl);
+                    text-align: left;
                 }
 
                 .form-header h2 {
-                    font-size: var(--text-2xl);
+                    font-size: 2rem;
                     font-weight: 700;
-                    color: var(--text);
                     margin: 0 0 var(--space-xs);
+                    letter-spacing: -0.02em;
                 }
 
                 .form-header p {
                     color: var(--text-muted);
-                    margin: 0;
-                    font-size: var(--text-sm);
-                }
-
-                .error-box {
-                    padding: var(--space-md);
-                    background: rgba(244, 63, 94, 0.1);
-                    border: 1px solid rgba(244, 63, 94, 0.2);
-                    border-radius: var(--radius-md);
-                    margin-bottom: var(--space-lg);
-                    color: var(--error-500);
-                    font-size: var(--text-sm);
-                    text-align: center;
-                }
-
-                .form-fields {
-                    display: flex;
-                    flex-direction: column;
-                    gap: var(--space-lg);
+                    font-size: 1rem;
                 }
 
                 .submit-btn {
                     width: 100%;
-                    height: 48px;
-                    margin-top: var(--space-md);
+                    height: 52px;
+                    margin-top: var(--space-lg);
                     background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #059669 100%) !important;
                     border: none !important;
-                    font-weight: 600;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: var(--space-sm);
+                    font-weight: 700;
+                    font-size: 1rem;
+                    letter-spacing: 0.01em;
+                    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.2) !important;
+                    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
                 }
 
                 .submit-btn:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5) !important;
+                    transform: translateY(-2px) scale(1.01);
+                    box-shadow: 0 15px 35px rgba(16, 185, 129, 0.4) !important;
                 }
 
                 .register-link {
                     text-align: center;
-                    margin-top: var(--space-xl);
-                    padding-top: var(--space-lg);
-                    border-top: 1px solid var(--border);
-                }
-
-                .register-link p {
-                    color: var(--text-muted);
-                    font-size: var(--text-sm);
-                    margin: 0;
-                }
-
-                .register-link a {
-                    color: #10b981;
-                    font-weight: 600;
-                    text-decoration: none;
-                }
-
-                .register-link a:hover {
-                    color: #34d399;
+                    margin-top: var(--space-2xl);
+                    padding-top: var(--space-xl);
+                    border-top: 1px solid rgba(255,255,255,0.05);
                 }
 
                 @keyframes fadeInUp {
-                    from {
-                        opacity: 0;
-                        transform: translateY(20px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
+                    from { opacity: 0; transform: translateY(30px); }
+                    to { opacity: 1; transform: translateY(0); }
                 }
 
-                /* Responsive */
+                /* Mobile Optimization */
                 @media (max-width: 1024px) {
                     .auth-page {
                         flex-direction: column;
+                        background: #0f172a; /* Deep dark blue/black base */
                     }
 
                     .auth-left {
@@ -495,42 +406,89 @@ const Login = () => {
                     }
 
                     .auth-right {
-                        flex: 1;
                         width: 100%;
-                        min-height: 100vh;
-                        border-radius: 0;
+                        flex: 1;
+                        padding: var(--space-xl);
+                        background: transparent;
+                        align-items: flex-start;
+                        padding-top: 10vh;
+                        position: relative;
+                        overflow: hidden;
+                    }
+
+                    .mobile-deco {
+                        position: absolute;
+                        border-radius: 50%;
+                        filter: blur(80px);
+                        z-index: 0;
+                        opacity: 0.6;
+                        animation: pulse-slow 8s ease-in-out infinite alternate;
+                    }
+
+                    .mobile-deco-1 {
+                        width: 300px;
+                        height: 300px;
+                        top: -50px;
+                        right: -50px;
+                        background: rgba(16, 185, 129, 0.4); /* Emerald glow */
+                    }
+
+                    .mobile-deco-2 {
+                        width: 250px;
+                        height: 250px;
+                        bottom: 10%;
+                        left: -50px;
+                        background: rgba(4, 120, 87, 0.4); /* Darker emerald glow */
+                        animation-delay: -4s;
+                    }
+
+                    @keyframes pulse-slow {
+                        0% { transform: scale(1) translate(0, 0); opacity: 0.4; }
+                        100% { transform: scale(1.1) translate(-20px, 20px); opacity: 0.7; }
+                    }
+
+                    .auth-form-container {
+                        background: rgba(30, 41, 59, 0.7); /* Slightly blueish slate glass */
+                        backdrop-filter: blur(25px);
+                        -webkit-backdrop-filter: blur(25px);
+                        padding: var(--space-2xl);
+                        border-radius: 32px;
+                        border: 1px solid rgba(255,255,255,0.1);
+                        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+                        z-index: 2;
                     }
 
                     .mobile-logo {
                         display: flex;
                     }
+
+                    .form-header {
+                        text-align: center;
+                    }
                 }
 
-                /* Light mode adjustments */
-                html[data-theme="light"] .auth-right {
-                    background: #ffffff;
+                @media (max-width: 480px) {
+                    .auth-right {
+                        padding: var(--space-md);
+                        padding-top: 6vh;
+                    }
+                    .auth-form-container {
+                        padding: var(--space-xl);
+                        border-radius: 24px;
+                    }
+                    .brand-title {
+                        font-size: 2.5rem;
+                    }
                 }
 
-                html[data-theme="light"] .form-header h2 {
-                    color: #1c1917;
-                }
-
-                html[data-theme="light"] .form-header p {
-                    color: #78716c;
-                }
-
-                /* Dark mode text colors */
-                .form-header h2 {
-                    color: #fafaf9;
-                }
-
-                .form-header p {
-                    color: #a8a29e;
-                }
-
-                .register-link p {
-                    color: #a8a29e;
-                }
+                /* Theme Colors */
+                html[data-theme="light"] .auth-right { background: #f9fafb; }
+                html[data-theme="light"] .auth-form-container { background: white; border-color: #e5e7eb; }
+                html[data-theme="light"] .form-header h2 { color: #111827; }
+                html[data-theme="light"] .mobile-logo span { background: linear-gradient(to bottom, #111827, #4b5563); -webkit-text-fill-color: transparent; -webkit-background-clip: text; }
+                
+                .form-header h2 { color: #fafaf9; }
+                .form-header p { color: #a8a29e; }
             `}</style>
         </div>
     );
