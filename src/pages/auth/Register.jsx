@@ -623,12 +623,13 @@ const Register = () => {
                         flex: 1;
                         width: 100%;
                         height: 100vh;
-                        padding: var(--space-sm); /* Extreme minimal padding */
+                        padding: var(--space-xs); /* Extra minimal padding */
                         background: #1c1917;
                         overflow: hidden !important;
                         display: flex;
-                        align-items: center;
+                        align-items: flex-start; /* Move up */
                         justify-content: center;
+                        padding-top: 5vh; /* Controlled top gap */
                         scrollbar-width: none;
                         -ms-overflow-style: none;
                     }
@@ -639,60 +640,60 @@ const Register = () => {
 
                     .auth-form-container {
                         width: 100%;
-                        max-width: 400px;
+                        max-width: 380px; /* Slimmer */
                         margin: 0 auto;
                     }
 
                     .mobile-logo {
                         display: flex;
-                        margin-bottom: 8px; /* Extra tight */
+                        margin-bottom: 6px; /* Extra tight */
                     }
                     
                     .mobile-logo-icon {
-                        width: 24px;
-                        height: 24px;
+                        width: 22px;
+                        height: 22px;
                     }
 
                     .form-header {
-                        margin-bottom: 12px; /* Extra tight */
+                        margin-bottom: 8px; /* Extra tight */
                     }
                     
                     .form-header h2 {
-                        font-size: 1.25rem; /* Shrunk title */
+                        font-size: 1.1rem; /* Shrunk title */
                     }
                     
                     .form-header p {
-                        display: none; /* Hide tagline */
+                        display: none;
                     }
 
                     .form-fields {
-                        gap: 6px; /* Extra tight gaps */
+                        gap: 4px; /* Extra tight gaps */
                     }
                     
                     .form-fields label {
-                        font-size: 0.7rem;
+                        font-size: 0.65rem;
                         margin-bottom: 0;
                     }
                     
                     .form-fields input {
-                        height: 36px; /* Extra short inputs */
-                        padding: 0 var(--space-md);
-                        font-size: 0.85rem;
+                        height: 34px; /* Shorter inputs */
+                        padding: 0 10px;
+                        font-size: 0.8rem;
                     }
 
                     .register-link {
-                        margin-top: 8px; /* Extra tight */
-                        padding-top: 6px;
+                        margin-top: 6px; /* Extra tight */
+                        padding-top: 4px;
                     }
                     
                     .password-row {
                         grid-template-columns: 1fr;
-                        gap: 6px;
+                        gap: 4px;
                     }
                     
                     .submit-btn {
-                        height: 38px; /* Extra short button */
-                        margin-top: 8px;
+                        height: 36px; /* Shorter button */
+                        margin-top: 6px;
                     }
                 }
 

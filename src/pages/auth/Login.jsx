@@ -561,12 +561,13 @@ const Login = () => {
                         flex: 1;
                         width: 100%;
                         height: 100vh;
-                        padding: var(--space-md); /* Minimal padding */
+                        padding: var(--space-sm); /* Minimal padding */
                         background: #1c1917;
                         overflow: hidden !important;
                         display: flex;
-                        align-items: center;
+                        align-items: flex-start; /* Align to top to reduce top whitespace */
                         justify-content: center;
+                        padding-top: 8vh; /* Controlled top space */
                         scrollbar-width: none;
                         -ms-overflow-style: none;
                     }
@@ -577,54 +578,57 @@ const Login = () => {
 
                     .auth-form-container {
                         width: 100%;
-                        max-width: 360px; /* Slimmer */
+                        max-width: 340px; /* Even slimmer */
                         margin: 0 auto;
                     }
 
                     .mobile-logo {
                         display: flex;
-                        margin-bottom: 12px; /* Tight */
+                        margin-bottom: 8px; /* Even tighter */
                     }
                     
                     .mobile-logo-icon {
-                        width: 28px;
-                        height: 28px;
+                        width: 24px;
+                        height: 24px;
                     }
 
                     .form-header {
-                        margin-bottom: 16px; /* Tight */
+                        margin-bottom: 12px; /* Even tighter */
                     }
                     
                     .form-header h2 {
-                        font-size: 1.4rem; /* Smaller */
+                        font-size: 1.3rem; /* Shrunk title */
+                        margin-bottom: 0;
                     }
                     
                     .form-header p {
-                        display: none; /* Hide tagline on mobile to save space */
+                        display: none; /* Keep hidden */
                     }
                     
                     .form-fields {
-                        gap: 10px; /* Tight gaps */
+                        gap: 8px; /* Tight gaps */
                     }
                     
                     .form-fields label {
-                        font-size: 0.75rem; /* Smaller labels */
-                        margin-bottom: 2px;
+                        font-size: 0.7rem;
+                        margin-bottom: 0;
                     }
                     
                     .form-fields input {
-                        height: 40px; /* Shorter inputs */
-                        font-size: 0.9rem;
+                        height: 38px; /* Shorter inputs */
+                        font-size: 0.85rem;
+                        padding: 0 12px;
                     }
 
                     .submit-btn {
-                        height: 42px; /* Shorter button */
-                        margin-top: 10px;
+                        height: 40px; /* Shorter button */
+                        margin-top: 8px;
+                        font-size: 0.9rem;
                     }
 
                     .register-link {
-                        margin-top: 12px; /* Tight */
-                        padding-top: 10px;
+                        margin-top: 10px; /* Even tighter */
+                        padding-top: 8px;
                     }
                 }
 
