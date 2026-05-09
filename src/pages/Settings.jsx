@@ -549,6 +549,37 @@ const Settings = () => {
                         ))}
                     </div>
 
+                    <div style={{ marginTop: 'var(--space-lg)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div>
+                                <h4 style={{ margin: 0, fontWeight: 600 }}>Push Notifications</h4>
+                                <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                                    Enable native push notifications for your mobile device or browser.
+                                </p>
+                            </div>
+                            <Button 
+                                variant="secondary" 
+                                size="sm"
+                                onClick={async () => {
+                                    try {
+                                        const { requestNotificationPermission } = await import('../lib/firebase');
+                                        const success = await requestNotificationPermission(user.id);
+                                        if (success) {
+                                            alert("Push notifications enabled successfully!");
+                                        } else {
+                                            alert("Failed to enable push notifications. Check your browser permissions or Firebase configuration.");
+                                        }
+                                    } catch (e) {
+                                        console.error(e);
+                                        alert("An error occurred. Check the console.");
+                                    }
+                                }}
+                            >
+                                Setup Device
+                            </Button>
+                        </div>
+                    </div>
+
                     {saving && <p style={{
                         marginTop: 'var(--space-md)',
                         fontSize: 'var(--text-xs)',

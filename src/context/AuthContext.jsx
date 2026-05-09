@@ -186,6 +186,14 @@ export const AuthProvider = ({ children }) => {
     // logout with timeout — can NEVER hang
     const logout = useCallback(async () => {
         try {
+            if (user?.id) {
+                try {
+                    const { clearTokenFromDatabase } = await import('../lib/firebase');
+                    await clearTokenFromDatabase(user.id);
+                } catch (e) {
+                    console.warn("Could not clear FCM token:", e);
+                }
+            }
             await Promise.race([
                 supabase.auth.signOut(),
                 new Promise(resolve => setTimeout(resolve, 3000))
@@ -195,7 +203,7 @@ export const AuthProvider = ({ children }) => {
         }
         setUser(null);
         setProfile(null);
-    }, []);
+    }, [user?.id]);
 
     const refreshUser = useCallback(async () => {
         if (user?.id) await fetchProfileRef.current(user.id, true);

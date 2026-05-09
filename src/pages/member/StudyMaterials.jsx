@@ -224,7 +224,7 @@ const StudyMaterials = () => {
             </div>
 
             {/* Tabs */}
-            <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)', flexWrap: 'wrap' }}>
                 <button onClick={() => handleTabChange('shared')} style={tabStyle('shared')}>
                     <BookOpen size={16} /> Shared Materials
                     <span style={{ background: 'rgba(255,255,255,0.2)', padding: '1px 8px', borderRadius: '10px', fontSize: '11px' }}>
@@ -284,7 +284,7 @@ const StudyMaterials = () => {
                             <button key={tag} onClick={() => setSelectedTag(selectedTag === tag ? null : tag)} style={{
                                 padding: '2px 10px',
                                 borderRadius: 'var(--radius-full)',
-                                border: selectedTag === tag ? '1px solid var(--primary-500)' : '1px dashed var(--border)',
+                                border: selectedTag === tag ? '1px dashed var(--border)' : '1px dashed var(--border)',
                                 background: selectedTag === tag ? 'color-mix(in srgb, var(--primary-500), transparent 85%)' : 'transparent',
                                 color: selectedTag === tag ? 'var(--primary-500)' : 'var(--text-muted)',
                                 cursor: 'pointer',
@@ -330,7 +330,7 @@ const StudyMaterials = () => {
                                     <Badge variant="secondary" size="xs">{items.length}</Badge>
                                 </div>
                                 {isExpanded && (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)' }}>
                                         {items.map(item => (
                                             <Card key={item.id} style={{ cursor: 'pointer', position: 'relative' }} onClick={() => setViewingItem(item)}>
                                                 <div className="flex justify-between items-start mb-sm">

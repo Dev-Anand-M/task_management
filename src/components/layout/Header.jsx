@@ -189,30 +189,7 @@ const Header = ({ onMenuClick, title }) => {
           <Menu size={24} />
         </button>
 
-        {/* Mobile Exit Button */}
-        <div className="visible-mobile hidden-desktop">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => navigate(isAdmin ? '/admin' : '/dashboard')}
-            style={{
-              background: 'rgba(239, 68, 68, 0.1)',
-              color: '#ef4444',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
-              fontWeight: 700,
-              fontSize: '11px',
-              padding: '4px 10px',
-              borderRadius: '8px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-          >
-            <ArrowLeft size={12} />
-            Exit
-          </Button>
-        </div>
+
 
         <div className="flex items-center gap-sm">
           <h1 style={{
