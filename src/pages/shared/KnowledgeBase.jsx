@@ -327,11 +327,17 @@ const KnowledgeBase = () => {
                     <div>
                         <label className="label">Subject / Category</label>
                         <Input 
+                            list="subject-suggestions"
                             placeholder="e.g. Physics, Chemistry"
                             value={newSnippet.subject}
                             onChange={(e) => setNewSnippet({ ...newSnippet, subject: e.target.value })}
                             required
                         />
+                        <datalist id="subject-suggestions">
+                            {[...new Set(knowledge.map(k => k.subject))].filter(Boolean).map(cat => (
+                                <option key={cat} value={cat} />
+                            ))}
+                        </datalist>
                     </div>
 
                     {newSnippet.material_type === 'file' && (

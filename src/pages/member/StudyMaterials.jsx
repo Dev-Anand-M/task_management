@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, Button, Badge, Input, Modal } from '../../components/common';
 import {
     BookOpen, Plus, Trash2, Search, Edit3, Pin, PinOff,
-    FolderOpen, Clock, Tag, Sparkles, Eye, ChevronDown,
+    FolderOpen, Clock, Tag, Sparkles, Eye, ChevronDown, ChevronRight,
     BookMarked, StickyNote, Filter, X,
     File, Link as LinkIcon, FileText, Download, ExternalLink
 } from 'lucide-react';
@@ -34,7 +34,15 @@ const StudyMaterials = () => {
     const [editingNote, setEditingNote] = useState(null);
     const [viewingItem, setViewingItem] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [selectedTag, setSelectedTag] = useState(null);
+    const [expandedCategories, setExpandedCategories] = useState({});
     const [noteForm, setNoteForm] = useState({ title: '', content: '', category: 'General', color: null, material_type: 'text', file: null, url: '' });
+
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        setSelectedCategory('All');
+        setSelectedTag(null);
+    };
 
     const loadData = useCallback(async (silent = false) => {
         if (!user?.id) return;
@@ -135,13 +143,16 @@ const StudyMaterials = () => {
     };
 
     // Filtering
+    const items = activeTab === 'shared' ? sharedMaterials : myNotes;
+
     const allCategories = ['All', ...new Set(
         activeTab === 'shared'
             ? sharedMaterials.map(m => m.subject || 'General')
             : myNotes.map(n => n.category || 'General')
     )];
 
-    const items = activeTab === 'shared' ? sharedMaterials : myNotes;
+    const allTags = [...new Set(items.flatMap(item => item.tags || []))].filter(Boolean).sort();
+
     const filtered = items.filter(item => {
         const q = searchQuery.toLowerCase();
         const matchesSearch = !q ||
@@ -150,11 +161,30 @@ const StudyMaterials = () => {
             (item.tags || []).some(t => t.toLowerCase().includes(q));
         const cat = activeTab === 'shared' ? (item.subject || 'General') : (item.category || 'General');
         const matchesCat = selectedCategory === 'All' || cat === selectedCategory;
-        return matchesSearch && matchesCat;
+        const matchesTag = !selectedTag || (item.tags || []).includes(selectedTag);
+        return matchesSearch && matchesCat && matchesTag;
     });
 
     const pinnedNotes = activeTab === 'notes' ? filtered.filter(n => n.is_pinned) : [];
     const unpinnedNotes = activeTab === 'notes' ? filtered.filter(n => !n.is_pinned) : [];
+
+    const groupedShared = activeTab === 'shared' ? filtered.reduce((acc, item) => {
+        const cat = item.subject || 'General';
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(item);
+        return acc;
+    }, {}) : {};
+
+    const groupedUnpinnedNotes = activeTab === 'notes' ? unpinnedNotes.reduce((acc, item) => {
+        const cat = item.category || 'General';
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(item);
+        return acc;
+    }, {}) : {};
+
+    const toggleCategory = (cat) => {
+        setExpandedCategories(prev => ({ ...prev, [cat]: prev[cat] === false ? true : false }));
+    };
 
     const tabStyle = (tab) => ({
         padding: '10px 20px',
@@ -187,7 +217,7 @@ const StudyMaterials = () => {
                     </p>
                 </div>
                 {activeTab === 'notes' && (
-                    <Button variant="primary" icon={Plus} onClick={() => { setEditingNote(null); setNoteForm({ title: '', content: '', category: 'General', color: null }); setShowAddModal(true); }}>
+                    <Button variant="primary" icon={Plus} onClick={() => { setEditingNote(null); setNoteForm({ title: '', content: '', category: 'General', color: null, material_type: 'text', file: null, url: '' }); setShowAddModal(true); }}>
                         New Note
                     </Button>
                 )}
@@ -195,13 +225,13 @@ const StudyMaterials = () => {
 
             {/* Tabs */}
             <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
-                <button onClick={() => { setActiveTab('shared'); setSelectedCategory('All'); }} style={tabStyle('shared')}>
+                <button onClick={() => handleTabChange('shared')} style={tabStyle('shared')}>
                     <BookOpen size={16} /> Shared Materials
                     <span style={{ background: 'rgba(255,255,255,0.2)', padding: '1px 8px', borderRadius: '10px', fontSize: '11px' }}>
                         {sharedMaterials.length}
                     </span>
                 </button>
-                <button onClick={() => { setActiveTab('notes'); setSelectedCategory('All'); }} style={tabStyle('notes')}>
+                <button onClick={() => handleTabChange('notes')} style={tabStyle('notes')}>
                     <StickyNote size={16} /> My Notes
                     <span style={{ background: 'rgba(255,255,255,0.2)', padding: '1px 8px', borderRadius: '10px', fontSize: '11px' }}>
                         {myNotes.length}
@@ -247,6 +277,26 @@ const StudyMaterials = () => {
                         ))}
                     </div>
                 )}
+                {allTags.length > 0 && (
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
+                        <Tag size={14} style={{ color: 'var(--text-muted)' }} />
+                        {allTags.map(tag => (
+                            <button key={tag} onClick={() => setSelectedTag(selectedTag === tag ? null : tag)} style={{
+                                padding: '2px 10px',
+                                borderRadius: 'var(--radius-full)',
+                                border: selectedTag === tag ? '1px solid var(--primary-500)' : '1px dashed var(--border)',
+                                background: selectedTag === tag ? 'color-mix(in srgb, var(--primary-500), transparent 85%)' : 'transparent',
+                                color: selectedTag === tag ? 'var(--primary-500)' : 'var(--text-muted)',
+                                cursor: 'pointer',
+                                fontSize: '11px',
+                                fontWeight: 500,
+                                transition: 'all 0.2s ease'
+                            }}>
+                                #{tag}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Content */}
@@ -269,65 +319,57 @@ const StudyMaterials = () => {
                 </Card>
             ) : activeTab === 'shared' ? (
                 /* Shared Materials Grid */
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
-                    {filtered.map(item => (
-                        <Card key={item.id} style={{ cursor: 'pointer', position: 'relative' }} onClick={() => setViewingItem(item)}>
-                            <div className="flex justify-between items-start mb-sm">
-                                <Badge variant="accent" size="xs">{item.subject || 'General'}</Badge>
-                                <div className="flex items-center gap-xs">
-                                    <Clock size={12} className="text-muted" />
-                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatDate(item.created_at)}</span>
+                <div>
+                    {Object.entries(groupedShared).sort(([a], [b]) => a.localeCompare(b)).map(([cat, items]) => {
+                        const isExpanded = expandedCategories[cat] !== false;
+                        return (
+                            <div key={cat} style={{ marginBottom: 'var(--space-xl)' }}>
+                                <div onClick={() => toggleCategory(cat)} className="flex items-center gap-sm mb-md" style={{ cursor: 'pointer', userSelect: 'none' }}>
+                                    {isExpanded ? <ChevronDown size={18} className="text-muted" /> : <ChevronRight size={18} className="text-muted" />}
+                                    <h3 style={{ margin: 0 }}>{cat}</h3>
+                                    <Badge variant="secondary" size="xs">{items.length}</Badge>
                                 </div>
+                                {isExpanded && (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
+                                        {items.map(item => (
+                                            <Card key={item.id} style={{ cursor: 'pointer', position: 'relative' }} onClick={() => setViewingItem(item)}>
+                                                <div className="flex justify-between items-start mb-sm">
+                                                    <Badge variant="accent" size="xs">{item.subject || 'General'}</Badge>
+                                                    <div className="flex items-center gap-xs">
+                                                        <Clock size={12} className="text-muted" />
+                                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatDate(item.created_at)}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-xs mb-sm">
+                                                    {item.material_type === 'file' && <File size={16} className="text-primary-500" />}
+                                                    {item.material_type === 'link' && <LinkIcon size={16} className="text-primary-500" />}
+                                                    {item.material_type === 'text' && <FileText size={16} className="text-primary-500" />}
+                                                    <h4 style={{ margin: '0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</h4>
+                                                </div>
+                                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 'var(--space-sm)', lineHeight: 1.6 }}>
+                                                    {item.content !== 'Attached Material' ? item.content : 'View attached resource.'}
+                                                </p>
+                                                {item.file_url && (
+                                                    <div style={{ marginBottom: 'var(--space-md)' }}>
+                                                        <a href={item.file_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'var(--primary-50)', color: 'var(--primary-600)', borderRadius: 'var(--radius-md)', textDecoration: 'none', fontWeight: 600, fontSize: 'var(--text-sm)' }} className="hover:bg-primary-100 transition-colors" onClick={e => e.stopPropagation()}>
+                                                            {item.material_type === 'file' ? <><Download size={14} /> Download File</> : <><ExternalLink size={14} /> Open Link</>}
+                                                        </a>
+                                                    </div>
+                                                )}
+                                                {item.tags?.length > 0 && (
+                                                    <div className="flex flex-wrap gap-xs">
+                                                        {item.tags.slice(0, 4).map((tag, i) => <Badge key={i} variant="outline" size="xs">#{tag}</Badge>)}
+                                                        {item.tags.length > 4 && <Badge variant="outline" size="xs">+{item.tags.length - 4}</Badge>}
+                                                    </div>
+                                                )}
+                                                <div style={{ position: 'absolute', bottom: '12px', right: '12px', opacity: 0.3 }}><Eye size={16} /></div>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex items-center gap-xs mb-sm">
-                                {item.material_type === 'file' && <File size={16} className="text-primary-500" />}
-                                {item.material_type === 'link' && <LinkIcon size={16} className="text-primary-500" />}
-                                {item.material_type === 'text' && <FileText size={16} className="text-primary-500" />}
-                                <h4 style={{ margin: '0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</h4>
-                            </div>
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 'var(--space-sm)', lineHeight: 1.6 }}>
-                                {item.content !== 'Attached Material' ? item.content : 'View attached resource.'}
-                            </p>
-
-                            {item.file_url && (
-                                <div style={{ marginBottom: 'var(--space-md)' }}>
-                                    <a 
-                                        href={item.file_url} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        style={{ 
-                                            display: 'inline-flex', 
-                                            alignItems: 'center', 
-                                            gap: '6px', 
-                                            padding: '8px 16px', 
-                                            background: 'var(--primary-50)', 
-                                            color: 'var(--primary-600)', 
-                                            borderRadius: 'var(--radius-md)',
-                                            textDecoration: 'none',
-                                            fontWeight: 600,
-                                            fontSize: 'var(--text-sm)'
-                                        }}
-                                        className="hover:bg-primary-100 transition-colors"
-                                        onClick={e => e.stopPropagation()}
-                                    >
-                                        {item.material_type === 'file' ? <><Download size={14} /> Download File</> : <><ExternalLink size={14} /> Open Link</>}
-                                    </a>
-                                </div>
-                            )}
-
-                            {item.tags?.length > 0 && (
-                                <div className="flex flex-wrap gap-xs">
-                                    {item.tags.slice(0, 4).map((tag, i) => (
-                                        <Badge key={i} variant="outline" size="xs">#{tag}</Badge>
-                                    ))}
-                                    {item.tags.length > 4 && <Badge variant="outline" size="xs">+{item.tags.length - 4}</Badge>}
-                                </div>
-                            )}
-                            <div style={{ position: 'absolute', bottom: '12px', right: '12px', opacity: 0.3 }}>
-                                <Eye size={16} />
-                            </div>
-                        </Card>
-                    ))}
+                        );
+                    })}
                 </div>
             ) : (
                 /* My Notes */
@@ -344,17 +386,31 @@ const StudyMaterials = () => {
                         </>
                     )}
                     {unpinnedNotes.length > 0 && (
-                        <>
+                        <div style={{ marginTop: 'var(--space-xl)' }}>
                             {pinnedNotes.length > 0 && (
-                                <div className="flex items-center gap-sm mb-md">
+                                <div className="flex items-center gap-sm mb-md pb-sm" style={{ borderBottom: '1px solid var(--border)' }}>
                                     <FolderOpen size={14} className="text-muted" />
-                                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>All Notes</span>
+                                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>All Categories</span>
                                 </div>
                             )}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)' }}>
-                                {unpinnedNotes.map(note => <NoteCard key={note.id} note={note} onEdit={openEdit} onDelete={handleDeleteNote} onTogglePin={handleTogglePin} onView={setViewingItem} />)}
-                            </div>
-                        </>
+                            {Object.entries(groupedUnpinnedNotes).sort(([a], [b]) => a.localeCompare(b)).map(([cat, items]) => {
+                                const isExpanded = expandedCategories[`notes_${cat}`] !== false;
+                                return (
+                                    <div key={cat} style={{ marginBottom: 'var(--space-xl)' }}>
+                                        <div onClick={() => toggleCategory(`notes_${cat}`)} className="flex items-center gap-sm mb-md" style={{ cursor: 'pointer', userSelect: 'none' }}>
+                                            {isExpanded ? <ChevronDown size={18} className="text-muted" /> : <ChevronRight size={18} className="text-muted" />}
+                                            <h3 style={{ margin: 0 }}>{cat}</h3>
+                                            <Badge variant="secondary" size="xs">{items.length}</Badge>
+                                        </div>
+                                        {isExpanded && (
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)' }}>
+                                                {items.map(note => <NoteCard key={note.id} note={note} onEdit={openEdit} onDelete={handleDeleteNote} onTogglePin={handleTogglePin} onView={setViewingItem} />)}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
             )}
@@ -423,7 +479,15 @@ const StudyMaterials = () => {
                     </div>
                     <div>
                         <label className="label">Category</label>
-                        <Input placeholder="e.g. Physics, React, DSA" value={noteForm.category} onChange={(e) => setNoteForm({ ...noteForm, category: e.target.value })} />
+                        <Input 
+                            list="category-suggestions"
+                            placeholder="e.g. Physics, React, DSA" 
+                            value={noteForm.category} 
+                            onChange={(e) => setNoteForm({ ...noteForm, category: e.target.value })} 
+                        />
+                        <datalist id="category-suggestions">
+                            {allCategories.filter(c => c !== 'All').map(c => <option key={c} value={c} />)}
+                        </datalist>
                     </div>
 
                     {noteForm.material_type === 'file' && (
