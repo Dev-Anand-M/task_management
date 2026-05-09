@@ -116,12 +116,16 @@ export const AuthProvider = ({ children }) => {
                         // Automatically request notification permission on login
                         setTimeout(async () => {
                             try {
+                                if (Notification.permission === 'denied') {
+                                    console.log("[Auth] Notification permission is denied. Skipping automatic prompt.");
+                                    return;
+                                }
                                 const { requestNotificationPermission } = await import('../lib/firebase');
                                 await requestNotificationPermission(session.user.id);
                             } catch (e) {
                                 console.warn("Notification registration failed:", e);
                             }
-                        }, 2000); // Small delay to ensure everything is loaded
+                        }, 2000); 
                     }
                 }
 

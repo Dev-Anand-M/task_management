@@ -491,6 +491,25 @@ const Settings = () => {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                        {Notification.permission === 'denied' && (
+                            <div style={{ 
+                                padding: 'var(--space-sm) var(--space-md)', 
+                                background: 'rgba(239, 68, 68, 0.1)', 
+                                border: '1px solid var(--error)', 
+                                borderRadius: 'var(--radius-md)',
+                                marginBottom: 'var(--space-md)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 'var(--space-sm)',
+                                color: 'var(--error)'
+                            }}>
+                                <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                                <p style={{ margin: 0, fontSize: 'var(--text-sm)' }}>
+                                    <strong>Permissions Blocked:</strong> Your browser has blocked notifications for this site. 
+                                    Click the <strong>tune/lock icon</strong> next to the URL to "Allow" them.
+                                </p>
+                            </div>
+                        )}
                         {[
                             { key: 'push', label: 'Push Notifications', desc: 'Native device/browser notifications' },
                             { key: 'taskReminders', label: 'Task Reminders', desc: 'Get reminded about pending tasks' },
