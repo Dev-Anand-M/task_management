@@ -585,6 +585,52 @@ const Settings = () => {
                     }}>
                         Saving preferences...
                     </p>}
+                    {notifications.push && (
+                        <div style={{ marginTop: 'var(--space-lg)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border)' }}>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={async () => {
+                                    try {
+                                        const { data: profile } = await supabase.from('profiles').select('preferences').eq('id', user.id).single();
+                                        const tokens = [
+                                            ...(profile?.preferences?.fcm_tokens || []),
+                                            profile?.preferences?.fcm_token
+                                        ].filter(t => !!t);
+
+                                        if (tokens.length === 0) {
+                                            alert("No tokens found. Try turning Push ON/OFF to register this device.");
+                                            return;
+                                        }
+
+                                        const res = await fetch(`${window.location.origin}/api/push`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                tokens: tokens,
+                                                title: 'Test Notification 🔔',
+                                                body: 'If you see this, your push notifications are working perfectly!',
+                                                link: '/settings'
+                                            })
+                                        });
+                                        const data = await res.json();
+                                        if (data.success) {
+                                            alert("Test notification sent successfully!");
+                                        } else {
+                                            alert("Error from API: " + (data.error || "Unknown error"));
+                                        }
+                                    } catch (err) {
+                                        alert("Failed to send test: " + err.message);
+                                    }
+                                }}
+                            >
+                                Send Test Notification
+                            </Button>
+                            <p style={{ marginTop: '8px', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                Use this to verify if your current device is receiving alerts.
+                            </p>
+                        </div>
+                    )}
                 </Card>
 
                 {/* Account Info */}

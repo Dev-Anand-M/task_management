@@ -479,7 +479,8 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: prompt }
                 ],
-                temperature: 0.7
+                temperature: 0.7,
+                max_tokens: 8192
             };
             
             const data = await callAIProxy('openai', endpoint, apiKey, body, signal, options);
@@ -527,7 +528,8 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: prompt }
                 ],
-                temperature: 0.7
+                temperature: 0.7,
+                max_tokens: 8192
             };
             
             const data = await callAIProxy('sambanova', endpoint, apiKey, body, signal, options);

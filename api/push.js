@@ -4,6 +4,7 @@ import admin from 'firebase-admin';
 if (!admin.apps.length) {
     try {
         const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        console.log('Initializing Firebase Admin for project:', serviceAccount.project_id);
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
