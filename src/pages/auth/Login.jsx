@@ -488,9 +488,6 @@ const Login = () => {
                 @media (max-width: 1024px) {
                     .auth-page {
                         flex-direction: column;
-                        height: auto;
-                        min-height: 100vh;
-                        overflow-y: auto;
                     }
 
                     .auth-left {
@@ -500,11 +497,8 @@ const Login = () => {
                     .auth-right {
                         flex: 1;
                         width: 100%;
-                        min-height: 100vh;
-                        border-radius: 0;
+                        height: 100vh;
                         padding: var(--space-xl);
-                        align-items: flex-start;
-                        padding-top: 10vh;
                         background: #1c1917; /* Solid background on mobile to override the weird right-side transparent gradient */
                     }
 
@@ -522,7 +516,6 @@ const Login = () => {
                 @media (max-width: 480px) {
                     .auth-right {
                         padding: var(--space-lg);
-                        padding-top: 6vh;
                     }
                 }
 
