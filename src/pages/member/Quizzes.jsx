@@ -700,7 +700,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                                                                 fontSize: 'var(--text-base)',
                                                                 color: 'var(--success-600)'
                                                             }}>
-                                                                +1
+                                                                ✓
                                                             </div>
                                                             <Badge variant="success">Correct</Badge>
                                                         </>
@@ -715,7 +715,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                                                                 fontSize: 'var(--text-base)',
                                                                 color: 'var(--error-600)'
                                                             }}>
-                                                                -1
+                                                                ✗
                                                             </div>
                                                             <Badge variant="danger">Incorrect</Badge>
                                                         </>

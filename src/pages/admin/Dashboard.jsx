@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Card, Badge, Avatar, Button, ProgressBar } from '../../components/common';
+import { supabase } from '../../lib/supabase';
 import {
     ListTodo,
     ClipboardCheck,
@@ -93,9 +94,30 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         loadDashboardData();
+
+        // REALTIME: Auto-update when data changes
+        const channel = supabase
+            .channel('admin-dashboard-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+                loadDashboardData(true);
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
+                loadDashboardData(true);
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_attempts' }, () => {
+                loadDashboardData(true);
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+                loadDashboardData(true);
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
-    // MINI RELOAD: Listen for global refresh events
+    // Visibility-based refresh (no manual button needed)
     useMiniReload(() => loadDashboardData(true));
 
     const statCards = [

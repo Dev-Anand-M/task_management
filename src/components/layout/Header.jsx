@@ -485,19 +485,6 @@ const Header = ({ onMenuClick, title }) => {
           )}
         </div>
 
-        {/* Refresh Button (Mini Reload) */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => {
-            // Dispatch a custom event that pages can listen to for "mini reload"
-            window.dispatchEvent(new CustomEvent('zenith-refresh'));
-          }}
-          style={{ width: '44px', height: '44px', padding: '10px' }}
-          aria-label="Refresh Data"
-        >
-          <RefreshCw size={24} className="hover:rotate-180 transition-all duration-500" />
-        </Button>
 
         <Button 
           variant="ghost" 
