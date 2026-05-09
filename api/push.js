@@ -65,9 +65,19 @@ export default async function handler(req, res) {
             });
         }
 
+        const failedTokens = [];
+        if (tokens.length > 1 && results.responses) {
+            results.responses.forEach((resp, idx) => {
+                if (!resp.success && (resp.error?.code === 'messaging/registration-token-not-registered' || resp.error?.code === 'messaging/invalid-registration-token')) {
+                    failedTokens.push(tokens[idx]);
+                }
+            });
+        }
+
         return res.status(200).json({ 
             success: true, 
             results: results,
+            failedTokens: failedTokens,
             details: results.responses ? results.responses.map(r => ({
                 success: r.success,
                 error: r.error ? {
