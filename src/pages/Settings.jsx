@@ -603,6 +603,8 @@ const Settings = () => {
                                             return;
                                         }
 
+                                        console.log("[TestPush] Sending to tokens:", tokens);
+
                                         const res = await fetch(`${window.location.origin}/api/push`, {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
@@ -614,12 +616,15 @@ const Settings = () => {
                                             })
                                         });
                                         const data = await res.json();
+                                        console.log("[TestPush] API Response:", data);
+                                        
                                         if (data.success) {
-                                            alert("Test notification sent successfully!");
+                                            alert("Test notification sent successfully! Check your phone/PC.");
                                         } else {
-                                            alert("Error from API: " + (data.error || "Unknown error"));
+                                            alert("Error from API: " + JSON.stringify(data));
                                         }
                                     } catch (err) {
+                                        console.error("[TestPush] Error:", err);
                                         alert("Failed to send test: " + err.message);
                                     }
                                 }}
