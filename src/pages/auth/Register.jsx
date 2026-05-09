@@ -622,14 +622,13 @@ const Register = () => {
                     .auth-right {
                         flex: 1;
                         width: 100%;
-                        height: 100vh;
-                        padding: var(--space-xs); /* Extra minimal padding */
+                        height: 100%;
+                        padding: var(--space-xl);
                         background: #1c1917;
                         overflow: hidden !important;
                         display: flex;
-                        align-items: flex-start; /* Move up */
+                        align-items: center;
                         justify-content: center;
-                        padding-top: 5vh; /* Controlled top gap */
                         scrollbar-width: none;
                         -ms-overflow-style: none;
                     }
@@ -640,60 +639,16 @@ const Register = () => {
 
                     .auth-form-container {
                         width: 100%;
-                        max-width: 380px; /* Slimmer */
+                        max-width: 420px;
                         margin: 0 auto;
                     }
 
                     .mobile-logo {
                         display: flex;
-                        margin-bottom: 6px; /* Extra tight */
-                    }
-                    
-                    .mobile-logo-icon {
-                        width: 22px;
-                        height: 22px;
                     }
 
-                    .form-header {
-                        margin-bottom: 8px; /* Extra tight */
-                    }
-                    
-                    .form-header h2 {
-                        font-size: 1.1rem; /* Shrunk title */
-                    }
-                    
-                    .form-header p {
-                        display: none;
-                    }
-
-                    .form-fields {
-                        gap: 4px; /* Extra tight gaps */
-                    }
-                    
-                    .form-fields label {
-                        font-size: 0.65rem;
-                        margin-bottom: 0;
-                    }
-                    
-                    .form-fields input {
-                        height: 34px; /* Shorter inputs */
-                        padding: 0 10px;
-                        font-size: 0.8rem;
-                    }
-
-                    .register-link {
-                        margin-top: 6px; /* Extra tight */
-                        padding-top: 4px;
-                    }
-                    
                     .password-row {
                         grid-template-columns: 1fr;
-                        gap: 4px;
-                    }
-                    
-                    .submit-btn {
-                        height: 36px; /* Shorter button */
-                        margin-top: 6px;
                     }
                 }
 
