@@ -550,7 +550,7 @@ const Login = () => {
                     .auth-page {
                         flex-direction: column;
                         overflow: hidden;
-                        height: 100vh;
+                        height: 100dvh;
                     }
 
                     .auth-left {
@@ -560,8 +560,8 @@ const Login = () => {
                     .auth-right {
                         flex: 1;
                         width: 100%;
-                        height: 100%;
-                        padding: var(--space-xl);
+                        height: 100dvh;
+                        padding: var(--space-md);
                         background: #1c1917;
                         overflow: hidden !important;
                         display: flex;
