@@ -20,6 +20,7 @@ import InviteCodes from './pages/admin/InviteCodes';
 import ClassroomSettings from './pages/admin/ClassroomSettings';
 import ClassroomDetail from './pages/admin/ClassroomDetail';
 import KnowledgeBase from './pages/shared/KnowledgeBase';
+import AdminProfile from './pages/admin/AdminProfile';
 
 // Member Pages
 import MemberDashboard from './pages/member/Dashboard';
@@ -127,6 +128,11 @@ const AdminMemberProfile = () => {
   return <Profile userId={userId} readonly={true} />;
 };
 
+const ProfileRouter = () => {
+  const { user } = useAuth();
+  return user?.role === 'admin' ? <AdminProfile /> : <Profile />;
+};
+
 function AppRoutes() {
   return (
     <Routes>
@@ -190,7 +196,7 @@ function AppRoutes() {
         </Route>
 
         {/* Shared Routes */}
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile" element={<ProfileRouter />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/notifications" element={<Notifications />} />
