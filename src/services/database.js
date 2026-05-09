@@ -55,9 +55,14 @@ export const getMembers = async () => {
 };
 
 export const getProfileById = async (id) => {
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', id).single();
-    if (error) return null;
-    return data;
+    try {
+        const { data, error } = await withTimeout(supabase.from('profiles').select('*').eq('id', id).single(), 10000);
+        if (error) return null;
+        return data;
+    } catch (err) {
+        console.error('Error in getProfileById:', err);
+        return null;
+    }
 };
 
 export const updateProfile = async (id, updates) => {
@@ -716,15 +721,20 @@ export const checkDeadlines = async (userId) => {
 // CLASSROOMS
 // ============================================
 export const getClassroom = async () => {
-    const user = await getActiveUser();
-    if (!user) return null;
+    try {
+        const user = await getActiveUser();
+        if (!user) return null;
 
-    const { data: profile } = await supabase.from('profiles').select('classroom_id').eq('id', user.id).single();
-    if (!profile?.classroom_id) return null;
+        const { data: profile } = await withTimeout(supabase.from('profiles').select('classroom_id').eq('id', user.id).single(), 10000);
+        if (!profile?.classroom_id) return null;
 
-    const { data, error } = await supabase.from('classrooms').select('*').eq('id', profile.classroom_id).single();
-    if (error) return null;
-    return data;
+        const { data, error } = await withTimeout(supabase.from('classrooms').select('*').eq('id', profile.classroom_id).single(), 10000);
+        if (error) return null;
+        return data;
+    } catch (err) {
+        console.error('Error in getClassroom:', err);
+        return null;
+    }
 };
 
 export const getClassrooms = async () => {

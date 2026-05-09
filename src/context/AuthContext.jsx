@@ -33,16 +33,18 @@ export const AuthProvider = ({ children }) => {
 
         const initializeAuth = async () => {
             try {
-                // Non-blocking session check
+                // Initial session check
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.user && mounted) {
+                    console.log('[AuthContext] Initial session found:', session.user.id);
                     setUser(session.user);
                     fetchProfile(session.user.id);
                 }
             } catch (error) {
-                console.error('Auth init error:', error);
+                console.error('[AuthContext] Initial session check error:', error);
             } finally {
                 if (mounted) setLoading(false);
+                authInitialized = true;
             }
         };
 
@@ -52,32 +54,42 @@ export const AuthProvider = ({ children }) => {
             async (event, session) => {
                 try {
                     if (!mounted) return;
-                    console.log('Auth state change:', event, session?.user?.id);
+                    console.log('[AuthContext] Auth State Event:', event, session?.user?.id);
 
                     if (session?.user) {
-                        setUser(session.user);
+                        // Avoid redundant state updates if same user
+                        setUser(prevUser => {
+                            if (prevUser?.id === session.user.id) return prevUser;
+                            return session.user;
+                        });
                         fetchProfile(session.user.id);
                     } else {
                         setUser(null);
                         setProfile(null);
                     }
+                    
+                    // Only flip loading to false here if it wasn't already flipped
+                    if (loading) setLoading(false);
                 } catch (err) {
-                    console.error('Error in onAuthStateChange handler:', err);
-                } finally {
-                    if (mounted) setLoading(false);
+                    console.error('[AuthContext] onAuthStateChange Error:', err);
                 }
             }
         );
 
-        // Simple visibility check - just refresh session in background, don't block UI
-        const handleVisibilityChange = () => {
+        // Visibility check - Just ensure session is still valid, onAuthStateChange will handle results
+        const handleVisibilityChange = async () => {
             if (document.visibilityState === 'visible') {
-                supabase.auth.getSession().then(({ data: { session } }) => {
+                console.log('[AuthContext] Tab became visible. Verifying session...');
+                try {
+                    // getSession() will trigger onAuthStateChange if session refreshes/changes
+                    const { data: { session } } = await supabase.auth.getSession();
                     if (session?.user && mounted) {
-                        setUser(session.user);
-                        fetchProfile(session.user.id);
+                        // Even if same user, force a profile refresh to ensure reactivity
+                        fetchProfile(session.user.id, false);
                     }
-                }).catch(() => {});
+                } catch (err) {
+                    console.error('[AuthContext] Visibility session check failed:', err);
+                }
             }
         };
 

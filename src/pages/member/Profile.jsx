@@ -35,88 +35,85 @@ const Profile = ({ userId = null, readonly = false }) => {
 
     const loadProfileData = useCallback(async (isRefresh = false) => {
         if (!targetUserId) {
+            console.log('[Profile] No targetUserId, stopping load');
             setLoading(false);
             return;
         }
 
-        // Safety timeout to prevent infinite loading state
-        const safetyTimeout = setTimeout(() => {
-            setLoading(false);
-        }, 8000);
-
+        console.log('[Profile] Starting load for ID:', targetUserId, 'isRefresh:', isRefresh);
+        
         try {
             if (!isRefresh) setLoading(true);
             
-            // If viewing self, use authUser which is already loaded (mostly), but simple getProfileById ensures fresh data
-            // If viewing others, must fetch
-            let data = null;
-            if (!userId) {
-                data = authUser;
-            } else {
-                data = await db.getProfileById(userId);
-            }
-            // Ensure we use the latest avatar_url if available
-            if (!userId && authUser) {
-                // Refresh handled by auth context usually, but ensure we have latest
-                // data = ...
-            }
+            // Safety timeout within the fetch logic itself
+            const fetchPromise = (async () => {
+                let data = null;
+                if (!userId) {
+                    data = authUser;
+                } else {
+                    data = await db.getProfileById(userId);
+                }
 
-            setProfileData(data);
-            if (data?.name) setName(data.name);
+                if (!data) throw new Error('Profile not found');
 
-            // Load Stats
-            const [submissions, quizAttempts, tasks] = await Promise.all([
-                db.getSubmissionsByUser(targetUserId),
-                db.getQuizAttemptsByUser(targetUserId),
-                db.getTasks() // Need tasks for category/difficulty info
+                setProfileData(data);
+                if (data.name) setName(data.name);
+
+                // Load Stats
+                const [submissions, quizAttempts, tasks] = await Promise.all([
+                    db.getSubmissionsByUser(targetUserId),
+                    db.getQuizAttemptsByUser(targetUserId),
+                    db.getTasks()
+                ]);
+
+                const approved = submissions.filter(s => s.status === 'approved');
+                const passed = quizAttempts.filter(a => a.passed);
+                const scoredSubmissions = approved.filter(s => s.score);
+                const avgScore = scoredSubmissions.length > 0
+                    ? Math.round(scoredSubmissions.reduce((sum, s) => sum + s.score, 0) / scoredSubmissions.length)
+                    : 0;
+
+                const taskMap = new Map(tasks.map(t => [t.id, t]));
+                const categoryCounts = {};
+                const difficultyCounts = {};
+
+                approved.forEach(sub => {
+                    const task = taskMap.get(sub.task_id);
+                    if (task) {
+                        const cat = task.category || 'Uncategorized';
+                        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+                        const diff = task.difficulty || 'Normal';
+                        difficultyCounts[diff] = (difficultyCounts[diff] || 0) + 1;
+                    }
+                });
+
+                const categoryStats = Object.entries(categoryCounts)
+                    .map(([name, count]) => ({ name, count }))
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 5);
+
+                setStats({
+                    tasksCompleted: approved.length,
+                    quizzesPassed: passed.length,
+                    avgScore,
+                    categoryStats,
+                    difficultyStats: difficultyCounts
+                });
+            })();
+
+            // Wait for fetch or timeout
+            await Promise.race([
+                fetchPromise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 8000))
             ]);
 
-            const approved = submissions.filter(s => s.status === 'approved');
-            const passed = quizAttempts.filter(a => a.passed);
-            const scoredSubmissions = approved.filter(s => s.score);
-            const avgScore = scoredSubmissions.length > 0
-                ? Math.round(scoredSubmissions.reduce((sum, s) => sum + s.score, 0) / scoredSubmissions.length)
-                : 0;
-
-            // Aggregate Category & Difficulty Stats
-            // Create map of tasks for quick lookup
-            const taskMap = new Map(tasks.map(t => [t.id, t]));
-
-            const categoryCounts = {};
-            const difficultyCounts = {};
-
-            approved.forEach(sub => {
-                const task = taskMap.get(sub.task_id);
-                if (task) {
-                    // Category
-                    const cat = task.category || 'Uncategorized';
-                    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-
-                    // Difficulty
-                    const diff = task.difficulty || 'Normal';
-                    difficultyCounts[diff] = (difficultyCounts[diff] || 0) + 1;
-                }
-            });
-
-            const categoryStats = Object.entries(categoryCounts)
-                .map(([name, count]) => ({ name, count }))
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 5); // Top 5 categories
-
-            setStats({
-                tasksCompleted: approved.length,
-                quizzesPassed: passed.length,
-                avgScore,
-                categoryStats,
-                difficultyStats: difficultyCounts
-            });
-
+            console.log('[Profile] Load complete');
         } catch (error) {
-            console.error('Error loading profile:', error);
+            console.error('[Profile] Error loading profile:', error);
         } finally {
             setLoading(false);
         }
-    }, [userId, targetUserId]); // Removed authUser from dependencies as we use it inside but only need re-fetch on ID change
+    }, [userId, targetUserId, authUser]);
 
     useEffect(() => {
         loadProfileData();

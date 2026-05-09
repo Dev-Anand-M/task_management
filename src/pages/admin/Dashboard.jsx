@@ -34,30 +34,26 @@ const AdminDashboard = () => {
         try {
             if (!isRefresh) setLoading(true);
 
-            // Safety timeout for loading state
-            const safetyTimeout = setTimeout(() => {
-                if (loading) {
-                    console.warn('Dashboard load taking too long, forcing loading to false');
-                    setLoading(false);
-                }
-            }, 8000);
-
-            // Fetch data from Supabase
-            // functions in database.js now handle "no-classroom" (Global) case for admins automatically
-            const [tasks, submissions, members, quizAttempts] = await Promise.all([
+            // Fetch data from Supabase with timeout
+            const fetchPromise = Promise.all([
                 db.getTasks(),
                 db.getSubmissions(),
                 db.getMembers(),
                 db.getQuizAttempts()
             ]);
 
+            const [tasks, submissions, members, quizAttempts] = await Promise.race([
+                fetchPromise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 10000))
+            ]);
+
             // Calculate stats
-            const pendingSubmissions = submissions.filter(s => s.status === 'pending').length;
-            const pendingQuizzes = quizAttempts.filter(q => q.status === 'pending').length;
+            const pendingSubmissions = (submissions || []).filter(s => s.status === 'pending').length;
+            const pendingQuizzes = (quizAttempts || []).filter(q => q.status === 'pending').length;
             const pendingReviews = pendingSubmissions + pendingQuizzes;
 
-            const approvedSubmissions = submissions.filter(s => s.status === 'approved').length;
-            const completionRate = submissions.length > 0
+            const approvedSubmissions = (submissions || []).filter(s => s.status === 'approved').length;
+            const completionRate = (submissions || []).length > 0
                 ? Math.round((approvedSubmissions / submissions.length) * 100)
                 : 0;
 

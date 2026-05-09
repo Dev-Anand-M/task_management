@@ -45,15 +45,8 @@ const MemberDashboard = () => {
         try {
             if (!silent) setLoading(true);
 
-            // Safety timeout to prevent infinite loading
-            const safetyTimeout = setTimeout(() => {
-                if (loading) {
-                    console.warn('Member dashboard load taking too long, forcing loading to false');
-                    setLoading(false);
-                }
-            }, 8000);
-
-            const [tasks, submissions, quizzes, quizAttempts, ann] = await Promise.all([
+            // Robust timeout protection
+            const fetchPromise = Promise.all([
                 db.getTasks().catch(err => { console.error('Error loading tasks:', err); return []; }),
                 db.getSubmissionsByUser(user.id).catch(err => { console.error('Error loading submissions:', err); return []; }),
                 db.getQuizzes().catch(err => { console.error('Error loading quizzes:', err); return []; }),
@@ -61,17 +54,22 @@ const MemberDashboard = () => {
                 db.getAnnouncements().catch(err => { console.error('Error loading announcements:', err); return []; })
             ]);
 
+            const [tasks, submissions, quizzes, quizAttempts, ann] = await Promise.race([
+                fetchPromise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 10000))
+            ]);
+
             // Get tasks assigned to current user (or global tasks)
-            const myTasks = tasks.filter(t => !t.assigned_to || t.assigned_to.length === 0 || t.assigned_to.includes(user.id));
-            const completedTaskIds = submissions.filter(s => s.status === 'approved').map(s => s.task_id);
-            const pendingTaskIds = submissions.map(s => s.task_id);
+            const myTasks = (tasks || []).filter(t => !t.assigned_to || t.assigned_to.length === 0 || t.assigned_to.includes(user.id));
+            const completedTaskIds = (submissions || []).filter(s => s.status === 'approved').map(s => s.task_id);
+            const pendingTaskIds = (submissions || []).map(s => s.task_id);
 
             // Stats
             setStats({
                 assignedTasks: myTasks.length,
                 completedTasks: completedTaskIds.length,
-                pendingQuizzes: quizzes.filter(q =>
-                    !quizAttempts.some(a => a.quiz_id === q.id)
+                pendingQuizzes: (quizzes || []).filter(q =>
+                    !(quizAttempts || []).some(a => a.quiz_id === q.id)
                 ).length,
                 totalXP: user.xp || 0
             });
@@ -84,7 +82,7 @@ const MemberDashboard = () => {
 
             // Combine Tasks and Quizzes for Recent Activity
             const combinedActivity = [
-                ...submissions.map(s => ({
+                ...(submissions || []).map(s => ({
                     id: s.id,
                     type: 'task',
                     title: s.tasks?.title || 'Task Submission',
@@ -92,7 +90,7 @@ const MemberDashboard = () => {
                     score: s.score,
                     date: s.submitted_at
                 })),
-                ...quizAttempts.map(a => ({
+                ...(quizAttempts || []).map(a => ({
                     id: a.id,
                     type: 'quiz',
                     title: a.quizzes?.title || 'Quiz Attempt',
@@ -107,15 +105,15 @@ const MemberDashboard = () => {
             setRecentActivity(combinedActivity);
 
             // Upcoming quizzes
-            const upcoming = quizzes
+            const upcoming = (quizzes || [])
                 .filter(q =>
-                    !quizAttempts.some(a => a.quiz_id === q.id)
+                    !(quizAttempts || []).some(a => a.quiz_id === q.id)
                 )
                 .slice(0, 3);
             setUpcomingQuizzes(upcoming);
             setAnnouncements(ann || []);
         } catch (error) {
-            console.error('Error loading dashboard data:', error);
+            console.error('[Dashboard] Error loading dashboard data:', error);
         } finally {
             setLoading(false);
         }

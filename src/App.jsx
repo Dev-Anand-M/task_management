@@ -63,8 +63,11 @@ const ProtectedLayout = ({ requiredRole }) => {
   }
 
   if (requiredRole && user?.role !== requiredRole) {
+    console.log('[ProtectedLayout] Role mismatch. User role:', user?.role, 'Required:', requiredRole);
     return <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />;
   }
+
+  console.log('[ProtectedLayout] Rendering Layout and Outlet. Current User Role:', user?.role);
 
   return (
     <Layout>
@@ -81,8 +84,11 @@ const RoleGuard = ({ role }) => {
   if (!user) return <Navigate to="/login" replace />;
 
   if (user?.role !== role) {
+    console.log('[RoleGuard] Role mismatch! User role:', user?.role, 'Required:', role, 'Redirecting...');
     return <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />;
   }
+
+  console.log('[RoleGuard] Role check passed. User role:', user?.role);
 
   return <Outlet />;
 };
@@ -210,7 +216,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-          <BackHandler />
+          {/* <BackHandler /> */}
           <AppRoutes />
         </AuthProvider>
       </ThemeProvider>
