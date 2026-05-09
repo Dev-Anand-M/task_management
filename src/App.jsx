@@ -219,11 +219,14 @@ function AppRoutes() {
   );
 }
 
+import NotificationListener from './components/NotificationListener';
+
 function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
+          <NotificationListener />
           {/* <BackHandler /> */}
           <AppRoutes />
         </AuthProvider>
