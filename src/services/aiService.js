@@ -594,13 +594,23 @@ Important:
 
     // Parse JSON from response
     try {
-        const jsonMatch = response.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
+        let cleaned = response.trim();
+        if (cleaned.startsWith('```')) {
+            const lines = cleaned.split('\n');
+            if (lines[0].startsWith('```')) lines.shift();
+            if (lines[lines.length - 1].startsWith('```')) lines.pop();
+            cleaned = lines.join('\n').trim();
         }
-        return JSON.parse(response);
+
+        const start = cleaned.indexOf('[');
+        const end = cleaned.lastIndexOf(']');
+        if (start !== -1 && end !== -1 && end > start) {
+            return JSON.parse(cleaned.substring(start, end + 1));
+        }
+        return JSON.parse(cleaned);
     } catch (e) {
-        throw new Error('Failed to parse quiz questions');
+        console.error('Quiz parse error:', e, response);
+        throw new Error('Failed to parse quiz questions: ' + e.message);
     }
 };
 
@@ -719,7 +729,7 @@ Return ONLY a valid JSON object:
   "overallGrade": "A/B/C/D/F",
   "mentorNote": "Internal note"
 }
-Final Rules: No other text. JSON only. Grade must be A, B, C, D, or F.`;
+Final Rules: No other text. JSON only. Do NOT wrap the JSON in markdown code blocks like ```json. Grade must be A, B, C, D, or F.`;
 
     // Prepare detailed question context with types
     const questionsWithContext = quizData.questions.map((q, idx) => ({
@@ -768,16 +778,30 @@ Remember:
         // Log the raw response for debugging
         console.log('AI Evaluation Raw Response:', response);
         
-        // Try to extract JSON from the response
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const jsonStr = jsonMatch[0];
-            console.log('Extracted JSON:', jsonStr);
-            return JSON.parse(jsonStr);
+        // Clean the response: remove markdown code blocks if they exist
+        let cleanedResponse = response.trim();
+        if (cleanedResponse.startsWith('```')) {
+            // Remove first line (e.g., ```json) and last line (```)
+            const lines = cleanedResponse.split('\n');
+            if (lines[0].startsWith('```')) lines.shift();
+            if (lines[lines.length - 1].startsWith('```')) lines.pop();
+            cleanedResponse = lines.join('\n').trim();
+        }
+
+        // Try to extract the JSON object specifically
+        const firstBrace = cleanedResponse.indexOf('{');
+        const lastBrace = cleanedResponse.lastIndexOf('}');
+        
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+            const jsonStr = cleanedResponse.substring(firstBrace, lastBrace + 1);
+            try {
+                return JSON.parse(jsonStr);
+            } catch (innerError) {
+                console.warn('Inner JSON parse failed, trying full cleaned response');
+            }
         }
         
-        // If no JSON found in match, try parsing the whole response
-        return JSON.parse(response.trim());
+        return JSON.parse(cleanedResponse);
     } catch (e) {
         console.error('Failed to parse AI evaluation:', e);
         console.error('Raw response was:', response);
@@ -787,7 +811,7 @@ Remember:
             summary: "AI evaluation failed - unable to parse response",
             suggestions: [],
             overallGrade: "F",
-            mentorNote: `Error parsing AI response: ${e.message}. Raw response: ${response.substring(0, 200)}...`
+            mentorNote: `Error parsing AI response: ${e.message}. \n\nRaw start: ${response.substring(0, 100)}... \n\nRaw end: ...${response.substring(response.length - 100)}`
         };
     }
 };
