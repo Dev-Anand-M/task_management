@@ -16,8 +16,7 @@ import {
     RefreshCw,
     Brain,
     Key,
-    ExternalLink,
-    Sparkles
+    ExternalLink
 } from 'lucide-react';
 
 const colorSchemes = [
@@ -72,7 +71,7 @@ const colorSchemes = [
 ];
 
 const Settings = () => {
-    const { isDark, toggleTheme, colorScheme, setColorScheme, mirrorMode, toggleMirror } = useTheme();
+    const { isDark, toggleTheme, colorScheme, setColorScheme } = useTheme();
     const { user, forceRefresh } = useAuth();
     const [notifications, setNotifications] = useState({
         email: true,
@@ -392,125 +391,6 @@ const Settings = () => {
                                 {isDark && <Check size={16} style={{ color: 'var(--primary-600)' }} />}
                             </button>
                         </div>
-                    </div>
-
-                    {/* Mirror Theme Toggle */}
-                    <div style={{ marginBottom: 'var(--space-xl)' }}>
-                        <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-md)', color: 'var(--text-muted)' }}>
-                            MIRROR EFFECT
-                        </h4>
-                        <button
-                            onClick={toggleMirror}
-                            style={{
-                                width: '100%',
-                                padding: 'var(--space-lg)',
-                                background: mirrorMode
-                                    ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(59, 130, 246, 0.1) 50%, rgba(16, 185, 129, 0.15) 100%)'
-                                    : 'var(--card)',
-                                border: mirrorMode
-                                    ? '2px solid rgba(139, 92, 246, 0.4)'
-                                    : '1px solid var(--border)',
-                                borderRadius: 'var(--radius-lg)',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 'var(--space-md)',
-                                transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                                position: 'relative',
-                                overflow: 'hidden',
-                                backdropFilter: mirrorMode ? 'blur(12px)' : 'none',
-                                boxShadow: mirrorMode
-                                    ? '0 8px 32px rgba(139, 92, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-                                    : 'none'
-                            }}
-                        >
-                            {/* Animated shine effect when active */}
-                            {mirrorMode && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    right: 0,
-                                    height: '1px',
-                                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)',
-                                    animation: 'mirror-shine 3s linear infinite',
-                                    backgroundSize: '200% 100%'
-                                }} />
-                            )}
-                            <div style={{
-                                width: '48px',
-                                height: '48px',
-                                borderRadius: 'var(--radius-lg)',
-                                background: mirrorMode
-                                    ? 'linear-gradient(135deg, #8b5cf6, #3b82f6, #10b981)'
-                                    : 'var(--surface)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'all 0.4s ease',
-                                boxShadow: mirrorMode
-                                    ? '0 4px 15px rgba(139, 92, 246, 0.3)'
-                                    : 'none'
-                            }}>
-                                <Sparkles size={22} style={{ color: mirrorMode ? 'white' : 'var(--text-muted)' }} />
-                            </div>
-                            <div style={{ flex: 1, textAlign: 'left' }}>
-                                <div style={{
-                                    fontWeight: 700,
-                                    fontSize: 'var(--text-base)',
-                                    color: 'var(--text)',
-                                    marginBottom: '2px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                }}>
-                                    Mirror Theme
-                                    <span style={{
-                                        fontSize: '9px',
-                                        padding: '2px 8px',
-                                        borderRadius: '10px',
-                                        background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
-                                        color: 'white',
-                                        fontWeight: 800,
-                                        letterSpacing: '0.05em',
-                                        textTransform: 'uppercase'
-                                    }}>
-                                        ✨ Premium
-                                    </span>
-                                </div>
-                                <p style={{
-                                    margin: 0,
-                                    fontSize: 'var(--text-sm)',
-                                    color: 'var(--text-muted)',
-                                    lineHeight: 1.4
-                                }}>
-                                    Glassmorphism overlay with frosted glass, holographic shine, and reflective effects
-                                </p>
-                            </div>
-                            <div style={{
-                                width: '48px',
-                                height: '24px',
-                                borderRadius: '24px',
-                                background: mirrorMode
-                                    ? 'linear-gradient(135deg, #8b5cf6, #3b82f6)'
-                                    : 'var(--border)',
-                                transition: 'all 0.3s ease',
-                                position: 'relative',
-                                flexShrink: 0
-                            }}>
-                                <div style={{
-                                    position: 'absolute',
-                                    width: '18px',
-                                    height: '18px',
-                                    borderRadius: '50%',
-                                    background: 'white',
-                                    top: '3px',
-                                    left: mirrorMode ? '26px' : '3px',
-                                    transition: 'all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                                }} />
-                            </div>
-                        </button>
                     </div>
 
                     {/* Color Scheme */}
