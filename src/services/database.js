@@ -506,8 +506,24 @@ export const getQuizAttemptsByUser = async (userId) => {
 };
 
 export const createQuizAttempt = async (attempt) => {
-    const { data, error } = await supabase.from('quiz_attempts').insert(attempt).select().single();
+    const { data, error } = await supabase.from('quiz_attempts').insert(attempt).select('*, quizzes(*), profiles(*)').single();
     if (error) throw error;
+
+    // Notify Admins
+    try {
+        const classroomId = data.quizzes?.classroom_id || data.profiles?.classroom_id;
+        if (classroomId) {
+            await notifyAdmins(classroomId, {
+                title: 'New Quiz Attempt',
+                message: `${data.profiles?.name || 'A student'} completed the quiz: "${data.quizzes?.title}"`,
+                type: 'info',
+                link: `/admin/evaluations/quizzes/${data.id}`
+            });
+        }
+    } catch (err) {
+        console.error('Error notifying admins on quiz attempt:', err);
+    }
+
     return data;
 };
 
