@@ -388,8 +388,10 @@ export const createQuiz = async (quiz) => {
                         .map(s => s.preferences?.fcm_token)
                         .filter(t => !!t);
                         
+                    console.log(`[Push] Triggering specific push to ${tokens.length} students.`);
+
                     if (tokens.length > 0) {
-                        fetch('/api/push', {
+                        fetch(`${window.location.origin}/api/push`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -399,7 +401,9 @@ export const createQuiz = async (quiz) => {
                                 link: '/quizzes',
                                 data: { type: 'warning' }
                             })
-                        }).catch(e => console.warn('Push background error:', e));
+                        }).then(r => r.json()).then(res => {
+                            if (!res.success) console.warn('[Push] API returned error:', res.error);
+                        }).catch(e => console.warn('[Push] Fetch error:', e));
                     }
                 } catch (e) {
                     console.warn('Failed to send specific push:', e);
@@ -688,7 +692,8 @@ export const createNotification = async (notification) => {
             
         const token = profile?.preferences?.fcm_token;
         if (token) {
-            fetch('/api/push', {
+            console.log('[Push] Triggering push for user:', notification.user_id);
+            fetch(`${window.location.origin}/api/push`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -698,10 +703,14 @@ export const createNotification = async (notification) => {
                     link: notification.link,
                     data: { type: notification.type }
                 })
-            }).catch(e => console.warn('Push background error:', e));
+            }).then(r => r.json()).then(res => {
+                if (!res.success) console.warn('[Push] API returned error:', res.error);
+            }).catch(e => console.warn('[Push] Fetch error:', e));
+        } else {
+            console.log('[Push] No token found for user:', notification.user_id);
         }
     } catch (e) {
-        console.warn('Failed to send push:', e);
+        console.warn('[Push] Logic error:', e);
     }
 };
 
@@ -735,8 +744,10 @@ export const notifyClassroom = async (classroomId, notification) => {
         .map(s => s.preferences?.fcm_token)
         .filter(t => !!t);
 
+    console.log(`[Push] Triggering classroom push to ${tokens.length} tokens.`);
+
     if (tokens.length > 0) {
-        fetch('/api/push', {
+        fetch(`${window.location.origin}/api/push`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -746,7 +757,9 @@ export const notifyClassroom = async (classroomId, notification) => {
                 link: notification.link,
                 data: { type: notification.type }
             })
-        }).catch(e => console.warn('Push background error:', e));
+        }).then(r => r.json()).then(res => {
+            if (!res.success) console.warn('[Push] API returned error:', res.error);
+        }).catch(e => console.warn('[Push] Fetch error:', e));
     }
 };
 
@@ -780,8 +793,10 @@ export const notifyAdmins = async (classroomId, notification) => {
         .map(a => a.preferences?.fcm_token)
         .filter(t => !!t);
 
+    console.log(`[Push] Triggering admin push to ${tokens.length} admins.`);
+
     if (tokens.length > 0) {
-        fetch('/api/push', {
+        fetch(`${window.location.origin}/api/push`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -791,7 +806,9 @@ export const notifyAdmins = async (classroomId, notification) => {
                 link: notification.link,
                 data: { type: notification.type }
             })
-        }).catch(e => console.warn('Push background error:', e));
+        }).then(r => r.json()).then(res => {
+            if (!res.success) console.warn('[Push] API returned error:', res.error);
+        }).catch(e => console.warn('[Push] Fetch error:', e));
     }
 };
 
