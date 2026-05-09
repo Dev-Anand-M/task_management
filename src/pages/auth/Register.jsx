@@ -125,10 +125,6 @@ const Register = () => {
 
             {/* Right Side - Register Form */}
             <div className="auth-right">
-                {/* Mobile Background Overlays */}
-                <div className="mobile-deco mobile-deco-1"></div>
-                <div className="mobile-deco mobile-deco-2"></div>
-
                 <div className="auth-form-container">
                     {/* Mobile Logo */}
                     <div className="mobile-logo">
@@ -250,20 +246,24 @@ const Register = () => {
 
             <style>{`
                 body {
-                    background: #1c1917 !important;
-                    margin: 0;
-                    padding: 0;
+                    background: 
+                        linear-gradient(135deg, rgba(255,255,255,0.08) 25%, transparent 25%),
+                        linear-gradient(225deg, rgba(255,255,255,0.08) 25%, transparent 25%),
+                        linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%),
+                        linear-gradient(315deg, rgba(255,255,255,0.05) 25%, transparent 25%),
+                        linear-gradient(to right, #be123c 0%, #e11d48 15%, #f43f5e 35%, #fb7185 40%, #1c1917 60%, #1c1917 100%) !important;
+                    background-size: 10px 10px, 10px 10px, 10px 10px, 10px 10px, 100% 100%;
                 }
 
                 .auth-page {
                     display: flex;
                     flex-direction: row;
-                    min-height: 100vh;
+                    height: 100vh;
                     width: 100%;
-                    background: #1c1917;
+                    overflow: hidden;
                 }
 
-                /* LEFT SIDE - Brand Area */
+                /* LEFT SIDE - Rose/Red Brand Area */
                 .auth-left {
                     width: 50%;
                     display: flex;
@@ -273,6 +273,7 @@ const Register = () => {
                     background: linear-gradient(135deg, #be123c 0%, #e11d48 30%, #f43f5e 60%, #fb7185 100%);
                     position: relative;
                     overflow: hidden;
+                    height: 100%;
                 }
 
                 .auth-left-overlay {
@@ -297,26 +298,27 @@ const Register = () => {
                     background: rgba(255,255,255,0.2);
                     backdrop-filter: blur(10px);
                     border: 2px solid rgba(255,255,255,0.3);
-                    border-radius: 24px;
+                    border-radius: 20px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     margin: 0 auto var(--space-lg);
                     color: white;
-                    box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
                 }
 
                 .brand-title {
-                    font-size: 3rem;
+                    font-size: 2.5rem;
                     font-weight: 800;
                     margin: 0 0 var(--space-md);
                     letter-spacing: -0.03em;
-                    text-shadow: 0 4px 30px rgba(0,0,0,0.15);
+                    text-shadow: 0 2px 20px rgba(0,0,0,0.15);
+                    color: white;
                 }
 
                 .brand-tagline {
-                    font-size: 1.1rem;
-                    color: rgba(255,255,255,0.9);
+                    font-size: 1rem;
+                    color: rgba(255,255,255,0.95);
                     line-height: 1.6;
                     margin: 0 0 var(--space-2xl);
                 }
@@ -334,7 +336,7 @@ const Register = () => {
                     align-items: center;
                     gap: var(--space-md);
                     padding: var(--space-sm) 0;
-                    animation: fadeInLeft 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                    animation: fadeInLeft 0.5s ease forwards;
                     opacity: 0;
                 }
 
@@ -342,11 +344,16 @@ const Register = () => {
                     width: 36px;
                     height: 36px;
                     background: rgba(255,255,255,0.2);
-                    border-radius: 12px;
+                    border-radius: 10px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     flex-shrink: 0;
+                }
+
+                .benefit-item span {
+                    font-size: 0.95rem;
+                    font-weight: 500;
                 }
 
                 .invite-note {
@@ -356,37 +363,70 @@ const Register = () => {
                     gap: var(--space-sm);
                     padding: var(--space-md);
                     background: rgba(255,255,255,0.15);
-                    backdrop-filter: blur(8px);
-                    border-radius: var(--radius-xl);
+                    border-radius: var(--radius-lg);
                     font-size: 0.875rem;
-                    font-weight: 600;
+                    font-weight: 500;
                 }
 
                 /* Decorative Circles */
                 .deco-circle {
                     position: absolute;
                     border-radius: 50%;
-                    filter: blur(60px);
+                    border: 1px solid rgba(255,255,255,0.15);
                 }
 
-                .deco-1 { width: 350px; height: 350px; top: -80px; right: -80px; background: rgba(251, 113, 133, 0.2); }
-                .deco-2 { width: 250px; height: 250px; bottom: -50px; left: -50px; background: rgba(244, 63, 94, 0.2); }
+                .deco-1 {
+                    width: 350px;
+                    height: 350px;
+                    top: -80px;
+                    right: -80px;
+                    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+                }
+
+                .deco-2 {
+                    width: 250px;
+                    height: 250px;
+                    bottom: -50px;
+                    left: -50px;
+                    background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+                }
 
                 /* RIGHT SIDE - Form Area */
                 .auth-right {
                     width: 50%;
+                    height: 100%;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    padding: var(--space-2xl);
-                    background: #1c1917;
+                    padding: var(--space-xl);
+                    background: linear-gradient(to right, transparent, #1c1917 40px);
+                    overflow-y: auto;
                     position: relative;
+                    border-radius: 0 40px 40px 0;
+                    z-index: 10;
+                }
+
+                /* Custom Scrollbar */
+                .auth-right::-webkit-scrollbar {
+                    width: 6px;
+                }
+                
+                .auth-right::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                
+                .auth-right::-webkit-scrollbar-thumb {
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 3px;
+                }
+                
+                .auth-right::-webkit-scrollbar-thumb:hover {
+                    background: rgba(255, 255, 255, 0.2);
                 }
 
                 .auth-form-container {
                     width: 100%;
-                    max-width: 440px;
-                    z-index: 2;
+                    max-width: 420px;
                 }
 
                 .mobile-logo {
@@ -394,44 +434,58 @@ const Register = () => {
                     align-items: center;
                     justify-content: center;
                     gap: var(--space-sm);
-                    margin-bottom: var(--space-2xl);
+                    margin-bottom: var(--space-xl);
                 }
 
                 .mobile-logo-icon {
-                    width: 48px;
-                    height: 48px;
-                    background: linear-gradient(135deg, #f43f5e, #be123c);
-                    border-radius: 14px;
+                    width: 40px;
+                    height: 40px;
+                    background: var(--gradient-primary);
+                    border-radius: var(--radius-lg);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     color: white;
-                    box-shadow: 0 8px 20px rgba(244, 63, 94, 0.3);
                 }
 
                 .mobile-logo span {
-                    font-size: 1.5rem;
-                    font-weight: 800;
-                    letter-spacing: -0.02em;
-                    background: linear-gradient(to bottom, #fff, #a8a29e);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
+                    font-size: var(--text-xl);
+                    font-weight: 700;
+                    color: var(--text);
                 }
 
                 .form-header {
-                    margin-bottom: var(--space-xl);
-                    text-align: left;
+                    margin-bottom: var(--space-lg);
                 }
 
                 .form-header h2 {
-                    font-size: 2rem;
+                    font-size: var(--text-2xl);
                     font-weight: 700;
+                    color: var(--text);
                     margin: 0 0 var(--space-xs);
                 }
 
                 .form-header p {
                     color: var(--text-muted);
-                    font-size: 1rem;
+                    margin: 0;
+                    font-size: var(--text-sm);
+                }
+
+                .error-box {
+                    padding: var(--space-md);
+                    background: rgba(244, 63, 94, 0.1);
+                    border: 1px solid rgba(244, 63, 94, 0.2);
+                    border-radius: var(--radius-md);
+                    margin-bottom: var(--space-lg);
+                    color: var(--error-500);
+                    font-size: var(--text-sm);
+                    text-align: center;
+                }
+
+                .form-fields {
+                    display: flex;
+                    flex-direction: column;
+                    gap: var(--space-md);
                 }
 
                 .password-row {
@@ -442,38 +496,63 @@ const Register = () => {
 
                 .submit-btn {
                     width: 100%;
-                    height: 52px;
-                    margin-top: var(--space-md);
+                    height: 48px;
+                    margin-top: var(--space-sm);
                     background: linear-gradient(135deg, #fb7185 0%, #f43f5e 50%, #e11d48 100%) !important;
                     border: none !important;
-                    font-weight: 700;
-                    font-size: 1rem;
-                    box-shadow: 0 10px 30px rgba(244, 63, 94, 0.2) !important;
-                    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: var(--space-sm);
                 }
 
                 .submit-btn:hover {
                     transform: translateY(-2px);
-                    box-shadow: 0 15px 35px rgba(244, 63, 94, 0.4) !important;
+                    box-shadow: 0 8px 25px rgba(244, 63, 94, 0.5) !important;
                 }
 
                 .login-link {
                     text-align: center;
-                    margin-top: var(--space-2xl);
-                    padding-top: var(--space-xl);
-                    border-top: 1px solid rgba(255,255,255,0.05);
+                    margin-top: var(--space-lg);
+                    padding-top: var(--space-lg);
+                    border-top: 1px solid var(--border);
+                }
+
+                .login-link p {
+                    color: var(--text-muted);
+                    font-size: var(--text-sm);
+                    margin: 0;
+                }
+
+                .login-link a {
+                    color: #f43f5e;
+                    font-weight: 600;
+                    text-decoration: none;
+                }
+
+                .login-link a:hover {
+                    color: #fb7185;
                 }
 
                 @keyframes fadeInLeft {
-                    from { opacity: 0; transform: translateX(-30px); }
-                    to { opacity: 1; transform: translateX(0); }
+                    from {
+                        opacity: 0;
+                        transform: translateX(-20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(0);
+                    }
                 }
 
-                /* Mobile Optimization */
+                /* Responsive */
                 @media (max-width: 1024px) {
                     .auth-page {
                         flex-direction: column;
-                        background: #0f172a; /* Deep dark blue/black base */
+                        height: auto;
+                        min-height: 100vh;
+                        overflow-y: auto;
                     }
 
                     .auth-left {
@@ -481,64 +560,24 @@ const Register = () => {
                     }
 
                     .auth-right {
-                        width: 100%;
                         flex: 1;
+                        width: 100%;
+                        min-height: 100vh;
+                        border-radius: 0;
                         padding: var(--space-xl);
-                        background: transparent;
                         align-items: flex-start;
-                        padding-top: 8vh;
-                        position: relative;
-                        overflow: hidden;
-                    }
-
-                    .mobile-deco {
-                        position: absolute;
-                        border-radius: 50%;
-                        filter: blur(80px);
-                        z-index: 0;
-                        opacity: 0.6;
-                        animation: pulse-slow 8s ease-in-out infinite alternate;
-                    }
-
-                    .mobile-deco-1 {
-                        width: 300px;
-                        height: 300px;
-                        top: -50px;
-                        right: -50px;
-                        background: rgba(244, 63, 94, 0.4); /* Rose glow */
-                    }
-
-                    .mobile-deco-2 {
-                        width: 250px;
-                        height: 250px;
-                        bottom: 10%;
-                        left: -50px;
-                        background: rgba(190, 18, 60, 0.4); /* Darker rose glow */
-                        animation-delay: -4s;
-                    }
-
-                    @keyframes pulse-slow {
-                        0% { transform: scale(1) translate(0, 0); opacity: 0.4; }
-                        100% { transform: scale(1.1) translate(-20px, 20px); opacity: 0.7; }
+                        padding-top: 10vh;
+                        background: #1c1917; /* Solid background on mobile */
                     }
 
                     .auth-form-container {
-                        background: rgba(30, 41, 59, 0.7); /* Slightly blueish slate glass */
-                        backdrop-filter: blur(25px);
-                        -webkit-backdrop-filter: blur(25px);
-                        padding: var(--space-2xl);
-                        border-radius: 32px;
-                        border: 1px solid rgba(255,255,255,0.1);
-                        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-                        z-index: 2;
+                        width: 100%;
+                        max-width: 420px;
+                        margin: 0 auto;
                     }
 
                     .mobile-logo {
                         display: flex;
-                    }
-
-                    .form-header {
-                        text-align: center;
                     }
 
                     .password-row {
@@ -548,25 +587,38 @@ const Register = () => {
 
                 @media (max-width: 480px) {
                     .auth-right {
-                        padding: var(--space-md);
-                        padding-top: 5vh;
-                    }
-                    .auth-form-container {
-                        padding: var(--space-xl);
-                        border-radius: 24px;
+                        padding: var(--space-lg);
+                        padding-top: 6vh;
                     }
                 }
 
-                /* Theme Colors */
-                html[data-theme="light"] .auth-right { background: #f9fafb; }
-                html[data-theme="light"] .auth-form-container { background: white; border-color: #e5e7eb; }
-                html[data-theme="light"] .form-header h2 { color: #111827; }
-                html[data-theme="light"] .mobile-logo span { background: linear-gradient(to bottom, #111827, #4b5563); -webkit-text-fill-color: transparent; -webkit-background-clip: text; }
-                
-                .form-header h2 { color: #fafaf9; }
-                .form-header p { color: #a8a29e; }
+                /* Light mode */
+                html[data-theme="light"] .auth-right {
+                    background: #ffffff;
+                }
 
-                /* Override Input Focus for Register Page */
+                html[data-theme="light"] .form-header h2 {
+                    color: #1c1917;
+                }
+
+                html[data-theme="light"] .form-header p {
+                    color: #78716c;
+                }
+
+                /* Dark mode text colors */
+                .form-header h2 {
+                    color: #fafaf9;
+                }
+
+                .form-header p {
+                    color: #a8a29e;
+                }
+
+                .login-link p {
+                    color: #a8a29e;
+                }
+
+                /* Override Input Focus for Register Page to be Red/Pink */
                 .auth-right .input:focus {
                     border-color: #f43f5e !important;
                     box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2) !important;

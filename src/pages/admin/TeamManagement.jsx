@@ -164,10 +164,10 @@ const TeamManagement = () => {
             </Card>
 
             {/* Stats Bar */}
-            <div className="grid grid-cols-4 stat-card-grid mb-lg" style={{ gap: 'var(--space-md)' }}>
+            <div className="team-stats-grid mb-lg">
                 <Card style={{ padding: 'var(--space-md)', textAlign: 'center' }}>
                     <h3 style={{ fontSize: 'var(--text-2xl)', margin: 0 }}>{members.length}</h3>
-                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: 0, marginTop: '4px' }}>
                         Total Members
                     </p>
                 </Card>
@@ -175,7 +175,7 @@ const TeamManagement = () => {
                     <h3 style={{ fontSize: 'var(--text-2xl)', margin: 0 }}>
                         {members.reduce((sum, m) => sum + m.tasksCompleted, 0)}
                     </h3>
-                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: 0, marginTop: '4px' }}>
                         Tasks Completed
                     </p>
                 </Card>
@@ -183,7 +183,7 @@ const TeamManagement = () => {
                     <h3 style={{ fontSize: 'var(--text-2xl)', margin: 0 }}>
                         {members.reduce((sum, m) => sum + m.quizzesTaken, 0)}
                     </h3>
-                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: 0, marginTop: '4px' }}>
                         Quizzes Taken
                     </p>
                 </Card>
@@ -191,34 +191,30 @@ const TeamManagement = () => {
                     <h3 style={{ fontSize: 'var(--text-2xl)', margin: 0 }}>
                         {members.reduce((sum, m) => sum + (m.xp || 0), 0).toLocaleString()}
                     </h3>
-                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: 0, marginTop: '4px' }}>
                         Total XP Earned
                     </p>
                 </Card>
             </div>
 
-            {/* Members Table */}
-            <Card style={{ padding: 0, overflow: 'hidden' }}>
-                <div className="table-container">
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th>Member</th>
-                                <th>XP</th>
-                                <th>Tasks</th>
-                                <th>Quizzes</th>
-                                <th>Badges</th>
-                                <th>Joined</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredMembers.map(member => {
-                                // calculateLevelProgress might still be used if we wanted a progress bar, but user asked to remove Level.
-                                // If we remove the Level column, we should check if we want to keep the progress bar.
-                                // User said "remove level from everything".
-
-                                return (
+            {/* Desktop Members Table */}
+            <div className="desktop-team-view">
+                <Card style={{ padding: 0, overflow: 'hidden' }}>
+                    <div className="table-container">
+                        <table className="table">
+                            <thead>
+                                <tr>
+                                    <th>Member</th>
+                                    <th>XP</th>
+                                    <th>Tasks</th>
+                                    <th>Quizzes</th>
+                                    <th>Badges</th>
+                                    <th>Joined</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredMembers.map(member => (
                                     <tr key={member.id}>
                                         <td>
                                             <div className="flex items-center gap-md">
@@ -252,11 +248,7 @@ const TeamManagement = () => {
                                                 {member.badges?.slice(0, 3).map(badgeId => {
                                                     const badge = BADGES.find(b => b.id === badgeId);
                                                     return badge ? (
-                                                        <span
-                                                            key={badgeId}
-                                                            title={badge.name}
-                                                            style={{ fontSize: '18px' }}
-                                                        >
+                                                        <span key={badgeId} title={badge.name} style={{ fontSize: '18px' }}>
                                                             {badge.icon}
                                                         </span>
                                                     ) : null;
@@ -294,14 +286,86 @@ const TeamManagement = () => {
                                             </Button>
                                         </td>
                                     </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+            </div>
+
+            {/* Mobile Members List */}
+            <div className="mobile-team-view">
+                <div className="flex flex-col gap-md">
+                    {filteredMembers.map(member => (
+                        <Card key={member.id} className="mobile-member-card" style={{ padding: 'var(--space-md)' }}>
+                            <div className="flex justify-between items-start mb-md">
+                                <div className="flex items-center gap-md">
+                                    <Avatar name={member.name} image={member.avatar_url} size="md" />
+                                    <div>
+                                        <p style={{ margin: 0, fontWeight: 600, fontSize: '1rem' }}>{member.name}</p>
+                                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>{member.email}</p>
+                                    </div>
+                                </div>
+                                <span style={{ color: 'var(--primary-400)', fontWeight: 700, fontSize: '1.1rem' }}>
+                                    {(member.xp || 0).toLocaleString()} XP
+                                </span>
+                            </div>
+
+                            <div className="mobile-member-stats">
+                                <div className="stat-pill">
+                                    <span className="stat-label">Tasks</span>
+                                    <div className="flex items-center gap-xs">
+                                        <span className="stat-val text-success">{member.tasksCompleted}</span>
+                                        {member.tasksPending > 0 && <span className="stat-warn">({member.tasksPending} pend)</span>}
+                                    </div>
+                                </div>
+                                <div className="stat-pill">
+                                    <span className="stat-label">Quizzes</span>
+                                    <span className="stat-val">{member.quizzesTaken}</span>
+                                </div>
+                                <div className="stat-pill">
+                                    <span className="stat-label">Badges</span>
+                                    <div className="flex gap-xs items-center">
+                                        {member.badges?.slice(0, 3).map(badgeId => {
+                                            const badge = BADGES.find(b => b.id === badgeId);
+                                            return badge ? <span key={badgeId} style={{ fontSize: '16px' }}>{badge.icon}</span> : null;
+                                        })}
+                                        {(member.badges?.length || 0) > 3 && (
+                                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>+{member.badges.length - 3}</span>
+                                        )}
+                                        {(!member.badges || member.badges.length === 0) && <span className="stat-val">0</span>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-between items-center mt-md pt-md border-t">
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Joined {formatDate(member.created_at)}</span>
+                                <div className="flex gap-sm">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setSelectedMember(member);
+                                            setShowPasswordModal(true);
+                                        }}
+                                        style={{ color: 'var(--warning-500)', padding: '0.5rem' }}
+                                    >
+                                        <Key size={16} />
+                                    </Button>
+                                    <Button
+                                        variant="primary"
+                                        size="sm"
+                                        onClick={() => navigate(`/admin/member/${member.id}`)}
+                                        style={{ padding: '0.5rem 1rem' }}
+                                    >
+                                        View Profile
+                                    </Button>
+                                </div>
+                            </div>
+                        </Card>
+                    ))}
                 </div>
-            </Card>
-
-
+            </div>
 
             {/* Password Reset Modal */}
             <Modal
@@ -373,6 +437,87 @@ const TeamManagement = () => {
                 </div>
             </Modal>
 
+            <style>{`
+                .team-stats-grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: var(--space-md);
+                }
+                
+                .mobile-team-view {
+                    display: none;
+                }
+                
+                .desktop-team-view {
+                    display: block;
+                }
+                
+                .border-t {
+                    border-top: 1px solid var(--border);
+                }
+
+                @media (max-width: 768px) {
+                    .team-stats-grid {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+                    
+                    .desktop-team-view {
+                        display: none;
+                    }
+                    
+                    .mobile-team-view {
+                        display: block;
+                    }
+                    
+                    .mobile-member-card {
+                        transition: transform 0.2s, box-shadow 0.2s;
+                    }
+                    
+                    .mobile-member-card:active {
+                        transform: scale(0.98);
+                    }
+
+                    .mobile-member-stats {
+                        display: grid;
+                        grid-template-columns: repeat(3, 1fr);
+                        gap: var(--space-sm);
+                        background: var(--background);
+                        padding: var(--space-sm);
+                        border-radius: var(--radius-md);
+                        margin-bottom: var(--space-sm);
+                    }
+
+                    .stat-pill {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        text-align: center;
+                    }
+
+                    .stat-label {
+                        font-size: 0.65rem;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        color: var(--text-muted);
+                        margin-bottom: 2px;
+                    }
+
+                    .stat-val {
+                        font-weight: 600;
+                        font-size: 0.9rem;
+                    }
+                    
+                    .text-success {
+                        color: var(--success-500);
+                    }
+                    
+                    .stat-warn {
+                        color: var(--warning-500);
+                        font-size: 0.7rem;
+                        font-weight: 500;
+                    }
+                }
+            `}</style>
         </div>
     );
 };
