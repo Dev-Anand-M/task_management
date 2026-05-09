@@ -638,7 +638,11 @@ const Settings = () => {
                                         console.log("[TestPush] API Response:", data);
                                         
                                         if (data.success) {
-                                            alert("Test notification sent successfully! Check your phone/PC.");
+                                            if (data.results?.failureCount > 0) {
+                                                alert("FCM partially failed. Details: " + JSON.stringify(data.details || data.results));
+                                            } else {
+                                                alert("Test notification sent successfully! Check your phone/PC.");
+                                            }
                                         } else {
                                             alert("Error from API: " + JSON.stringify(data));
                                         }
