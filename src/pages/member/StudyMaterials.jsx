@@ -3,7 +3,8 @@ import { Card, Button, Badge, Input, Modal } from '../../components/common';
 import {
     BookOpen, Plus, Trash2, Search, Edit3, Pin, PinOff,
     FolderOpen, Clock, Tag, Sparkles, Eye, ChevronDown,
-    BookMarked, StickyNote, Filter, X
+    BookMarked, StickyNote, Filter, X,
+    File, Link as LinkIcon, FileText, Download, ExternalLink
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { useAuth } from '../../context/AuthContext';
@@ -258,10 +259,42 @@ const StudyMaterials = () => {
                                     <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatDate(item.created_at)}</span>
                                 </div>
                             </div>
-                            <h4 style={{ margin: '0 0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</h4>
+                            <div className="flex items-center gap-xs mb-sm">
+                                {item.material_type === 'file' && <File size={16} className="text-primary-500" />}
+                                {item.material_type === 'link' && <LinkIcon size={16} className="text-primary-500" />}
+                                {item.material_type === 'text' && <FileText size={16} className="text-primary-500" />}
+                                <h4 style={{ margin: '0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</h4>
+                            </div>
                             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 'var(--space-sm)', lineHeight: 1.6 }}>
-                                {item.content}
+                                {item.content !== 'Attached Material' ? item.content : 'View attached resource.'}
                             </p>
+
+                            {item.file_url && (
+                                <div style={{ marginBottom: 'var(--space-md)' }}>
+                                    <a 
+                                        href={item.file_url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        style={{ 
+                                            display: 'inline-flex', 
+                                            alignItems: 'center', 
+                                            gap: '6px', 
+                                            padding: '8px 16px', 
+                                            background: 'var(--primary-50)', 
+                                            color: 'var(--primary-600)', 
+                                            borderRadius: 'var(--radius-md)',
+                                            textDecoration: 'none',
+                                            fontWeight: 600,
+                                            fontSize: 'var(--text-sm)'
+                                        }}
+                                        className="hover:bg-primary-100 transition-colors"
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        {item.material_type === 'file' ? <><Download size={14} /> Download File</> : <><ExternalLink size={14} /> Open Link</>}
+                                    </a>
+                                </div>
+                            )}
+
                             {item.tags?.length > 0 && (
                                 <div className="flex flex-wrap gap-xs">
                                     {item.tags.slice(0, 4).map((tag, i) => (

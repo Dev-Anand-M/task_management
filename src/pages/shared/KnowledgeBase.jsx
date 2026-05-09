@@ -13,7 +13,12 @@ import {
     Clock,
     FileText,
     Sparkles,
-    Layout
+    Layout,
+    Link as LinkIcon,
+    Upload,
+    File,
+    ExternalLink,
+    Download
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { useAuth } from '../../context/AuthContext';
@@ -30,7 +35,10 @@ const KnowledgeBase = () => {
         content: '',
         tags: '',
         subject: '',
-        classroom_id: ''
+        classroom_id: '',
+        material_type: 'file', // 'file', 'link', 'text'
+        file: null,
+        url: ''
     });
     const [classrooms, setClassrooms] = useState([]);
     const [saving, setSaving] = useState(false);
@@ -70,17 +78,30 @@ const KnowledgeBase = () => {
 
     const handleAddSnippet = async (e) => {
         e.preventDefault();
-        if (!newSnippet.title || !newSnippet.content) return;
+        if (!newSnippet.title) return;
+        if (newSnippet.material_type === 'text' && !newSnippet.content) return;
+        if (newSnippet.material_type === 'link' && !newSnippet.url) return;
+        if (newSnippet.material_type === 'file' && !newSnippet.file) return;
 
         setSaving(true);
         try {
+            let file_url = newSnippet.url;
+            if (newSnippet.material_type === 'file' && newSnippet.file) {
+                file_url = await db.uploadStudyMaterial(newSnippet.file);
+            }
+
             const tagsArray = newSnippet.tags.split(',').map(t => t.trim()).filter(t => t !== '');
             await db.addKnowledgeSnippet({
-                ...newSnippet,
-                tags: tagsArray
+                title: newSnippet.title,
+                content: newSnippet.content || 'Attached Material',
+                subject: newSnippet.subject,
+                classroom_id: newSnippet.classroom_id,
+                tags: tagsArray,
+                material_type: newSnippet.material_type,
+                file_url: file_url
             });
             setShowAddModal(false);
-            setNewSnippet({ title: '', content: '', tags: '', classroom_id: classrooms[0]?.id || '' });
+            setNewSnippet({ title: '', content: '', tags: '', subject: '', classroom_id: classrooms[0]?.id || '', material_type: 'file', file: null, url: '' });
             loadData();
         } catch (error) {
             console.error('Error adding snippet:', error);
@@ -151,12 +172,12 @@ const KnowledgeBase = () => {
                     border: '2px dashed var(--border)'
                 }}>
                     <Brain size={48} className="text-muted mb-md" />
-                    <h3>No Knowledge Found</h3>
+                    <h3>No Materials Shared</h3>
                     <p className="text-muted mb-lg">
-                        Share textbook notes, reference sheets, or course materials with your members.
+                        Upload files, share links, or post textbook notes with your members.
                     </p>
                     <Button variant="outline" onClick={() => setShowAddModal(true)}>
-                        Create First Snippet
+                        Share First Material
                     </Button>
                 </div>
             ) : (
@@ -185,7 +206,12 @@ const KnowledgeBase = () => {
                                     </Button>
                                 )}
                             </div>
-                            
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                {item.material_type === 'file' && <File size={16} className="text-primary-500" />}
+                                {item.material_type === 'link' && <LinkIcon size={16} className="text-primary-500" />}
+                                {item.material_type === 'text' && <FileText size={16} className="text-primary-500" />}
+                            </div>
+
                             <p style={{ 
                                 fontSize: 'var(--text-sm)', 
                                 color: 'var(--text-muted)',
@@ -196,8 +222,33 @@ const KnowledgeBase = () => {
                                 WebkitBoxOrient: 'vertical',
                                 overflow: 'hidden'
                             }}>
-                                {item.content}
+                                {item.content !== 'Attached Material' ? item.content : 'View attached resource.'}
                             </p>
+
+                            {item.file_url && (
+                                <div style={{ marginBottom: 'var(--space-md)' }}>
+                                    <a 
+                                        href={item.file_url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        style={{ 
+                                            display: 'inline-flex', 
+                                            alignItems: 'center', 
+                                            gap: '6px', 
+                                            padding: '8px 16px', 
+                                            background: 'var(--primary-50)', 
+                                            color: 'var(--primary-600)', 
+                                            borderRadius: 'var(--radius-md)',
+                                            textDecoration: 'none',
+                                            fontWeight: 600,
+                                            fontSize: 'var(--text-sm)'
+                                        }}
+                                        className="hover:bg-primary-100 transition-colors"
+                                    >
+                                        {item.material_type === 'file' ? <><Download size={14} /> Download File</> : <><ExternalLink size={14} /> Open Link</>}
+                                    </a>
+                                </div>
+                            )}
 
                             <div className="flex flex-wrap gap-xs mb-md">
                                 {item.tags?.map((tag, i) => (
@@ -250,10 +301,23 @@ const KnowledgeBase = () => {
                         </select>
                     </div>
 
+                    {/* Material Type Selector */}
+                    <div style={{ display: 'flex', gap: '8px', background: 'var(--surface)', padding: '4px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
+                        <button type="button" onClick={() => setNewSnippet({ ...newSnippet, material_type: 'file' })} style={{ flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: newSnippet.material_type === 'file' ? 'var(--primary-500)' : 'transparent', color: newSnippet.material_type === 'file' ? 'white' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <Upload size={16} /> File
+                        </button>
+                        <button type="button" onClick={() => setNewSnippet({ ...newSnippet, material_type: 'link' })} style={{ flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: newSnippet.material_type === 'link' ? 'var(--primary-500)' : 'transparent', color: newSnippet.material_type === 'link' ? 'white' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <LinkIcon size={16} /> Link
+                        </button>
+                        <button type="button" onClick={() => setNewSnippet({ ...newSnippet, material_type: 'text' })} style={{ flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: newSnippet.material_type === 'text' ? 'var(--primary-500)' : 'transparent', color: newSnippet.material_type === 'text' ? 'white' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <FileText size={16} /> Text
+                        </button>
+                    </div>
+
                     <div>
                         <label className="label">Resource Title</label>
                         <Input 
-                            placeholder="e.g. Frenkel vs Schottky Defect Rules"
+                            placeholder="e.g. Physics Formula Sheet"
                             value={newSnippet.title}
                             onChange={(e) => setNewSnippet({ ...newSnippet, title: e.target.value })}
                             required
@@ -263,24 +327,52 @@ const KnowledgeBase = () => {
                     <div>
                         <label className="label">Subject / Category</label>
                         <Input 
-                            placeholder="e.g. Physics, Chemistry, React JS"
+                            placeholder="e.g. Physics, Chemistry"
                             value={newSnippet.subject}
                             onChange={(e) => setNewSnippet({ ...newSnippet, subject: e.target.value })}
                             required
                         />
                     </div>
 
-                    <div>
-                        <label className="label">Content / Definition</label>
-                        <textarea 
-                            className="input"
-                            style={{ minHeight: '150px' }}
-                            placeholder="Paste the textbook definition or factual rules here..."
-                            value={newSnippet.content}
-                            onChange={(e) => setNewSnippet({ ...newSnippet, content: e.target.value })}
-                            required
-                        />
-                    </div>
+                    {newSnippet.material_type === 'file' && (
+                        <div>
+                            <label className="label">Upload File (PDF, Image, Doc)</label>
+                            <input 
+                                type="file" 
+                                className="input" 
+                                style={{ padding: '8px' }}
+                                onChange={(e) => setNewSnippet({ ...newSnippet, file: e.target.files[0] })}
+                                required
+                            />
+                        </div>
+                    )}
+
+                    {newSnippet.material_type === 'link' && (
+                        <div>
+                            <label className="label">Resource Link (URL)</label>
+                            <Input 
+                                type="url"
+                                placeholder="https://..."
+                                value={newSnippet.url}
+                                onChange={(e) => setNewSnippet({ ...newSnippet, url: e.target.value })}
+                                required
+                            />
+                        </div>
+                    )}
+
+                    {(newSnippet.material_type === 'text' || newSnippet.material_type !== 'file') && (
+                        <div>
+                            <label className="label">{newSnippet.material_type === 'text' ? 'Content / Notes' : 'Description (Optional)'}</label>
+                            <textarea 
+                                className="input"
+                                style={{ minHeight: '100px' }}
+                                placeholder={newSnippet.material_type === 'text' ? "Write your notes here..." : "Add a short description..."}
+                                value={newSnippet.content}
+                                onChange={(e) => setNewSnippet({ ...newSnippet, content: e.target.value })}
+                                required={newSnippet.material_type === 'text'}
+                            />
+                        </div>
+                    )}
 
                     <div>
                         <label className="label">Keywords / Tags (Comma separated)</label>
