@@ -24,6 +24,10 @@ export const ThemeProvider = ({ children }) => {
         return savedScheme;
     });
 
+    const [mirrorMode, setMirrorModeState] = useState(() => {
+        return localStorage.getItem('skillquest_mirror_mode') === 'true';
+    });
+
     // We can't use useAuth here directly if AuthContext depends on ThemeContext (circular)
     // But usually ThemeProvider wraps AuthProvider or vice versa.
     // In App.jsx: ThemeProvider -> AuthProvider. So ThemeContext cannot use AuthContext.
@@ -64,6 +68,19 @@ export const ThemeProvider = ({ children }) => {
         syncPreferenceToDb({ colorScheme: newScheme });
     };
 
+    const setMirrorMode = (enabled) => {
+        setMirrorModeState(enabled);
+        localStorage.setItem('skillquest_mirror_mode', String(enabled));
+        document.documentElement.setAttribute('data-mirror', String(enabled));
+
+        // Save to DB if user is logged in
+        syncPreferenceToDb({ mirrorMode: enabled });
+    };
+
+    const toggleMirror = () => {
+        setMirrorMode(!mirrorMode);
+    };
+
     // Helper to sync to DB
     const syncPreferenceToDb = async (prefUpdate) => {
         try {
@@ -93,6 +110,7 @@ export const ThemeProvider = ({ children }) => {
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.setAttribute('data-color-scheme', colorScheme);
+        document.documentElement.setAttribute('data-mirror', String(mirrorMode));
 
         // One-time preference load from DB (fire-and-forget, no auth listener)
         const loadPrefsFromDb = async () => {
@@ -116,6 +134,11 @@ export const ThemeProvider = ({ children }) => {
                             localStorage.setItem('skillquest_color_scheme', profileData.preferences.colorScheme);
                             document.documentElement.setAttribute('data-color-scheme', profileData.preferences.colorScheme);
                         }
+                        if (profileData.preferences.mirrorMode !== undefined) {
+                            setMirrorModeState(profileData.preferences.mirrorMode);
+                            localStorage.setItem('skillquest_mirror_mode', String(profileData.preferences.mirrorMode));
+                            document.documentElement.setAttribute('data-mirror', String(profileData.preferences.mirrorMode));
+                        }
                     }
                 }
             } catch (err) {
@@ -136,7 +159,10 @@ export const ThemeProvider = ({ children }) => {
         isDark: theme === 'dark',
         toggleTheme,
         colorScheme,
-        setColorScheme
+        setColorScheme,
+        mirrorMode,
+        setMirrorMode,
+        toggleMirror
     };
 
     return (
