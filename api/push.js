@@ -65,7 +65,17 @@ export default async function handler(req, res) {
             });
         }
 
-        return res.status(200).json({ success: true, results });
+        return res.status(200).json({ 
+            success: true, 
+            results: results,
+            details: results.responses ? results.responses.map(r => ({
+                success: r.success,
+                error: r.error ? {
+                    code: r.error.code,
+                    message: r.error.message
+                } : null
+            })) : null
+        });
     } catch (error) {
         console.error('Push Error:', error);
         return res.status(500).json({ error: error.message });
