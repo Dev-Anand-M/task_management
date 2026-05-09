@@ -44,8 +44,11 @@ export default async function handler(req, res) {
                     link: link || '/',
                 },
                 notification: {
-                    icon: '/pwa-192x192.png',
-                    badge: '/pwa-192x192.png',
+                    icon: '/vite.svg',
+                    badge: '/vite.svg',
+                    tag: 'idl-notification',
+                    renotify: true,
+                    vibrate: [200, 100, 200]
                 }
             }
         };

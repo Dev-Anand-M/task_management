@@ -28,17 +28,36 @@ if (firebaseConfig.apiKey) {
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  console.log(
-    '[firebase-messaging-sw.js] Received background message ',
-    payload
-  );
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  // Customize notification here
-  const notificationTitle = payload.notification.title;
+  const notificationTitle = payload.notification?.title || 'New Update';
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/vite.svg'
+    body: payload.notification?.body || 'You have a new message.',
+    icon: payload.notification?.icon || '/vite.svg',
+    badge: payload.notification?.badge || '/vite.svg',
+    data: {
+      link: payload.data?.link || '/'
+    }
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const link = event.notification.data?.link || '/';
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url === link && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(link);
+      }
+    })
+  );
 });
