@@ -561,7 +561,7 @@ const Login = () => {
                         flex: 1;
                         width: 100%;
                         height: 100vh;
-                        padding: var(--space-xl);
+                        padding: var(--space-lg); /* Reduced padding */
                         background: #1c1917;
                         overflow: hidden;
                         display: flex;
@@ -573,11 +573,30 @@ const Login = () => {
                         width: 100%;
                         max-width: 400px;
                         margin: 0 auto;
-                        transform: translateY(-20px);
+                        transform: translateY(-10px);
                     }
 
                     .mobile-logo {
                         display: flex;
+                        margin-bottom: var(--space-lg); /* Reduced margin */
+                    }
+                    
+                    .mobile-logo-icon {
+                        width: 32px; /* Reduced size */
+                        height: 32px;
+                    }
+
+                    .form-header {
+                        margin-bottom: var(--space-lg); /* Reduced margin */
+                    }
+                    
+                    .form-fields {
+                        gap: var(--space-md); /* Reduced gap */
+                    }
+
+                    .register-link {
+                        margin-top: var(--space-lg); /* Reduced margin */
+                        padding-top: var(--space-md);
                     }
                 }
 

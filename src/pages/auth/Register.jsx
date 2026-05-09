@@ -623,7 +623,7 @@ const Register = () => {
                         flex: 1;
                         width: 100%;
                         height: 100vh;
-                        padding: var(--space-xl);
+                        padding: var(--space-md); /* Very reduced padding */
                         background: #1c1917;
                         overflow: hidden;
                         display: flex;
@@ -635,15 +635,49 @@ const Register = () => {
                         width: 100%;
                         max-width: 420px;
                         margin: 0 auto;
-                        transform: translateY(-20px); /* Adjust to fit better without scroll */
+                        transform: translateY(-5px);
                     }
 
                     .mobile-logo {
                         display: flex;
+                        margin-bottom: var(--space-md); /* Reduced margin */
+                    }
+                    
+                    .mobile-logo-icon {
+                        width: 28px; /* Reduced size */
+                        height: 28px;
                     }
 
+                    .form-header {
+                        margin-bottom: var(--space-md); /* Reduced margin */
+                    }
+                    
+                    .form-header h2 {
+                        font-size: 1.25rem; /* Shrunk title */
+                    }
+
+                    .form-fields {
+                        gap: var(--space-sm); /* Tight gaps */
+                    }
+                    
+                    .form-fields input {
+                        height: 40px; /* Reduced input height */
+                        padding: 0 var(--space-md);
+                    }
+
+                    .register-link {
+                        margin-top: var(--space-md); /* Reduced margin */
+                        padding-top: var(--space-sm);
+                    }
+                    
                     .password-row {
                         grid-template-columns: 1fr;
+                        gap: var(--space-sm);
+                    }
+                    
+                    .submit-btn {
+                        height: 40px; /* Reduced button height */
+                        margin-top: var(--space-sm);
                     }
                 }
 
