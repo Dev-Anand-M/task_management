@@ -23,6 +23,7 @@ const Profile = ({ userId = null, readonly = false }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState('');
     const [loading, setLoading] = useState(true);
+    const [isZoomed, setIsZoomed] = useState(false);
     const [stats, setStats] = useState({
         tasksCompleted: 0,
         quizzesPassed: 0,
@@ -194,12 +195,18 @@ const Profile = ({ userId = null, readonly = false }) => {
                 <div className="flex items-center gap-xl" style={{ position: 'relative' }}>
                     {/* Avatar */}
                     <div style={{ position: 'relative' }}>
-                        <Avatar
-                            name={profileData.name}
-                            image={profileData.avatar_url}
-                            size="xl"
-                            className="ring-4 ring-white/20 shadow-xl"
-                        />
+                        <div 
+                            onClick={() => setIsZoomed(true)} 
+                            style={{ cursor: 'zoom-in', display: 'inline-block', borderRadius: '50%' }}
+                            title="View profile picture"
+                        >
+                            <Avatar
+                                name={profileData.name}
+                                image={profileData.avatar_url}
+                                size="xl"
+                                className="ring-4 ring-white/20 shadow-xl transition-transform hover:scale-105"
+                            />
+                        </div>
 
                         {!readonly && (
                             <>
@@ -401,6 +408,41 @@ const Profile = ({ userId = null, readonly = false }) => {
                     </div>
                 </Card>
             </div>
+
+            {/* Avatar Zoom Modal */}
+            <Modal isOpen={isZoomed} onClose={() => setIsZoomed(false)} title="Profile Picture">
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 'var(--space-md)' }}>
+                    {profileData?.avatar_url ? (
+                        <img 
+                            src={profileData.avatar_url} 
+                            alt={profileData.name} 
+                            style={{ 
+                                maxWidth: '100%', 
+                                maxHeight: '70vh', 
+                                borderRadius: 'var(--radius-lg)',
+                                objectFit: 'contain',
+                                boxShadow: 'var(--shadow-xl)'
+                            }} 
+                        />
+                    ) : (
+                        <div style={{
+                            width: '250px',
+                            height: '250px',
+                            background: 'var(--gradient-primary)',
+                            color: 'white',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '6rem',
+                            fontWeight: 700,
+                            borderRadius: '50%',
+                            boxShadow: 'var(--shadow-xl)'
+                        }}>
+                            {profileData?.name?.charAt(0)?.toUpperCase() || 'U'}
+                        </div>
+                    )}
+                </div>
+            </Modal>
 
             <style>{`
         @media (max-width: 768px) {
