@@ -375,7 +375,36 @@ export const createQuiz = async (quiz) => {
                 type: 'warning',
                 link: '/quizzes'
             }));
-            await supabase.from('notifications').insert(notifications);
+            const { error: notifError } = await supabase.from('notifications').insert(notifications);
+            if (!notifError) {
+                // Trigger push for each specific student
+                try {
+                    const { data: studentProfiles } = await supabase
+                        .from('profiles')
+                        .select('id, preferences')
+                        .in('id', quiz.assigned_to);
+                    
+                    const tokens = studentProfiles
+                        .map(s => s.preferences?.fcm_token)
+                        .filter(t => !!t);
+                        
+                    if (tokens.length > 0) {
+                        fetch('/api/push', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                tokens: tokens,
+                                title: 'New Quiz Assigned',
+                                body: `You have been specifically assigned the quiz: "${quiz.title}"`,
+                                link: '/quizzes',
+                                data: { type: 'warning' }
+                            })
+                        }).catch(e => console.warn('Push background error:', e));
+                    }
+                } catch (e) {
+                    console.warn('Failed to send specific push:', e);
+                }
+            }
         } else if (classroomId) {
             // Notify entire classroom
             await notifyClassroom(classroomId, {
@@ -629,17 +658,44 @@ export const markAllNotificationsRead = async (userId) => {
 };
 
 export const createNotification = async (notification) => {
+    // 1. Insert to DB
     const { error } = await supabase.from('notifications').insert(notification);
     if (error) console.error('Error creating notification:', error);
+
+    // 2. Trigger Push
+    try {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('preferences')
+            .eq('id', notification.user_id)
+            .single();
+            
+        const token = profile?.preferences?.fcm_token;
+        if (token) {
+            fetch('/api/push', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tokens: [token],
+                    title: notification.title,
+                    body: notification.message,
+                    link: notification.link,
+                    data: { type: notification.type }
+                })
+            }).catch(e => console.warn('Push background error:', e));
+        }
+    } catch (e) {
+        console.warn('Failed to send push:', e);
+    }
 };
 
 export const notifyClassroom = async (classroomId, notification) => {
-    // 1. Get all students in classroom
+    // 1. Get all students in classroom (with tokens)
     const { data: students } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, preferences')
         .eq('classroom_id', classroomId)
-        .eq('role', 'member'); // Only notify students
+        .eq('role', 'member');
 
     if (!students || students.length === 0) return;
 
@@ -654,16 +710,35 @@ export const notifyClassroom = async (classroomId, notification) => {
         is_read: false
     }));
 
-    // 3. Insert
+    // 3. Insert to DB
     const { error } = await supabase.from('notifications').insert(notifications);
     if (error) console.error('Error sending classroom notifications:', error);
+
+    // 4. Trigger Push
+    const tokens = students
+        .map(s => s.preferences?.fcm_token)
+        .filter(t => !!t);
+
+    if (tokens.length > 0) {
+        fetch('/api/push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tokens: tokens,
+                title: notification.title,
+                body: notification.message,
+                link: notification.link,
+                data: { type: notification.type }
+            })
+        }).catch(e => console.warn('Push background error:', e));
+    }
 };
 
 export const notifyAdmins = async (classroomId, notification) => {
-    // 1. Get all admins in classroom
+    // 1. Get all admins in classroom (with tokens)
     const { data: admins } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, preferences')
         .eq('classroom_id', classroomId)
         .eq('role', 'admin');
 
@@ -675,14 +750,33 @@ export const notifyAdmins = async (classroomId, notification) => {
         classroom_id: classroomId,
         title: notification.title,
         message: notification.message,
-        type: notification.type || 'info', // 'info', 'warning', 'success', 'error'
+        type: notification.type || 'info',
         link: notification.link,
         is_read: false
     }));
 
-    // 3. Insert
+    // 3. Insert to DB
     const { error } = await supabase.from('notifications').insert(notifications);
     if (error) console.error('Error notifying admins:', error);
+
+    // 4. Trigger Push
+    const tokens = admins
+        .map(a => a.preferences?.fcm_token)
+        .filter(t => !!t);
+
+    if (tokens.length > 0) {
+        fetch('/api/push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tokens: tokens,
+                title: notification.title,
+                body: notification.message,
+                link: notification.link,
+                data: { type: notification.type }
+            })
+        }).catch(e => console.warn('Push background error:', e));
+    }
 };
 
 // ============================================
