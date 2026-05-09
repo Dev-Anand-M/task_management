@@ -623,67 +623,76 @@ const Register = () => {
                         flex: 1;
                         width: 100%;
                         height: 100vh;
-                        padding: var(--space-md); /* Very reduced padding */
+                        padding: var(--space-sm); /* Extreme minimal padding */
                         background: #1c1917;
-                        overflow: hidden !important; /* Force hide overflow */
+                        overflow: hidden !important;
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        scrollbar-width: none; /* Firefox */
-                        -ms-overflow-style: none; /* IE/Edge */
+                        scrollbar-width: none;
+                        -ms-overflow-style: none;
                     }
                     
                     .auth-right::-webkit-scrollbar {
-                        display: none; /* Chrome/Safari/Webkit */
+                        display: none;
                     }
 
                     .auth-form-container {
                         width: 100%;
-                        max-width: 420px;
+                        max-width: 400px;
                         margin: 0 auto;
-                        transform: translateY(-5px);
                     }
 
                     .mobile-logo {
                         display: flex;
-                        margin-bottom: var(--space-md); /* Reduced margin */
+                        margin-bottom: 8px; /* Extra tight */
                     }
                     
                     .mobile-logo-icon {
-                        width: 28px; /* Reduced size */
-                        height: 28px;
+                        width: 24px;
+                        height: 24px;
                     }
 
                     .form-header {
-                        margin-bottom: var(--space-md); /* Reduced margin */
+                        margin-bottom: 12px; /* Extra tight */
                     }
                     
                     .form-header h2 {
                         font-size: 1.25rem; /* Shrunk title */
                     }
+                    
+                    .form-header p {
+                        display: none; /* Hide tagline */
+                    }
 
                     .form-fields {
-                        gap: var(--space-sm); /* Tight gaps */
+                        gap: 6px; /* Extra tight gaps */
+                    }
+                    
+                    .form-fields label {
+                        font-size: 0.7rem;
+                        margin-bottom: 0;
                     }
                     
                     .form-fields input {
-                        height: 40px; /* Reduced input height */
+                        height: 36px; /* Extra short inputs */
                         padding: 0 var(--space-md);
+                        font-size: 0.85rem;
                     }
 
                     .register-link {
-                        margin-top: var(--space-md); /* Reduced margin */
-                        padding-top: var(--space-sm);
+                        margin-top: 8px; /* Extra tight */
+                        padding-top: 6px;
                     }
                     
                     .password-row {
                         grid-template-columns: 1fr;
-                        gap: var(--space-sm);
+                        gap: 6px;
                     }
                     
                     .submit-btn {
-                        height: 40px; /* Reduced button height */
-                        margin-top: var(--space-sm);
+                        height: 38px; /* Extra short button */
+                        margin-top: 8px;
                     }
                 }
 

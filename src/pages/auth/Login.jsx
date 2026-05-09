@@ -561,48 +561,70 @@ const Login = () => {
                         flex: 1;
                         width: 100%;
                         height: 100vh;
-                        padding: var(--space-lg); /* Reduced padding */
+                        padding: var(--space-md); /* Minimal padding */
                         background: #1c1917;
-                        overflow: hidden !important; /* Force hide overflow */
+                        overflow: hidden !important;
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        scrollbar-width: none; /* Firefox */
-                        -ms-overflow-style: none; /* IE/Edge */
+                        scrollbar-width: none;
+                        -ms-overflow-style: none;
                     }
                     
                     .auth-right::-webkit-scrollbar {
-                        display: none; /* Chrome/Safari/Webkit */
+                        display: none;
                     }
 
                     .auth-form-container {
                         width: 100%;
-                        max-width: 400px;
+                        max-width: 360px; /* Slimmer */
                         margin: 0 auto;
-                        transform: translateY(-10px);
                     }
 
                     .mobile-logo {
                         display: flex;
-                        margin-bottom: var(--space-lg); /* Reduced margin */
+                        margin-bottom: 12px; /* Tight */
                     }
                     
                     .mobile-logo-icon {
-                        width: 32px; /* Reduced size */
-                        height: 32px;
+                        width: 28px;
+                        height: 28px;
                     }
 
                     .form-header {
-                        margin-bottom: var(--space-lg); /* Reduced margin */
+                        margin-bottom: 16px; /* Tight */
+                    }
+                    
+                    .form-header h2 {
+                        font-size: 1.4rem; /* Smaller */
+                    }
+                    
+                    .form-header p {
+                        display: none; /* Hide tagline on mobile to save space */
                     }
                     
                     .form-fields {
-                        gap: var(--space-md); /* Reduced gap */
+                        gap: 10px; /* Tight gaps */
+                    }
+                    
+                    .form-fields label {
+                        font-size: 0.75rem; /* Smaller labels */
+                        margin-bottom: 2px;
+                    }
+                    
+                    .form-fields input {
+                        height: 40px; /* Shorter inputs */
+                        font-size: 0.9rem;
+                    }
+
+                    .submit-btn {
+                        height: 42px; /* Shorter button */
+                        margin-top: 10px;
                     }
 
                     .register-link {
-                        margin-top: var(--space-lg); /* Reduced margin */
-                        padding-top: var(--space-md);
+                        margin-top: 12px; /* Tight */
+                        padding-top: 10px;
                     }
                 }
 
