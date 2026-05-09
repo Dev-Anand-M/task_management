@@ -19,6 +19,7 @@ const firebaseConfig = {
 };
 
 if (firebaseConfig.apiKey) {
+  console.log('[firebase-messaging-sw.js] Initializing with project:', firebaseConfig.projectId);
   firebase.initializeApp(firebaseConfig);
 } else {
   console.warn('[firebase-messaging-sw.js] Firebase config not found in URL parameters.');
