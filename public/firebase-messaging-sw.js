@@ -100,7 +100,7 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Handle push event directly (backup for onBackgroundMessage)
+// Handle push event directly (for data-only messages)
 self.addEventListener('push', (event) => {
   console.log('[firebase-messaging-sw.js] Push event received:', event);
   
@@ -109,24 +109,33 @@ self.addEventListener('push', (event) => {
       const payload = event.data.json();
       console.log('[firebase-messaging-sw.js] Push payload:', payload);
       
-      const notificationTitle = payload.notification?.title || 'New Update';
+      // Handle both notification and data-only messages
+      const notificationTitle = payload.notification?.title || payload.data?.title || 'New Update';
+      const notificationBody = payload.notification?.body || payload.data?.body || 'You have a new message.';
+      const notificationLink = payload.data?.link || payload.fcmOptions?.link || '/';
+      
       const notificationOptions = {
-        body: payload.notification?.body || 'You have a new message.',
-        icon: '/zenith.png',
-        badge: '/zenith.png',
-        image: '/zenith.png',
+        body: notificationBody,
+        icon: payload.data?.icon || '/zenith.png',
+        badge: payload.data?.badge || '/zenith.png',
+        image: payload.data?.image || '/zenith.png',
         tag: 'zenith-notification',
         renotify: true,
         requireInteraction: true,
         vibrate: [200, 100, 200],
         silent: false,
         timestamp: Date.now(),
-        data: payload.data || {},
+        data: {
+          link: notificationLink,
+          ...payload.data
+        },
         actions: [
           { action: 'open', title: 'Open', icon: '/zenith.png' },
           { action: 'close', title: 'Dismiss', icon: '/zenith.png' }
         ]
       };
+      
+      console.log('[firebase-messaging-sw.js] Showing notification:', notificationTitle, notificationOptions);
       
       event.waitUntil(
         self.registration.showNotification(notificationTitle, notificationOptions)
@@ -134,5 +143,7 @@ self.addEventListener('push', (event) => {
     } catch (error) {
       console.error('[firebase-messaging-sw.js] Error parsing push data:', error);
     }
+  } else {
+    console.log('[firebase-messaging-sw.js] Push event has no data');
   }
 });
