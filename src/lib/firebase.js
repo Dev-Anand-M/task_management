@@ -61,10 +61,6 @@ const saveTokenToDatabase = async (userId, token) => {
       .eq('id', userId)
       .single();
 
-    const prefs = profile?.preferences || {};
-    
-    // Store multiple tokens for multi-device support
-    if (!prefs.fcm_tokens) {
     // De-duplicate and save
     const currentTokens = profile?.preferences?.fcm_tokens || [];
     if (!currentTokens.includes(token)) {
