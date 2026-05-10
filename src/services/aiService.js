@@ -655,6 +655,63 @@ Format your response in markdown.`;
     return generateContent(question, systemPrompt, model);
 };
 
+// AI Task Evaluator (For Admins)
+export const evaluateTaskSubmission = async (taskData, submissionData, model = null, signal = null) => {
+    const systemPrompt = `You are an expert project reviewer. Analyze a student's task submission.
+    
+    TASK REQUIREMENTS:
+    Title: ${taskData.title}
+    Description: ${taskData.description}
+    Points: ${taskData.points}
+    Criteria: ${JSON.stringify(taskData.criteria || [])}
+    
+    STUDENT SUBMISSION:
+    Repository URL: ${submissionData.repo_url}
+    Student Notes: ${submissionData.notes || 'No notes provided'}
+    
+    EVALUATION GUIDELINES:
+    1. Score the submission from 0 to 100 based on the criteria.
+    2. Provide constructive, professional feedback.
+    3. Identify strengths and specific areas for improvement.
+    
+    SCHEMA REQUIREMENT:
+    Return ONLY a valid JSON object:
+    {
+      "suggestedScore": number (0-100),
+      "feedback": "Detailed feedback string",
+      "mentorNote": "Internal note for admin"
+    }
+    No other text. JSON only.`;
+
+    const prompt = `Evaluate this submission for the task: ${taskData.title}`;
+    const response = await generateContent(prompt, systemPrompt, model, signal);
+
+    try {
+        let cleanedResponse = response.trim();
+        if (cleanedResponse.startsWith('```')) {
+            const lines = cleanedResponse.split('\n');
+            if (lines[0].startsWith('```')) lines.shift();
+            if (lines[lines.length - 1].startsWith('```')) lines.pop();
+            cleanedResponse = lines.join('\n').trim();
+        }
+
+        const firstBrace = cleanedResponse.indexOf('{');
+        const lastBrace = cleanedResponse.lastIndexOf('}');
+        
+        if (firstBrace !== -1 && lastBrace !== -1) {
+            return JSON.parse(cleanedResponse.substring(firstBrace, lastBrace + 1));
+        }
+        return JSON.parse(cleanedResponse);
+    } catch (e) {
+        console.error('Task Evaluation parse error:', e);
+        return {
+            suggestedScore: 70,
+            feedback: "AI Evaluation encountered a parse error, but the submission looks complete. Please review manually.",
+            mentorNote: "Parse Error fallback triggered."
+        };
+    }
+};
+
 // AI Quiz Evaluator (For Admins)
 export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null, signal = null, options = {}) => {
     // 1. Fetch relevant knowledge (RAG)
@@ -950,6 +1007,8 @@ export default {
     generateQuiz,
     generateLearningPath,
     askCodingAssistant,
+    evaluateTaskSubmission,
+    evaluateQuizAttempt,
     generateStudyNotes,
     debugCode,
     saveHistory,

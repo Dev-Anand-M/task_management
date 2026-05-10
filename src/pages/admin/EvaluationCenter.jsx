@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import * as db from '../../services/database';
-import { evaluateQuizAttempt } from '../../services/aiService';
+import { evaluateQuizAttempt, evaluateTaskSubmission } from '../../services/aiService';
 import { formatDate, formatRelativeTime, getStatusColor, EVALUATION_CRITERIA } from '../../utils/constants';
 
 const EvaluationCenter = () => {
@@ -408,6 +408,7 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
     const [feedback, setFeedback] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [evaluating, setEvaluating] = useState(false);
 
     const loadSubmission = useCallback(async () => {
         try {
@@ -519,6 +520,24 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
             console.error('Error rejecting submission:', error);
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleAiReview = async () => {
+        if (!submission) return;
+        setEvaluating(true);
+        try {
+            const report = await evaluateTaskSubmission(submission.tasks, submission);
+            if (report) {
+                setScore(report.suggestedScore.toString());
+                setFeedback(report.feedback);
+                // We don't save yet, let the admin review the AI suggestion
+            }
+        } catch (error) {
+            console.error('AI Task Review Error:', error);
+            alert('Failed to get AI review. Please try again.');
+        } finally {
+            setEvaluating(false);
         }
     };
 
@@ -705,6 +724,16 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
                             <Award size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                             Final Score
                         </h4>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={Brain}
+                            onClick={handleAiReview}
+                            loading={evaluating}
+                            style={{ width: '100%', marginBottom: 'var(--space-md)', border: '1px dashed var(--primary-300)', color: 'var(--primary-600)' }}
+                        >
+                            {evaluating ? 'AI Reviewing...' : '🤖 AI Assistant Review'}
+                        </Button>
                         <Input
                             type="number"
                             placeholder="0-100"
