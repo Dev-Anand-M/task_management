@@ -30,9 +30,12 @@ export const requestNotificationPermission = async (userId) => {
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      // Register service worker with config in query params and a cache buster
+      // Register service worker
       const swUrl = `/firebase-messaging-sw.js?v=${Date.now()}&apiKey=${firebaseConfig.apiKey}&authDomain=${firebaseConfig.authDomain}&projectId=${firebaseConfig.projectId}&storageBucket=${firebaseConfig.storageBucket}&messagingSenderId=${firebaseConfig.messagingSenderId}&appId=${firebaseConfig.appId}`;
-      const registration = await navigator.serviceWorker.register(swUrl);
+      await navigator.serviceWorker.register(swUrl);
+      
+      // WAIT for the service worker to be active
+      const registration = await navigator.serviceWorker.ready;
 
       // Get the VAPID key from Firebase console -> Cloud Messaging -> Web configuration
       const currentToken = await getToken(messaging, { 
