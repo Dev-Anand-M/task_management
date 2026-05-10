@@ -67,7 +67,7 @@ const Login = () => {
                 {/* Content */}
                 <div className="auth-brand">
                     <div className="auth-logo-large">
-                        <Zap size={36} strokeWidth={2.5} />
+                        <img src="/zenith.png" alt="Zenith" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                     <h1 className="brand-title">Zenith</h1>
                     <p className="brand-tagline">

@@ -44,8 +44,8 @@ export default async function handler(req, res) {
                     link: link || '/',
                 },
                 notification: {
-                    icon: '/vite.svg',
-                    badge: '/vite.svg',
+                    icon: '/zenith.png',
+                    badge: '/zenith.png',
                     tag: 'idl-notification',
                     renotify: true,
                     vibrate: [200, 100, 200]

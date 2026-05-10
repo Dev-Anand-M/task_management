@@ -31,8 +31,8 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification?.title || 'New Update';
   const notificationOptions = {
     body: payload.notification?.body || 'You have a new message.',
-    icon: payload.notification?.icon || '/vite.svg',
-    badge: payload.notification?.badge || '/vite.svg',
+    icon: payload.notification?.icon || '/zenith.png',
+    badge: payload.notification?.badge || '/zenith.png',
     tag: 'idl-notification',
     renotify: true,
     requireInteraction: true,

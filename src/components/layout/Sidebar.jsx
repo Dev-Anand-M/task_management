@@ -110,17 +110,15 @@ const Sidebar = ({ isOpen, onClose }) => {
                     gap: 'var(--space-sm)'
                 }}>
                     <div className="flex items-center gap-sm">
-                        <div style={{
-                            width: '32px',
-                            height: '32px',
-                            background: 'rgba(255,255,255,0.2)',
-                            borderRadius: 'var(--radius-md)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}>
-                            <Zap size={18} color="white" />
-                        </div>
+                            <img 
+                                src="/zenith.png" 
+                                alt="Zenith" 
+                                style={{ 
+                                    width: '100%', 
+                                    height: '100%', 
+                                    objectFit: 'contain'
+                                }} 
+                            />
                         <div>
                             <h2 style={{
                                 fontSize: 'var(--text-base)',

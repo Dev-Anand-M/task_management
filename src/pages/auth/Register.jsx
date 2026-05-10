@@ -92,7 +92,7 @@ const Register = () => {
                 {/* Content */}
                 <div className="auth-brand">
                     <div className="auth-logo-large">
-                        <Zap size={36} strokeWidth={2.5} />
+                        <img src="/zenith.png" alt="Zenith" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                     <h1 className="brand-title">Join Zenith</h1>
                     <p className="brand-tagline">
@@ -136,7 +136,7 @@ const Register = () => {
                     {/* Mobile Logo */}
                     <div className="mobile-logo">
                         <div className="mobile-logo-icon">
-                            <Zap size={24} />
+                            <img src="/zenith.png" alt="Zenith" style={{ width: '24px', height: '24px' }} />
                         </div>
                         <span>Zenith</span>
                     </div>
