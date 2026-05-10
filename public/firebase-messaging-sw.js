@@ -1,7 +1,6 @@
-// Version: 1.0.5
-console.log('[firebase-messaging-sw.js] SW Script Loading...');
+// Version: 1.0.6 (Modular V10)
+console.log('[firebase-messaging-sw.js] Loading Modern SW...');
 
-// Import and configure the Firebase SDK
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
@@ -17,14 +16,13 @@ const firebaseConfig = {
 };
 
 if (firebaseConfig.apiKey) {
-  console.log('[firebase-messaging-sw.js] Initializing with project:', firebaseConfig.projectId);
   firebase.initializeApp(firebaseConfig);
 }
 
 const messaging = firebase.messaging();
 
-// Use the standard background handler for the compat SDK
-messaging.setBackgroundMessageHandler(function(payload) {
+// Correct method name for Firebase 10+ Compat
+messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
   const notificationTitle = payload.notification?.title || payload.data?.title || 'New Update';
@@ -40,17 +38,12 @@ messaging.setBackgroundMessageHandler(function(payload) {
     }
   };
 
-  return self.registration.showNotification(notificationTitle, notificationOptions);
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
 // Force activation
-self.addEventListener('install', () => {
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
-});
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(clients.claim()));
 
 // Handle notification click
 self.addEventListener('notificationclick', (event) => {
@@ -60,13 +53,9 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url === link && 'focus' in client) {
-          return client.focus();
-        }
+        if (client.url === link && 'focus' in client) return client.focus();
       }
-      if (clients.openWindow) {
-        return clients.openWindow(link);
-      }
+      if (clients.openWindow) return clients.openWindow(link);
     })
   );
 });
