@@ -13,7 +13,7 @@ const NotificationListener = () => {
         if (!user) {
             // Clear shown notifications when user logs out
             try {
-                localStorage.removeItem('shownNotifications');
+                localStorage.removeItem(`shownNotifications_${user?.id}`);
             } catch (e) {
                 console.error('Error clearing shown notifications:', e);
             }
@@ -21,6 +21,10 @@ const NotificationListener = () => {
         }
 
         let mounted = true;
+        
+        // Track the timestamp when component mounts
+        const mountTime = Date.now();
+        console.log('[NotificationListener] Mounted at:', new Date(mountTime).toISOString());
         
         // Load shown notifications from localStorage (user-specific)
         const getShownNotifications = () => {
@@ -89,33 +93,49 @@ const NotificationListener = () => {
                     filter: `user_id=eq.${user.id}`
                 },
                 (payload) => {
-                    console.log('[DB Notification]', payload);
+                    console.log('[DB Notification] Received:', payload);
+                    
+                    const notificationId = payload.new.id;
+                    const notificationTime = new Date(payload.new.created_at).getTime();
+                    const now = Date.now();
+                    
+                    console.log('[DB Notification] Details:', {
+                        id: notificationId,
+                        created: new Date(notificationTime).toISOString(),
+                        mountTime: new Date(mountTime).toISOString(),
+                        age: (now - notificationTime) / 1000 + 's',
+                        alreadyShown: shownNotifications.has(notificationId)
+                    });
                     
                     // Check if we've already shown this notification
-                    const notificationId = payload.new.id;
                     if (shownNotifications.has(notificationId)) {
-                        console.log('[DB Notification] Already shown, skipping:', notificationId);
+                        console.log('[DB Notification] Already shown, skipping');
                         return;
                     }
                     
-                    // Only show toast for notifications created in the last 10 seconds
-                    // This prevents showing old notifications when app opens or reconnects
-                    const notificationTime = new Date(payload.new.created_at).getTime();
-                    const now = Date.now();
-                    const ageInSeconds = (now - notificationTime) / 1000;
-                    
-                    if (ageInSeconds < 10) {
-                        // Mark as shown
-                        shownNotifications.add(notificationId);
-                        markAsShown(notificationId);
-                        
-                        showToast({
-                            title: payload.new.title,
-                            body: payload.new.message
-                        });
-                    } else {
-                        console.log('[DB Notification] Skipping old notification (age:', ageInSeconds, 'seconds)');
+                    // Only show notifications created AFTER this component mounted
+                    // This prevents showing old notifications on refresh/reconnect
+                    if (notificationTime < mountTime) {
+                        console.log('[DB Notification] Created before mount, skipping');
+                        return;
                     }
+                    
+                    // Additional safety: only show if less than 10 seconds old
+                    const ageInSeconds = (now - notificationTime) / 1000;
+                    if (ageInSeconds > 10) {
+                        console.log('[DB Notification] Too old, skipping');
+                        return;
+                    }
+                    
+                    // Mark as shown
+                    shownNotifications.add(notificationId);
+                    markAsShown(notificationId);
+                    
+                    console.log('[DB Notification] Showing toast');
+                    showToast({
+                        title: payload.new.title,
+                        body: payload.new.message
+                    });
                 }
             )
             .subscribe();
