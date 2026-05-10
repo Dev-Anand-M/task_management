@@ -10,139 +10,43 @@ const NotificationListener = () => {
     const [activeToast, setActiveToast] = useState(null);
 
     useEffect(() => {
-        if (!user) {
-            // Clear shown notifications when user logs out
-            try {
-                localStorage.removeItem(`shownNotifications_${user?.id}`);
-            } catch (e) {
-                console.error('Error clearing shown notifications:', e);
-            }
-            return;
-        }
+        if (!user) return;
 
         let mounted = true;
         
-        // Track the timestamp when component mounts
-        const mountTime = Date.now();
-        console.log('[NotificationListener] Mounted at:', new Date(mountTime).toISOString());
-        
-        // Load shown notifications from localStorage (user-specific)
-        const getShownNotifications = () => {
-            try {
-                const key = `shownNotifications_${user.id}`;
-                const stored = localStorage.getItem(key);
-                if (stored) {
-                    const data = JSON.parse(stored);
-                    // Clean up old entries (older than 1 hour)
-                    const oneHourAgo = Date.now() - (60 * 60 * 1000);
-                    const cleaned = Object.fromEntries(
-                        Object.entries(data).filter(([_, timestamp]) => timestamp > oneHourAgo)
-                    );
-                    localStorage.setItem(key, JSON.stringify(cleaned));
-                    return new Set(Object.keys(cleaned));
-                }
-            } catch (e) {
-                console.error('Error loading shown notifications:', e);
-            }
-            return new Set();
-        };
+        console.log('[NotificationListener] Starting for user:', user.id);
 
-        const markAsShown = (notificationId) => {
-            try {
-                const key = `shownNotifications_${user.id}`;
-                const stored = localStorage.getItem(key);
-                const data = stored ? JSON.parse(stored) : {};
-                data[notificationId] = Date.now();
-                localStorage.setItem(key, JSON.stringify(data));
-            } catch (e) {
-                console.error('Error saving shown notification:', e);
-            }
-        };
-
-        const shownNotifications = getShownNotifications();
-
-        // 1. Listen for FCM Foreground Messages
+        // Listen for FCM Foreground Messages ONLY
+        // This prevents duplicate notifications from Supabase real-time
         const setupFCMListener = async () => {
             try {
                 const payload = await onMessageListener();
                 if (mounted && payload) {
-                    console.log('[FCM Foreground]', payload);
+                    console.log('[FCM Foreground] Received:', payload);
                     
-                    // Show custom toast instead of alert
+                    // Show custom toast
                     showToast({
                         title: payload.notification?.title,
                         body: payload.notification?.body
                     });
                     
+                    // Continue listening
                     setupFCMListener();
                 }
             } catch (err) {
-                console.error('FCM listener error:', err);
+                console.error('[FCM] Listener error:', err);
+                // Retry after a delay
+                if (mounted) {
+                    setTimeout(() => setupFCMListener(), 1000);
+                }
             }
         };
-
-        // 2. Listen for Supabase Real-time Table Changes (only NEW notifications)
-        const channel = supabase
-            .channel('realtime_notifications')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'notifications',
-                    filter: `user_id=eq.${user.id}`
-                },
-                (payload) => {
-                    console.log('[DB Notification] Received:', payload);
-                    
-                    const notificationId = payload.new.id;
-                    const notificationTime = new Date(payload.new.created_at).getTime();
-                    const now = Date.now();
-                    
-                    console.log('[DB Notification] Details:', {
-                        id: notificationId,
-                        created: new Date(notificationTime).toISOString(),
-                        mountTime: new Date(mountTime).toISOString(),
-                        age: (now - notificationTime) / 1000 + 's',
-                        alreadyShown: shownNotifications.has(notificationId)
-                    });
-                    
-                    // Check if we've already shown this notification
-                    if (shownNotifications.has(notificationId)) {
-                        console.log('[DB Notification] Already shown, skipping');
-                        return;
-                    }
-                    
-                    // Only show notifications created AFTER this component mounted
-                    // This prevents showing old notifications on refresh/reconnect
-                    if (notificationTime < mountTime) {
-                        console.log('[DB Notification] Created before mount, skipping');
-                        return;
-                    }
-                    
-                    // Additional safety: only show if less than 10 seconds old
-                    const ageInSeconds = (now - notificationTime) / 1000;
-                    if (ageInSeconds > 10) {
-                        console.log('[DB Notification] Too old, skipping');
-                        return;
-                    }
-                    
-                    // Mark as shown
-                    shownNotifications.add(notificationId);
-                    markAsShown(notificationId);
-                    
-                    console.log('[DB Notification] Showing toast');
-                    showToast({
-                        title: payload.new.title,
-                        body: payload.new.message
-                    });
-                }
-            )
-            .subscribe();
 
         setupFCMListener();
 
         const showToast = (data) => {
+            if (!data?.title) return;
+            
             setActiveToast(data);
             setTimeout(() => {
                 if (mounted) setActiveToast(null);
@@ -151,7 +55,6 @@ const NotificationListener = () => {
 
         return () => {
             mounted = false;
-            supabase.removeChannel(channel);
         };
     }, [user]);
 
