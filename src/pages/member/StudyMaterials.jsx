@@ -424,13 +424,29 @@ const StudyMaterials = () => {
                             {viewingItem.color && <div style={{ width: 12, height: 12, borderRadius: '50%', background: viewingItem.color }} />}
                         </div>
                         {viewingItem.file_url && viewingItem.material_type === 'file' ? (
-                            <div style={{ marginTop: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                            <div style={{ marginTop: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: 'var(--space-xl)', textAlign: 'center', border: '1px solid var(--border)' }}>
                                 {viewingItem.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
-                                    <img src={viewingItem.file_url} alt="Attached Material" style={{ width: '100%', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
+                                    <img src={viewingItem.file_url} alt="Attached Material" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', display: 'block', borderRadius: 'var(--radius-md)' }} />
                                 ) : (
-                                    <div style={{ position: 'relative' }}>
-                                        <iframe src={viewingItem.file_url} width="100%" height="800px" style={{ border: 'none', display: 'block', maxHeight: '85vh' }} title="Attached Document" />
-                                        <div style={{ padding: 'var(--space-md)', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'flex', gap: 'var(--space-sm)', justifyContent: 'center' }}>
+                                    <div style={{ padding: 'var(--space-xl)' }}>
+                                        <div style={{ 
+                                            width: '80px', 
+                                            height: '80px', 
+                                            borderRadius: '50%', 
+                                            background: 'var(--primary-50)', 
+                                            color: 'var(--primary-500)', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            margin: '0 auto var(--space-lg)' 
+                                        }}>
+                                            <FileText size={40} />
+                                        </div>
+                                        <h3 style={{ marginBottom: 'var(--space-sm)' }}>Document Ready</h3>
+                                        <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-xl)', maxWidth: '400px', margin: '0 auto var(--space-xl)' }}>
+                                            This document is ready to be viewed or downloaded.
+                                        </p>
+                                        <div style={{ display: 'flex', gap: 'var(--space-md)', justifyContent: 'center' }}>
                                             <a href={viewingItem.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'var(--primary-500)' }}>
                                                 <ExternalLink size={16} /> Open in New Tab
                                             </a>
