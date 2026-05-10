@@ -55,7 +55,7 @@ const KnowledgeBase = () => {
                 }
             }, 8000);
             const [data, classes] = await Promise.all([
-                db.getKnowledgeBase(),
+                db.getKnowledgeBase(user?.role === 'member' ? user.classroom_id : null),
                 db.getClassrooms()
             ]);
             setKnowledge(data);
@@ -70,7 +70,7 @@ const KnowledgeBase = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [user?.role, user?.classroom_id]);
 
     useEffect(() => {
         loadData();

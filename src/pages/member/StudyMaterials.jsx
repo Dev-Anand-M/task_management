@@ -23,7 +23,7 @@ const NOTE_COLORS = [
 ];
 
 const StudyMaterials = () => {
-    const { user, profile } = useAuth();
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('shared');
     const [sharedMaterials, setSharedMaterials] = useState([]);
     const [myNotes, setMyNotes] = useState([]);
@@ -45,13 +45,13 @@ const StudyMaterials = () => {
     };
 
     const loadData = useCallback(async (silent = false) => {
-        if (!user?.id) return;
+        if (!user?.id || !user?.classroom_id) return;
         try {
             if (!silent) setLoading(true);
             const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 10000));
             const [shared, notes] = await Promise.race([
                 Promise.all([
-                    db.getKnowledgeBase(profile?.classroom_id).catch(() => []),
+                    db.getKnowledgeBase(user?.classroom_id).catch(() => []),
                     db.getStudyNotes(user.id).catch(() => [])
                 ]),
                 timeout
@@ -63,7 +63,7 @@ const StudyMaterials = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.id]);
+    }, [user?.id, user?.classroom_id]);
 
     useEffect(() => { loadData(); }, [loadData]);
     useMiniReload(() => loadData(true));
@@ -76,7 +76,7 @@ const StudyMaterials = () => {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'study_notes', filter: `user_id=eq.${user.id}` }, () => loadData(true))
             .subscribe();
         return () => supabase.removeChannel(channel);
-    }, [user?.id, profile?.classroom_id, loadData]);
+    }, [user?.id, user?.classroom_id, loadData]);
 
     // Note CRUD
     const handleSaveNote = async (e) => {
