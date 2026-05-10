@@ -1395,14 +1395,14 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                                 icon={CheckCircle}
                                                 className="animate-bounce-subtle"
                                                 onClick={() => {
-                                                    console.log(`[FixKey] Index: ${index}, AISuggestion:`, aiSuggestion);
-                                                    // If AI flags a key error, we usually want to award the mark if the student was right
-                                                    // but we'll prioritize the AI's isCorrect field if it exists, fallback to true
                                                     const newValue = aiSuggestion.isCorrect !== undefined ? aiSuggestion.isCorrect : true;
-                                                    setOverrides(prev => ({ ...prev, [index]: newValue }));
+                                                    setOverrides(prev => ({ 
+                                                        ...prev, 
+                                                        [index]: newValue 
+                                                    }));
                                                 }}
                                             >
-                                                {aiSuggestion.isCorrect ? "Award Marks & Fix Key" : "Fix Key Suggestion"}
+                                                {aiSuggestion.isCorrect ? "Apply AI Fix & Award Point" : "Apply AI Fix"}
                                             </Button>
                                         </div>
                                     )}
@@ -1456,27 +1456,58 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                                         )}
 
                                                         {/* Current/AI */}
-                                                        {(hasChange || aiSuggestion) && (
-                                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                                <span style={{ fontSize: '9px', color: '#3b82f6', textTransform: 'uppercase', fontWeight: 700 }}>
-                                                                    {overrides[index] !== undefined ? 'New' : 'AI'}
-                                                                </span>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                            <span style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>New</span>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                {aiSuggestion && !hasChange && (
+                                                                    <Brain size={12} color="#3b82f6" />
+                                                                )}
                                                                 <span style={{ 
                                                                     color: currentCorrect ? 'var(--success-500)' : 'var(--error-500)', 
                                                                     fontWeight: 800,
-                                                                    fontSize: 'var(--text-lg)',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: '2px'
+                                                                    fontSize: 'var(--text-lg)'
                                                                 }}>
-                                                                    {aiSuggestion && <Brain size={12} style={{ color: '#3b82f6' }} />}
                                                                     {currentCorrect ? '+1' : '-1'}
                                                                 </span>
                                                             </div>
-                                                        )}
+                                                        </div>
                                                     </div>
                                                 );
                                             })()}
+                                            
+                                            {/* Manual Override Buttons */}
+                                            <div style={{ display: 'flex', gap: '4px' }}>
+                                                <Button 
+                                                    size="xs" 
+                                                    variant={overrides[index] === true ? "success" : "ghost"}
+                                                    onClick={() => setOverrides(prev => ({ ...prev, [index]: true }))}
+                                                    title="Manually Award Point"
+                                                >
+                                                    <Check size={14} />
+                                                </Button>
+                                                <Button 
+                                                    size="xs" 
+                                                    variant={overrides[index] === false ? "danger" : "ghost"}
+                                                    onClick={() => setOverrides(prev => ({ ...prev, [index]: false }))}
+                                                    title="Manually Deduct Point"
+                                                >
+                                                    <X size={14} />
+                                                </Button>
+                                                {overrides[index] !== undefined && (
+                                                    <Button 
+                                                        size="xs" 
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            const newOverrides = { ...overrides };
+                                                            delete newOverrides[index];
+                                                            setOverrides(newOverrides);
+                                                        }}
+                                                        title="Reset to Original"
+                                                    >
+                                                        <RefreshCw size={12} />
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                         {q.type === 'multiple' ? (
