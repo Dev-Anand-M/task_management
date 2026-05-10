@@ -66,21 +66,6 @@ export default async function handler(req, res) {
                 }
             }
         };
-                    silent: false,
-                    timestamp: Date.now(),
-                    actions: [
-                        {
-                            action: 'open',
-                            title: 'Open'
-                        },
-                        {
-                            action: 'close',
-                            title: 'Dismiss'
-                        }
-                    ]
-                }
-            }
-        };
 
         let results;
         if (tokens.length === 1) {
