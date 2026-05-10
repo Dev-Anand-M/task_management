@@ -1,12 +1,10 @@
-// This file must be placed in the public folder so it can be served at the root
+// Version: 1.0.4
+console.log('[firebase-messaging-sw.js] SW Script Loading...');
 
 // Import and configure the Firebase SDK
-// These scripts are made available when the app is served or deployed.
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
-// Parse the configuration from the URL query parameters
-// This allows us to pass environment variables from the main app
 const urlParams = new URLSearchParams(self.location.search);
 
 const firebaseConfig = {
@@ -25,7 +23,6 @@ if (firebaseConfig.apiKey) {
   console.warn('[firebase-messaging-sw.js] Firebase config not found in URL parameters.');
 }
 
-// Retrieve an instance of Firebase Messaging so that it can handle background messages.
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
@@ -36,6 +33,9 @@ messaging.onBackgroundMessage((payload) => {
     body: payload.notification?.body || 'You have a new message.',
     icon: payload.notification?.icon || '/vite.svg',
     badge: payload.notification?.badge || '/vite.svg',
+    tag: 'idl-notification',
+    renotify: true,
+    requireInteraction: true,
     data: {
       link: payload.data?.link || '/'
     }
