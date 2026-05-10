@@ -28,6 +28,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'No tokens provided' });
     }
 
+    try {
         // For web push to work in background, we send BOTH data and notification blocks
         // The OS handles the notification block, and our SW handles the data block
         const message = {
