@@ -428,33 +428,21 @@ const StudyMaterials = () => {
                                 {viewingItem.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
                                     <img src={viewingItem.file_url} alt="Attached Material" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', display: 'block', borderRadius: 'var(--radius-md)' }} />
                                 ) : (
-                                    <div style={{ padding: 'var(--space-xl)' }}>
-                                        <div style={{ 
-                                            width: '80px', 
-                                            height: '80px', 
-                                            borderRadius: '50%', 
-                                            background: 'var(--primary-50)', 
-                                            color: 'var(--primary-500)', 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            justifyContent: 'center', 
-                                            margin: '0 auto var(--space-lg)' 
-                                        }}>
-                                            <FileText size={40} />
+                                        <div style={{ position: 'relative', height: '80vh', background: 'var(--surface)' }}>
+                                            <iframe 
+                                                src={`https://docs.google.com/gview?url=${encodeURIComponent(viewingItem.file_url)}&embedded=true`}
+                                                width="100%" 
+                                                height="100%" 
+                                                style={{ border: 'none', display: 'block' }} 
+                                                title="Document Preview"
+                                            />
+                                            {/* Fallback buttons in case the viewer fails */}
+                                            <div style={{ position: 'absolute', bottom: '20px', right: '20px', display: 'flex', gap: '8px' }}>
+                                                <a href={viewingItem.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-outline" style={{ background: 'rgba(30, 41, 59, 0.8)', backdropFilter: 'blur(4px)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}>
+                                                    <ExternalLink size={14} /> Open Original
+                                                </a>
+                                            </div>
                                         </div>
-                                        <h3 style={{ marginBottom: 'var(--space-sm)' }}>Document Ready</h3>
-                                        <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-xl)', maxWidth: '400px', margin: '0 auto var(--space-xl)' }}>
-                                            This document is ready to be viewed or downloaded.
-                                        </p>
-                                        <div style={{ display: 'flex', gap: 'var(--space-md)', justifyContent: 'center' }}>
-                                            <a href={viewingItem.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'var(--primary-500)' }}>
-                                                <ExternalLink size={16} /> Open in New Tab
-                                            </a>
-                                            <a href={viewingItem.file_url} download className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-                                                <Download size={16} /> Download File
-                                            </a>
-                                        </div>
-                                    </div>
                                 )}
                             </div>
                         ) : viewingItem.file_url && viewingItem.material_type === 'link' ? (
