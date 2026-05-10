@@ -10,9 +10,52 @@ const NotificationListener = () => {
     const [activeToast, setActiveToast] = useState(null);
 
     useEffect(() => {
-        if (!user) return;
+        if (!user) {
+            // Clear shown notifications when user logs out
+            try {
+                localStorage.removeItem('shownNotifications');
+            } catch (e) {
+                console.error('Error clearing shown notifications:', e);
+            }
+            return;
+        }
 
         let mounted = true;
+        
+        // Load shown notifications from localStorage (user-specific)
+        const getShownNotifications = () => {
+            try {
+                const key = `shownNotifications_${user.id}`;
+                const stored = localStorage.getItem(key);
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    // Clean up old entries (older than 1 hour)
+                    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+                    const cleaned = Object.fromEntries(
+                        Object.entries(data).filter(([_, timestamp]) => timestamp > oneHourAgo)
+                    );
+                    localStorage.setItem(key, JSON.stringify(cleaned));
+                    return new Set(Object.keys(cleaned));
+                }
+            } catch (e) {
+                console.error('Error loading shown notifications:', e);
+            }
+            return new Set();
+        };
+
+        const markAsShown = (notificationId) => {
+            try {
+                const key = `shownNotifications_${user.id}`;
+                const stored = localStorage.getItem(key);
+                const data = stored ? JSON.parse(stored) : {};
+                data[notificationId] = Date.now();
+                localStorage.setItem(key, JSON.stringify(data));
+            } catch (e) {
+                console.error('Error saving shown notification:', e);
+            }
+        };
+
+        const shownNotifications = getShownNotifications();
 
         // 1. Listen for FCM Foreground Messages
         const setupFCMListener = async () => {
@@ -48,13 +91,24 @@ const NotificationListener = () => {
                 (payload) => {
                     console.log('[DB Notification]', payload);
                     
+                    // Check if we've already shown this notification
+                    const notificationId = payload.new.id;
+                    if (shownNotifications.has(notificationId)) {
+                        console.log('[DB Notification] Already shown, skipping:', notificationId);
+                        return;
+                    }
+                    
                     // Only show toast for notifications created in the last 10 seconds
-                    // This prevents showing old notifications when app opens
+                    // This prevents showing old notifications when app opens or reconnects
                     const notificationTime = new Date(payload.new.created_at).getTime();
                     const now = Date.now();
                     const ageInSeconds = (now - notificationTime) / 1000;
                     
                     if (ageInSeconds < 10) {
+                        // Mark as shown
+                        shownNotifications.add(notificationId);
+                        markAsShown(notificationId);
+                        
                         showToast({
                             title: payload.new.title,
                             body: payload.new.message
