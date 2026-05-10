@@ -37,7 +37,7 @@ const Input = forwardRef(({
                 <InputComponent
                     ref={ref}
                     className={`input ${isTextarea ? 'textarea' : ''} ${isSelect ? 'select' : ''} ${error ? 'input-error' : ''} ${className}`}
-                    {...props}
+                    {...((isTextarea || isSelect) ? (() => { const { type, ...rest } = props; return rest; })() : props)}
                     style={{
                         ...(Icon ? { paddingLeft: '48px' } : {}),
                         ...(props.style || {})

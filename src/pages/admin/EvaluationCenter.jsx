@@ -803,6 +803,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
     const [evalAbortController, setEvalAbortController] = useState(null);
     const [evalStatus, setEvalStatus] = useState(''); // 'busy', 'retrying', etc.
     const [retryCount, setRetryCount] = useState(0);
+    const [manualFeedback, setManualFeedback] = useState('');
 
     const loadAttempt = useCallback(async () => {
         try {
@@ -859,8 +860,13 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                 });
                 setOverrides(typedOverrides);
             }
+
+            // Load manual feedback if it exists
+            if (attempt.metadata.manual_feedback && !manualFeedback) {
+                setManualFeedback(attempt.metadata.manual_feedback);
+            }
         }
-    }, [attempt, aiReport, overrides]);
+    }, [attempt, aiReport, overrides, manualFeedback]);
 
     const handleAiEvaluation = async () => {
         if (!attempt) return;
@@ -1123,6 +1129,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                                     ...attempt.metadata,
                                                     manually_evaluated: true,
                                                     overrides,
+                                                    manual_feedback: manualFeedback,
                                                     finalized: true,
                                                     xp_earned: xpToAward
                                                 }
@@ -1201,6 +1208,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                                         ...attempt.metadata, 
                                                         manually_evaluated: true, 
                                                         overrides, 
+                                                        manual_feedback: manualFeedback,
                                                         finalized: true,
                                                         xp_earned: xpToAward
                                                     }
@@ -1277,6 +1285,20 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                             </div>
                         </Card>
                     )}
+
+                    <Card>
+                        <h4 style={{ marginBottom: 'var(--space-md)' }}>
+                            <MessageSquare size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            Your Manual Feedback
+                        </h4>
+                        <Input
+                            type="textarea"
+                            placeholder="Add your own assessment or notes for the student..."
+                            value={manualFeedback}
+                            onChange={(e) => setManualFeedback(e.target.value)}
+                            style={{ minHeight: '120px' }}
+                        />
+                    </Card>
                 </div>
 
                 {/* Answers Review */}
