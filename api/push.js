@@ -38,8 +38,13 @@ export default async function handler(req, res) {
                 ...(data || {}),
                 link: link || '/',
             },
-            // Web/PWA specific config
+            android: {
+                priority: 'high'
+            },
             webpush: {
+                headers: {
+                    Urgency: 'high'
+                },
                 fcm_options: {
                     link: link || '/',
                 },

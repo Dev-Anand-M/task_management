@@ -1,4 +1,4 @@
-// Version: 1.0.4
+// Version: 1.0.5
 console.log('[firebase-messaging-sw.js] SW Script Loading...');
 
 // Import and configure the Firebase SDK
@@ -19,20 +19,19 @@ const firebaseConfig = {
 if (firebaseConfig.apiKey) {
   console.log('[firebase-messaging-sw.js] Initializing with project:', firebaseConfig.projectId);
   firebase.initializeApp(firebaseConfig);
-} else {
-  console.warn('[firebase-messaging-sw.js] Firebase config not found in URL parameters.');
 }
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
+// Use the standard background handler for the compat SDK
+messaging.setBackgroundMessageHandler(function(payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  const notificationTitle = payload.notification?.title || 'New Update';
+  const notificationTitle = payload.notification?.title || payload.data?.title || 'New Update';
   const notificationOptions = {
-    body: payload.notification?.body || 'You have a new message.',
-    icon: payload.notification?.icon || '/zenith.png',
-    badge: payload.notification?.badge || '/zenith.png',
+    body: payload.notification?.body || payload.data?.body || 'You have a new message.',
+    icon: '/zenith.png',
+    badge: '/zenith.png',
     tag: 'idl-notification',
     renotify: true,
     requireInteraction: true,
@@ -41,7 +40,7 @@ messaging.onBackgroundMessage((payload) => {
     }
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
 // Force activation
