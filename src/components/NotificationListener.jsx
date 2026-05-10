@@ -1,42 +1,126 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { onMessageListener } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
+import { createPortal } from 'react-dom';
+import { Bell } from 'lucide-react';
 
 const NotificationListener = () => {
     const { user } = useAuth();
+    const [activeToast, setActiveToast] = useState(null);
 
     useEffect(() => {
         if (!user) return;
 
         let mounted = true;
 
-        const setupListener = async () => {
+        // 1. Listen for FCM Foreground Messages
+        const setupFCMListener = async () => {
             try {
-                // This will wait for a foreground message
                 const payload = await onMessageListener();
                 if (mounted && payload) {
-                    console.log('[Foreground Message]', payload);
+                    console.log('[FCM Foreground]', payload);
                     
-                    // Show a simple alert for now as a "foreground toast"
-                    // In a real app, we'd use a nice toast library
-                    alert(`🔔 ${payload.notification?.title}\n\n${payload.notification?.body}`);
+                    // Show custom toast instead of alert
+                    showToast({
+                        title: payload.notification?.title,
+                        body: payload.notification?.body
+                    });
                     
-                    // Set up the next listener
-                    setupListener();
+                    setupFCMListener();
                 }
             } catch (err) {
-                console.error('Foreground listener error:', err);
+                console.error('FCM listener error:', err);
             }
         };
 
-        setupListener();
+        // 2. Listen for Supabase Real-time Table Changes
+        const channel = supabase
+            .channel('realtime_notifications')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${user.id}`
+                },
+                (payload) => {
+                    console.log('[DB Notification]', payload);
+                    showToast({
+                        title: payload.new.title,
+                        body: payload.new.message
+                    });
+                }
+            )
+            .subscribe();
+
+        setupFCMListener();
+
+        const showToast = (data) => {
+            setActiveToast(data);
+            setTimeout(() => {
+                if (mounted) setActiveToast(null);
+            }, 5000);
+        };
 
         return () => {
             mounted = false;
+            supabase.removeChannel(channel);
         };
     }, [user]);
 
-    return null; // This component doesn't render anything
+    if (!activeToast) return null;
+
+    return createPortal(
+        <div style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            left: '20px',
+            maxWidth: '400px',
+            margin: '0 auto',
+            background: 'rgba(30, 41, 59, 0.95)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-md)',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+            zIndex: 999999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-md)',
+            animation: 'slideInDown 0.3s ease-out'
+        }}>
+            <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--gradient-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white'
+            }}>
+                <Bell size={20} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <h4 style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 600, color: 'white' }}>
+                    {activeToast.title}
+                </h4>
+                <p style={{ margin: '2px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {activeToast.body}
+                </p>
+            </div>
+            <style>{`
+                @keyframes slideInDown {
+                    from { transform: translateY(-100%); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+            `}</style>
+        </div>,
+        document.body
+    );
 };
 
 export default NotificationListener;
