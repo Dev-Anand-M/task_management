@@ -140,6 +140,46 @@ const ClassroomDetail = () => {
         return items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }, [announcements, tasks]);
 
+    const handleExportPerformance = () => {
+        try {
+            // Define CSV Headers
+            const headers = ['Student Name', 'Email', 'XP Points', 'Current Level', 'Tasks Attempted', 'Tasks Approved', 'Completion %'];
+            
+            // Map member data to CSV rows
+            const rows = members.filter(m => m.role === 'member').map(member => {
+                const s = getStudentStats(member.id);
+                return [
+                    `"${member.name}"`,
+                    `"${member.email}"`,
+                    member.xp || 0,
+                    calculateLevel(member.xp || 0),
+                    s.totalSubmissions,
+                    s.completedTasks,
+                    `${s.completionRate}%`
+                ];
+            });
+
+            // Combine into CSV string
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(r => r.join(','))
+            ].join('\n');
+
+            // Create download link
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${classroom.name.replace(/\s+/g, '_')}_Performance_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error('Export failed:', err);
+            alert('Failed to export data. Check console for details.');
+        }
+    };
+
     const filteredMembers = useMemo(() => {
         return members.filter(m =>
             m.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -484,7 +524,7 @@ const ClassroomDetail = () => {
                                     <Link to="/admin/invite-codes">
                                         <Button className="w-full justify-start" icon={Plus}>Add New Student</Button>
                                     </Link>
-                                    <Button className="w-full justify-start" variant="secondary" icon={Share2} onClick={() => alert('Exporting performance data...')}>Export Performance</Button>
+                                    <Button className="w-full justify-start" variant="secondary" icon={Share2} onClick={handleExportPerformance}>Export Performance</Button>
                                     <Button className="w-full justify-start" variant="ghost" icon={Calendar} onClick={() => setActiveTab('stream')}>Quarterly Review</Button>
                                 </div>
                             </Card>
