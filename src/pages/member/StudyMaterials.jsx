@@ -428,7 +428,17 @@ const StudyMaterials = () => {
                                 {viewingItem.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
                                     <img src={viewingItem.file_url} alt="Attached Material" style={{ width: '100%', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
                                 ) : (
-                                    <iframe src={viewingItem.file_url} width="100%" height="800px" style={{ border: 'none', display: 'block', maxHeight: '85vh' }} title="Attached Document" />
+                                    <div style={{ position: 'relative' }}>
+                                        <iframe src={viewingItem.file_url} width="100%" height="800px" style={{ border: 'none', display: 'block', maxHeight: '85vh' }} title="Attached Document" />
+                                        <div style={{ padding: 'var(--space-md)', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'flex', gap: 'var(--space-sm)', justifyContent: 'center' }}>
+                                            <a href={viewingItem.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'var(--primary-500)' }}>
+                                                <ExternalLink size={16} /> Open in New Tab
+                                            </a>
+                                            <a href={viewingItem.file_url} download className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+                                                <Download size={16} /> Download File
+                                            </a>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         ) : viewingItem.file_url && viewingItem.material_type === 'link' ? (
