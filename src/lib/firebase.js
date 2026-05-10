@@ -65,20 +65,14 @@ const saveTokenToDatabase = async (userId, token) => {
     
     // Store multiple tokens for multi-device support
     if (!prefs.fcm_tokens) {
-      prefs.fcm_tokens = [];
+    // De-duplicate and save
+    const currentTokens = profile?.preferences?.fcm_tokens || [];
+    if (!currentTokens.includes(token)) {
+      const updatedTokens = [...currentTokens, token];
+      await supabase.from('profiles').update({
+        preferences: { ...profile?.preferences, fcm_tokens: updatedTokens, fcm_token: token }
+      }).eq('id', userId);
     }
-    
-    if (!prefs.fcm_tokens.includes(token)) {
-      prefs.fcm_tokens.push(token);
-    }
-    
-    // Backward compatibility
-    prefs.fcm_token = token;
-
-    await supabase
-      .from('profiles')
-      .update({ preferences: prefs })
-      .eq('id', userId);
   } catch (error) {
     console.error("Failed to save FCM token:", error);
   }

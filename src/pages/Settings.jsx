@@ -658,13 +658,35 @@ const Settings = () => {
                                         } else {
                                             alert("Error from API: " + JSON.stringify(data));
                                         }
-                                    } catch (err) {
-                                        console.error("[TestPush] Error:", err);
-                                        alert("Failed to send test: " + err.message);
+                                    } catch (error) {
+                                        console.error("[TestPush] Error:", error);
+                                        alert("Error sending test: " + error.message);
                                     }
                                 }}
                             >
                                 Send Test Notification
+                            </Button>
+                            
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-red-400 hover:text-red-300"
+                                style={{ marginTop: 'var(--space-sm)' }}
+                                onClick={async () => {
+                                    if (!confirm("This will clear all registered devices for notifications. You will need to toggle notifications OFF and ON to register this device again. Continue?")) return;
+                                    try {
+                                        const { data: profile } = await supabase.from('profiles').select('preferences').eq('id', user.id).single();
+                                        await supabase.from('profiles').update({
+                                            preferences: { ...profile?.preferences, fcm_tokens: [], fcm_token: null }
+                                        }).eq('id', user.id);
+                                        alert("Registration cleared! Please toggle the switch OFF and ON now.");
+                                        window.location.reload();
+                                    } catch (err) {
+                                        alert("Error resetting: " + err.message);
+                                    }
+                                }}
+                            >
+                                Reset Notification Devices
                             </Button>
                             <p style={{ marginTop: '8px', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                                 Use this to verify if your current device is receiving alerts.
