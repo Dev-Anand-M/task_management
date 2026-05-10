@@ -511,10 +511,18 @@ const Settings = () => {
                             </div>
                         )}
                         {[
-                            { key: 'push', label: 'Push Notifications', desc: 'Native device/browser notifications' },
+                            { key: 'push', label: 'Push Notifications', desc: 'Native device/browser notifications', requiresFirebase: true },
                             { key: 'taskReminders', label: 'Task Reminders', desc: 'Get reminded about pending tasks' },
                             { key: 'quizResults', label: 'Quiz Results', desc: 'Notify when quiz is evaluated' }
-                        ].map((item) => (
+                        ]
+                        .filter(item => {
+                            // Hide push notifications if Firebase is not configured
+                            if (item.requiresFirebase && !import.meta.env.VITE_FIREBASE_API_KEY) {
+                                return false;
+                            }
+                            return true;
+                        })
+                        .map((item) => (
                             <div
                                 key={item.key}
                                 style={{
@@ -549,7 +557,9 @@ const Settings = () => {
                                                             setNotifications(prev => ({ ...prev, push: true }));
                                                             forceRefresh(); // Update local profile state
                                                         } else {
-                                                            alert("Could not enable push notifications. Check browser permissions.");
+                                                            // Error message is already shown by requestNotificationPermission
+                                                            // Just reset the toggle
+                                                            e.target.checked = false;
                                                         }
                                                     } else {
                                                         await clearTokenFromDatabase(user.id);
@@ -558,6 +568,8 @@ const Settings = () => {
                                                     }
                                                 } catch (err) {
                                                     console.error("Push toggle error:", err);
+                                                    alert(`Error: ${err.message}`);
+                                                    e.target.checked = false;
                                                 }
                                             } else {
                                                 handleNotificationChange(item.key, isChecked);

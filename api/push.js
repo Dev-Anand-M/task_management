@@ -33,17 +33,39 @@ export default async function handler(req, res) {
             notification: {
                 title: title,
                 body: body,
+                image: '/zenith.png' // Add image for rich notifications
             },
             data: {
                 ...(data || {}),
                 link: link || '/',
+                timestamp: Date.now().toString()
             },
             android: {
-                priority: 'high'
+                priority: 'high',
+                notification: {
+                    sound: 'default',
+                    clickAction: link || '/',
+                    channelId: 'default',
+                    priority: 'high',
+                    defaultSound: true,
+                    defaultVibrateTimings: false,
+                    vibrateTimings: ['0.2s', '0.1s', '0.2s'],
+                    visibility: 'public',
+                    notificationCount: 1
+                }
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: 'default',
+                        badge: 1
+                    }
+                }
             },
             webpush: {
                 headers: {
-                    Urgency: 'high'
+                    Urgency: 'high',
+                    TTL: '86400' // 24 hours
                 },
                 fcm_options: {
                     link: link || '/',
@@ -51,9 +73,23 @@ export default async function handler(req, res) {
                 notification: {
                     icon: '/zenith.png',
                     badge: '/zenith.png',
-                    tag: 'idl-notification',
+                    image: '/zenith.png',
+                    tag: 'zenith-notification',
                     renotify: true,
-                    vibrate: [200, 100, 200]
+                    requireInteraction: true,
+                    vibrate: [200, 100, 200],
+                    silent: false,
+                    timestamp: Date.now(),
+                    actions: [
+                        {
+                            action: 'open',
+                            title: 'Open'
+                        },
+                        {
+                            action: 'close',
+                            title: 'Dismiss'
+                        }
+                    ]
                 }
             }
         };
