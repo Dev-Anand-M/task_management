@@ -28,10 +28,13 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'No tokens provided' });
     }
 
-    try {
-        // For web push to work in background, we need to send data-only messages
-        // The service worker will handle creating the notification
+        // For web push to work in background, we send BOTH data and notification blocks
+        // The OS handles the notification block, and our SW handles the data block
         const message = {
+            notification: {
+                title: title,
+                body: body,
+            },
             data: {
                 title: title,
                 body: body,
@@ -43,16 +46,23 @@ export default async function handler(req, res) {
                 ...(data || {})
             },
             android: {
-                priority: 'high'
+                priority: 'high',
+                notification: {
+                    priority: 'high',
+                    sound: 'default',
+                    channelId: 'default'
+                }
             },
             apns: {
                 headers: {
-                    'apns-priority': '10'
+                    'apns-priority': '10',
+                    'apns-push-type': 'alert'
                 },
                 payload: {
                     aps: {
                         contentAvailable: true,
-                        sound: 'default'
+                        sound: 'default',
+                        badge: 1
                     }
                 }
             },
@@ -60,6 +70,13 @@ export default async function handler(req, res) {
                 headers: {
                     Urgency: 'high',
                     TTL: '86400'
+                },
+                notification: {
+                    title: title,
+                    body: body,
+                    icon: '/zenith.png',
+                    badge: '/zenith.png',
+                    requireInteraction: true
                 },
                 fcm_options: {
                     link: link || '/'

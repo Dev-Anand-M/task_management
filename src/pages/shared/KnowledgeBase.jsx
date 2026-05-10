@@ -91,7 +91,7 @@ const KnowledgeBase = () => {
             }
 
             const tagsArray = newSnippet.tags.split(',').map(t => t.trim()).filter(t => t !== '');
-            await db.addKnowledgeSnippet({
+            const material = await db.addKnowledgeSnippet({
                 title: newSnippet.title,
                 content: newSnippet.content || 'Attached Material',
                 subject: newSnippet.subject,
@@ -100,6 +100,46 @@ const KnowledgeBase = () => {
                 material_type: newSnippet.material_type,
                 file_url: file_url
             });
+
+            // --- NOTIFY STUDENTS IN CLASSROOM (BATCH) ---
+            try {
+                const { data: profiles } = await supabase
+                    .from('profiles')
+                    .select('preferences')
+                    .eq('classroom_id', newSnippet.classroom_id)
+                    .eq('role', 'member');
+
+                if (profiles && profiles.length > 0) {
+                    const allTokens = [];
+                    profiles.forEach(p => {
+                        const tokens = p.preferences?.fcm_tokens || [];
+                        tokens.forEach(t => {
+                            if (t && !allTokens.includes(t)) allTokens.push(t);
+                        });
+                    });
+
+                    if (allTokens.length > 0) {
+                        await fetch(`${window.location.origin}/api/push`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                tokens: allTokens,
+                                title: 'New Learning Resource! 📚',
+                                body: `"${newSnippet.title}" has been shared in ${newSnippet.subject || 'your classroom'}.`,
+                                data: {
+                                    type: 'knowledge_snippet',
+                                    id: material.id,
+                                    classroom_id: newSnippet.classroom_id,
+                                    url: '/knowledge-base'
+                                }
+                            })
+                        });
+                    }
+                }
+            } catch (notifyErr) {
+                console.error('Failed to send notifications:', notifyErr);
+            }
+
             setShowAddModal(false);
             setNewSnippet({ title: '', content: '', tags: '', subject: '', classroom_id: classrooms[0]?.id || '', material_type: 'file', file: null, url: '' });
             loadData();
