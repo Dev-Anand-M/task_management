@@ -113,12 +113,17 @@ const NotificationListener = () => {
                         return;
                     }
                     
-                    // Allow notifications from the last 60 seconds, even if slightly before mount
-                    // This handles clock skew between client and server
-                    const sixtySecondsAgo = mountTime - (60 * 1000);
+                    // Only show notifications created AFTER this component mounted
+                    // This prevents showing old notifications on refresh/reconnect
+                    if (notificationTime < mountTime) {
+                        console.log('[DB Notification] Created before mount, skipping');
+                        return;
+                    }
                     
-                    if (notificationTime < sixtySecondsAgo) {
-                        console.log('[DB Notification] Notification is too old (created before 60s ago), skipping');
+                    // Additional safety: only show if less than 10 seconds old
+                    const ageInSeconds = (now - notificationTime) / 1000;
+                    if (ageInSeconds > 10) {
+                        console.log('[DB Notification] Too old, skipping');
                         return;
                     }
                     
