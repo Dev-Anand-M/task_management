@@ -120,6 +120,20 @@ export const requestNotificationPermission = async (userId) => {
       // Save token to Supabase profiles (merge into preferences or a dedicated column)
       await saveTokenToDatabase(userId, currentToken);
       
+      // Test notification to verify everything works
+      console.log('[Firebase] Testing notification display...');
+      if (registration.active) {
+        // Show a test notification to verify permissions
+        await registration.showNotification('Zenith Notifications Enabled! 🎉', {
+          body: 'You will now receive updates even when the app is closed.',
+          icon: '/zenith.png',
+          badge: '/zenith.png',
+          tag: 'zenith-test',
+          requireInteraction: false,
+          vibrate: [200, 100, 200]
+        });
+      }
+      
       console.log('[Firebase] ✅ Notifications enabled successfully');
       return true;
     } else {
