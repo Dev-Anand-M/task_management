@@ -100,7 +100,7 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Handle push event directly (for data-only messages)
+// Handle push event directly (for both foreground and background)
 self.addEventListener('push', (event) => {
   console.log('[firebase-messaging-sw.js] Push event received:', event);
   
@@ -119,9 +119,9 @@ self.addEventListener('push', (event) => {
         icon: payload.data?.icon || '/zenith.png',
         badge: payload.data?.badge || '/zenith.png',
         image: payload.data?.image || '/zenith.png',
-        tag: 'zenith-notification',
+        tag: 'zenith-notification-' + Date.now(), // Unique tag to prevent grouping
         renotify: true,
-        requireInteraction: true,
+        requireInteraction: false, // Don't require interaction for better UX
         vibrate: [200, 100, 200],
         silent: false,
         timestamp: Date.now(),
