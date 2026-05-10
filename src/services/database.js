@@ -169,22 +169,66 @@ export const createTask = async (task) => {
 
     // Notify students
     try {
-        if (task.is_global) {
-            // Potentially notify everyone? Skip for now to avoid noise, or notify current classroom
+        if (task.assignment_type === 'specific' && task.assigned_to?.length > 0) {
+            // Notify specific assigned students
+            const notifications = task.assigned_to.map(studentId => ({
+                user_id: studentId,
+                classroom_id: classroomId,
+                title: '📋 New Task Assigned',
+                message: `You have been assigned: "${task.title}"`,
+                type: 'info',
+                link: `/tasks/${data.id}`,
+                is_read: false
+            }));
+
+            const { error: notifError } = await supabase.from('notifications').insert(notifications);
+            if (notifError) console.error('Error creating notifications:', notifError);
+
+            // Trigger push notifications for assigned users
+            const { data: studentProfiles } = await supabase
+                .from('profiles')
+                .select('id, preferences')
+                .in('id', task.assigned_to);
+
+            const tokens = studentProfiles?.reduce((acc, s) => {
+                const prefs = s.preferences || {};
+                const sTokens = [
+                    ...(prefs.fcm_tokens || []),
+                    prefs.fcm_token
+                ].filter(t => !!t);
+                return [...acc, ...sTokens];
+            }, []) || [];
+
+            if (tokens.length > 0) {
+                console.log(`[Push] Sending task assignment notification to ${tokens.length} devices`);
+                fetch(`${window.location.origin}/api/push`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tokens: tokens,
+                        title: '📋 New Task Assigned',
+                        body: `You have been assigned: "${task.title}"`,
+                        link: `/tasks/${data.id}`
+                    })
+                }).catch(e => console.warn('[Push] Error:', e));
+            }
+        } else if (task.is_global) {
+            // Notify current classroom for global tasks
             if (classroomId) {
                 await notifyClassroom(classroomId, {
-                    title: 'New Global Task Posted',
+                    title: '🌍 New Global Task Posted',
                     message: `A new task "${task.title}" is now available to everyone.`,
                     type: 'info',
-                    link: `/tasks`
+                    link: `/tasks/${data.id}`
                 });
             }
         } else if (classroomId) {
+            // Notify entire classroom
             await notifyClassroom(classroomId, {
-                title: 'New Task Posted',
+                title: '📋 New Task Posted',
                 message: `A new task "${task.title}" is now available.`,
                 type: 'info',
-                link: `/tasks`
+                link: `/tasks/${data.id}`
             });
         }
     } catch (err) {

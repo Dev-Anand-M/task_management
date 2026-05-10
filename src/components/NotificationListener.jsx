@@ -34,7 +34,7 @@ const NotificationListener = () => {
             }
         };
 
-        // 2. Listen for Supabase Real-time Table Changes
+        // 2. Listen for Supabase Real-time Table Changes (only NEW notifications)
         const channel = supabase
             .channel('realtime_notifications')
             .on(
@@ -47,10 +47,21 @@ const NotificationListener = () => {
                 },
                 (payload) => {
                     console.log('[DB Notification]', payload);
-                    showToast({
-                        title: payload.new.title,
-                        body: payload.new.message
-                    });
+                    
+                    // Only show toast for notifications created in the last 10 seconds
+                    // This prevents showing old notifications when app opens
+                    const notificationTime = new Date(payload.new.created_at).getTime();
+                    const now = Date.now();
+                    const ageInSeconds = (now - notificationTime) / 1000;
+                    
+                    if (ageInSeconds < 10) {
+                        showToast({
+                            title: payload.new.title,
+                            body: payload.new.message
+                        });
+                    } else {
+                        console.log('[DB Notification] Skipping old notification (age:', ageInSeconds, 'seconds)');
+                    }
                 }
             )
             .subscribe();
