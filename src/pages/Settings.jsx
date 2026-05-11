@@ -172,14 +172,19 @@ const Settings = () => {
     // Initial load from profile
     useEffect(() => {
         if (user) {
-            const hasToken = !!user.preferences?.fcm_token;
-            setNotifications(prev => ({
-                ...prev,
-                ...(user.preferences?.notifications || {}),
-                push: hasToken // Override push state based on token existence
-            }));
+            setNotifications(prev => {
+                const dbNotifications = user.preferences?.notifications || {};
+                const hasToken = !!user.preferences?.fcm_token;
+                return {
+                    ...prev,
+                    ...dbNotifications,
+                    // Only use db state for push if we haven't manually toggled it yet
+                    // or if the user object just loaded for the first time
+                    push: dbNotifications.push !== undefined ? dbNotifications.push : hasToken
+                };
+            });
         }
-    }, [user]);
+    }, [user?.id]); // Only run when user ID changes (mount/auth change)
 
     const syncNotificationsToDb = async (newNotifications) => {
         if (!user) return;
