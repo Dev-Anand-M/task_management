@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+import admin from 'firebase-admin';
 
 // Helper to get service account credentials from individual or combined env vars
 const getServiceAccount = () => {
