@@ -29,9 +29,14 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Data-only message with webpush notification block
-        // The SW handles showing the notification via the push event
+        // We send BOTH notification and data blocks for maximum compatibility.
+        // Notification block triggers the system banner on mobile.
+        // Data block allows the app to process custom metadata.
         const message = {
+            notification: {
+                title: title,
+                body: body,
+            },
             data: {
                 title: title,
                 body: body,
@@ -42,11 +47,16 @@ export default async function handler(req, res) {
                 ...(data ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])) : {})
             },
             android: {
-                priority: 'high'
+                priority: 'high',
+                notification: {
+                    priority: 'high',
+                    sound: 'default'
+                }
             },
             apns: {
                 headers: {
-                    'apns-priority': '10'
+                    'apns-priority': '10',
+                    'apns-push-type': 'alert'
                 },
                 payload: {
                     aps: {
@@ -59,6 +69,12 @@ export default async function handler(req, res) {
                 headers: {
                     Urgency: 'high',
                     TTL: '86400'
+                },
+                notification: {
+                    title: title,
+                    body: body,
+                    icon: '/zenith.png',
+                    badge: '/zenith.png',
                 },
                 fcm_options: {
                     link: link || '/'

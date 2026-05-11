@@ -13,8 +13,8 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-let app;
-let messaging;
+export let app;
+export let messaging;
 
 try {
   // Initialize Firebase
