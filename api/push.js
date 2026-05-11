@@ -1,84 +1,87 @@
 import admin from 'firebase-admin';
 
-// Helper to get service account credentials from individual or combined env vars
+// HELPER: Robust Service Account Parsing
 const getServiceAccount = () => {
-    // Priority 1: Combined JSON string (common in Vercel)
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-        try {
-            let json = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
-            // Handle potentially wrapped/escaped JSON
-            if (json.startsWith('"') && json.endsWith('"')) {
-                json = json.substring(1, json.length - 1).replace(/\\"/g, '"');
-            }
-            const parsed = JSON.parse(json);
-            
-            // Normalize to a structure we can validate (handling both snake_case from JSON and camelCase from Admin SDK)
-            return {
-                projectId: parsed.project_id || parsed.projectId || process.env.VITE_FIREBASE_PROJECT_ID,
-                clientEmail: parsed.client_email || parsed.clientEmail || process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: parsed.private_key || parsed.privateKey || (process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined)
-            };
-        } catch (e) {
-            console.error("[PushAPI] Failed to parse FIREBASE_SERVICE_ACCOUNT JSON:", e.message);
-        }
-    }
-
-    // Priority 2: Individual variables
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY
-        ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1')
-        : undefined;
-
-    return {
+    let cert = {
         projectId: process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1') : undefined
     };
+
+    // If we have a JSON blob, it takes precedence
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+        try {
+            let jsonStr = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+            // Remove wrapping quotes if they exist (Vercel sometimes adds them)
+            if (jsonStr.startsWith('"') && jsonStr.endsWith('"')) {
+                jsonStr = jsonStr.substring(1, jsonStr.length - 1).replace(/\\"/g, '"');
+            }
+            const parsed = JSON.parse(jsonStr);
+            cert.projectId = parsed.project_id || parsed.projectId || cert.projectId;
+            cert.clientEmail = parsed.client_email || parsed.clientEmail || cert.clientEmail;
+            cert.privateKey = (parsed.private_key || parsed.privateKey || cert.privateKey)?.replace(/\\n/g, '\n');
+        } catch (e) {
+            console.error("[PushAPI] JSON Parse Error:", e.message);
+        }
+    }
+
+    return cert;
 };
 
-if (!admin.apps.length) {
-    try {
-        const cert = getServiceAccount();
-        if (cert.projectId && cert.clientEmail && cert.privateKey) {
-            admin.initializeApp({
-                credential: admin.credential.cert({
-                    projectId: cert.projectId,
-                    clientEmail: cert.clientEmail,
-                    privateKey: cert.privateKey
-                }),
-            });
-            console.log("[PushAPI] Firebase Admin initialized");
-        }
-    } catch (e) {
-        console.error("[PushAPI] Initialization Error:", e.message);
+// INITIALIZATION
+const initAdmin = () => {
+    if (admin.apps.length > 0) return true;
+    
+    const cert = getServiceAccount();
+    if (!cert.projectId || !cert.clientEmail || !cert.privateKey) {
+        return false;
     }
-}
+
+    try {
+        admin.initializeApp({
+            credential: admin.credential.cert({
+                projectId: cert.projectId,
+                clientEmail: cert.clientEmail,
+                privateKey: cert.privateKey
+            })
+        });
+        return true;
+    } catch (e) {
+        console.error("[PushAPI] Init Error:", e.message);
+        return false;
+    }
+};
 
 export default async function handler(req, res) {
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
+    // 1. CORS & Method check
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const cert = getServiceAccount();
-    
-    // Check if we have the critical bits
-    if (!cert.projectId || !cert.clientEmail || !cert.privateKey) {
+    // 2. Initialization & Diagnostic
+    const isReady = initAdmin();
+    if (!isReady) {
+        const cert = getServiceAccount();
         return res.status(500).json({ 
             success: false, 
-            error: 'Server configuration missing (Firebase Credentials).',
-            diagnostic: {
+            error: 'Firebase Admin not initialized. Check Vercel Environment Variables.',
+            debug: {
                 hasServiceAccountJson: !!process.env.FIREBASE_SERVICE_ACCOUNT,
-                projectIdFound: !!cert.projectId,
-                clientEmailFound: !!cert.clientEmail,
-                privateKeyFound: !!cert.privateKey
+                hasProjectId: !!cert.projectId,
+                hasEmail: !!cert.clientEmail,
+                hasKey: !!cert.privateKey,
+                envKeysFound: Object.keys(process.env).filter(k => k.includes('FIREBASE') || k.includes('VITE'))
             }
         });
     }
 
     try {
         const { tokens, title, body, link, data } = req.body;
+        if (!tokens || (Array.isArray(tokens) && tokens.length === 0)) {
+            return res.status(400).json({ success: false, error: 'No tokens provided' });
+        }
+
         const tokenList = Array.isArray(tokens) ? tokens : [tokens];
         
-        const baseMessage = {
+        const message = {
             notification: { title, body },
             data: {
                 title, body,
@@ -88,26 +91,21 @@ export default async function handler(req, res) {
             },
             webpush: {
                 headers: { Urgency: 'high' },
-                notification: { 
-                    title, body, 
-                    icon: '/zenith.png', badge: '/zenith.png', 
-                    requireInteraction: true 
-                },
+                notification: { title, body, icon: '/zenith.png', badge: '/zenith.png', requireInteraction: true },
                 fcm_options: { link: link || '/' }
             }
         };
 
-        const messages = tokenList.map(token => ({ ...baseMessage, token }));
-        const response = await admin.messaging().sendEach(messages);
+        const response = await admin.messaging().sendEach(tokenList.map(token => ({ ...message, token })));
 
         return res.status(200).json({
             success: response.successCount > 0,
             summary: `${response.successCount} success, ${response.failureCount} failure`,
-            failedTokens: response.responses.map((r, i) => !r.success ? tokenList[i] : null).filter(Boolean)
+            results: response.responses.map(r => ({ success: r.success, error: r.error?.message }))
         });
 
     } catch (error) {
-        console.error('[PushAPI] Push Error:', error);
+        console.error('[PushAPI] Error:', error);
         return res.status(500).json({ success: false, error: error.message });
     }
 }
