@@ -67,39 +67,29 @@ export const requestNotificationPermission = async (userId) => {
       return false;
     }
 
-    // Unregister any existing service workers first to avoid conflicts
-    console.log('[Firebase] Checking for existing service workers...');
+    // Register or re-use existing service worker
+    console.log('[Firebase] Registering service worker...');
+    const swUrl = `/firebase-messaging-sw.js?apiKey=${firebaseConfig.apiKey}&authDomain=${firebaseConfig.authDomain}&projectId=${firebaseConfig.projectId}&storageBucket=${firebaseConfig.storageBucket}&messagingSenderId=${firebaseConfig.messagingSenderId}&appId=${firebaseConfig.appId}`;
+    
+    let registration;
     const existingRegistrations = await navigator.serviceWorker.getRegistrations();
-    for (const registration of existingRegistrations) {
-      if (registration.active?.scriptURL.includes('firebase-messaging-sw.js')) {
-        console.log('[Firebase] Unregistering old service worker');
-        await registration.unregister();
-      }
+    const existingSW = existingRegistrations.find(r => r.active?.scriptURL.includes('firebase-messaging-sw.js'));
+    
+    if (existingSW) {
+      console.log('[Firebase] Reusing existing service worker');
+      registration = existingSW;
+      // Update the SW in the background (don't wait)
+      existingSW.update().catch(() => {});
+    } else {
+      registration = await navigator.serviceWorker.register(swUrl, {
+        scope: '/'
+      });
+      console.log('[Firebase] New service worker registered');
     }
-
-    // Register service worker with cache-busting version
-    const swUrl = `/firebase-messaging-sw.js?v=${Date.now()}&apiKey=${firebaseConfig.apiKey}&authDomain=${firebaseConfig.authDomain}&projectId=${firebaseConfig.projectId}&storageBucket=${firebaseConfig.storageBucket}&messagingSenderId=${firebaseConfig.messagingSenderId}&appId=${firebaseConfig.appId}`;
     
-    console.log('[Firebase] Registering service worker:', swUrl);
-    const registration = await navigator.serviceWorker.register(swUrl, {
-      scope: '/',
-      updateViaCache: 'none' // Always fetch fresh SW
-    });
-    
-    console.log('[Firebase] Service worker registered:', registration);
-    
-    // WAIT for the service worker to be active and ready
-    console.log('[Firebase] Waiting for service worker to be ready...');
+    // Wait for the service worker to be ready
     await navigator.serviceWorker.ready;
     console.log('[Firebase] Service worker ready');
-
-    // Verify the service worker is controlling the page
-    if (!navigator.serviceWorker.controller) {
-      console.warn('[Firebase] Service worker not controlling page, reloading...');
-      // Force a reload to let the SW take control
-      window.location.reload();
-      return false;
-    }
 
     // Check if VAPID key is configured
     if (!import.meta.env.VITE_FIREBASE_VAPID_KEY) {

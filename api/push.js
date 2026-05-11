@@ -29,41 +29,29 @@ export default async function handler(req, res) {
     }
 
     try {
-        // For web push to work in background, we send BOTH data and notification blocks
-        // The OS handles the notification block, and our SW handles the data block
+        // Data-only message with webpush notification block
+        // The SW handles showing the notification via the push event
         const message = {
-            notification: {
-                title: title,
-                body: body,
-            },
             data: {
                 title: title,
                 body: body,
                 link: link || '/',
                 icon: '/zenith.png',
                 badge: '/zenith.png',
-                image: '/zenith.png',
                 timestamp: Date.now().toString(),
-                ...(data || {})
+                ...(data ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])) : {})
             },
             android: {
-                priority: 'high',
-                notification: {
-                    priority: 'high',
-                    sound: 'default',
-                    channelId: 'default'
-                }
+                priority: 'high'
             },
             apns: {
                 headers: {
-                    'apns-priority': '10',
-                    'apns-push-type': 'alert'
+                    'apns-priority': '10'
                 },
                 payload: {
                     aps: {
                         contentAvailable: true,
-                        sound: 'default',
-                        badge: 1
+                        sound: 'default'
                     }
                 }
             },
@@ -71,13 +59,6 @@ export default async function handler(req, res) {
                 headers: {
                     Urgency: 'high',
                     TTL: '86400'
-                },
-                notification: {
-                    title: title,
-                    body: body,
-                    icon: '/zenith.png',
-                    badge: '/zenith.png',
-                    requireInteraction: true
                 },
                 fcm_options: {
                     link: link || '/'

@@ -22,7 +22,9 @@ import {
     Code,
     GraduationCap,
     MessageSquare,
-    Database
+    Database,
+    Calendar,
+    Target
 } from 'lucide-react';
 import Avatar from '../common/Avatar';
 
@@ -76,6 +78,9 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: '/quizzes', icon: HelpCircle, label: 'Quizzes' },
         { to: '/ai/assistant', icon: MessageSquare, label: 'AI Assistant' },
         { to: '/study-materials', icon: Database, label: 'Study Materials' },
+        { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+        { to: '/calendar', icon: Calendar, label: 'Calendar' },
+        { to: '/planner', icon: Target, label: 'Planner' },
         { to: '/profile', icon: User, label: 'Profile' },
         { to: '/settings', icon: Settings, label: 'Settings' }
     ];
