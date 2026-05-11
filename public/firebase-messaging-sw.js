@@ -22,16 +22,33 @@ if (firebaseConfig.apiKey) {
 const messaging = firebase.messaging();
 
 // This is the ONLY handler for background messages.
-// Do NOT add a separate 'push' event listener — it conflicts with this.
+// We use BOTH the official messaging handler and a raw 'push' listener for maximum compatibility.
 messaging.onBackgroundMessage((payload) => {
-  console.log('[SW] Background message received:', payload);
-  
+  console.log('[SW] Background message (FCM):', payload);
+  return handlePush(payload);
+});
+
+// Fallback for some browsers that don't trigger onBackgroundMessage correctly
+self.addEventListener('push', (event) => {
+  console.log('[SW] Raw push event received');
+  if (event.data) {
+    try {
+      const payload = event.data.json();
+      console.log('[SW] Raw push payload:', payload);
+      event.waitUntil(handlePush(payload));
+    } catch (e) {
+      console.warn('[SW] Could not parse raw push data:', e);
+    }
+  }
+});
+
+function handlePush(payload) {
   const title = payload.notification?.title || payload.data?.title || 'New Update';
   const options = {
     body: payload.notification?.body || payload.data?.body || 'You have a new message.',
     icon: '/zenith.png',
     badge: '/zenith.png',
-    tag: 'zenith-' + (payload.data?.type || 'general') + '-' + Date.now(),
+    tag: payload.data?.tag || 'zenith-' + (payload.data?.type || 'general') + '-' + Date.now(),
     renotify: true,
     vibrate: [200, 100, 200],
     silent: false,
@@ -43,7 +60,7 @@ messaging.onBackgroundMessage((payload) => {
   };
 
   return self.registration.showNotification(title, options);
-});
+}
 
 // Force activation on install
 self.addEventListener('install', () => {

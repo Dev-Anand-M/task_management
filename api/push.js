@@ -1,16 +1,13 @@
-import admin from 'firebase-admin';
+const admin = require('firebase-admin');
 
-// Initialize Firebase Admin
 if (!admin.apps.length) {
-    try {
-        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-        console.log('Initializing Firebase Admin for project:', serviceAccount.project_id);
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
-    } catch (error) {
-        console.error('Firebase Admin init error:', error);
-    }
+    admin.initializeApp({
+        credential: admin.credential.cert({
+            projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        }),
+    });
 }
 
 export default async function handler(req, res) {
@@ -18,114 +15,68 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    if (!admin.apps.length) {
-        return res.status(500).json({ error: 'Firebase Admin not configured. Add FIREBASE_SERVICE_ACCOUNT to env.' });
-    }
-
-    const { tokens, title, body, link, data } = req.body;
-
-    if (!tokens || !tokens.length) {
-        return res.status(400).json({ error: 'No tokens provided' });
-    }
-
     try {
-        // We send BOTH notification and data blocks for maximum compatibility.
-        // Notification block triggers the system banner on mobile.
-        // Data block allows the app to process custom metadata.
+        const { tokens, title, body, link, data } = req.body;
+
+        if (!tokens || (Array.isArray(tokens) && tokens.length === 0)) {
+            return res.status(400).json({ success: false, error: 'No tokens provided' });
+        }
+
+        const tokenList = Array.isArray(tokens) ? tokens : [tokens];
+        console.log(`[PushAPI] Sending to ${tokenList.length} tokens...`);
+
         const message = {
-            notification: {
-                title: title,
-                body: body,
-            },
+            notification: { title, body },
             data: {
-                title: title,
-                body: body,
+                title,
+                body,
                 link: link || '/',
-                icon: '/zenith.png',
-                badge: '/zenith.png',
                 timestamp: Date.now().toString(),
                 ...(data ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])) : {})
             },
-            android: {
-                priority: 'high',
-                notification: {
-                    priority: 'high',
-                    sound: 'default'
-                }
+            android: { 
+                priority: 'high', 
+                notification: { sound: 'default', clickAction: 'FLUTTER_NOTIFICATION_CLICK' } 
             },
-            apns: {
-                headers: {
-                    'apns-priority': '10',
-                    'apns-push-type': 'alert'
-                },
-                payload: {
-                    aps: {
-                        contentAvailable: true,
-                        sound: 'default'
-                    }
-                }
+            apns: { 
+                headers: { 'apns-priority': '10' }, 
+                payload: { aps: { sound: 'default', badge: 1 } } 
             },
             webpush: {
-                headers: {
-                    Urgency: 'high',
-                    TTL: '86400'
-                },
-                notification: {
-                    title: title,
-                    body: body,
-                    icon: '/zenith.png',
+                headers: { Urgency: 'high' },
+                notification: { 
+                    title, 
+                    body, 
+                    icon: '/zenith.png', 
                     badge: '/zenith.png',
+                    requireInteraction: true
                 },
-                fcm_options: {
-                    link: link || '/'
-                }
+                fcm_options: { link: link || '/' }
             }
         };
 
-        let results;
-        if (tokens.length === 1) {
-            // Send to single device
-            results = await admin.messaging().send({
-                ...message,
-                token: tokens[0]
-            });
-        } else {
-            // Send to multiple devices
-            results = await admin.messaging().sendEachForMulticast({
-                ...message,
-                tokens: tokens
-            });
-        }
+        const results = await Promise.all(tokenList.map(async (token) => {
+            try {
+                const response = await admin.messaging().send({ ...message, token });
+                return { token, success: true, response };
+            } catch (error) {
+                console.error(`[PushAPI] Token Error:`, error.message);
+                return { token, success: false, error: error.message, code: error.code };
+            }
+        }));
 
-        const failedTokens = [];
-        if (tokens.length > 1 && results.responses) {
-            results.responses.forEach((resp, idx) => {
-                if (!resp.success && (resp.error?.code === 'messaging/registration-token-not-registered' || resp.error?.code === 'messaging/invalid-registration-token')) {
-                    failedTokens.push(tokens[idx]);
-                }
-            });
-        } else if (tokens.length === 1 && !results.success) {
-            // Check if it's a registration error
-             if (results.error?.code === 'messaging/registration-token-not-registered') {
-                 failedTokens.push(tokens[0]);
-             }
-        }
+        const successCount = results.filter(r => r.success).length;
+        const failedTokens = results.filter(r => !r.success).map(r => r.token);
 
-        return res.status(200).json({ 
-            success: true, 
-            results: results,
-            failedTokens: failedTokens,
-            summary: `Sent to ${results.successCount || (tokens.length === 1 ? 1 : 0)} devices. Failed for ${results.failureCount || (tokens.length === 1 && !results.success ? 1 : 0)} devices.`,
-            details: results.responses ? results.responses.map(r => ({
-                success: r.success,
-                error: r.error ? {
-                    code: r.error.code,
-                    message: r.error.message
-                } : null
-            })) : (tokens.length === 1 ? [{ success: true }] : [])
+        return res.status(200).json({
+            success: successCount > 0,
+            summary: `${successCount} success, ${results.length - successCount} failure`,
+            failedTokens,
+            results
         });
+
     } catch (error) {
-        console.error('Push Error:', error);
-        return res.status(500).json({ error: error.message });
+        console.error('[PushAPI] Critical failure:', error);
+        return res.status(500).json({ success: false, error: error.message });
     }
 }
