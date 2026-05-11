@@ -52,11 +52,13 @@ const getLevelProgress = (xp) => {
 const getStorageKey = (userId) => `zenith_planner_${userId}`;
 
 const loadPlannerData = (userId) => {
+    const defaults = { todos: [], focusXp: 0, streak: 0, lastCompletedDate: null, completedCount: 0 };
     try {
         const raw = localStorage.getItem(getStorageKey(userId));
-        if (!raw) return { todos: [], focusXp: 0, streak: 0, lastCompletedDate: null, completedCount: 0 };
-        return JSON.parse(raw);
-    } catch { return { todos: [], focusXp: 0, streak: 0, lastCompletedDate: null, completedCount: 0 }; }
+        if (!raw) return defaults;
+        const parsed = JSON.parse(raw);
+        return { ...defaults, ...parsed };
+    } catch { return defaults; }
 };
 
 const savePlannerData = (userId, data) => {
@@ -194,12 +196,12 @@ const Planner = () => {
                     <Badge variant={todo.priority === 'urgent' ? 'error' : todo.priority === 'high' ? 'warning' : 'secondary'} size="xs">
                         {todo.priority}
                     </Badge>
-                    {todo.dueDate && (
+                    {todo.dueDate && !isNaN(new Date(todo.dueDate).getTime()) && (
                         <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
                             <Clock size={10} />{new Date(todo.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                     )}
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>+{PRIORITY_XP[todo.priority]}✨</span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>+{PRIORITY_XP[todo.priority] || 10}✨</span>
                 </div>
             </div>
             {!todo.completed && (

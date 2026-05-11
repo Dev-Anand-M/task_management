@@ -69,7 +69,7 @@ export const requestNotificationPermission = async (userId) => {
 
     // Register or re-use existing service worker
     console.log('[Firebase] Registering service worker...');
-    const swUrl = `/firebase-messaging-sw.js?apiKey=${firebaseConfig.apiKey}&authDomain=${firebaseConfig.authDomain}&projectId=${firebaseConfig.projectId}&storageBucket=${firebaseConfig.storageBucket}&messagingSenderId=${firebaseConfig.messagingSenderId}&appId=${firebaseConfig.appId}`;
+    const swUrl = `/firebase-messaging-sw.js?v=2.0.0&apiKey=${firebaseConfig.apiKey}&authDomain=${firebaseConfig.authDomain}&projectId=${firebaseConfig.projectId}&storageBucket=${firebaseConfig.storageBucket}&messagingSenderId=${firebaseConfig.messagingSenderId}&appId=${firebaseConfig.appId}`;
     
     let registration;
     const existingRegistrations = await navigator.serviceWorker.getRegistrations();

@@ -132,16 +132,21 @@ const Routines = () => {
         } else {
             newLog[key] = { done: true, time: new Date().toISOString() };
         }
-        // Update planner Focus XP too
+        // Update planner Focus XP too (defensively load full object)
         const plannerKey = `zenith_planner_${user?.id}`;
         try {
-            const planner = JSON.parse(localStorage.getItem(plannerKey) || '{}');
+            const raw = localStorage.getItem(plannerKey);
+            const defaults = { todos: [], focusXp: 0, streak: 0, lastCompletedDate: null, completedCount: 0 };
+            const planner = raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
+            
             if (!current?.done) {
-                planner.focusXp = (planner.focusXp || 0) + ROUTINE_XP;
-                planner.completedCount = (planner.completedCount || 0) + 1;
+                planner.focusXp += ROUTINE_XP;
+                planner.completedCount += 1;
             }
             localStorage.setItem(plannerKey, JSON.stringify(planner));
-        } catch {}
+        } catch (e) {
+            console.error("Failed to sync XP to planner:", e);
+        }
         persist({ ...data, log: newLog });
     };
 
