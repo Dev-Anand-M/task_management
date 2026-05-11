@@ -1,29 +1,41 @@
 const admin = require('firebase-admin');
 
-// Health check for env vars (without leaking secrets)
-const checkEnv = () => {
-    const vars = {
-        projectId: !!process.env.VITE_FIREBASE_PROJECT_ID,
-        clientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: !!process.env.FIREBASE_PRIVATE_KEY
+// Helper to get service account credentials from individual or combined env vars
+const getServiceAccount = () => {
+    // Option 1: Combined JSON string (common in Vercel)
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+        try {
+            return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        } catch (e) {
+            console.error("[PushAPI] Failed to parse FIREBASE_SERVICE_ACCOUNT JSON:", e.message);
+        }
+    }
+
+    // Option 2: Individual variables
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY
+        ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1')
+        : undefined;
+
+    return {
+        projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
     };
-    return vars;
 };
 
 if (!admin.apps.length) {
     try {
-        const privateKey = process.env.FIREBASE_PRIVATE_KEY
-            ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1')
-            : undefined;
-
-        admin.initializeApp({
-            credential: admin.credential.cert({
-                projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: privateKey,
-            }),
-        });
-        console.log("[PushAPI] Firebase Admin initialized");
+        const cert = getServiceAccount();
+        
+        // Basic validation before initialization
+        if (cert.projectId && cert.clientEmail && cert.privateKey) {
+            admin.initializeApp({
+                credential: admin.credential.cert(cert),
+            });
+            console.log("[PushAPI] Firebase Admin initialized successfully");
+        } else {
+            console.warn("[PushAPI] Firebase Admin NOT initialized: Missing credentials");
+        }
     } catch (e) {
         console.error("[PushAPI] Firebase Initialization Error:", e.message);
     }
@@ -34,12 +46,16 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const envStatus = checkEnv();
-    if (!envStatus.projectId || !envStatus.clientEmail || !envStatus.privateKey) {
+    // Final check
+    const cert = getServiceAccount();
+    if (!cert.projectId || !cert.clientEmail || !cert.privateKey) {
         return res.status(500).json({ 
             success: false, 
-            error: 'Server configuration missing (Firebase Env Vars)',
-            missing: Object.entries(envStatus).filter(([k,v]) => !v).map(([k]) => k)
+            error: 'Server configuration missing (Firebase Credentials). Please check your Vercel Environment Variables.',
+            details: {
+                hasServiceAccountJson: !!process.env.FIREBASE_SERVICE_ACCOUNT,
+                hasIndividualVars: !!(process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL)
+            }
         });
     }
 
@@ -52,7 +68,6 @@ export default async function handler(req, res) {
 
         const tokenList = Array.isArray(tokens) ? tokens : [tokens];
         
-        // Construct base message
         const baseMessage = {
             notification: { title, body },
             data: {
@@ -75,7 +90,6 @@ export default async function handler(req, res) {
             }
         };
 
-        // Use sendEach for better performance and error handling
         const messages = tokenList.map(token => ({ ...baseMessage, token }));
         const response = await admin.messaging().sendEach(messages);
 
@@ -83,7 +97,6 @@ export default async function handler(req, res) {
         response.responses.forEach((resp, idx) => {
             if (!resp.success) {
                 const error = resp.error;
-                console.error(`[PushAPI] Send failed for token ${idx}:`, error?.message);
                 if (error?.code === 'messaging/registration-token-not-registered' || 
                     error?.code === 'messaging/invalid-registration-token') {
                     failedTokens.push(tokenList[idx]);
@@ -100,10 +113,6 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('[PushAPI] Critical failure:', error);
-        return res.status(500).json({ 
-            success: false, 
-            error: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
-        });
+        return res.status(500).json({ success: false, error: error.message });
     }
 }
