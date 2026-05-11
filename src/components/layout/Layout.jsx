@@ -16,7 +16,8 @@ const getPageTitle = (pathname) => {
         '/leaderboard': 'Leaderboard',
         '/profile': 'My Profile',
         '/calendar': 'Activity Calendar',
-        '/planner': 'Planner'
+        '/planner': 'Planner',
+        '/routines': 'Routines'
     };
 
     // Check for dynamic routes

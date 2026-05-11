@@ -24,7 +24,8 @@ import {
     MessageSquare,
     Database,
     Calendar,
-    Target
+    Target,
+    RefreshCw
 } from 'lucide-react';
 import Avatar from '../common/Avatar';
 
@@ -81,6 +82,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
         { to: '/calendar', icon: Calendar, label: 'Calendar' },
         { to: '/planner', icon: Target, label: 'Planner' },
+        { to: '/routines', icon: RefreshCw, label: 'Routines' },
         { to: '/profile', icon: User, label: 'Profile' },
         { to: '/settings', icon: Settings, label: 'Settings' }
     ];
