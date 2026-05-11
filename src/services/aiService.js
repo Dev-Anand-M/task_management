@@ -276,6 +276,19 @@ export const validateAPIKey = async (providerId, key) => {
 
     const trimmedKey = key.trim();
 
+    // Quick format validation per provider
+    const formatChecks = {
+        gemini: (k) => k.startsWith('AI') || k.length >= 30,
+        openai: (k) => k.startsWith('sk-'),
+        anthropic: (k) => k.startsWith('sk-ant-'),
+        perplexity: (k) => k.startsWith('pplx-'),
+        sambanova: (k) => k.length >= 20
+    };
+
+    if (formatChecks[providerId] && !formatChecks[providerId](trimmedKey)) {
+        return { valid: false, error: `Invalid ${providerId} key format. Please check your key.` };
+    }
+
     try {
         if (providerId === 'gemini') {
             const endpoint = '/v1beta/models';
@@ -319,7 +332,17 @@ export const validateAPIKey = async (providerId, key) => {
 
         return { valid: false, error: 'Unknown provider' };
     } catch (err) {
-        return { valid: false, error: err.message || 'Validation failed' };
+        const msg = err.message || 'Validation failed';
+        if (msg.includes('401') || msg.includes('403') || msg.includes('Unauthorized') || msg.includes('Invalid')) {
+            return { valid: false, error: 'Invalid API key. Please double-check and try again.' };
+        }
+        if (msg.includes('429')) {
+            return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === providerId), warning: 'Key is valid but rate-limited. Try again later.' };
+        }
+        if (msg.includes('fetch') || msg.includes('network') || msg.includes('TIMEOUT')) {
+            return { valid: false, error: 'Network error. Please check your connection and try again.' };
+        }
+        return { valid: false, error: msg };
     }
 };
 
