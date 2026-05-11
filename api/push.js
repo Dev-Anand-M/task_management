@@ -5,12 +5,19 @@ const getServiceAccount = () => {
     // Priority 1: Combined JSON string (common in Vercel)
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
         try {
-            // Some environments might double-escape the JSON string
-            let json = process.env.FIREBASE_SERVICE_ACCOUNT;
+            let json = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+            // Handle potentially wrapped/escaped JSON
             if (json.startsWith('"') && json.endsWith('"')) {
                 json = json.substring(1, json.length - 1).replace(/\\"/g, '"');
             }
-            return JSON.parse(json);
+            const parsed = JSON.parse(json);
+            
+            // Normalize to a structure we can validate (handling both snake_case from JSON and camelCase from Admin SDK)
+            return {
+                projectId: parsed.project_id || parsed.projectId || process.env.VITE_FIREBASE_PROJECT_ID,
+                clientEmail: parsed.client_email || parsed.clientEmail || process.env.FIREBASE_CLIENT_EMAIL,
+                privateKey: parsed.private_key || parsed.privateKey || (process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined)
+            };
         } catch (e) {
             console.error("[PushAPI] Failed to parse FIREBASE_SERVICE_ACCOUNT JSON:", e.message);
         }
@@ -33,8 +40,13 @@ if (!admin.apps.length) {
         const cert = getServiceAccount();
         if (cert.projectId && cert.clientEmail && cert.privateKey) {
             admin.initializeApp({
-                credential: admin.credential.cert(cert),
+                credential: admin.credential.cert({
+                    projectId: cert.projectId,
+                    clientEmail: cert.clientEmail,
+                    privateKey: cert.privateKey
+                }),
             });
+            console.log("[PushAPI] Firebase Admin initialized");
         }
     } catch (e) {
         console.error("[PushAPI] Initialization Error:", e.message);
@@ -48,20 +60,16 @@ export default async function handler(req, res) {
 
     const cert = getServiceAccount();
     
-    // DIAGNOSTIC: Return what we see (SAFELY)
+    // Check if we have the critical bits
     if (!cert.projectId || !cert.clientEmail || !cert.privateKey) {
-        const availableKeys = Object.keys(process.env).filter(k => k.includes('FIREBASE') || k.includes('VITE'));
-        
         return res.status(500).json({ 
             success: false, 
             error: 'Server configuration missing (Firebase Credentials).',
             diagnostic: {
-                availableEnvKeys: availableKeys,
                 hasServiceAccountJson: !!process.env.FIREBASE_SERVICE_ACCOUNT,
                 projectIdFound: !!cert.projectId,
                 clientEmailFound: !!cert.clientEmail,
-                privateKeyFound: !!cert.privateKey,
-                nodeVersion: process.version
+                privateKeyFound: !!cert.privateKey
             }
         });
     }
@@ -80,7 +88,11 @@ export default async function handler(req, res) {
             },
             webpush: {
                 headers: { Urgency: 'high' },
-                notification: { title, body, icon: '/zenith.png', badge: '/zenith.png', requireInteraction: true },
+                notification: { 
+                    title, body, 
+                    icon: '/zenith.png', badge: '/zenith.png', 
+                    requireInteraction: true 
+                },
                 fcm_options: { link: link || '/' }
             }
         };
@@ -95,6 +107,7 @@ export default async function handler(req, res) {
         });
 
     } catch (error) {
+        console.error('[PushAPI] Push Error:', error);
         return res.status(500).json({ success: false, error: error.message });
     }
 }
