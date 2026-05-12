@@ -199,11 +199,50 @@ const TaskManager = () => {
         };
 
         try {
+            let result;
             if (editingTask) {
-                await db.updateTask(editingTask.id, taskData);
+                result = await db.updateTask(editingTask.id, taskData);
             } else {
-                await db.createTask(taskData);
+                result = await db.createTask(taskData);
             }
+
+            // --- ONE SIGNAL NOTIFICATION ---
+            try {
+                // Determine who to notify
+                let targetMemberIds = [];
+                if (taskData.assignment_type === 'everyone') {
+                    targetMemberIds = members
+                        .filter(m => taskData.is_global || m.classroom_id === taskData.classroom_id)
+                        .map(m => m.id);
+                } else {
+                    targetMemberIds = taskData.assigned_to || [];
+                }
+
+                // Send notifications to each assigned member who has OneSignal enabled
+                const notifyPromises = targetMemberIds.map(async (memberId) => {
+                    const member = members.find(m => m.id === memberId);
+                    const onesignalId = member?.preferences?.onesignal_id;
+                    
+                    if (onesignalId) {
+                        return fetch(`${window.location.origin}/api/push`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                onesignal_id: onesignalId,
+                                title: editingTask ? 'Task Updated 📝' : 'New Task Assigned 🚀',
+                                body: `${taskData.title} has been ${editingTask ? 'updated' : 'assigned to you'}.`,
+                                link: `/tasks/${editingTask ? editingTask.id : (result?.[0]?.id || '')}`
+                            })
+                        });
+                    }
+                });
+
+                await Promise.allSettled(notifyPromises);
+            } catch (notifyError) {
+                console.error('Failed to send push notifications:', notifyError);
+                // Don't block the main flow if notifications fail
+            }
+            // -------------------------------
 
             await loadData();
             closeModal();

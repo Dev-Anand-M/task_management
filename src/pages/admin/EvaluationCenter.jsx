@@ -452,22 +452,39 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
                 evaluated_at: new Date().toISOString()
             });
 
-            // Award XP to user
-            if (submission.profiles?.id) {
-                const xpEarned = Math.round((scoreNum / 100) * (submission.tasks?.points || 100));
-                const currentXP = submission.profiles.xp || 0;
-                await db.updateProfile(submission.profiles.id, { xp: currentXP + xpEarned });
+                // award XP to user
+                if (submission.profiles?.id) {
+                    const xpEarned = Math.round((scoreNum / 100) * (submission.tasks?.points || 100));
+                    const currentXP = submission.profiles.xp || 0;
+                    await db.updateProfile(submission.profiles.id, { xp: currentXP + xpEarned });
 
-                // Notify User
-                await db.createNotification({
-                    user_id: submission.profiles.id,
-                    classroom_id: submission.tasks?.classroom_id,
-                    title: 'Task Approved! \u0026 XP Awarded',
-                    message: `Your submission for "${submission.tasks?.title}" was approved with a score of ${scoreNum}/100. You earned ${xpEarned} XP!`,
-                    type: 'success',
-                    link: `/tasks/${submission.tasks?.id}`
-                });
-            }
+                    // Notify User (In-app)
+                    await db.createNotification({
+                        user_id: submission.profiles.id,
+                        classroom_id: submission.tasks?.classroom_id,
+                        title: 'Task Approved! 🥳',
+                        message: `Your submission for "${submission.tasks?.title}" was approved with a score of ${scoreNum}/100. You earned ${xpEarned} XP!`,
+                        type: 'success',
+                        link: `/tasks/${submission.tasks?.id}`
+                    });
+
+                    // OneSignal Push
+                    const onesignalId = submission.profiles.preferences?.onesignal_id;
+                    if (onesignalId) {
+                        try {
+                            await fetch(`${window.location.origin}/api/push`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    onesignal_id: onesignalId,
+                                    title: 'Task Approved! 🥳',
+                                    body: `Your submission for "${submission.tasks?.title}" was approved with a score of ${scoreNum}/100.`,
+                                    link: `/tasks/${submission.tasks?.id}`
+                                })
+                            });
+                        } catch (e) { console.error("Push Error:", e); }
+                    }
+                }
 
             onUpdate();
             onBack();
@@ -497,22 +514,39 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
 
             await db.updateSubmission(submissionId, updateData);
 
-            // Notify User
-            if (submission.profiles?.id) {
-                let msg = `Reviewer requested a revision for "${submission.tasks?.title}". Check feedback for details.`;
-                if (revisionDeadline) {
-                    msg += ` New deadline: ${new Date(revisionDeadline).toLocaleDateString()}`;
-                }
+                // Notify User (In-app)
+                if (submission.profiles?.id) {
+                    let msg = `Reviewer requested a revision for "${submission.tasks?.title}". Check feedback for details.`;
+                    if (revisionDeadline) {
+                        msg += ` New deadline: ${new Date(revisionDeadline).toLocaleDateString()}`;
+                    }
 
-                await db.createNotification({
-                    user_id: submission.profiles.id,
-                    classroom_id: submission.tasks?.classroom_id,
-                    title: 'Revision Requested',
-                    message: msg,
-                    type: 'error',
-                    link: `/tasks/${submission.tasks?.id}`
-                });
-            }
+                    await db.createNotification({
+                        user_id: submission.profiles.id,
+                        classroom_id: submission.tasks?.classroom_id,
+                        title: 'Revision Requested 📝',
+                        message: msg,
+                        type: 'error',
+                        link: `/tasks/${submission.tasks?.id}`
+                    });
+
+                    // OneSignal Push
+                    const onesignalId = submission.profiles.preferences?.onesignal_id;
+                    if (onesignalId) {
+                        try {
+                            await fetch(`${window.location.origin}/api/push`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    onesignal_id: onesignalId,
+                                    title: 'Revision Requested 📝',
+                                    body: `Reviewer requested a revision for "${submission.tasks?.title}".`,
+                                    link: `/tasks/${submission.tasks?.id}`
+                                })
+                            });
+                        } catch (e) { console.error("Push Error:", e); }
+                    }
+                }
 
             onUpdate();
             onBack();
