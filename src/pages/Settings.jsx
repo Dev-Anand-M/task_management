@@ -566,6 +566,7 @@ const Settings = () => {
                                                              }).eq('id', user.id);
                                                              forceRefresh();
                                                          } else {
+                                                             alert("Could not enable notifications. Please ensure you clicked 'Allow' and check your browser settings.");
                                                              e.target.checked = false;
                                                          }
                                                      } else {
