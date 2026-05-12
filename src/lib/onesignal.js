@@ -6,6 +6,13 @@ export const getOneSignal = () => {
 export const requestOneSignalPermission = async () => {
   return new Promise((resolve) => {
     console.log("[OneSignal] Requesting permission...");
+    
+    // Safety timeout after 10 seconds
+    const timeout = setTimeout(() => {
+      console.warn("[OneSignal] Request timed out. SDK might be blocked or failed to load.");
+      resolve(null);
+    }, 10000);
+
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     window.OneSignalDeferred.push(async (OneSignal) => {
       try {
@@ -15,9 +22,11 @@ export const requestOneSignalPermission = async () => {
         
         const id = await OneSignal.User.PushSubscription.id;
         console.log("[OneSignal] Subscription ID:", id);
+        clearTimeout(timeout);
         resolve(id);
       } catch (err) {
         console.error("[OneSignal] Permission/Subscription Error:", err);
+        clearTimeout(timeout);
         resolve(null);
       }
     });
