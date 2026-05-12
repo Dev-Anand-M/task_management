@@ -100,6 +100,8 @@ const Settings = () => {
     const [loadingAISettings, setLoadingAISettings] = useState(true);
     const [validationMessage, setValidationMessage] = useState({ type: '', text: '' }); // type: 'success', 'error', 'warning'
     const [availableModels, setAvailableModels] = useState([]); // Dynamic models from API
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [isInstalled, setIsInstalled] = useState(false);
 
     // Load AI settings when provider changes or on mount
     useEffect(() => {
@@ -159,8 +161,17 @@ const Settings = () => {
                 const stats = getUsageStats();
                 setUsageStats(stats);
 
-            } catch (e) {
-                console.log('Could not load AI settings:', e);
+                setIsInstalled(window.matchMedia('(display-mode: standalone)').matches);
+                
+                const handleBeforeInstall = (e) => {
+                    e.preventDefault();
+                    setDeferredPrompt(e);
+                };
+                
+                window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+                return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+            } catch (err) {
+                console.error('PWA Setup Error:', err);
             } finally {
                 setLoadingAISettings(false);
             }
@@ -566,7 +577,7 @@ const Settings = () => {
                                                              }).eq('id', user.id);
                                                              forceRefresh();
                                                          } else {
-                                                             alert("Could not enable notifications. Please ensure you clicked 'Allow' and check your browser settings.");
+                                                             alert("Could not enable notifications. Please ensure you clicked 'Allow' and check your browser settings.\n\nTip: Installing the app (below) makes this much more reliable!");
                                                              e.target.checked = false;
                                                          }
                                                      } else {
@@ -616,7 +627,42 @@ const Settings = () => {
                         ))}
                     </div>
 
-
+                    {/* PWA Install Prompt */}
+                    {!isInstalled && (deferredPrompt || /iPhone|iPad|iPod/.test(navigator.userAgent)) && (
+                        <div style={{
+                            marginTop: 'var(--space-lg)',
+                            padding: 'var(--space-lg)',
+                            background: 'rgba(99, 102, 241, 0.05)',
+                            borderRadius: 'var(--radius-lg)',
+                            border: '1px dashed var(--primary-300)',
+                            textAlign: 'center'
+                        }}>
+                            <h4 style={{ marginBottom: '8px' }}>📱 Install Zenith Mobile</h4>
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-md)' }}>
+                                Install Zenith as an app for much more reliable push notifications and background updates.
+                            </p>
+                            
+                            {deferredPrompt ? (
+                                <Button 
+                                    icon={Plus} 
+                                    onClick={async () => {
+                                        deferredPrompt.prompt();
+                                        const { outcome } = await deferredPrompt.userChoice;
+                                        if (outcome === 'accepted') {
+                                            setDeferredPrompt(null);
+                                            setIsInstalled(true);
+                                        }
+                                    }}
+                                >
+                                    Install Zenith App
+                                </Button>
+                            ) : (
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                    To install: Tap <strong style={{ color: 'var(--primary-400)' }}>Share</strong> then <strong style={{ color: 'var(--primary-400)' }}>Add to Home Screen</strong>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {saving && <p style={{
                         marginTop: 'var(--space-md)',
