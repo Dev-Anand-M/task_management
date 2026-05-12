@@ -31,14 +31,19 @@
         return false;
       };
 
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer onerror="console.error('OneSignal SDK failed to load! Check ad-blockers.')"></script>
     <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
-      window.OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: "595cc111-feab-4d1c-8d80-fdbea3b564ec",
+      window.initOneSignal = function() {
+        console.log("[OneSignal] Manually initializing...");
+        window.OneSignalDeferred.push(async function(OneSignal) {
+          await OneSignal.init({
+            appId: "595cc111-feab-4d1c-8d80-fdbea3b564ec",
+          });
+          console.log("[OneSignal] Init complete");
         });
-      });
+      };
+      window.initOneSignal();
     </script>
 </head>
 
