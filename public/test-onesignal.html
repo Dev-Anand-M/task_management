@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OneSignal Diagnostic Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status.success { background: #10b981; color: white; }
+        .status.error { background: #ef4444; color: white; }
+        .status.warning { background: #f59e0b; color: white; }
+        .status.info { background: #3b82f6; color: white; }
+        button {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover { background: #4f46e5; }
+        pre {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .log {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 6px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+        }
+        .log-entry.error { color: #ef4444; }
+        .log-entry.success { color: #10b981; }
+        .log-entry.info { color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <h1>🔔 OneSignal Diagnostic Test</h1>
+    <p>This page helps diagnose OneSignal push notification issues.</p>
+
+    <div class="test-section">
+        <h2>1. SDK Loading Status</h2>
+        <p>OneSignal SDK: <span id="sdk-status" class="status info">Checking...</span></p>
+        <p>Window.OneSignal: <span id="window-status" class="status info">Checking...</span></p>
+        <button onclick="checkSDK()">Recheck SDK</button>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Browser Permissions</h2>
+        <p>Notification Permission: <span id="permission-status" class="status info">Checking...</span></p>
+        <p>HTTPS: <span id="https-status" class="status info">Checking...</span></p>
+        <button onclick="checkPermissions()">Recheck Permissions</button>
+    </div>
+
+    <div class="test-section">
+        <h2>3. OneSignal Subscription</h2>
+        <p>Subscription ID: <span id="subscription-id" class="status info">Not checked</span></p>
+        <button onclick="requestPermission()">Request Permission & Subscribe</button>
+        <button onclick="getSubscriptionId()">Get Subscription ID</button>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Test Push Notification</h2>
+        <input type="text" id="test-subscription-id" placeholder="Enter OneSignal Subscription ID" style="width: 400px; padding: 8px; background: #1a1a1a; border: 1px solid #444; color: white; border-radius: 4px;">
+        <button onclick="sendTestPush()">Send Test Push</button>
+        <p id="push-result"></p>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Console Logs</h2>
+        <div id="console-log" class="log"></div>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+        const APP_ID = "595cc111-feab-4d1c-8d80-fdbea3b564ec";
+        
+        // Custom logging
+        const logs = [];
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push({ timestamp, message, type });
+            updateLogDisplay();
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function updateLogDisplay() {
+            const logDiv = document.getElementById('console-log');
+            logDiv.innerHTML = logs.map(l => 
+                `<div class="log-entry ${l.type}">[${l.timestamp}] ${l.message}</div>`
+            ).join('');
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLogs() {
+            logs.length = 0;
+            updateLogDisplay();
+        }
+
+        // Initialize OneSignal
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(async function(OneSignal) {
+            log("OneSignal SDK loaded successfully", "success");
+            try {
+                await OneSignal.init({ appId: APP_ID });
+                log("OneSignal initialized with App ID: " + APP_ID, "success");
+                checkSDK();
+                checkPermissions();
+            } catch (err) {
+                log("OneSignal initialization failed: " + err.message, "error");
+            }
+        });
+
+        function checkSDK() {
+            const sdkLoaded = typeof window.OneSignal !== 'undefined';
+            const windowStatus = window.OneSignal ? 'Available' : 'Not Available';
+            
+            document.getElementById('sdk-status').textContent = sdkLoaded ? 'Loaded ✓' : 'Not Loaded ✗';
+            document.getElementById('sdk-status').className = 'status ' + (sdkLoaded ? 'success' : 'error');
+            
+            document.getElementById('window-status').textContent = windowStatus;
+            document.getElementById('window-status').className = 'status ' + (window.OneSignal ? 'success' : 'error');
+            
+            log(`SDK Check: ${sdkLoaded ? 'Loaded' : 'Not Loaded'}`, sdkLoaded ? 'success' : 'error');
+        }
+
+        function checkPermissions() {
+            const permission = Notification.permission;
+            const isHttps = location.protocol === 'https:' || location.hostname === 'localhost';
+            
+            document.getElementById('permission-status').textContent = permission;
+            document.getElementById('permission-status').className = 'status ' + 
+                (permission === 'granted' ? 'success' : permission === 'denied' ? 'error' : 'warning');
+            
+            document.getElementById('https-status').textContent = isHttps ? 'Yes ✓' : 'No ✗';
+            document.getElementById('https-status').className = 'status ' + (isHttps ? 'success' : 'error');
+            
+            log(`Permission: ${permission}, HTTPS: ${isHttps}`, permission === 'granted' ? 'success' : 'info');
+        }
+
+        async function requestPermission() {
+            log("Requesting notification permission...", "info");
+            
+            if (!window.OneSignal) {
+                log("OneSignal SDK not loaded!", "error");
+                alert("OneSignal SDK not loaded. Check if it's blocked by ad-blockers.");
+                return;
+            }
+
+            window.OneSignalDeferred.push(async function(OneSignal) {
+                try {
+                    const granted = await OneSignal.Notifications.requestPermission();
+                    log(`Permission ${granted ? 'granted' : 'denied'}`, granted ? 'success' : 'error');
+                    
+                    if (granted) {
+                        const id = await OneSignal.User.PushSubscription.id;
+                        document.getElementById('subscription-id').textContent = id || 'Failed to get ID';
+                        document.getElementById('subscription-id').className = 'status ' + (id ? 'success' : 'error');
+                        log(`Subscription ID: ${id}`, id ? 'success' : 'error');
+                        
+                        if (id) {
+                            document.getElementById('test-subscription-id').value = id;
+                        }
+                    }
+                    
+                    checkPermissions();
+                } catch (err) {
+                    log("Error requesting permission: " + err.message, "error");
+                }
+            });
+        }
+
+        async function getSubscriptionId() {
+            log("Getting subscription ID...", "info");
+            
+            if (!window.OneSignal) {
+                log("OneSignal SDK not loaded!", "error");
+                return;
+            }
+
+            window.OneSignalDeferred.push(async function(OneSignal) {
+                try {
+                    const id = await OneSignal.User.PushSubscription.id;
+                    document.getElementById('subscription-id').textContent = id || 'Not subscribed';
+                    document.getElementById('subscription-id').className = 'status ' + (id ? 'success' : 'warning');
+                    log(`Subscription ID: ${id || 'Not subscribed'}`, id ? 'success' : 'warning');
+                    
+                    if (id) {
+                        document.getElementById('test-subscription-id').value = id;
+                    }
+                } catch (err) {
+                    log("Error getting subscription ID: " + err.message, "error");
+                }
+            });
+        }
+
+        async function sendTestPush() {
+            const subscriptionId = document.getElementById('test-subscription-id').value.trim();
+            
+            if (!subscriptionId) {
+                alert("Please enter a OneSignal Subscription ID");
+                return;
+            }
+
+            log("Sending test push notification...", "info");
+            document.getElementById('push-result').textContent = "Sending...";
+
+            try {
+                const response = await fetch('/api/push', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        onesignal_id: subscriptionId,
+                        title: 'OneSignal Test 🔔',
+                        body: 'If you see this, OneSignal is working perfectly!',
+                        link: '/test-onesignal.html'
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('push-result').innerHTML = 
+                        `<span class="status success">Success! Check your device for the notification.</span>`;
+                    log("Push notification sent successfully", "success");
+                } else {
+                    document.getElementById('push-result').innerHTML = 
+                        `<span class="status error">Failed: ${result.error}</span>`;
+                    log("Push notification failed: " + result.error, "error");
+                }
+            } catch (err) {
+                document.getElementById('push-result').innerHTML = 
+                    `<span class="status error">Error: ${err.message}</span>`;
+                log("Push API error: " + err.message, "error");
+            }
+        }
+
+        // Initial checks
+        setTimeout(() => {
+            checkSDK();
+            checkPermissions();
+        }, 1000);
+    </script>
+</body>
+</html>

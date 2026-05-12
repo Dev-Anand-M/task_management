@@ -568,30 +568,67 @@ const Settings = () => {
                                                  try {
                                                      const { requestOneSignalPermission, logoutOneSignal } = await import('../lib/onesignal');
                                                      if (isChecked) {
+                                                         console.log("[Settings] Requesting OneSignal permission...");
                                                          const oneSignalId = await requestOneSignalPermission();
+                                                         console.log("[Settings] OneSignal ID received:", oneSignalId);
+                                                         
                                                          if (oneSignalId) {
+                                                             // Update state first
                                                              setNotifications(prev => ({ ...prev, push: true }));
+                                                             
                                                              // Update Supabase with the OneSignal ID
-                                                             await supabase.from('profiles').update({
-                                                                 preferences: { ...user.preferences, onesignal_id: oneSignalId, notifications: { ...notifications, push: true } }
+                                                             const { error } = await supabase.from('profiles').update({
+                                                                 preferences: { 
+                                                                     ...user.preferences, 
+                                                                     onesignal_id: oneSignalId, 
+                                                                     notifications: { 
+                                                                         ...notifications, 
+                                                                         push: true 
+                                                                     } 
+                                                                 }
                                                              }).eq('id', user.id);
+                                                             
+                                                             if (error) {
+                                                                 console.error("[Settings] Failed to save to Supabase:", error);
+                                                                 alert("Failed to save notification settings. Please try again.");
+                                                                 setNotifications(prev => ({ ...prev, push: false }));
+                                                                 return;
+                                                             }
+                                                             
+                                                             console.log("[Settings] Successfully enabled push notifications");
                                                              forceRefresh();
                                                          } else {
-                                                             alert("Could not enable notifications. Please ensure you clicked 'Allow' and check your browser settings.\n\nTip: Installing the app (below) makes this much more reliable!");
-                                                             e.target.checked = false;
+                                                             console.error("[Settings] Failed to get OneSignal ID");
+                                                             alert("Could not enable notifications. Please check:\n\n1. You clicked 'Allow' on the permission prompt\n2. Ad-blockers are disabled\n3. Browser supports notifications\n\nTip: Installing the app (below) makes this much more reliable!");
+                                                             setNotifications(prev => ({ ...prev, push: false }));
                                                          }
                                                      } else {
+                                                         console.log("[Settings] Disabling push notifications...");
                                                          await logoutOneSignal();
                                                          setNotifications(prev => ({ ...prev, push: false }));
-                                                         await supabase.from('profiles').update({
-                                                             preferences: { ...user.preferences, notifications: { ...notifications, push: false } }
+                                                         
+                                                         const { error } = await supabase.from('profiles').update({
+                                                             preferences: { 
+                                                                 ...user.preferences, 
+                                                                 onesignal_id: null,
+                                                                 notifications: { 
+                                                                     ...notifications, 
+                                                                     push: false 
+                                                                 } 
+                                                             }
                                                          }).eq('id', user.id);
+                                                         
+                                                         if (error) {
+                                                             console.error("[Settings] Failed to update Supabase:", error);
+                                                         }
+                                                         
+                                                         console.log("[Settings] Successfully disabled push notifications");
                                                          forceRefresh();
                                                      }
                                                  } catch (err) {
-                                                     console.error("OneSignal toggle error:", err);
-                                                     alert(`Error: ${err.message}`);
-                                                     e.target.checked = false;
+                                                     console.error("[Settings] OneSignal toggle error:", err);
+                                                     alert(`Error: ${err.message}\n\nCheck browser console for details.`);
+                                                     setNotifications(prev => ({ ...prev, push: false }));
                                                  }
                                             } else {
                                                 handleNotificationChange(item.key, isChecked);
