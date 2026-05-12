@@ -31,40 +31,19 @@
         return false;
       };
 
-      // Clear all caches
-      if ('caches' in window) {
-        caches.keys().then(function(names) {
-          for (let name of names) {
-            caches.delete(name);
-          }
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "595cc111-feab-4d1c-8d80-fdbea3b564ec",
+          safari_web_id: "web.onesignal.auto.199c0d9a-9e73-4903-8d60-7576fff7576f",
+          notifyButton: {
+            enable: false,
+          },
+          allowLocalhostAsSecureOrigin: true,
         });
-      }
-
-      // Emergency Reset after 10 seconds of white screen
-      setTimeout(() => {
-        const root = document.getElementById('root');
-        if (root && root.innerHTML === '') {
-          const resetBtn = document.createElement('button');
-          resetBtn.innerText = 'App taking too long? Click here to Hard Refresh';
-          resetBtn.style.position = 'fixed';
-          resetBtn.style.top = '50%';
-          resetBtn.style.left = '50%';
-          resetBtn.style.transform = 'translate(-50%, -50%)';
-          resetBtn.style.padding = '15px 30px';
-          resetBtn.style.background = '#10b981';
-          resetBtn.style.color = 'white';
-          resetBtn.style.border = 'none';
-          resetBtn.style.borderRadius = '8px';
-          resetBtn.style.cursor = 'pointer';
-          resetBtn.style.zIndex = '999999';
-          resetBtn.onclick = () => {
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.reload(true);
-          };
-          document.body.appendChild(resetBtn);
-        }
-      }, 10000);
+      });
     </script>
 </head>
 

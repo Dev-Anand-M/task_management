@@ -554,28 +554,33 @@ const Settings = () => {
                                             const isChecked = e.target.checked;
                                             
                                             if (item.key === 'push') {
-                                                try {
-                                                    const { requestNotificationPermission, clearTokenFromDatabase } = await import('../lib/firebase');
-                                                    if (isChecked) {
-                                                        const success = await requestNotificationPermission(user.id);
-                                                        if (success) {
-                                                            setNotifications(prev => ({ ...prev, push: true }));
-                                                            forceRefresh(); // Update local profile state
-                                                        } else {
-                                                            // Error message is already shown by requestNotificationPermission
-                                                            // Just reset the toggle
-                                                            e.target.checked = false;
-                                                        }
-                                                    } else {
-                                                        await clearTokenFromDatabase(user.id);
-                                                        setNotifications(prev => ({ ...prev, push: false }));
-                                                        forceRefresh();
-                                                    }
-                                                } catch (err) {
-                                                    console.error("Push toggle error:", err);
-                                                    alert(`Error: ${err.message}`);
-                                                    e.target.checked = false;
-                                                }
+                                                 try {
+                                                     const { requestOneSignalPermission, logoutOneSignal } = await import('../lib/onesignal');
+                                                     if (isChecked) {
+                                                         const oneSignalId = await requestOneSignalPermission();
+                                                         if (oneSignalId) {
+                                                             setNotifications(prev => ({ ...prev, push: true }));
+                                                             // Update Supabase with the OneSignal ID
+                                                             await supabase.from('profiles').update({
+                                                                 preferences: { ...user.preferences, onesignal_id: oneSignalId, notifications: { ...notifications, push: true } }
+                                                             }).eq('id', user.id);
+                                                             forceRefresh();
+                                                         } else {
+                                                             e.target.checked = false;
+                                                         }
+                                                     } else {
+                                                         await logoutOneSignal();
+                                                         setNotifications(prev => ({ ...prev, push: false }));
+                                                         await supabase.from('profiles').update({
+                                                             preferences: { ...user.preferences, notifications: { ...notifications, push: false } }
+                                                         }).eq('id', user.id);
+                                                         forceRefresh();
+                                                     }
+                                                 } catch (err) {
+                                                     console.error("OneSignal toggle error:", err);
+                                                     alert(`Error: ${err.message}`);
+                                                     e.target.checked = false;
+                                                 }
                                             } else {
                                                 handleNotificationChange(item.key, isChecked);
                                             }
@@ -629,51 +634,32 @@ const Settings = () => {
                                 onClick={async () => {
                                     try {
                                         const { data: profile } = await supabase.from('profiles').select('preferences').eq('id', user.id).single();
-                                        const tokens = [
-                                            ...(profile?.preferences?.fcm_tokens || []),
-                                            profile?.preferences?.fcm_token
-                                        ].filter(t => !!t);
+                                        const onesignalId = profile?.preferences?.onesignal_id;
 
-                                        if (tokens.length === 0) {
-                                            alert("No tokens found. Try turning Push ON/OFF to register this device.");
+                                        if (!onesignalId) {
+                                            alert("No OneSignal ID found. Try turning Push ON/OFF to register this device.");
                                             return;
                                         }
 
-                                        console.log("[TestPush] Sending to tokens:", tokens);
+                                        console.log("[TestPush] Sending to OneSignal ID:", onesignalId);
 
                                         const res = await fetch(`${window.location.origin}/api/push`, {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({
-                                                tokens: tokens,
-                                                title: 'Test Notification 🔔',
-                                                body: 'If you see this, your push notifications are working perfectly!',
+                                                onesignal_id: onesignalId,
+                                                title: 'OneSignal Test 🔔',
+                                                body: 'If you see this, OneSignal is working perfectly even in the background!',
                                                 link: '/settings'
                                             })
                                         });
                                         const data = await res.json();
-                                        console.log("[TestPush] API Response:", data);
+                                        console.log("[TestPush] OneSignal API Response:", data);
                                         
                                         if (data.success) {
-                                            // Auto-cleanup failed tokens if any
-                                            if (data.failedTokens && data.failedTokens.length > 0) {
-                                                console.log("[TestPush] Cleaning up failed tokens:", data.failedTokens);
-                                                const { data: profile } = await supabase.from('profiles').select('preferences').eq('id', user.id).single();
-                                                if (profile?.preferences?.fcm_tokens) {
-                                                    const updatedTokens = profile.preferences.fcm_tokens.filter(t => !data.failedTokens.includes(t));
-                                                    await supabase.from('profiles').update({ 
-                                                        preferences: { ...profile.preferences, fcm_tokens: updatedTokens } 
-                                                    }).eq('id', user.id);
-                                                }
-                                            }
-
-                                            if (data.results?.successCount > 0 || (tokens.length === 1 && !data.results?.failureCount)) {
-                                                alert("✅ Success! " + data.summary);
-                                            } else {
-                                                alert("❌ Failed! " + data.summary + "\n\nDetails: " + JSON.stringify(data.details));
-                                            }
+                                            alert("✅ Success! Notification sent via OneSignal.");
                                         } else {
-                                            alert("Error from API: " + JSON.stringify(data));
+                                            alert("❌ Failed! " + (data.error || "Unknown error"));
                                         }
                                     } catch (error) {
                                         console.error("[TestPush] Error:", error);
