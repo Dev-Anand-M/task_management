@@ -206,7 +206,7 @@ const TaskManager = () => {
                 result = await db.createTask(taskData);
             }
 
-            // --- ONE SIGNAL NOTIFICATION ---
+            // --- ONE SIGNAL NOTIFICATION + IN-APP NOTIFICATION ---
             try {
                 // Determine who to notify
                 let targetMemberIds = [];
@@ -218,11 +218,22 @@ const TaskManager = () => {
                     targetMemberIds = taskData.assigned_to || [];
                 }
 
-                // Send notifications to each assigned member who has OneSignal enabled
+                // Send notifications to each assigned member
                 const notifyPromises = targetMemberIds.map(async (memberId) => {
                     const member = members.find(m => m.id === memberId);
-                    const onesignalId = member?.preferences?.onesignal_id;
                     
+                    // 1. Create in-app notification
+                    await db.createNotification({
+                        user_id: memberId,
+                        classroom_id: taskData.classroom_id,
+                        title: editingTask ? 'Task Updated 📝' : 'New Task Assigned 🚀',
+                        message: `${taskData.title} has been ${editingTask ? 'updated' : 'assigned to you'}.`,
+                        type: 'task',
+                        link: `/tasks/${editingTask ? editingTask.id : (result?.[0]?.id || '')}`
+                    });
+                    
+                    // 2. Send push notification if OneSignal is enabled
+                    const onesignalId = member?.preferences?.onesignal_id;
                     if (onesignalId) {
                         return fetch(`${window.location.origin}/api/push`, {
                             method: 'POST',
@@ -239,7 +250,7 @@ const TaskManager = () => {
 
                 await Promise.allSettled(notifyPromises);
             } catch (notifyError) {
-                console.error('Failed to send push notifications:', notifyError);
+                console.error('Failed to send notifications:', notifyError);
                 // Don't block the main flow if notifications fail
             }
             // -------------------------------

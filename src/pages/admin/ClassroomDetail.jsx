@@ -125,6 +125,45 @@ const ClassroomDetail = () => {
             });
             setAnnouncements([newAnn, ...announcements]);
             setAnnouncementText('');
+            
+            // --- SEND NOTIFICATIONS TO ALL CLASSROOM MEMBERS ---
+            try {
+                const classroomMembers = members.filter(m => 
+                    m.classroom_id === classroomId && m.role === 'member'
+                );
+                
+                const notifyPromises = classroomMembers.map(async (member) => {
+                    // 1. Create in-app notification
+                    await db.createNotification({
+                        user_id: member.id,
+                        classroom_id: classroomId,
+                        title: '📢 New Announcement',
+                        message: announcementText.substring(0, 100) + (announcementText.length > 100 ? '...' : ''),
+                        type: 'announcement',
+                        link: `/classroom/${classroomId}`
+                    });
+                    
+                    // 2. Send push notification if OneSignal is enabled
+                    const onesignalId = member?.preferences?.onesignal_id;
+                    if (onesignalId) {
+                        return fetch(`${window.location.origin}/api/push`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                onesignal_id: onesignalId,
+                                title: '📢 New Announcement',
+                                body: announcementText.substring(0, 100) + (announcementText.length > 100 ? '...' : ''),
+                                link: `/classroom/${classroomId}`
+                            })
+                        });
+                    }
+                });
+                
+                await Promise.allSettled(notifyPromises);
+            } catch (notifyError) {
+                console.error('Failed to send announcement notifications:', notifyError);
+            }
+            // -------------------------------
         } catch (error) {
             console.error('Error posting announcement:', error);
         } finally {

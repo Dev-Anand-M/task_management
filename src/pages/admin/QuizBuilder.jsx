@@ -310,7 +310,56 @@ const QuizBuilder = () => {
                 setTimeout(() => reject(new Error('Save timeout. The server took too long to respond.')), 10000)
             );
 
-            await Promise.race([saveAction, timeoutPromise]);
+            const result = await Promise.race([saveAction, timeoutPromise]);
+
+            // --- SEND NOTIFICATIONS TO ASSIGNED MEMBERS ---
+            try {
+                // Determine who to notify
+                let targetMemberIds = [];
+                if (quizData.assignment_type === 'everyone') {
+                    targetMemberIds = members
+                        .filter(m => quizData.is_global || m.classroom_id === quizData.classroom_id)
+                        .map(m => m.id);
+                } else {
+                    targetMemberIds = quizData.assigned_to || [];
+                }
+
+                // Send notifications to each assigned member
+                const notifyPromises = targetMemberIds.map(async (memberId) => {
+                    const member = members.find(m => m.id === memberId);
+                    
+                    // 1. Create in-app notification
+                    await db.createNotification({
+                        user_id: memberId,
+                        classroom_id: quizData.classroom_id,
+                        title: editingQuiz ? 'Quiz Updated 📝' : 'New Quiz Assigned 🧠',
+                        message: `${quizData.title} has been ${editingQuiz ? 'updated' : 'assigned to you'}.`,
+                        type: 'quiz',
+                        link: `/quizzes`
+                    });
+                    
+                    // 2. Send push notification if OneSignal is enabled
+                    const onesignalId = member?.preferences?.onesignal_id;
+                    if (onesignalId) {
+                        return fetch(`${window.location.origin}/api/push`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                onesignal_id: onesignalId,
+                                title: editingQuiz ? 'Quiz Updated 📝' : 'New Quiz Assigned 🧠',
+                                body: `${quizData.title} has been ${editingQuiz ? 'updated' : 'assigned to you'}.`,
+                                link: `/quizzes`
+                            })
+                        });
+                    }
+                });
+
+                await Promise.allSettled(notifyPromises);
+            } catch (notifyError) {
+                console.error('Failed to send notifications:', notifyError);
+                // Don't block the main flow if notifications fail
+            }
+            // -------------------------------
 
             await loadData();
             setShowCreateModal(false);
