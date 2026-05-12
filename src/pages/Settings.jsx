@@ -664,6 +664,24 @@ const Settings = () => {
                         ))}
                     </div>
 
+                    {/* Debug OneSignal Button */}
+                    <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border)' }}>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={async () => {
+                                const { debugOneSignalStatus } = await import('../lib/onesignal');
+                                debugOneSignalStatus();
+                                alert("Check browser console (F12) for OneSignal debug info");
+                            }}
+                        >
+                            🔍 Debug OneSignal Status
+                        </Button>
+                        <p style={{ marginTop: '4px', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                            Click this if push notifications aren't working, then check browser console (F12)
+                        </p>
+                    </div>
+
                     {/* PWA Install Prompt */}
                     {!isInstalled && (deferredPrompt || /iPhone|iPad|iPod/.test(navigator.userAgent)) && (
                         <div style={{

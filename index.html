@@ -37,27 +37,50 @@
   <script 
     src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" 
     defer
-    onerror="console.error('[OneSignal] SDK failed to load! Check ad-blockers or network.')">
+    onload="console.log('[OneSignal] SDK script loaded successfully')"
+    onerror="console.error('[OneSignal] SDK script failed to load! Check ad-blockers or network.')">
   </script>
   
   <!-- OneSignal Initialization -->
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     
+    // Log when deferred queue is ready
+    console.log("[OneSignal] Deferred queue initialized");
+    
     // Initialize OneSignal when SDK loads
     window.OneSignalDeferred.push(async function(OneSignal) {
-      console.log("[OneSignal] Initializing SDK...");
+      console.log("[OneSignal] SDK callback triggered - initializing...");
       try {
         await OneSignal.init({
           appId: "595cc111-feab-4d1c-8d80-fdbea3b564ec",
           allowLocalhostAsSecureOrigin: true,
         });
-        console.log("[OneSignal] SDK initialized successfully");
+        console.log("[OneSignal] ✅ SDK initialized successfully");
         console.log("[OneSignal] Permission status:", OneSignal.Notifications.permission);
+        console.log("[OneSignal] Browser permission:", Notification.permission);
+        
+        // Make OneSignal globally accessible for debugging
+        window._OneSignalDebug = OneSignal;
       } catch (err) {
-        console.error("[OneSignal] Initialization failed:", err);
+        console.error("[OneSignal] ❌ Initialization failed:", err);
+        console.error("[OneSignal] Error details:", err.message);
       }
     });
+    
+    // Timeout check - if SDK doesn't load in 10 seconds, warn user
+    setTimeout(() => {
+      if (!window.OneSignal) {
+        console.error("[OneSignal] ⚠️ SDK did not load after 10 seconds!");
+        console.error("[OneSignal] Possible causes:");
+        console.error("  1. Ad-blocker is blocking cdn.onesignal.com");
+        console.error("  2. Network/firewall issue");
+        console.error("  3. Browser extension interference");
+        console.error("[OneSignal] Try: Disable ad-blockers, use incognito mode, or different browser");
+      } else {
+        console.log("[OneSignal] ✅ SDK loaded and available");
+      }
+    }, 10000);
   </script>
 </head>
 
