@@ -564,7 +564,7 @@ const Settings = () => {
                                                      const { requestOneSignalPermission, logoutOneSignal } = await import('../lib/onesignal');
                                                      if (isChecked) {
                                                          console.log("[Settings] Requesting OneSignal permission...");
-                                                         const oneSignalId = await requestOneSignalPermission(user.id);
+                                                         const oneSignalId = await requestOneSignalPermission();
                                                          console.log("[Settings] OneSignal ID received:", oneSignalId);
                                                          
                                                          if (oneSignalId) {
@@ -776,7 +776,6 @@ const Settings = () => {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({
-                                                user_id: user.id,
                                                 onesignal_id: onesignalId,
                                                 title: 'OneSignal Test 🔔',
                                                 body: 'If you see this, OneSignal is working perfectly even in the background!',
@@ -789,7 +788,7 @@ const Settings = () => {
                                         if (data.success) {
                                             alert(`✅ Success! Notification sent via OneSignal.\n\nRecipients: ${data.recipients ?? 'unknown'}\nTarget: ${data.targetMode || 'unknown'}`);
                                         } else {
-                                            alert("❌ Failed! " + (data.error || "Unknown error"));
+                                            alert("❌ Failed! " + (typeof data.error === 'string' ? data.error : JSON.stringify(data.error || data.attempts || data)));
                                         }
                                     } catch (error) {
                                         console.error("[TestPush] Error:", error);

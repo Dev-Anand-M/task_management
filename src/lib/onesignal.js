@@ -110,8 +110,7 @@ export const syncOneSignalUser = async (userId) => {
 
   try {
     const OneSignal = await waitForOneSignal();
-    console.log("[OneSignal] Logging in external user:", userId);
-    await OneSignal.login(String(userId));
+    console.log("[OneSignal] SDK ready for user:", userId);
     return OneSignal.User?.PushSubscription?.id || null;
   } catch (err) {
     console.warn("[OneSignal] Could not sync user:", err.message);
@@ -150,7 +149,7 @@ const waitForSubscriptionId = async (OneSignal, timeoutMs = 8000) => {
   });
 };
 
-export const requestOneSignalPermission = async (userId) => {
+export const requestOneSignalPermission = async () => {
   console.log("[OneSignal] Requesting permission...");
 
   try {
@@ -158,10 +157,6 @@ export const requestOneSignalPermission = async (userId) => {
 
     await removeConflictingPushWorkers();
     await ensureOneSignalWorker();
-
-    if (userId) {
-      await OneSignal.login(String(userId));
-    }
 
     console.log("[OneSignal] Current Permission:", OneSignal.Notifications.permission);
 
