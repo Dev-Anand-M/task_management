@@ -1,4 +1,30 @@
 // OneSignal Wrapper
+const SDK_TIMEOUT_MS = 10000;
+
+const waitForOneSignal = (timeoutMs = SDK_TIMEOUT_MS) => {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      reject(new Error('OneSignal is only available in the browser'));
+      return;
+    }
+
+    if (window.OneSignal?.Notifications) {
+      resolve(window.OneSignal);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      reject(new Error('OneSignal SDK did not load in time'));
+    }, timeoutMs);
+
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push((OneSignal) => {
+      clearTimeout(timeout);
+      resolve(OneSignal);
+    });
+  });
+};
+
 export const getOneSignal = () => {
   return window.OneSignal || window.OneSignalDeferred;
 };
@@ -18,6 +44,9 @@ export const debugOneSignalStatus = () => {
     console.log("OneSignal.Notifications exists:", !!window.OneSignal.Notifications);
     try {
       console.log("OneSignal.Notifications.permission:", window.OneSignal.Notifications?.permission);
+      console.log("OneSignal.User.onesignalId:", window.OneSignal.User?.onesignalId);
+      console.log("OneSignal.User.PushSubscription.id:", window.OneSignal.User?.PushSubscription?.id);
+      console.log("OneSignal.User.PushSubscription.optedIn:", window.OneSignal.User?.PushSubscription?.optedIn);
     } catch (e) {
       console.log("Error checking permission:", e.message);
     }
@@ -28,188 +57,122 @@ export const debugOneSignalStatus = () => {
   console.log("==============================");
 };
 
+export const syncOneSignalUser = async (userId) => {
+  if (!userId) return null;
 
-export const requestOneSignalPermission = async () => {
+  try {
+    const OneSignal = await waitForOneSignal();
+    console.log("[OneSignal] Logging in external user:", userId);
+    await OneSignal.login(String(userId));
+    return OneSignal.User?.PushSubscription?.id || null;
+  } catch (err) {
+    console.warn("[OneSignal] Could not sync user:", err.message);
+    return null;
+  }
+};
+
+const waitForSubscriptionId = async (OneSignal, timeoutMs = 8000) => {
+  const currentId = OneSignal.User?.PushSubscription?.id;
+  if (currentId) return currentId;
+
   return new Promise((resolve) => {
-    console.log("[OneSignal] Requesting permission...");
-    
-    // Check if SDK is loaded
-    if (!window.OneSignal && !window.OneSignalDeferred) {
-      console.error("[OneSignal] SDK not loaded! Check if it's blocked by ad-blockers.");
-      resolve(null);
-      return;
-    }
-    
-    // Safety timeout after 8 seconds
+    let settled = false;
     const timeout = setTimeout(() => {
-      console.error("[OneSignal] Request timed out after 8s. SDK might be stuck or blocked.");
-      console.error("[OneSignal] This usually means:");
-      console.error("  1. Ad-blocker is blocking OneSignal");
-      console.error("  2. Browser extension is interfering");
-      console.error("  3. Network issue loading OneSignal SDK");
-      console.error("[OneSignal] Try: Disable ad-blockers, test in incognito mode, or use different browser");
-      resolve(null);
-    }, 8000);
+      if (!settled) {
+        settled = true;
+        resolve(OneSignal.User?.PushSubscription?.id || null);
+      }
+    }, timeoutMs);
 
-    // Check if OneSignal is already initialized
-    if (window.OneSignal && typeof window.OneSignal.Notifications !== 'undefined') {
-      console.log("[OneSignal] SDK already initialized, using directly");
-      
-      (async () => {
+    const onChange = (event) => {
+      const id = event?.current?.id || OneSignal.User?.PushSubscription?.id;
+      if (!settled && id) {
+        settled = true;
+        clearTimeout(timeout);
         try {
-          const OneSignal = window.OneSignal;
-          console.log("[OneSignal] Current Permission:", OneSignal.Notifications.permission);
-          
-          // Check if already denied
-          if (OneSignal.Notifications.permission === false) {
-            console.error("[OneSignal] Notifications are blocked. User must enable them in browser settings.");
-            clearTimeout(timeout);
-            resolve(null);
-            return;
-          }
-          
-          // Request permission
-          console.log("[OneSignal] Calling requestPermission()...");
-          const permissionGranted = await OneSignal.Notifications.requestPermission();
-          console.log("[OneSignal] Permission granted:", permissionGranted);
-          
-          if (!permissionGranted) {
-            console.error("[OneSignal] User denied notification permission");
-            clearTimeout(timeout);
-            resolve(null);
-            return;
-          }
-          
-          // Wait a bit for subscription to complete
-          await new Promise(r => setTimeout(r, 1000));
-          
-          // Get subscription ID
-          const id = await OneSignal.User.PushSubscription.id;
-          console.log("[OneSignal] Subscription ID:", id);
-          
-          if (!id) {
-            console.error("[OneSignal] Failed to get subscription ID after permission granted");
-            clearTimeout(timeout);
-            resolve(null);
-            return;
-          }
-          
-          clearTimeout(timeout);
-          resolve(id);
-        } catch (err) {
-          console.error("[OneSignal] Error:", err);
-          clearTimeout(timeout);
-          resolve(null);
+          OneSignal.User.PushSubscription.removeEventListener('change', onChange);
+        } catch {
+          // Older SDK builds may not expose removeEventListener; timeout keeps this bounded.
         }
-      })();
-      return;
+        resolve(id);
+      }
+    };
+
+    OneSignal.User.PushSubscription.addEventListener('change', onChange);
+  });
+};
+
+export const requestOneSignalPermission = async (userId) => {
+  console.log("[OneSignal] Requesting permission...");
+
+  try {
+    const OneSignal = await waitForOneSignal();
+
+    if (userId) {
+      await OneSignal.login(String(userId));
     }
 
-    // Otherwise use deferred queue
-    console.log("[OneSignal] Waiting for SDK to initialize via deferred queue...");
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push(async (OneSignal) => {
-      try {
-        console.log("[OneSignal] SDK loaded via deferred queue");
-        console.log("[OneSignal] Current Permission:", OneSignal.Notifications.permission);
-        
-        // Check if already denied
-        if (OneSignal.Notifications.permission === false) {
-          console.error("[OneSignal] Notifications are blocked. User must enable them in browser settings.");
-          clearTimeout(timeout);
-          resolve(null);
-          return;
-        }
-        
-        // Request permission
-        console.log("[OneSignal] Calling requestPermission()...");
-        const permissionGranted = await OneSignal.Notifications.requestPermission();
-        console.log("[OneSignal] Permission granted:", permissionGranted);
-        
-        if (!permissionGranted) {
-          console.error("[OneSignal] User denied notification permission");
-          clearTimeout(timeout);
-          resolve(null);
-          return;
-        }
-        
-        // Wait a bit for subscription to complete
-        await new Promise(r => setTimeout(r, 1000));
-        
-        // Get subscription ID
-        const id = await OneSignal.User.PushSubscription.id;
-        console.log("[OneSignal] Subscription ID:", id);
-        
-        if (!id) {
-          console.error("[OneSignal] Failed to get subscription ID after permission granted");
-          clearTimeout(timeout);
-          resolve(null);
-          return;
-        }
-        
-        clearTimeout(timeout);
-        resolve(id);
-      } catch (err) {
-        console.error("[OneSignal] Permission/Subscription Error:", err);
-        console.error("[OneSignal] Error details:", err.message, err.stack);
-        clearTimeout(timeout);
-        resolve(null);
-      }
-    });
-  });
+    console.log("[OneSignal] Current Permission:", OneSignal.Notifications.permission);
+
+    if (OneSignal.Notifications.permission === false || Notification.permission === 'denied') {
+      console.error("[OneSignal] Notifications are blocked. User must enable them in browser settings.");
+      return null;
+    }
+
+    const permissionGranted = OneSignal.Notifications.permission === true
+      ? true
+      : await OneSignal.Notifications.requestPermission();
+
+    console.log("[OneSignal] Permission granted:", permissionGranted);
+
+    if (!permissionGranted) {
+      console.error("[OneSignal] User denied notification permission");
+      return null;
+    }
+
+    if (OneSignal.User?.PushSubscription?.optIn) {
+      await OneSignal.User.PushSubscription.optIn();
+    }
+
+    const id = await waitForSubscriptionId(OneSignal);
+    console.log("[OneSignal] Subscription ID:", id);
+
+    if (!id) {
+      console.error("[OneSignal] Failed to get subscription ID after permission granted");
+      return null;
+    }
+
+    return id;
+  } catch (err) {
+    console.error("[OneSignal] Permission/Subscription Error:", err);
+    console.error("[OneSignal] Error details:", err.message, err.stack);
+    return null;
+  }
 };
 
 export const getOneSignalId = async () => {
-  return new Promise((resolve) => {
+  try {
     console.log("[OneSignal] Getting subscription ID...");
-    
-    if (!window.OneSignal && !window.OneSignalDeferred) {
-      console.error("[OneSignal] SDK not loaded!");
-      resolve(null);
-      return;
-    }
-    
-    const timeout = setTimeout(() => {
-      console.warn("[OneSignal] getOneSignalId timed out");
-      resolve(null);
-    }, 10000);
-    
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push(async (OneSignal) => {
-      try {
-        const id = await OneSignal.User.PushSubscription.id;
-        console.log("[OneSignal] Retrieved ID:", id);
-        clearTimeout(timeout);
-        resolve(id);
-      } catch (err) {
-        console.error("[OneSignal] Error getting ID:", err);
-        clearTimeout(timeout);
-        resolve(null);
-      }
-    });
-  });
+    const OneSignal = await waitForOneSignal();
+    const id = await waitForSubscriptionId(OneSignal, 3000);
+    console.log("[OneSignal] Retrieved ID:", id);
+    return id;
+  } catch (err) {
+    console.error("[OneSignal] Error getting ID:", err);
+    return null;
+  }
 };
 
 export const logoutOneSignal = async () => {
-  return new Promise((resolve) => {
+  try {
     console.log("[OneSignal] Logging out (removing subscription)...");
-    
-    if (!window.OneSignal && !window.OneSignalDeferred) {
-      console.error("[OneSignal] SDK not loaded!");
-      resolve(false);
-      return;
-    }
-    
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push(async (OneSignal) => {
-      try {
-        await OneSignal.User.PushSubscription.optOut();
-        console.log("[OneSignal] Successfully logged out");
-        resolve(true);
-      } catch (err) {
-        console.error("[OneSignal] Error logging out:", err);
-        resolve(false);
-      }
-    });
-  });
+    const OneSignal = await waitForOneSignal();
+    await OneSignal.User.PushSubscription.optOut();
+    await OneSignal.logout();
+    console.log("[OneSignal] Successfully logged out");
+    return true;
+  } catch (err) {
+    console.error("[OneSignal] Error logging out:", err);
+    return false;
+  }
 };

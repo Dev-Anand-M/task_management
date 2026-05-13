@@ -16,7 +16,8 @@ import {
     RefreshCw,
     Brain,
     Key,
-    ExternalLink
+    ExternalLink,
+    Plus
 } from 'lucide-react';
 
 const colorSchemes = [
@@ -185,7 +186,7 @@ const Settings = () => {
         if (user) {
             setNotifications(prev => {
                 const dbNotifications = user.preferences?.notifications || {};
-                const hasToken = !!user.preferences?.fcm_token;
+                const hasToken = !!user.preferences?.onesignal_id || !!user.preferences?.fcm_token;
                 return {
                     ...prev,
                     ...dbNotifications,
@@ -527,17 +528,11 @@ const Settings = () => {
                             </div>
                         )}
                         {[
-                            { key: 'push', label: 'Push Notifications', desc: 'Native device/browser notifications', requiresFirebase: true },
+                            { key: 'push', label: 'Push Notifications', desc: 'Native device/browser notifications' },
                             { key: 'taskReminders', label: 'Task Reminders', desc: 'Get reminded about pending tasks' },
                             { key: 'quizResults', label: 'Quiz Results', desc: 'Notify when quiz is evaluated' }
                         ]
-                        .filter(item => {
-                            // Hide push notifications if Firebase is not configured
-                            if (item.requiresFirebase && !import.meta.env.VITE_FIREBASE_API_KEY) {
-                                return false;
-                            }
-                            return true;
-                        })
+                        .filter(() => true)
                         .map((item) => (
                             <div
                                 key={item.key}
@@ -569,7 +564,7 @@ const Settings = () => {
                                                      const { requestOneSignalPermission, logoutOneSignal } = await import('../lib/onesignal');
                                                      if (isChecked) {
                                                          console.log("[Settings] Requesting OneSignal permission...");
-                                                         const oneSignalId = await requestOneSignalPermission();
+                                                         const oneSignalId = await requestOneSignalPermission(user.id);
                                                          console.log("[Settings] OneSignal ID received:", oneSignalId);
                                                          
                                                          if (oneSignalId) {
@@ -781,6 +776,7 @@ const Settings = () => {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({
+                                                user_id: user.id,
                                                 onesignal_id: onesignalId,
                                                 title: 'OneSignal Test 🔔',
                                                 body: 'If you see this, OneSignal is working perfectly even in the background!',
@@ -814,7 +810,16 @@ const Settings = () => {
                                     try {
                                         const { data: profile } = await supabase.from('profiles').select('preferences').eq('id', user.id).single();
                                         await supabase.from('profiles').update({
-                                            preferences: { ...profile?.preferences, fcm_tokens: [], fcm_token: null }
+                                            preferences: {
+                                                ...profile?.preferences,
+                                                onesignal_id: null,
+                                                fcm_tokens: [],
+                                                fcm_token: null,
+                                                notifications: {
+                                                    ...(profile?.preferences?.notifications || {}),
+                                                    push: false
+                                                }
+                                            }
                                         }).eq('id', user.id);
                                         alert("Registration cleared! Please toggle the switch OFF and ON now.");
                                         window.location.reload();

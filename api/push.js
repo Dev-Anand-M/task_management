@@ -12,11 +12,46 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { onesignal_id, title, body, link, data } = req.body;
+        const {
+            onesignal_id,
+            onesignal_ids,
+            user_id,
+            user_ids,
+            tokens,
+            title,
+            body,
+            link,
+            data
+        } = req.body;
         
-        if (!onesignal_id) {
-            return res.status(400).json({ success: false, error: 'No OneSignal ID provided' });
+        const externalIds = [...new Set([
+            ...(Array.isArray(user_ids) ? user_ids : []),
+            user_id
+        ].filter(Boolean).map(String))];
+
+        const subscriptionIds = [...new Set([
+            ...(Array.isArray(onesignal_ids) ? onesignal_ids : []),
+            ...(Array.isArray(tokens) ? tokens : []),
+            onesignal_id
+        ].filter(Boolean).map(String))];
+
+        if (externalIds.length === 0 && subscriptionIds.length === 0) {
+            return res.status(400).json({ success: false, error: 'No OneSignal target provided' });
         }
+
+        const target = externalIds.length > 0
+            ? {
+                include_aliases: { external_id: externalIds },
+                target_channel: 'push'
+            }
+            : {
+                include_subscription_ids: subscriptionIds
+            };
+
+        const requestOrigin = req.headers.origin || `https://${req.headers.host}`;
+        const targetUrl = link
+            ? new URL(link, requestOrigin).toString()
+            : requestOrigin;
 
         const response = await fetch('https://onesignal.com/api/v1/notifications', {
             method: 'POST',
@@ -26,15 +61,16 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({
                 app_id: ONESIGNAL_APP_ID,
-                include_subscription_ids: [onesignal_id],
-                contents: { "en": body },
-                headings: { "en": title },
-                url: link || '/',
-                data: data || {},
+                ...target,
+                contents: { "en": body || 'You have a new notification.' },
+                headings: { "en": title || 'Zenith' },
+                url: targetUrl,
+                web_url: targetUrl,
+                data: { ...(data || {}), link: link || '/' },
                 // Background delivery optimizations
                 web_push_topic: "task_notification",
-                isAnyWeb: true,
                 chrome_web_icon: "https://zenith-sable-alpha.vercel.app/zenith.png",
+                chrome_web_badge: "https://zenith-sable-alpha.vercel.app/zenith.png",
                 android_accent_color: "6366F1",
                 priority: 10
             })

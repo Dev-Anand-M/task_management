@@ -234,11 +234,12 @@ const TaskManager = () => {
                     
                     // 2. Send push notification if OneSignal is enabled
                     const onesignalId = member?.preferences?.onesignal_id;
-                    if (onesignalId) {
+                    if (member?.id) {
                         return fetch(`${window.location.origin}/api/push`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
+                                user_id: member.id,
                                 onesignal_id: onesignalId,
                                 title: editingTask ? 'Task Updated 📝' : 'New Task Assigned 🚀',
                                 body: `${taskData.title} has been ${editingTask ? 'updated' : 'assigned to you'}.`,

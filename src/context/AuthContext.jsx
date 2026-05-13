@@ -55,6 +55,10 @@ export const AuthProvider = ({ children }) => {
 
                 setProfile({ ...userProfile, classroom_name });
 
+                import('../lib/onesignal')
+                    .then(({ syncOneSignalUser }) => syncOneSignalUser(userId))
+                    .catch(() => {});
+
                 // Load AI settings in background
                 import('../services/aiService')
                     .then(({ loadFromDatabase }) => loadFromDatabase())

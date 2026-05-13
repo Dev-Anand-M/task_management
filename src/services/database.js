@@ -190,22 +190,17 @@ export const createTask = async (task) => {
                 .select('id, preferences')
                 .in('id', task.assigned_to);
 
-            const tokens = studentProfiles?.reduce((acc, s) => {
-                const prefs = s.preferences || {};
-                const sTokens = [
-                    ...(prefs.fcm_tokens || []),
-                    prefs.fcm_token
-                ].filter(t => !!t);
-                return [...acc, ...sTokens];
-            }, []) || [];
+            const userIds = studentProfiles?.map(s => s.id).filter(Boolean) || [];
+            const oneSignalIds = studentProfiles?.map(s => s.preferences?.onesignal_id).filter(Boolean) || [];
 
-            if (tokens.length > 0) {
-                console.log(`[Push] Sending task assignment notification to ${tokens.length} devices`);
+            if (userIds.length > 0 || oneSignalIds.length > 0) {
+                console.log(`[Push] Sending task assignment notification to ${userIds.length} users`);
                 fetch(`${window.location.origin}/api/push`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        tokens: tokens,
+                        user_ids: userIds,
+                        onesignal_ids: oneSignalIds,
                         title: '📋 New Task Assigned',
                         body: `You have been assigned: "${task.title}"`,
                         link: `/tasks/${data.id}`
@@ -428,18 +423,18 @@ export const createQuiz = async (quiz) => {
                         .select('id, preferences')
                         .in('id', quiz.assigned_to);
                     
-                    const tokens = studentProfiles
-                        .map(s => s.preferences?.fcm_token)
-                        .filter(t => !!t);
-                        
-                    console.log(`[Push] Triggering specific push to ${tokens.length} students.`);
+                    const userIds = studentProfiles?.map(s => s.id).filter(Boolean) || [];
+                    const oneSignalIds = studentProfiles?.map(s => s.preferences?.onesignal_id).filter(Boolean) || [];
+                         
+                    console.log(`[Push] Triggering specific push to ${userIds.length} students.`);
 
-                    if (tokens.length > 0) {
+                    if (userIds.length > 0 || oneSignalIds.length > 0) {
                         fetch(`${window.location.origin}/api/push`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                tokens: tokens,
+                                user_ids: userIds,
+                                onesignal_ids: oneSignalIds,
                                 title: 'New Quiz Assigned',
                                 body: `You have been specifically assigned the quiz: "${quiz.title}"`,
                                 link: '/quizzes',
@@ -735,18 +730,16 @@ export const createNotification = async (notification) => {
             .single();
             
         const prefs = profile?.preferences || {};
-        const tokens = [
-            ...(prefs.fcm_tokens || []),
-            prefs.fcm_token
-        ].filter(t => !!t);
+        const oneSignalIds = [prefs.onesignal_id].filter(Boolean);
 
-        if (tokens.length > 0) {
-            console.log(`[Push] Triggering push to ${tokens.length} devices for user:`, notification.user_id);
+        if (notification.user_id || oneSignalIds.length > 0) {
+            console.log('[Push] Triggering push for user:', notification.user_id);
             fetch(`${window.location.origin}/api/push`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    tokens: tokens,
+                    user_id: notification.user_id,
+                    onesignal_ids: oneSignalIds,
                     title: notification.title,
                     body: notification.message,
                     link: notification.link,
@@ -756,7 +749,7 @@ export const createNotification = async (notification) => {
                 if (!res.success) console.warn('[Push] API returned error:', res.error);
             }).catch(e => console.warn('[Push] Fetch error:', e));
         } else {
-            console.log('[Push] No tokens found for user:', notification.user_id);
+            console.log('[Push] No push target found for user:', notification.user_id);
         }
     } catch (e) {
         console.warn('[Push] Logic error:', e);
@@ -789,23 +782,18 @@ export const notifyClassroom = async (classroomId, notification) => {
     if (error) console.error('Error sending classroom notifications:', error);
 
     // 4. Trigger Push
-    const tokens = students.reduce((acc, s) => {
-        const prefs = s.preferences || {};
-        const sTokens = [
-            ...(prefs.fcm_tokens || []),
-            prefs.fcm_token
-        ].filter(t => !!t);
-        return [...acc, ...sTokens];
-    }, []);
+    const userIds = students.map(s => s.id).filter(Boolean);
+    const oneSignalIds = students.map(s => s.preferences?.onesignal_id).filter(Boolean);
 
-    console.log(`[Push] Triggering classroom push to ${tokens.length} devices.`);
+    console.log(`[Push] Triggering classroom push to ${userIds.length} users.`);
 
-    if (tokens.length > 0) {
+    if (userIds.length > 0 || oneSignalIds.length > 0) {
         fetch(`${window.location.origin}/api/push`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                tokens: tokens,
+                user_ids: userIds,
+                onesignal_ids: oneSignalIds,
                 title: notification.title,
                 body: notification.message,
                 link: notification.link,
@@ -843,23 +831,18 @@ export const notifyAdmins = async (classroomId, notification) => {
     if (error) console.error('Error notifying admins:', error);
 
     // 4. Trigger Push
-    const tokens = admins.reduce((acc, a) => {
-        const prefs = a.preferences || {};
-        const aTokens = [
-            ...(prefs.fcm_tokens || []),
-            prefs.fcm_token
-        ].filter(t => !!t);
-        return [...acc, ...aTokens];
-    }, []);
+    const userIds = admins.map(a => a.id).filter(Boolean);
+    const oneSignalIds = admins.map(a => a.preferences?.onesignal_id).filter(Boolean);
 
-    console.log(`[Push] Triggering admin push to ${tokens.length} devices.`);
+    console.log(`[Push] Triggering admin push to ${userIds.length} users.`);
 
-    if (tokens.length > 0) {
+    if (userIds.length > 0 || oneSignalIds.length > 0) {
         fetch(`${window.location.origin}/api/push`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                tokens: tokens,
+                user_ids: userIds,
+                onesignal_ids: oneSignalIds,
                 title: notification.title,
                 body: notification.message,
                 link: notification.link,

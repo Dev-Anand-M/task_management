@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { formatDate } from '../../utils/constants';
 
 const KnowledgeBase = () => {
@@ -105,25 +106,21 @@ const KnowledgeBase = () => {
             try {
                 const { data: profiles } = await supabase
                     .from('profiles')
-                    .select('preferences')
+                    .select('id, preferences')
                     .eq('classroom_id', newSnippet.classroom_id)
                     .eq('role', 'member');
 
                 if (profiles && profiles.length > 0) {
-                    const allTokens = [];
-                    profiles.forEach(p => {
-                        const tokens = p.preferences?.fcm_tokens || [];
-                        tokens.forEach(t => {
-                            if (t && !allTokens.includes(t)) allTokens.push(t);
-                        });
-                    });
+                    const userIds = profiles.map(p => p.id).filter(Boolean);
+                    const oneSignalIds = profiles.map(p => p.preferences?.onesignal_id).filter(Boolean);
 
-                    if (allTokens.length > 0) {
+                    if (userIds.length > 0 || oneSignalIds.length > 0) {
                         await fetch(`${window.location.origin}/api/push`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                tokens: allTokens,
+                                user_ids: userIds,
+                                onesignal_ids: oneSignalIds,
                                 title: 'New Learning Resource! 📚',
                                 body: `"${newSnippet.title}" has been shared in ${newSnippet.subject || 'your classroom'}.`,
                                 data: {
