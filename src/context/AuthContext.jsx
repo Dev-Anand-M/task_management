@@ -56,7 +56,27 @@ export const AuthProvider = ({ children }) => {
                 setProfile({ ...userProfile, classroom_name });
 
                 import('../lib/onesignal')
-                    .then(({ syncOneSignalUser }) => syncOneSignalUser(userId))
+                    .then(async ({ syncOneSignalUser }) => {
+                        const pushEnabled = userProfile.preferences?.notifications?.push === true;
+                        const oneSignalId = await syncOneSignalUser(userId, pushEnabled);
+
+                        if (pushEnabled && oneSignalId && oneSignalId !== userProfile.preferences?.onesignal_id) {
+                            const updatedPreferences = {
+                                ...(userProfile.preferences || {}),
+                                onesignal_id: oneSignalId
+                            };
+
+                            await supabase
+                                .from('profiles')
+                                .update({ preferences: updatedPreferences })
+                                .eq('id', userId);
+
+                            setProfile(prev => prev?.id === userId
+                                ? { ...prev, preferences: updatedPreferences }
+                                : prev
+                            );
+                        }
+                    })
                     .catch(() => {});
 
                 // Load AI settings in background

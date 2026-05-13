@@ -30,13 +30,14 @@ const removeConflictingPushWorkers = async () => {
 
   try {
     const registrations = await navigator.serviceWorker.getRegistrations();
+    const rootScope = new URL('/', window.location.origin).href;
     const conflictingWorkers = registrations.filter((registration) => {
       const scriptUrl = registration.active?.scriptURL
         || registration.waiting?.scriptURL
         || registration.installing?.scriptURL
         || '';
 
-      return scriptUrl.includes('firebase-messaging-sw.js');
+      return registration.scope !== rootScope && scriptUrl.includes('firebase-messaging-sw.js');
     });
 
     if (conflictingWorkers.length === 0) return;
@@ -45,6 +46,39 @@ const removeConflictingPushWorkers = async () => {
     await Promise.all(conflictingWorkers.map((registration) => registration.unregister()));
   } catch (err) {
     console.warn('[OneSignal] Could not inspect service workers:', err.message);
+  }
+};
+
+const ensureOneSignalRootWorker = async () => {
+  if (!('serviceWorker' in navigator)) return null;
+
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    const rootScope = new URL('/', window.location.origin).href;
+    const rootRegistration = registrations.find((registration) => registration.scope === rootScope);
+    const rootScriptUrl = rootRegistration?.active?.scriptURL
+      || rootRegistration?.waiting?.scriptURL
+      || rootRegistration?.installing?.scriptURL
+      || '';
+
+    if (rootRegistration && !rootScriptUrl.includes('OneSignalSDKWorker.js')) {
+      console.warn('[OneSignal] Root service worker was not OneSignal. Updating root worker:', rootScriptUrl);
+    }
+
+    const registration = await navigator.serviceWorker.register('/OneSignalSDKWorker.js', {
+      scope: '/'
+    });
+
+    await registration.update().catch(() => {});
+
+    if (registration.waiting && !registration.active?.scriptURL.includes('OneSignalSDKWorker.js')) {
+      console.warn('[OneSignal] OneSignal worker is waiting. Close all app tabs once so it can activate for closed-app pushes.');
+    }
+
+    return registration;
+  } catch (err) {
+    console.warn('[OneSignal] Could not ensure OneSignal root worker:', err.message);
+    return null;
   }
 };
 
@@ -104,13 +138,21 @@ export const debugOneSignalStatus = () => {
   console.log("==============================");
 };
 
-export const syncOneSignalUser = async (userId) => {
+export const syncOneSignalUser = async (userId, shouldOptIn = false) => {
   if (!userId) return null;
 
   try {
     const OneSignal = await waitForOneSignal();
+    await removeConflictingPushWorkers();
+    await ensureOneSignalRootWorker();
     console.log("[OneSignal] Linking browser subscription to user:", userId);
     await loginOneSignalUser(OneSignal, userId);
+
+    if (shouldOptIn && Notification.permission === 'granted' && OneSignal.User?.PushSubscription?.optIn) {
+      await OneSignal.User.PushSubscription.optIn();
+      await waitForPushToken(OneSignal, 5000);
+    }
+
     return OneSignal.User?.PushSubscription?.id || null;
   } catch (err) {
     console.warn("[OneSignal] Could not sync user:", err.message);
@@ -149,6 +191,37 @@ const waitForSubscriptionId = async (OneSignal, timeoutMs = 8000) => {
   });
 };
 
+const waitForPushToken = async (OneSignal, timeoutMs = 8000) => {
+  const currentToken = OneSignal.User?.PushSubscription?.token;
+  if (currentToken) return currentToken;
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        resolve(OneSignal.User?.PushSubscription?.token || null);
+      }
+    }, timeoutMs);
+
+    const onChange = (event) => {
+      const token = event?.current?.token || OneSignal.User?.PushSubscription?.token;
+      if (!settled && token) {
+        settled = true;
+        clearTimeout(timeout);
+        try {
+          OneSignal.User.PushSubscription.removeEventListener('change', onChange);
+        } catch {
+          // Older SDK builds may not expose removeEventListener.
+        }
+        resolve(token);
+      }
+    };
+
+    OneSignal.User.PushSubscription.addEventListener('change', onChange);
+  });
+};
+
 export const requestOneSignalPermission = async (userId) => {
   console.log("[OneSignal] Requesting permission...");
 
@@ -156,6 +229,7 @@ export const requestOneSignalPermission = async (userId) => {
     const OneSignal = await waitForOneSignal();
 
     await removeConflictingPushWorkers();
+    await ensureOneSignalRootWorker();
 
     if (userId) {
       console.log("[OneSignal] Linking browser subscription to user before opt-in:", userId);
@@ -185,12 +259,12 @@ export const requestOneSignalPermission = async (userId) => {
     }
 
     const id = await waitForSubscriptionId(OneSignal);
-    const token = OneSignal.User?.PushSubscription?.token;
+    const token = await waitForPushToken(OneSignal);
     console.log("[OneSignal] Subscription ID:", id);
     console.log("[OneSignal] Push token exists:", !!token);
 
-    if (!id) {
-      console.error("[OneSignal] Failed to get subscription ID after permission granted");
+    if (!id || !token) {
+      console.error("[OneSignal] Failed to get a complete push subscription after permission granted");
       return null;
     }
 
