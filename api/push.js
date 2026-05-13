@@ -30,7 +30,13 @@ export default async function handler(req, res) {
                 contents: { "en": body },
                 headings: { "en": title },
                 url: link || '/',
-                data: data || {}
+                data: data || {},
+                // Background delivery optimizations
+                web_push_topic: "task_notification",
+                isAnyWeb: true,
+                chrome_web_icon: "https://zenith-sable-alpha.vercel.app/zenith.png",
+                android_accent_color: "6366F1",
+                priority: 10
             })
         });
 
