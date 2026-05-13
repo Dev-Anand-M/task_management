@@ -25,6 +25,44 @@ const waitForOneSignal = (timeoutMs = SDK_TIMEOUT_MS) => {
   });
 };
 
+const removeConflictingPushWorkers = async () => {
+  if (!('serviceWorker' in navigator)) return;
+
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    const conflictingWorkers = registrations.filter((registration) => {
+      const scriptUrl = registration.active?.scriptURL
+        || registration.waiting?.scriptURL
+        || registration.installing?.scriptURL
+        || '';
+
+      return scriptUrl.includes('firebase-messaging-sw.js');
+    });
+
+    if (conflictingWorkers.length === 0) return;
+
+    console.warn(`[OneSignal] Removing ${conflictingWorkers.length} conflicting Firebase push worker(s).`);
+    await Promise.all(conflictingWorkers.map((registration) => registration.unregister()));
+  } catch (err) {
+    console.warn('[OneSignal] Could not inspect service workers:', err.message);
+  }
+};
+
+const ensureOneSignalWorker = async () => {
+  if (!('serviceWorker' in navigator)) return null;
+
+  try {
+    const registration = await navigator.serviceWorker.register('/OneSignalSDKWorker.js', {
+      scope: '/'
+    });
+    await registration.update();
+    return registration;
+  } catch (err) {
+    console.warn('[OneSignal] Could not register OneSignal service worker:', err.message);
+    return null;
+  }
+};
+
 export const getOneSignal = () => {
   return window.OneSignal || window.OneSignalDeferred;
 };
@@ -54,6 +92,16 @@ export const debugOneSignalStatus = () => {
   
   console.log("Browser Notification.permission:", Notification.permission);
   console.log("HTTPS:", location.protocol === 'https:' || location.hostname === 'localhost');
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      console.log("Service workers:", registrations.map((registration) => ({
+        scope: registration.scope,
+        active: registration.active?.scriptURL,
+        waiting: registration.waiting?.scriptURL,
+        installing: registration.installing?.scriptURL
+      })));
+    });
+  }
   console.log("==============================");
 };
 
@@ -107,6 +155,9 @@ export const requestOneSignalPermission = async (userId) => {
 
   try {
     const OneSignal = await waitForOneSignal();
+
+    await removeConflictingPushWorkers();
+    await ensureOneSignalWorker();
 
     if (userId) {
       await OneSignal.login(String(userId));

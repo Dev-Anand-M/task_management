@@ -787,7 +787,7 @@ const Settings = () => {
                                         console.log("[TestPush] OneSignal API Response:", data);
                                         
                                         if (data.success) {
-                                            alert("✅ Success! Notification sent via OneSignal.");
+                                            alert(`✅ Success! Notification sent via OneSignal.\n\nRecipients: ${data.recipients ?? 'unknown'}\nTarget: ${data.targetMode || 'unknown'}`);
                                         } else {
                                             alert("❌ Failed! " + (data.error || "Unknown error"));
                                         }
