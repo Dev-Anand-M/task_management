@@ -64,7 +64,6 @@ export default async function handler(req, res) {
                 ...target,
                 contents: { "en": body || 'You have a new notification.' },
                 headings: { "en": title || 'Zenith' },
-                url: targetUrl,
                 web_url: targetUrl,
                 data: { ...(data || {}), link: link || '/' },
                 // Background delivery optimizations
