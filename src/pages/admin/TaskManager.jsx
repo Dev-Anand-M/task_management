@@ -220,8 +220,6 @@ const TaskManager = () => {
 
                 // Send notifications to each assigned member
                 const notifyPromises = targetMemberIds.map(async (memberId) => {
-                    const member = members.find(m => m.id === memberId);
-                    
                     // 1. Create in-app notification
                     await db.createNotification({
                         user_id: memberId,
@@ -231,22 +229,6 @@ const TaskManager = () => {
                         type: 'task',
                         link: `/tasks/${editingTask ? editingTask.id : (result?.[0]?.id || '')}`
                     });
-                    
-                    // 2. Send push notification if OneSignal is enabled
-                    const onesignalId = member?.preferences?.onesignal_id;
-                    if (member?.id) {
-                        return fetch(`${window.location.origin}/api/push`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                user_id: member.id,
-                                onesignal_id: onesignalId,
-                                title: editingTask ? 'Task Updated 📝' : 'New Task Assigned 🚀',
-                                body: `${taskData.title} has been ${editingTask ? 'updated' : 'assigned to you'}.`,
-                                link: `/tasks/${editingTask ? editingTask.id : (result?.[0]?.id || '')}`
-                            })
-                        });
-                    }
                 });
 
                 await Promise.allSettled(notifyPromises);

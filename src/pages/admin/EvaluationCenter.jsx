@@ -467,24 +467,6 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
                         type: 'success',
                         link: `/tasks/${submission.tasks?.id}`
                     });
-
-                    // OneSignal Push
-                    const onesignalId = submission.profiles.preferences?.onesignal_id;
-                    if (submission.profiles?.id) {
-                        try {
-                            await fetch(`${window.location.origin}/api/push`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    user_id: submission.profiles.id,
-                                    onesignal_id: onesignalId,
-                                    title: 'Task Approved! 🥳',
-                                    body: `Your submission for "${submission.tasks?.title}" was approved with a score of ${scoreNum}/100.`,
-                                    link: `/tasks/${submission.tasks?.id}`
-                                })
-                            });
-                        } catch (e) { console.error("Push Error:", e); }
-                    }
                 }
 
             onUpdate();
@@ -530,24 +512,6 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
                         type: 'error',
                         link: `/tasks/${submission.tasks?.id}`
                     });
-
-                    // OneSignal Push
-                    const onesignalId = submission.profiles.preferences?.onesignal_id;
-                    if (submission.profiles?.id) {
-                        try {
-                            await fetch(`${window.location.origin}/api/push`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    user_id: submission.profiles.id,
-                                    onesignal_id: onesignalId,
-                                    title: 'Revision Requested 📝',
-                                    body: `Reviewer requested a revision for "${submission.tasks?.title}".`,
-                                    link: `/tasks/${submission.tasks?.id}`
-                                })
-                            });
-                        } catch (e) { console.error("Push Error:", e); }
-                    }
                 }
 
             onUpdate();

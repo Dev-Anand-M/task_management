@@ -24,7 +24,8 @@ export default async function handler(req, res) {
             title,
             body,
             link,
-            data
+            data,
+            debug: debugRequested = false
         } = req.body;
         
         const externalIds = [...new Set([
@@ -57,6 +58,7 @@ export default async function handler(req, res) {
                 web_push_topic: "task_notification",
                 chrome_web_icon: "https://zenith-sable-alpha.vercel.app/zenith.png",
                 chrome_web_badge: "https://zenith-sable-alpha.vercel.app/zenith.png",
+                isAnyWeb: true,
                 android_accent_color: "6366F1",
                 priority: 10
         };
@@ -125,37 +127,57 @@ export default async function handler(req, res) {
             };
         };
 
-        // Prefer the concrete browser subscription ID when we have it. User alias
-        // targeting only works after that browser has run OneSignal.login(user.id).
+        const lookupMessage = async (messageId) => {
+            if (!messageId) return null;
+
+            // Give OneSignal a brief moment to populate delivery counters.
+            await new Promise(resolve => setTimeout(resolve, 1200));
+
+            const response = await fetch(
+                `https://api.onesignal.com/notifications/${messageId}?app_id=${ONESIGNAL_APP_ID}`,
+                { headers: { 'Authorization': ONESIGNAL_AUTH_HEADER } }
+            );
+            return readJsonResponse(response);
+        };
+
+        const hasTargetingProblem = (apiResult) => {
+            const responseBody = apiResult?.body || {};
+            return !apiResult?.ok
+                || !!responseBody.errors
+                || !!responseBody.warnings?.invalid_external_user_ids
+                || !!responseBody.errors?.invalid_aliases
+                || !!responseBody.errors?.invalid_player_ids;
+        };
+
+        // Prefer external_id because OneSignal links every browser/device for the
+        // same signed-in user after OneSignal.login(user.id). Subscription ID is
+        // kept as a fallback for users who have not revisited since this fix.
         let result = null;
         let targetMode = null;
         const attempts = [];
         let debug = null;
 
-        if (subscriptionIds.length > 0) {
-            targetMode = 'subscription';
-            result = await sendNotification({
-                include_subscription_ids: subscriptionIds
-            });
-            attempts.push({ targetMode, status: result.status, response: result.body });
-
-            if (result.ok && Number(result.body?.recipients || 0) === 0) {
-                debug = {
-                    subscriptionLookups: await Promise.all(subscriptionIds.slice(0, 3).map(lookupSubscription))
-                };
-            }
-        }
-
-        if (
-            externalIds.length > 0 &&
-            (!result || !result.ok || Number(result.body?.recipients || 0) === 0)
-        ) {
-            targetMode = result && !result.ok ? 'external_id_after_subscription_error' : 'external_id';
+        if (externalIds.length > 0) {
+            targetMode = 'external_id';
             result = await sendNotification({
                 include_aliases: { external_id: externalIds },
                 target_channel: 'push'
             });
             attempts.push({ targetMode, status: result.status, response: result.body });
+        }
+
+        if (subscriptionIds.length > 0 && (!result || hasTargetingProblem(result))) {
+            targetMode = result ? 'subscription_after_external_id_error' : 'subscription';
+            result = await sendNotification({
+                include_subscription_ids: subscriptionIds
+            });
+            attempts.push({ targetMode, status: result.status, response: result.body });
+        }
+
+        if (debugRequested) {
+            debug = {
+                subscriptionLookups: await Promise.all(subscriptionIds.slice(0, 3).map(lookupSubscription))
+            };
         }
 
         if (!result?.ok || result.body?.errors) {
@@ -167,13 +189,15 @@ export default async function handler(req, res) {
             });
         }
 
+        const messageStatus = debugRequested ? await lookupMessage(result.body.id) : null;
+
         return res.status(200).json({
             success: true,
             summary: 'Notification sent via OneSignal',
             id: result.body.id,
-            recipients: result.body.recipients || 0,
             targetMode,
             attempts,
+            messageStatus,
             debug
         });
 

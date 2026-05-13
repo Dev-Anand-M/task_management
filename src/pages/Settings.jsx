@@ -564,7 +564,7 @@ const Settings = () => {
                                                      const { requestOneSignalPermission, logoutOneSignal } = await import('../lib/onesignal');
                                                      if (isChecked) {
                                                          console.log("[Settings] Requesting OneSignal permission...");
-                                                         const oneSignalId = await requestOneSignalPermission();
+                                                         const oneSignalId = await requestOneSignalPermission(user.id);
                                                          console.log("[Settings] OneSignal ID received:", oneSignalId);
                                                          
                                                          if (oneSignalId) {
@@ -777,25 +777,19 @@ const Settings = () => {
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({
                                                 onesignal_id: onesignalId,
+                                                user_id: user.id,
                                                 title: 'OneSignal Test 🔔',
                                                 body: 'If you see this, OneSignal is working perfectly even in the background!',
-                                                link: '/settings'
+                                                link: '/settings',
+                                                debug: true
                                             })
                                         });
                                         const data = await res.json();
                                         console.log("[TestPush] OneSignal API Response:", data);
                                         
                                         if (data.success) {
-                                            const details = JSON.stringify({
-                                                attempts: data.attempts,
-                                                debug: data.debug
-                                            }, null, 2);
-
-                                            if (Number(data.recipients || 0) === 0) {
-                                                alert(`⚠️ OneSignal accepted the message, but delivered to 0 recipients.\n\nTarget: ${data.targetMode || 'unknown'}\n\nDetails:\n${details}`);
-                                            } else {
-                                                alert(`✅ Success! Notification sent via OneSignal.\n\nRecipients: ${data.recipients ?? 'unknown'}\nTarget: ${data.targetMode || 'unknown'}`);
-                                            }
+                                            console.log("[TestPush] Detailed OneSignal debug:", data);
+                                            alert(`✅ OneSignal accepted the message.\n\nTarget: ${data.targetMode || 'unknown'}\nMessage ID: ${data.id || 'unknown'}\n\nDelivery stats are logged in the console as [TestPush] Detailed OneSignal debug.`);
                                         } else {
                                             alert("❌ Failed! " + (typeof data.error === 'string' ? data.error : JSON.stringify(data.error || data.attempts || data)));
                                         }

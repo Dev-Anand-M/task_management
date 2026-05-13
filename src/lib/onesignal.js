@@ -48,27 +48,24 @@ const removeConflictingPushWorkers = async () => {
   }
 };
 
-const ensureOneSignalWorker = async () => {
-  if (!('serviceWorker' in navigator)) return null;
-
-  try {
-    const registration = await navigator.serviceWorker.register('/OneSignalSDKWorker.js', {
-      scope: '/'
-    });
-    await registration.update();
-    return registration;
-  } catch (err) {
-    console.warn('[OneSignal] Could not register OneSignal service worker:', err.message);
-    return null;
-  }
-};
-
 export const getOneSignal = () => {
   return window.OneSignal || window.OneSignalDeferred;
 };
 
 export const isOneSignalLoaded = () => {
   return !!window.OneSignal;
+};
+
+const loginOneSignalUser = async (OneSignal, userId) => {
+  if (!userId) return;
+
+  try {
+    await OneSignal.login(String(userId));
+  } catch (err) {
+    // OneSignal may log a 409 when the external_id already exists while it
+    // switches this browser to that existing user. Keep the local flow moving.
+    console.warn("[OneSignal] Login returned an error, continuing with subscription sync:", err.message);
+  }
 };
 
 // Debug helper - call this to check OneSignal status
@@ -83,7 +80,9 @@ export const debugOneSignalStatus = () => {
     try {
       console.log("OneSignal.Notifications.permission:", window.OneSignal.Notifications?.permission);
       console.log("OneSignal.User.onesignalId:", window.OneSignal.User?.onesignalId);
+      console.log("OneSignal.User.externalId:", window.OneSignal.User?.externalId);
       console.log("OneSignal.User.PushSubscription.id:", window.OneSignal.User?.PushSubscription?.id);
+      console.log("OneSignal.User.PushSubscription.token exists:", !!window.OneSignal.User?.PushSubscription?.token);
       console.log("OneSignal.User.PushSubscription.optedIn:", window.OneSignal.User?.PushSubscription?.optedIn);
     } catch (e) {
       console.log("Error checking permission:", e.message);
@@ -110,7 +109,8 @@ export const syncOneSignalUser = async (userId) => {
 
   try {
     const OneSignal = await waitForOneSignal();
-    console.log("[OneSignal] SDK ready for user:", userId);
+    console.log("[OneSignal] Linking browser subscription to user:", userId);
+    await loginOneSignalUser(OneSignal, userId);
     return OneSignal.User?.PushSubscription?.id || null;
   } catch (err) {
     console.warn("[OneSignal] Could not sync user:", err.message);
@@ -149,14 +149,18 @@ const waitForSubscriptionId = async (OneSignal, timeoutMs = 8000) => {
   });
 };
 
-export const requestOneSignalPermission = async () => {
+export const requestOneSignalPermission = async (userId) => {
   console.log("[OneSignal] Requesting permission...");
 
   try {
     const OneSignal = await waitForOneSignal();
 
     await removeConflictingPushWorkers();
-    await ensureOneSignalWorker();
+
+    if (userId) {
+      console.log("[OneSignal] Linking browser subscription to user before opt-in:", userId);
+      await loginOneSignalUser(OneSignal, userId);
+    }
 
     console.log("[OneSignal] Current Permission:", OneSignal.Notifications.permission);
 
@@ -181,7 +185,9 @@ export const requestOneSignalPermission = async () => {
     }
 
     const id = await waitForSubscriptionId(OneSignal);
+    const token = OneSignal.User?.PushSubscription?.token;
     console.log("[OneSignal] Subscription ID:", id);
+    console.log("[OneSignal] Push token exists:", !!token);
 
     if (!id) {
       console.error("[OneSignal] Failed to get subscription ID after permission granted");
