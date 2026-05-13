@@ -786,7 +786,16 @@ const Settings = () => {
                                         console.log("[TestPush] OneSignal API Response:", data);
                                         
                                         if (data.success) {
-                                            alert(`✅ Success! Notification sent via OneSignal.\n\nRecipients: ${data.recipients ?? 'unknown'}\nTarget: ${data.targetMode || 'unknown'}`);
+                                            const details = JSON.stringify({
+                                                attempts: data.attempts,
+                                                debug: data.debug
+                                            }, null, 2);
+
+                                            if (Number(data.recipients || 0) === 0) {
+                                                alert(`⚠️ OneSignal accepted the message, but delivered to 0 recipients.\n\nTarget: ${data.targetMode || 'unknown'}\n\nDetails:\n${details}`);
+                                            } else {
+                                                alert(`✅ Success! Notification sent via OneSignal.\n\nRecipients: ${data.recipients ?? 'unknown'}\nTarget: ${data.targetMode || 'unknown'}`);
+                                            }
                                         } else {
                                             alert("❌ Failed! " + (typeof data.error === 'string' ? data.error : JSON.stringify(data.error || data.attempts || data)));
                                         }

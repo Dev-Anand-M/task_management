@@ -61,19 +61,7 @@ export default async function handler(req, res) {
                 priority: 10
         };
 
-        const sendNotification = async (target) => {
-            const response = await fetch('https://api.onesignal.com/notifications', {
-                method: 'POST',
-                headers: {
-                    'Authorization': ONESIGNAL_AUTH_HEADER,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    ...basePayload,
-                    ...target
-                })
-            });
-
+        const readJsonResponse = async (response) => {
             const responseText = await response.text();
             let body;
 
@@ -90,11 +78,59 @@ export default async function handler(req, res) {
             };
         };
 
+        const sendNotification = async (target) => {
+            const response = await fetch('https://api.onesignal.com/notifications?c=push', {
+                method: 'POST',
+                headers: {
+                    'Authorization': ONESIGNAL_AUTH_HEADER,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    ...basePayload,
+                    ...target
+                })
+            });
+
+            return readJsonResponse(response);
+        };
+
+        const lookupSubscription = async (subscriptionId) => {
+            const identityResponse = await fetch(
+                `https://api.onesignal.com/apps/${ONESIGNAL_APP_ID}/subscriptions/${subscriptionId}/user/identity`,
+                { headers: { 'Authorization': ONESIGNAL_AUTH_HEADER } }
+            );
+            const identityResult = await readJsonResponse(identityResponse);
+            const oneSignalUserId = identityResult.body?.identity?.onesignal_id;
+
+            if (!identityResult.ok || !oneSignalUserId) {
+                return {
+                    subscriptionId,
+                    identity: identityResult
+                };
+            }
+
+            const userResponse = await fetch(
+                `https://api.onesignal.com/apps/${ONESIGNAL_APP_ID}/users/by/onesignal_id/${oneSignalUserId}`,
+                { headers: { 'Authorization': ONESIGNAL_AUTH_HEADER } }
+            );
+            const userResult = await readJsonResponse(userResponse);
+            const matchingSubscription = userResult.body?.subscriptions?.find(
+                (subscription) => subscription.id === subscriptionId
+            );
+
+            return {
+                subscriptionId,
+                identity: identityResult,
+                subscription: matchingSubscription || null
+            };
+        };
+
         // Prefer the concrete browser subscription ID when we have it. User alias
         // targeting only works after that browser has run OneSignal.login(user.id).
         let result = null;
         let targetMode = null;
         const attempts = [];
+        let debug = null;
 
         if (subscriptionIds.length > 0) {
             targetMode = 'subscription';
@@ -102,6 +138,12 @@ export default async function handler(req, res) {
                 include_subscription_ids: subscriptionIds
             });
             attempts.push({ targetMode, status: result.status, response: result.body });
+
+            if (result.ok && Number(result.body?.recipients || 0) === 0) {
+                debug = {
+                    subscriptionLookups: await Promise.all(subscriptionIds.slice(0, 3).map(lookupSubscription))
+                };
+            }
         }
 
         if (
@@ -120,7 +162,8 @@ export default async function handler(req, res) {
             return res.status(result?.status || 400).json({
                 success: false,
                 error: result?.body?.errors || result?.body?.error || result?.body || 'OneSignal request failed',
-                attempts
+                attempts,
+                debug
             });
         }
 
@@ -130,7 +173,8 @@ export default async function handler(req, res) {
             id: result.body.id,
             recipients: result.body.recipients || 0,
             targetMode,
-            attempts
+            attempts,
+            debug
         });
 
     } catch (error) {
