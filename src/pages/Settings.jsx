@@ -719,6 +719,38 @@ const Settings = () => {
                         </div>
                     )}
 
+                    {/* Troubleshooting section */}
+                    <div style={{ 
+                        marginTop: 'var(--space-lg)', 
+                        padding: 'var(--space-md)',
+                        background: 'rgba(239, 68, 68, 0.05)',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)'
+                    }}>
+                        <h4 style={{ fontSize: 'var(--text-sm)', marginBottom: '4px', color: '#ef4444' }}>Troubleshooting</h4>
+                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)' }}>
+                            If notifications only appear when the app is open, try resetting the system.
+                        </p>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                            onClick={async () => {
+                                if (window.confirm("This will clear all background services and refresh the app. Continue?")) {
+                                    if ('serviceWorker' in navigator) {
+                                        const regs = await navigator.serviceWorker.getRegistrations();
+                                        for (let reg of regs) {
+                                            await reg.unregister();
+                                        }
+                                    }
+                                    window.location.reload();
+                                }
+                            }}
+                        >
+                            Reset Notification System
+                        </Button>
+                    </div>
+
                     {saving && <p style={{
                         marginTop: 'var(--space-md)',
                         fontSize: 'var(--text-xs)',

@@ -64,8 +64,10 @@
         await OneSignal.init({
           appId: "595cc111-feab-4d1c-8d80-fdbea3b564ec",
           allowLocalhostAsSecureOrigin: true,
+          serviceWorkerParam: { scope: "/" },
+          serviceWorkerPath: "OneSignalSDKWorker.js",
         });
-        console.log("[OneSignal] ✅ SDK initialized successfully");
+        console.log("[OneSignal] ✅ SDK initialized with service worker path");
         console.log("[OneSignal] Permission status:", OneSignal.Notifications.permission);
         console.log("[OneSignal] Browser permission:", Notification.permission);
         
