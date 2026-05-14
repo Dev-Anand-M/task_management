@@ -146,30 +146,12 @@ const Settings = () => {
                 setAiKeyStatus(isAPIKeyConfigured(selectedProvider) ? 'configured' : 'unconfigured');
                 setValidationMessage({ type: '', text: '' });
 
+                // DON'T auto-validate on load - only show cached status
+                // User can manually validate by clicking "Save & Test Key"
                 if (key) {
-                    // Start validating
-                    setAiKeyStatus('testing');
-                    const validation = await validateAPIKey(selectedProvider, key);
-
-                    if (validation.valid) {
-                        setAiKeyStatus('configured');
-                        setAvailableModels(validation.models || []);
-
-                        // If no valid model is selected for this provider, try to select one
-                        const savedModel = getSelectedModel();
-                        if (!savedModel || (validation.models && !validation.models.find(m => m.id === savedModel))) {
-                            if (validation.models && validation.models.length > 0) {
-                                const { setSelectedModel: saveModelToService } = await import('../services/aiService');
-                                await saveModelToService(validation.models[0].id);
-                                setSelectedModel(validation.models[0].id);
-                            }
-                        }
-
-                    } else {
-                        setAiKeyStatus('invalid');
-                        setValidationMessage({ type: 'error', text: validation.error });
-                        setAvailableModels([]);
-                    }
+                    // Just load available models for this provider without validating
+                    const { AVAILABLE_MODELS } = await import('../services/aiService');
+                    setAvailableModels(AVAILABLE_MODELS.filter(m => m.provider === selectedProvider));
                 } else {
                     setAvailableModels([]);
                 }
@@ -177,7 +159,6 @@ const Settings = () => {
                 // Load saved model and usage
                 const savedModel = getSelectedModel();
                 if (savedModel) setSelectedModel(savedModel);
-
                 const stats = getUsageStats();
                 setUsageStats(stats);
                 
@@ -1090,17 +1071,14 @@ const Settings = () => {
                                 <button
                                     key={pid}
                                     onClick={async () => {
-                                        const { getAPIKey, isAPIKeyConfigured, validateAPIKey } = await import('../services/aiService');
+                                        const { getAPIKey, isAPIKeyConfigured, AVAILABLE_MODELS } = await import('../services/aiService');
                                         setSelectedProvider(pid);
                                         const key = getAPIKey(pid);
                                         setAiApiKey(key);
                                         setAiKeyStatus(isAPIKeyConfigured(pid) ? 'configured' : 'unconfigured');
-                                        setAvailableModels([]);
                                         setValidationMessage({ type: '', text: '' });
-                                        if (key) {
-                                            const res = await validateAPIKey(pid, key);
-                                            if (res.valid) setAvailableModels(res.models || []);
-                                        }
+                                        // Just load models for this provider without validating
+                                        setAvailableModels(AVAILABLE_MODELS.filter(m => m.provider === pid));
                                     }}
                                     style={{
                                         padding: 'var(--space-sm) var(--space-md)',
@@ -1410,52 +1388,6 @@ const Settings = () => {
                                 onClick={() => setShowApiKey(!showApiKey)}
                             >
                                 {showApiKey ? 'Hide' : 'Show'}
-                            </Button>
-                        </div>
-                        <div className="flex-mobile-col" style={{ marginTop: 'var(--space-sm)', display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-md)' }}>
-                            {aiKeyStatus === 'configured' && (
-                                <Button
-                                    variant="ghost"
-                                    style={{ color: 'var(--error-500)' }}
-                                    onClick={async () => {
-                                        if (confirm('Are you sure you want to remove this API key?')) {
-                                            const { removeAPIKey } = await import('../services/aiService');
-                                            await removeAPIKey(selectedProvider);
-                                            setAiApiKey('');
-                                            setAiKeyStatus('unconfigured');
-                                            setAvailableModels([]);
-                                        }
-                                    }}
-                                >
-                                    Remove Key
-                                </Button>
-                            )}
-                            <Button onClick={async () => {
-                                if (!aiApiKey.trim()) return;
-                                setValidationMessage({ type: '', text: '' });
-                                setAiKeyStatus('testing');
-
-                                const { validateAPIKey, saveAPIKey } = await import('../services/aiService');
-                                const result = await validateAPIKey(selectedProvider, aiApiKey);
-
-                                if (result.valid) {
-                                    await saveAPIKey(selectedProvider, aiApiKey);
-                                    setAiKeyStatus('configured');
-                                    setAvailableModels(result.models || []);
-                                    setValidationMessage({ type: 'success', text: 'API Key saved successfully!' });
-
-                                    // Auto-select first model if needed
-                                    if (result.models && result.models.length > 0) {
-                                        const { setSelectedModel } = await import('../services/aiService');
-                                        setSelectedModel(result.models[0].id);
-                                        handleModelChange(result.models[0].id); // Update local state
-                                    }
-                                } else {
-                                    setAiKeyStatus('invalid');
-                                    setValidationMessage({ type: 'error', text: result.error });
-                                }
-                            }}>
-                                Save & Test Key
                             </Button>
                         </div>
                         <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-xs)' }}>
