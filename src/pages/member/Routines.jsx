@@ -12,17 +12,13 @@ import { useNavigate } from 'react-router-dom';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const RoutineItem = ({ routine, log, onUpdate, onDelete, isCurrentAlarm }) => {
+const RoutineItem = ({ routine, log, onUpdate, onDelete }) => {
     const [spentTime, setSpentTime] = useState(log?.time_spent_minutes || 0);
     const [notes, setNotes] = useState(log?.learning_notes || '');
-    const [showDetails, setShowDetails] = useState(isCurrentAlarm || false);
+    const [showDetails, setShowDetails] = useState(false);
     const isDone = log?.status === 'done';
     const isIgnored = log?.status === 'ignored';
     const isPostponed = log?.status === 'postponed';
-
-    useEffect(() => {
-        if (isCurrentAlarm) setShowDetails(true);
-    }, [isCurrentAlarm]);
 
     const handleSave = async () => {
         await onUpdate(routine.id, {
@@ -55,13 +51,10 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, isCurrentAlarm }) => {
             borderLeft: `4px solid ${
                 isDone ? 'var(--success-500)' : 
                 isIgnored ? 'var(--error-500)' : 
-                isPostponed ? 'var(--warning-500)' : 
-                isCurrentAlarm ? 'var(--primary-500)' : 'var(--border)'
+                isPostponed ? 'var(--warning-500)' : 'var(--border)'
             }`,
             opacity: (isDone || isIgnored) ? 0.8 : 1,
-            transition: 'all 0.3s',
-            boxShadow: isCurrentAlarm ? '0 0 20px rgba(99, 102, 241, 0.3)' : 'none',
-            transform: isCurrentAlarm ? 'scale(1.02)' : 'none'
+            transition: 'all 0.3s'
         }}>
             <div className="flex items-center gap-md">
                 <button 
@@ -78,7 +71,6 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, isCurrentAlarm }) => {
                         <p style={{ margin: 0, fontWeight: 700, textDecoration: (isDone || isIgnored) ? 'line-through' : 'none' }}>
                             {routine.title}
                         </p>
-                        {isCurrentAlarm && <Badge variant="primary" className="animate-pulse">Active Alarm!</Badge>}
                         {isIgnored && <Badge variant="error">Missed</Badge>}
                         {log?.postponed_count > 0 && <Badge variant="warning" size="xs">Postponed {log.postponed_count}x</Badge>}
                     </div>
@@ -365,7 +357,6 @@ const Routines = () => {
                             log={logs[routine.id]}
                             onUpdate={handleUpdateLog}
                             onDelete={() => handleDelete(routine.id)}
-                            isCurrentAlarm={currentAlarmId === routine.id}
                         />
                     ))}
                 </div>
