@@ -183,7 +183,9 @@ const Routines = () => {
         if (user?.id) {
             fetchData();
             checkTodayTimetable();
-            
+        }
+    }, [user?.id, selectedDate]);
+
     const checkTodayTimetable = async () => {
         try {
             const today = new Date();
