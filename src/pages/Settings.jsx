@@ -561,68 +561,48 @@ const Settings = () => {
                                             
                                             if (item.key === 'push') {
                                                  try {
-                                                     const { requestOneSignalPermission, logoutOneSignal } = await import('../lib/onesignal');
+                                                     const { subscribeToPush, unsubscribeFromPush } = await import('../lib/push');
                                                      if (isChecked) {
-                                                         console.log("[Settings] Requesting OneSignal permission...");
-                                                         const oneSignalId = await requestOneSignalPermission(user.id);
-                                                         console.log("[Settings] OneSignal ID received:", oneSignalId);
-                                                         
-                                                         if (oneSignalId) {
-                                                             // Update state first
-                                                             setNotifications(prev => ({ ...prev, push: true }));
-                                                             
-                                                             // Update Supabase with the OneSignal ID
-                                                             const { error } = await supabase.from('profiles').update({
+                                                         const subscription = await subscribeToPush();
+                                                         if (subscription) {
+                                                             const subJson = subscription.toJSON();
+                                                             const deviceId = btoa(navigator.userAgent).substring(0, 8);
+                                                             const newSubscription = { ...subJson, deviceId, updatedAt: new Date().toISOString() };
+
+                                                             const currentSubs = user.preferences?.push_subscriptions || [];
+                                                             const otherSubs = currentSubs.filter(s => s.deviceId !== deviceId && s.endpoint !== subJson.endpoint);
+                                                             const updatedSubs = [...otherSubs, newSubscription];
+
+                                                             await supabase.from('profiles').update({
                                                                  preferences: { 
                                                                      ...user.preferences, 
-                                                                     onesignal_id: oneSignalId, 
-                                                                     notifications: { 
-                                                                         ...notifications, 
-                                                                         push: true 
-                                                                     } 
+                                                                     push_subscriptions: updatedSubs,
+                                                                     notifications: { ...notifications, push: true } 
                                                                  }
                                                              }).eq('id', user.id);
-                                                             
-                                                             if (error) {
-                                                                 console.error("[Settings] Failed to save to Supabase:", error);
-                                                                 alert("Failed to save notification settings. Please try again.");
-                                                                 setNotifications(prev => ({ ...prev, push: false }));
-                                                                 return;
-                                                             }
-                                                             
-                                                             console.log("[Settings] Successfully enabled push notifications");
-                                                             forceRefresh();
+                                                             setNotifications(prev => ({ ...prev, push: true }));
                                                          } else {
-                                                             console.error("[Settings] Failed to get OneSignal ID");
-                                                             alert("Could not enable notifications. Please check:\n\n1. You clicked 'Allow' on the permission prompt\n2. Ad-blockers are disabled\n3. Browser supports notifications\n\nTip: Installing the app (below) makes this much more reliable!");
                                                              setNotifications(prev => ({ ...prev, push: false }));
                                                          }
                                                      } else {
-                                                         console.log("[Settings] Disabling push notifications...");
-                                                         await logoutOneSignal();
-                                                         setNotifications(prev => ({ ...prev, push: false }));
-                                                         
-                                                         const { error } = await supabase.from('profiles').update({
-                                                             preferences: { 
-                                                                 ...user.preferences, 
-                                                                 onesignal_id: null,
-                                                                 notifications: { 
-                                                                     ...notifications, 
-                                                                     push: false 
-                                                                 } 
-                                                             }
-                                                         }).eq('id', user.id);
-                                                         
-                                                         if (error) {
-                                                             console.error("[Settings] Failed to update Supabase:", error);
+                                                         const subscription = await unsubscribeFromPush();
+                                                         if (subscription) {
+                                                             const currentSubs = user.preferences?.push_subscriptions || [];
+                                                             const updatedSubs = currentSubs.filter(s => s.endpoint !== subscription.endpoint);
+                                                             await supabase.from('profiles').update({
+                                                                 preferences: { 
+                                                                     ...user.preferences, 
+                                                                     push_subscriptions: updatedSubs,
+                                                                     notifications: { ...notifications, push: false } 
+                                                                 }
+                                                             }).eq('id', user.id);
                                                          }
-                                                         
-                                                         console.log("[Settings] Successfully disabled push notifications");
-                                                         forceRefresh();
+                                                         setNotifications(prev => ({ ...prev, push: false }));
                                                      }
+                                                     forceRefresh();
                                                  } catch (err) {
-                                                     console.error("[Settings] OneSignal toggle error:", err);
-                                                     alert(`Error: ${err.message}\n\nCheck browser console for details.`);
+                                                     console.error("[Settings] Push toggle error:", err);
+                                                     alert(`Error: ${err.message}`);
                                                      setNotifications(prev => ({ ...prev, push: false }));
                                                  }
                                             } else {
@@ -657,24 +637,6 @@ const Settings = () => {
                                 </label>
                             </div>
                         ))}
-                    </div>
-
-                    {/* Debug OneSignal Button */}
-                    <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border)' }}>
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={async () => {
-                                const { debugOneSignalStatus } = await import('../lib/onesignal');
-                                debugOneSignalStatus();
-                                alert("Check browser console (F12) for OneSignal debug info");
-                            }}
-                        >
-                            🔍 Debug OneSignal Status
-                        </Button>
-                        <p style={{ marginTop: '4px', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                            Click this if push notifications aren't working, then check browser console (F12)
-                        </p>
                     </div>
 
                     {/* PWA Install Prompt */}
@@ -738,6 +700,8 @@ const Settings = () => {
                                             await reg.unregister();
                                         }
                                     }
+                                    localStorage.clear();
+                                    sessionStorage.clear();
                                     window.location.reload();
                                 }
                             }}
@@ -762,86 +726,20 @@ const Settings = () => {
                                 size="sm" 
                                 onClick={async () => {
                                     try {
-                                        const { data: profile } = await supabase.from('profiles').select('preferences').eq('id', user.id).single();
-                                        const onesignalId = profile?.preferences?.onesignal_id;
-
-                                        if (!onesignalId) {
-                                            alert("No OneSignal ID found. Try turning Push ON/OFF to register this device.");
-                                            return;
-                                        }
-
-                                        console.log("[TestPush] Sending to OneSignal ID:", onesignalId);
-
                                         const res = await fetch(`${window.location.origin}/api/push`, {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({
-                                                onesignal_id: onesignalId,
                                                 user_id: user.id,
-                                                title: 'OneSignal Test 🔔',
-                                                body: 'If you see this, OneSignal is working perfectly even in the background!',
-                                                link: '/settings',
-                                                debug: true
+                                                title: 'Native Push Test 🔔',
+                                                body: 'If you see this, background notifications are working perfectly!',
+                                                link: '/settings'
                                             })
                                         });
                                         const data = await res.json();
-                                        console.log("[TestPush] OneSignal API Response:", data);
-                                        
                                         if (data.success) {
-                                            console.log("[TestPush] Detailed OneSignal debug:", data);
-                                            alert(`✅ OneSignal accepted the message.\n\nTarget: ${data.targetMode || 'unknown'}\nMessage ID: ${data.id || 'unknown'}\n\nDelivery stats are logged in the console as [TestPush] Detailed OneSignal debug.`);
+                                            alert(`✅ Notification sent to ${data.sentCount || 0} device(s).`);
                                         } else {
-                                            alert("❌ Failed! " + (typeof data.error === 'string' ? data.error : JSON.stringify(data.error || data.attempts || data)));
-                                        }
-                                    } catch (error) {
-                                        console.error("[TestPush] Error:", error);
-                                        alert("Error sending test: " + error.message);
-                                    }
-                                }}
-                            >
-                                Send Test Notification
-                            </Button>
-                            
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-red-400 hover:text-red-300"
-                                style={{ marginTop: 'var(--space-sm)' }}
-                                onClick={async () => {
-                                    if (!confirm("This will clear all registered devices for notifications. You will need to toggle notifications OFF and ON to register this device again. Continue?")) return;
-                                    try {
-                                        const { data: profile } = await supabase.from('profiles').select('preferences').eq('id', user.id).single();
-                                        await supabase.from('profiles').update({
-                                            preferences: {
-                                                ...profile?.preferences,
-                                                onesignal_id: null,
-                                                fcm_tokens: [],
-                                                fcm_token: null,
-                                                notifications: {
-                                                    ...(profile?.preferences?.notifications || {}),
-                                                    push: false
-                                                }
-                                            }
-                                        }).eq('id', user.id);
-                                        alert("Registration cleared! Please toggle the switch OFF and ON now.");
-                                        window.location.reload();
-                                    } catch (err) {
-                                        alert("Error resetting: " + err.message);
-                                    }
-                                }}
-                            >
-                                Reset Notification Devices
-                            </Button>
-                            <p style={{ marginTop: '8px', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                                Use this to verify if your current device is receiving alerts.
-                            </p>
-                        </div>
-                    )}
-                </Card>
-
-                {/* Account Info */}
-                <Card>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
                         <div style={{
                             width: '40px',
                             height: '40px',

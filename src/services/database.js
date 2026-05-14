@@ -185,22 +185,15 @@ export const createTask = async (task) => {
             if (notifError) console.error('Error creating notifications:', notifError);
 
             // Trigger push notifications for assigned users
-            const { data: studentProfiles } = await supabase
-                .from('profiles')
-                .select('id, preferences')
-                .in('id', task.assigned_to);
+            const userIds = task.assigned_to.filter(Boolean);
 
-            const userIds = studentProfiles?.map(s => s.id).filter(Boolean) || [];
-            const oneSignalIds = studentProfiles?.map(s => s.preferences?.onesignal_id).filter(Boolean) || [];
-
-            if (userIds.length > 0 || oneSignalIds.length > 0) {
+            if (userIds.length > 0) {
                 console.log(`[Push] Sending task assignment notification to ${userIds.length} users`);
                 fetch(`${window.location.origin}/api/push`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         user_ids: userIds,
-                        onesignal_ids: oneSignalIds,
                         title: '📋 New Task Assigned',
                         body: `You have been assigned: "${task.title}"`,
                         link: `/tasks/${data.id}`
@@ -353,21 +346,10 @@ export const getQuizzes = async () => {
             const isInClassroom = quiz.classroom_id === profile.classroom_id;
             const isSpecificallyAssigned = quiz.assigned_to?.includes(user.id);
             
-            // Logic:
-            // 1. If global, everyone sees it.
-            // 2. If specific, ONLY the assigned students see it.
-            // 3. Otherwise (classroom/everyone), everyone in the classroom sees it.
-            
             if (isGlobal) return true;
-            
-            if (quiz.assignment_type === 'specific') {
-                return isSpecificallyAssigned;
-            }
-            
+            if (quiz.assignment_type === 'specific') return isSpecificallyAssigned;
             return isInClassroom;
         });
-        
-        console.log(`Member Quizzes: Found ${allQuizzes.length} total, showing ${filtered.length} for user`);
         return filtered;
     }
 
@@ -389,17 +371,10 @@ export const createQuiz = async (quiz) => {
         classroomId = profile?.classroom_id;
     }
 
-    const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out. The quiz might still be saving, please check the list in a moment.')), 15000)
-    );
-
-    const { data, error } = await Promise.race([
-        supabase.from('quizzes').insert({
-            ...quiz,
-            classroom_id: quiz.is_global ? null : classroomId
-        }).select().single(),
-        timeoutPromise
-    ]);
+    const { data, error } = await supabase.from('quizzes').insert({
+        ...quiz,
+        classroom_id: quiz.is_global ? null : classroomId
+    }).select().single();
 
     if (error) throw error;
 
@@ -414,39 +389,21 @@ export const createQuiz = async (quiz) => {
                 type: 'warning',
                 link: '/quizzes'
             }));
-            const { error: notifError } = await supabase.from('notifications').insert(notifications);
-            if (!notifError) {
-                // Trigger push for each specific student
-                try {
-                    const { data: studentProfiles } = await supabase
-                        .from('profiles')
-                        .select('id, preferences')
-                        .in('id', quiz.assigned_to);
-                    
-                    const userIds = studentProfiles?.map(s => s.id).filter(Boolean) || [];
-                    const oneSignalIds = studentProfiles?.map(s => s.preferences?.onesignal_id).filter(Boolean) || [];
-                         
-                    console.log(`[Push] Triggering specific push to ${userIds.length} students.`);
-
-                    if (userIds.length > 0 || oneSignalIds.length > 0) {
-                        fetch(`${window.location.origin}/api/push`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                user_ids: userIds,
-                                onesignal_ids: oneSignalIds,
-                                title: 'New Quiz Assigned',
-                                body: `You have been specifically assigned the quiz: "${quiz.title}"`,
-                                link: '/quizzes',
-                                data: { type: 'warning' }
-                            })
-                        }).then(r => r.json()).then(res => {
-                            if (!res.success) console.warn('[Push] API returned error:', res.error);
-                        }).catch(e => console.warn('[Push] Fetch error:', e));
-                    }
-                } catch (e) {
-                    console.warn('Failed to send specific push:', e);
-                }
+            await supabase.from('notifications').insert(notifications);
+            
+            const userIds = quiz.assigned_to.filter(Boolean);
+            if (userIds.length > 0) {
+                fetch(`${window.location.origin}/api/push`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_ids: userIds,
+                        title: 'New Quiz Assigned',
+                        body: `You have been specifically assigned the quiz: "${quiz.title}"`,
+                        link: '/quizzes',
+                        data: { type: 'warning' }
+                    })
+                }).catch(e => console.warn('[Push] Error:', e));
             }
         } else if (classroomId) {
             // Notify entire classroom
@@ -475,84 +432,36 @@ export const deleteQuiz = async (id) => {
     if (error) throw error;
 };
 
-
 export const getQuizAttempts = async () => {
     try {
-        console.log('--- START QUIZ ATTEMPT FETCH ---');
         const user = await getActiveUser();
-        if (!user) {
-            console.error('No authenticated user found');
-            return [];
-        }
+        if (!user) return [];
 
-        // Fetch profile with error logging
-        const { data: profile, error: profError } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-        if (profError) console.error('Error fetching admin profile:', profError);
-        
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
         const isAdmin = profile?.role === 'admin';
-        console.log('User Role:', profile?.role, 'IsAdmin:', isAdmin);
 
-        // Simple fetch first to see if table is empty
-        const { data: rawCount, error: countError } = await supabase.from('quiz_attempts').select('id');
-        console.log('Total attempts in DB (raw count):', rawCount?.length, countError || 'No error');
-
-        let query = supabase
-            .from('quiz_attempts')
-            .select(`
-                *,
-                profiles!left(name, avatar_url, email, classroom_id, xp),
-                quizzes!left(title, points)
-            `);
-
-        if (!isAdmin) {
-            console.log('Filtering for Student:', user.id);
-            query = query.eq('user_id', user.id);
-        } else {
-            console.log('Admin detected. Fetching global records.');
-        }
+        let query = supabase.from('quiz_attempts').select('*, profiles!left(name, avatar_url, email, classroom_id, xp), quizzes!left(title, points)');
+        if (!isAdmin) query = query.eq('user_id', user.id);
 
         const { data, error } = await withTimeout(query.order('completed_at', { ascending: false }));
-        
-        if (error) {
-            console.error('DATABASE ERROR during fetch:', error);
-            throw error;
-        }
-
-        console.log('Final results returned:', data?.length);
-        console.log('--- END QUIZ ATTEMPT FETCH ---');
+        if (error) throw error;
         return data || [];
     } catch (err) {
-        console.error('CRITICAL: Error in getQuizAttempts:', err);
+        console.error('Error in getQuizAttempts:', err);
         return [];
     }
 };
 
 export const updateQuizAttempt = async (id, updates) => {
-    const { data, error } = await supabase
-        .from('quiz_attempts')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-    if (error) {
-        console.error('Error updating quiz attempt:', error);
-        throw error;
-    }
-    return data;
-};
-
-export const getQuizAttemptsByUser = async (userId) => {
-    const { data, error } = await supabase.from('quiz_attempts').select('*').eq('user_id', userId).order('completed_at', { ascending: false });
+    const { data, error } = await supabase.from('quiz_attempts').update(updates).eq('id', id).select().single();
     if (error) throw error;
-    return data || [];
+    return data;
 };
 
 export const createQuizAttempt = async (attempt) => {
     const { data, error } = await supabase.from('quiz_attempts').insert(attempt).select('*, quizzes(*), profiles(*)').single();
     if (error) throw error;
 
-    // Notify Admins
     try {
         const classroomId = data.quizzes?.classroom_id || data.profiles?.classroom_id;
         if (classroomId) {
@@ -566,7 +475,6 @@ export const createQuizAttempt = async (attempt) => {
     } catch (err) {
         console.error('Error notifying admins on quiz attempt:', err);
     }
-
     return data;
 };
 
@@ -577,24 +485,18 @@ export const getInviteCodes = async (classroomId = null) => {
     try {
         const user = await getActiveUser();
         if (!user) return [];
-
-        // Get profile to check role and classroom
         const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
-        
         let query = supabase.from('invite_codes').select('*').order('created_at', { ascending: false });
 
-        // If not admin, strictly filter by classroom
         if (profile?.role !== 'admin') {
             const targetId = classroomId || profile?.classroom_id;
             if (!targetId) return [];
             query = query.eq('classroom_id', targetId);
         } else if (classroomId) {
-            // Admin only filters if they specifically passed a classroomId
             query = query.eq('classroom_id', classroomId);
         }
 
         const { data, error } = await withTimeout(query);
-
         if (error) throw error;
         return data || [];
     } catch (err) {
@@ -607,18 +509,9 @@ export const createInviteCode = async (codeData, targetClassroomId) => {
     try {
         const user = await getActiveUser();
         if (!user) throw new Error('Authentication required');
-
-        // Use passed classroomId or fallback to user's current one
         let classroomId = targetClassroomId;
         const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
-
-        if (!classroomId) {
-            classroomId = profile?.classroom_id;
-        }
-
-        if (!classroomId && profile?.role !== 'admin') {
-            throw new Error('A classroom must be selected for this invite code.');
-        }
+        if (!classroomId) classroomId = profile?.classroom_id;
 
         const { data, error } = await withTimeout(
             supabase.from('invite_codes').insert({
@@ -627,13 +520,7 @@ export const createInviteCode = async (codeData, targetClassroomId) => {
                 created_by: user.id
             }).select().single()
         );
-
-        if (error) {
-            if (error.code === '23505') {
-                throw new Error(`The code "${codeData}" already exists. Please choose a unique code.`);
-            }
-            throw error;
-        }
+        if (error) throw error;
         return data;
     } catch (err) {
         console.error('Error creating invite code:', err);
@@ -648,23 +535,13 @@ export const deleteInviteCode = async (id) => {
 };
 
 export const validateInviteCode = async (code) => {
-    const { data, error } = await supabase
-        .from('invite_codes')
-        .select('*')
-        .eq('code', code)
-        .eq('is_used', false)
-        .single();
-
+    const { data, error } = await supabase.from('invite_codes').select('*').eq('code', code).eq('is_used', false).single();
     if (error) return null;
     return data;
 };
 
 export const useInviteCode = async (code, userId) => {
-    const { error } = await supabase
-        .from('invite_codes')
-        .update({ is_used: true, used_by: userId })
-        .eq('code', code);
-
+    const { error } = await supabase.from('invite_codes').update({ is_used: true, used_by: userId }).eq('code', code);
     if (error) throw error;
     return true;
 };
@@ -673,100 +550,50 @@ export const useInviteCode = async (code, userId) => {
 // NOTIFICATIONS
 // ============================================
 export const getNotifications = async (userId) => {
-    const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
+    const { data, error } = await supabase.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50);
     if (error) throw error;
     return data || [];
 };
 
 export const getUnreadNotificationCount = async (userId) => {
-    const { count, error } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('is_read', false);
-
+    const { count, error } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', userId).eq('is_read', false);
     if (error) return 0;
     return count;
 };
 
 export const markNotificationRead = async (id) => {
-    const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', id);
-
+    const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id);
     if (error) throw error;
     return true;
 };
 
 export const markAllNotificationsRead = async (userId) => {
-    const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', userId)
-        .eq('is_read', false);
-
+    const { error } = await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false);
     if (error) throw error;
     return true;
 };
 
 export const createNotification = async (notification) => {
-    // 1. Insert to DB
-    const { error } = await supabase.from('notifications').insert(notification);
-    if (error) console.error('Error creating notification:', error);
-
-    // 2. Trigger Push
-    try {
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('preferences')
-            .eq('id', notification.user_id)
-            .single();
-            
-        const prefs = profile?.preferences || {};
-        const oneSignalIds = [prefs.onesignal_id].filter(Boolean);
-
-        if (notification.user_id || oneSignalIds.length > 0) {
-            console.log('[Push] Triggering push for user:', notification.user_id);
-            fetch(`${window.location.origin}/api/push`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_id: notification.user_id,
-                    onesignal_ids: oneSignalIds,
-                    title: notification.title,
-                    body: notification.message,
-                    link: notification.link,
-                    data: { type: notification.type }
-                })
-            }).then(r => r.json()).then(res => {
-                if (!res.success) console.warn('[Push] API returned error:', res.error);
-            }).catch(e => console.warn('[Push] Fetch error:', e));
-        } else {
-            console.log('[Push] No push target found for user:', notification.user_id);
-        }
-    } catch (e) {
-        console.warn('[Push] Logic error:', e);
+    await supabase.from('notifications').insert(notification);
+    if (notification.user_id) {
+        fetch(`${window.location.origin}/api/push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: notification.user_id,
+                title: notification.title,
+                body: notification.message,
+                link: notification.link,
+                data: { type: notification.type }
+            })
+        }).catch(e => console.warn('[Push] Error:', e));
     }
 };
 
 export const notifyClassroom = async (classroomId, notification) => {
-    // 1. Get all students in classroom (with tokens)
-    const { data: students } = await supabase
-        .from('profiles')
-        .select('id, preferences')
-        .eq('classroom_id', classroomId)
-        .eq('role', 'member');
-
+    const { data: students } = await supabase.from('profiles').select('id').eq('classroom_id', classroomId).eq('role', 'member');
     if (!students || students.length === 0) return;
 
-    // 2. Prepare bulk insert
     const notifications = students.map(student => ({
         user_id: student.id,
         classroom_id: classroomId,
@@ -777,45 +604,27 @@ export const notifyClassroom = async (classroomId, notification) => {
         is_read: false
     }));
 
-    // 3. Insert to DB
-    const { error } = await supabase.from('notifications').insert(notifications);
-    if (error) console.error('Error sending classroom notifications:', error);
-
-    // 4. Trigger Push
+    await supabase.from('notifications').insert(notifications);
     const userIds = students.map(s => s.id).filter(Boolean);
-    const oneSignalIds = students.map(s => s.preferences?.onesignal_id).filter(Boolean);
-
-    console.log(`[Push] Triggering classroom push to ${userIds.length} users.`);
-
-    if (userIds.length > 0 || oneSignalIds.length > 0) {
+    if (userIds.length > 0) {
         fetch(`${window.location.origin}/api/push`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 user_ids: userIds,
-                onesignal_ids: oneSignalIds,
                 title: notification.title,
                 body: notification.message,
                 link: notification.link,
                 data: { type: notification.type }
             })
-        }).then(r => r.json()).then(res => {
-            if (!res.success) console.warn('[Push] API returned error:', res.error);
-        }).catch(e => console.warn('[Push] Fetch error:', e));
+        }).catch(e => console.warn('[Push] Error:', e));
     }
 };
 
 export const notifyAdmins = async (classroomId, notification) => {
-    // 1. Get all admins in classroom (with tokens)
-    const { data: admins } = await supabase
-        .from('profiles')
-        .select('id, preferences')
-        .eq('classroom_id', classroomId)
-        .eq('role', 'admin');
-
+    const { data: admins } = await supabase.from('profiles').select('id').eq('classroom_id', classroomId).eq('role', 'admin');
     if (!admins || admins.length === 0) return;
 
-    // 2. Prepare bulk insert
     const notifications = admins.map(admin => ({
         user_id: admin.id,
         classroom_id: classroomId,
@@ -826,80 +635,41 @@ export const notifyAdmins = async (classroomId, notification) => {
         is_read: false
     }));
 
-    // 3. Insert to DB
-    const { error } = await supabase.from('notifications').insert(notifications);
-    if (error) console.error('Error notifying admins:', error);
-
-    // 4. Trigger Push
+    await supabase.from('notifications').insert(notifications);
     const userIds = admins.map(a => a.id).filter(Boolean);
-    const oneSignalIds = admins.map(a => a.preferences?.onesignal_id).filter(Boolean);
-
-    console.log(`[Push] Triggering admin push to ${userIds.length} users.`);
-
-    if (userIds.length > 0 || oneSignalIds.length > 0) {
+    if (userIds.length > 0) {
         fetch(`${window.location.origin}/api/push`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 user_ids: userIds,
-                onesignal_ids: oneSignalIds,
                 title: notification.title,
                 body: notification.message,
                 link: notification.link,
                 data: { type: notification.type }
             })
-        }).then(r => r.json()).then(res => {
-            if (!res.success) console.warn('[Push] API returned error:', res.error);
-        }).catch(e => console.warn('[Push] Fetch error:', e));
+        }).catch(e => console.warn('[Push] Error:', e));
     }
 };
 
-// ============================================
-// DEADLINE CHECKER
-// ============================================
 export const checkDeadlines = async (userId) => {
-    // Get tasks due in next 24h
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-
-    // Simple query: tasks in my classroom, due > now, due < tomorrow
     const { data: profile } = await supabase.from('profiles').select('classroom_id').eq('id', userId).single();
     if (!profile?.classroom_id) return;
 
-    const { data: tasks } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('classroom_id', profile.classroom_id)
-        .gt('due_date', new Date().toISOString())
-        .lt('due_date', tomorrow.toISOString());
-
+    const { data: tasks } = await supabase.from('tasks').select('*').eq('classroom_id', profile.classroom_id).gt('due_date', new Date().toISOString()).lt('due_date', tomorrow.toISOString());
     if (!tasks || tasks.length === 0) return;
 
-    // For each task, check if we already notified this user about expiration
-    // We don't have a perfect "already notified" flag, but we can query standard notifications
-    // Optimization: Just check top 10 recent notifications
-    const { data: recentNotifs } = await supabase
-        .from('notifications')
-        .select('title')
-        .eq('user_id', userId)
-        .like('title', 'Deadline Approaching%')
-        .limit(20);
-
-    const notifiedTitles = new Set(recentNotifs?.map(n => n.title) || []);
-
     for (const task of tasks) {
-        const title = `Deadline Approaching: ${task.title}`;
-        if (!notifiedTitles.has(title)) {
-            // Need to create one
-            await createNotification({
-                user_id: userId,
-                classroom_id: profile.classroom_id,
-                title: title,
-                message: `Task "${task.title}" is due in less than 24 hours!`,
-                type: 'warning',
-                link: `/tasks`
-            });
-        }
+        await createNotification({
+            user_id: userId,
+            classroom_id: profile.classroom_id,
+            title: `Deadline Approaching: ${task.title}`,
+            message: `Task "${task.title}" is due in less than 24 hours!`,
+            type: 'warning',
+            link: `/tasks`
+        });
     }
 };
 
@@ -907,381 +677,84 @@ export const checkDeadlines = async (userId) => {
 // CLASSROOMS
 // ============================================
 export const getClassroom = async () => {
-    try {
-        const user = await getActiveUser();
-        if (!user) return null;
-
-        const { data: profile } = await withTimeout(supabase.from('profiles').select('classroom_id').eq('id', user.id).single(), 10000);
-        if (!profile?.classroom_id) return null;
-
-        const { data, error } = await withTimeout(supabase.from('classrooms').select('*').eq('id', profile.classroom_id).single(), 10000);
-        if (error) return null;
-        return data;
-    } catch (err) {
-        console.error('Error in getClassroom:', err);
-        return null;
-    }
+    const user = await getActiveUser();
+    if (!user) return null;
+    const { data: profile } = await supabase.from('profiles').select('classroom_id').eq('id', user.id).single();
+    if (!profile?.classroom_id) return null;
+    const { data } = await supabase.from('classrooms').select('*').eq('id', profile.classroom_id).single();
+    return data;
 };
 
 export const getClassrooms = async () => {
-    const user = await getActiveUser();
-    if (!user) return [];
-
     const { data, error } = await supabase.from('classrooms').select('*').order('created_at', { ascending: false });
-
     if (error) throw error;
     return data || [];
 };
 
 export const createClassroom = async (name, description) => {
     const user = await getActiveUser();
-
-    const { data, error } = await supabase.from('classrooms').insert({
-        name,
-        description,
-        created_by: user.id
-    }).select().single();
-
-    if (error) throw error;
-    return data;
-};
-
-export const updateClassroom = async (id, updates) => {
-    const { data, error } = await supabase.from('classrooms').update(updates).eq('id', id).select().single();
+    const { data, error } = await supabase.from('classrooms').insert({ name, description, created_by: user.id }).select().single();
     if (error) throw error;
     return data;
 };
 
 export const switchClassroom = async (classroomId) => {
     const user = await getActiveUser();
-
-    const { data, error } = await supabase.from('profiles').update({
-        classroom_id: classroomId
-    }).eq('id', user.id).select().single();
-
+    const { data, error } = await supabase.from('profiles').update({ classroom_id: classroomId }).eq('id', user.id).select().single();
     if (error) throw error;
     return data;
-};
-
-// ============================================
-// AUTH MANAGEMENT (ADMIN)
-// ============================================
-export const sendPasswordResetEmail = async (email) => {
-    try {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/settings?reset=true`,
-        });
-        if (error) throw error;
-        return { success: true };
-    } catch (err) {
-        console.error('Error sending reset email:', err);
-        return { success: false, error: err.message };
-    }
-};
-
-export const adminResetPassword = async (userId, newPassword) => {
-    try {
-        // This requires an RPC function named 'admin_reset_password' in Supabase
-        // which has SECURITY DEFINER and allows admins to update auth.users
-        const { data, error } = await supabase.rpc('admin_reset_password', {
-            target_user_id: userId,
-            new_password: newPassword
-        });
-
-        if (error) throw error;
-        return { success: true };
-    } catch (err) {
-        console.error('Admin password reset error:', err);
-        return { success: false, error: err.message };
-    }
-};
-
-// ============================================
-// ADMIN CLASSROOM DATA (CONTEXTLESS)
-// ============================================
-export const getClassroomById = async (id) => {
-    const { data, error } = await supabase.from('classrooms').select('*').eq('id', id).single();
-    if (error) throw error;
-    return data;
-};
-
-export const getMembersByClassroom = async (classroomId) => {
-    const { data, error } = await supabase.from('profiles')
-        .select('*')
-        .eq('classroom_id', classroomId)
-        .order('xp', { ascending: false });
-    if (error) throw error;
-    return data || [];
-};
-
-export const getTasksByClassroom = async (classroomId) => {
-    const { data, error } = await withTimeout(
-        supabase.from('tasks')
-            .select('*')
-            .eq('classroom_id', classroomId)
-            .order('created_at', { ascending: false })
-    );
-    if (error) throw error;
-    return data || [];
-};
-
-export const getSubmissionsByClassroom = async (classroomId) => {
-    const { data, error } = await withTimeout(
-        supabase.from('submissions')
-            .select('*, tasks!inner(*), profiles(*)')
-            .eq('tasks.classroom_id', classroomId)
-            .order('submitted_at', { ascending: false })
-    );
-    if (error) throw error;
-    return data || [];
-};
-
-export const getClassroomStats = async (classroomId) => {
-    try {
-        const [members, tasks, submissions] = await Promise.all([
-            getMembersByClassroom(classroomId),
-            getTasksByClassroom(classroomId),
-            getSubmissionsByClassroom(classroomId)
-        ]);
-
-        const approvedCount = submissions.filter(s => s.status === 'approved').length;
-        const totalPoints = tasks.reduce((sum, t) => sum + (t.points || 0), 0);
-        const earnedPoints = members.reduce((sum, m) => sum + (m.xp || 0), 0);
-
-        return {
-            memberCount: members.length,
-            taskCount: tasks.length,
-            submissionCount: submissions.length,
-            approvedCount,
-            totalPoints,
-            earnedPoints,
-            avgCompletion: members.length > 0 ? (approvedCount / (members.length * (tasks.length || 1))) * 100 : 0
-        };
-    } catch (error) {
-        console.error('Error fetching classroom stats:', error);
-        return null;
-    }
-};
-
-// ============================================
-// GLOBAL ADMIN DATA (ALL CLASSROOMS)
-// ============================================
-export const getAllMembers = async () => {
-    const { data, error } = await withTimeout(
-        supabase.from('profiles')
-            .select('*')
-            .order('created_at', { ascending: false })
-    );
-    if (error) throw error;
-    return data || [];
-};
-
-export const getAllTasks = async () => {
-    const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
-    if (error) throw error;
-    return data || [];
-};
-
-export const getAllSubmissions = async () => {
-    const { data, error } = await supabase.from('submissions')
-        .select('*, tasks(*), profiles(*)')
-        .order('submitted_at', { ascending: false });
-    if (error) throw error;
-    return data || [];
 };
 
 // ============================================
 // ANNOUNCEMENTS
 // ============================================
-export const getAnnouncementsByClassroom = async (classroomId) => {
-    const { data, error } = await withTimeout(
-        supabase.from('announcements')
-            .select('*, profiles(*)')
-            .eq('classroom_id', classroomId)
-            .order('created_at', { ascending: false })
-    );
-
-    if (error) throw error;
+export const getAnnouncements = async () => {
+    const user = await getActiveUser();
+    if (!user) return [];
+    const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
+    let query = supabase.from('announcements').select('*, profiles(*)').order('created_at', { ascending: false });
+    if (profile?.classroom_id) query = query.eq('classroom_id', profile.classroom_id);
+    const { data } = await query.limit(20);
     return data || [];
 };
 
 export const createAnnouncement = async (announcement) => {
     const user = await getActiveUser();
-    const { data, error } = await withTimeout(
-        supabase.from('announcements')
-            .insert({
-                ...announcement,
-                created_by: user.id
-            })
-            .select('*, profiles(*)')
-            .single()
-    );
-
+    const { data, error } = await supabase.from('announcements').insert({ ...announcement, created_by: user.id }).select('*, profiles(*)').single();
     if (error) throw error;
-
-    // Notify students
-    try {
-        await notifyClassroom(announcement.classroom_id, {
-            title: 'New Announcement',
-            message: announcement.content.substring(0, 50) + (announcement.content.length > 50 ? '...' : ''),
-            type: 'info',
-            link: `/dashboard?t=${Date.now()}`
-        });
-    } catch (err) {
-        console.error('Notification error:', err);
-    }
-
+    await notifyClassroom(announcement.classroom_id, { title: 'New Announcement', message: announcement.content.substring(0, 50), type: 'info', link: '/dashboard' });
     return data;
 };
 
-export const getAnnouncements = async () => {
-    try {
-        const user = await getActiveUser();
-        if (!user) return [];
-
-        const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
-        
-        let query = supabase.from('announcements').select('*, profiles(*)').order('created_at', { ascending: false });
-
-        if (profile?.classroom_id) {
-            query = query.eq('classroom_id', profile.classroom_id);
-        } else if (profile?.role !== 'admin') {
-            return [];
-        }
-
-        const { data, error } = await withTimeout(query.limit(20));
-        if (error) throw error;
-        return data || [];
-    } catch (error) {
-        console.error('Error in getAnnouncements:', error);
-        return [];
-    }
-};
 // ============================================
-// KNOWLEDGE BASE (RAG)
+// KNOWLEDGE BASE & NOTES
 // ============================================
 export const getKnowledgeBase = async (classroomId = null) => {
-    try {
-        let query = supabase.from('knowledge_base').select('*').order('created_at', { ascending: false });
-        if (classroomId) {
-            query = query.eq('classroom_id', classroomId);
-        }
-        const { data, error } = await query;
-        if (error) throw error;
-        return data || [];
-    } catch (error) {
-        console.error('Error fetching knowledge base:', error);
-        return [];
-    }
+    let query = supabase.from('knowledge_base').select('*').order('created_at', { ascending: false });
+    if (classroomId) query = query.eq('classroom_id', classroomId);
+    const { data } = await query;
+    return data || [];
 };
 
-export const addKnowledgeSnippet = async (snippet) => {
-    try {
-        const user = await getActiveUser();
-        const { data, error } = await supabase.from('knowledge_base').insert({
-            ...snippet,
-            created_by: user.id
-        }).select().single();
-        if (error) throw error;
-
-        // Notify students about the new material
-        try {
-            if (snippet.classroom_id) {
-                await notifyClassroom(snippet.classroom_id, {
-                    title: 'New Study Material',
-                    message: `A new material "${snippet.title}" has been shared.`,
-                    type: 'info',
-                    link: '/study-materials'
-                });
-            }
-        } catch (notifErr) {
-            console.error('Failed to send material notification:', notifErr);
-        }
-
-        return data;
-    } catch (error) {
-        console.error('Error adding knowledge snippet:', error);
-        throw error;
-    }
-};
-
-export const deleteKnowledgeSnippet = async (id) => {
-    try {
-        const { error } = await supabase.from('knowledge_base').delete().eq('id', id);
-        if (error) throw error;
-        return true;
-    } catch (error) {
-        console.error('Error deleting knowledge snippet:', error);
-        throw error;
-    }
-};
-
-// ============================================
-// STUDY NOTES (Personal Member Notes)
-// ============================================
 export const getStudyNotes = async (userId) => {
-    try {
-        const { data, error } = await supabase
-            .from('study_notes')
-            .select('*')
-            .eq('user_id', userId)
-            .order('updated_at', { ascending: false });
-        if (error) throw error;
-        return data || [];
-    } catch (error) {
-        console.error('Error fetching study notes:', error);
-        return [];
-    }
+    const { data } = await supabase.from('study_notes').select('*').eq('user_id', userId).order('updated_at', { ascending: false });
+    return data || [];
 };
 
 export const addStudyNote = async (note) => {
-    try {
-        const user = await getActiveUser();
-        const { data, error } = await supabase
-            .from('study_notes')
-            .insert({
-                user_id: user.id,
-                title: note.title,
-                content: note.content,
-                category: note.category || 'General',
-                color: note.color || null,
-                is_pinned: false,
-                material_type: note.material_type || 'text',
-                file_url: note.file_url || null
-            })
-            .select()
-            .single();
-        if (error) throw error;
-        return data;
-    } catch (error) {
-        console.error('Error adding study note:', error);
-        throw error;
-    }
+    const user = await getActiveUser();
+    const { data, error } = await supabase.from('study_notes').insert({ user_id: user.id, ...note }).select().single();
+    if (error) throw error;
+    return data;
 };
 
 export const updateStudyNote = async (id, updates) => {
-    try {
-        const { data, error } = await supabase
-            .from('study_notes')
-            .update({ ...updates, updated_at: new Date().toISOString() })
-            .eq('id', id)
-            .select()
-            .single();
-        if (error) throw error;
-        return data;
-    } catch (error) {
-        console.error('Error updating study note:', error);
-        throw error;
-    }
+    const { data, error } = await supabase.from('study_notes').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
 };
 
 export const deleteStudyNote = async (id) => {
-    try {
-        const { error } = await supabase.from('study_notes').delete().eq('id', id);
-        if (error) throw error;
-        return true;
-    } catch (error) {
-        console.error('Error deleting study note:', error);
-        throw error;
-    }
+    await supabase.from('study_notes').delete().eq('id', id);
+    return true;
 };

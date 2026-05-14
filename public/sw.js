@@ -51,3 +51,59 @@ self.addEventListener('fetch', event => {
             })
     );
 });
+
+// ── Push Notification Handling ──────────────────────────────────────────────
+self.addEventListener('push', event => {
+    let data = { title: 'Zenith', body: 'New notification', icon: '/vite.svg', url: '/' };
+    
+    try {
+        if (event.data) {
+            const payload = event.data.json();
+            data = { ...data, ...payload };
+        }
+    } catch (e) {
+        console.error('Error parsing push data:', e);
+        if (event.data) {
+            data.body = event.data.text();
+        }
+    }
+
+    const options = {
+        body: data.body,
+        icon: data.icon || '/vite.svg',
+        badge: '/vite.svg',
+        data: { url: data.url || '/' },
+        vibrate: [100, 50, 100],
+        actions: [
+            { action: 'open', title: 'Open Zenith' }
+        ]
+    };
+
+    event.waitUntil(
+        self.registration.showNotification(data.title, options)
+    );
+});
+
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+    
+    const urlToOpen = event.notification.data?.url || '/';
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then(windowClients => {
+                // Check if there is already a window open with this URL
+                for (let i = 0; i < windowClients.length; i++) {
+                    const client = windowClients[i];
+                    if (client.url.includes(self.location.origin) && 'focus' in client) {
+                        client.navigate(urlToOpen);
+                        return client.focus();
+                    }
+                }
+                // If no window is open, open a new one
+                if (clients.openWindow) {
+                    return clients.openWindow(urlToOpen);
+                }
+            })
+    );
+});
