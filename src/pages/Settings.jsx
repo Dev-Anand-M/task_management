@@ -741,6 +741,60 @@ const Settings = () => {
                             <Button 
                                 variant="ghost" 
                                 size="sm" 
+                                style={{ flex: 1, color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.3)', fontSize: '11px' }}
+                                onClick={async () => {
+                                    if (!window.confirm("This will force recreate your push subscription with the latest VAPID keys. Continue?")) {
+                                        return;
+                                    }
+                                    
+                                    try {
+                                        // 1. Unsubscribe from browser
+                                        const { unsubscribePush } = await import('../lib/nativePush');
+                                        await unsubscribePush();
+                                        
+                                        // 2. Clear database subscription
+                                        await supabase.from('profiles').update({
+                                            push_subscription: null,
+                                            preferences: { 
+                                                ...user.preferences, 
+                                                notifications: { ...notifications, push: false } 
+                                            }
+                                        }).eq('id', user.id);
+                                        
+                                        // 3. Wait a moment
+                                        await new Promise(resolve => setTimeout(resolve, 1000));
+                                        
+                                        // 4. Create new subscription
+                                        const { requestPushPermission } = await import('../lib/nativePush');
+                                        const subscription = await requestPushPermission();
+                                        
+                                        if (subscription) {
+                                            await supabase.from('profiles').update({
+                                                push_subscription: subscription.toJSON(),
+                                                preferences: { 
+                                                    ...user.preferences, 
+                                                    notifications: { ...notifications, push: true } 
+                                                }
+                                            }).eq('id', user.id);
+                                            
+                                            setNotifications(prev => ({ ...prev, push: true }));
+                                            await forceRefresh();
+                                            alert('✅ Push subscription recreated successfully!\n\nTry the Test Alert button now.');
+                                        } else {
+                                            alert('❌ Failed to create new subscription');
+                                        }
+                                    } catch (error) {
+                                        console.error('[ForceRecreate] Error:', error);
+                                        alert('Error: ' + error.message);
+                                    }
+                                }}
+                            >
+                                Force Recreate Push
+                            </Button>
+                            
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
                                 style={{ flex: 1, color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', fontSize: '11px' }}
                                 onClick={async () => {
                                     if (window.confirm("This will clear all background services and refresh the app. Continue?")) {
