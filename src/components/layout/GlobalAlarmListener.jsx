@@ -1,34 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { routineService } from '../../services/routineService';
+import { Volume2, VolumeX } from 'lucide-react';
 
 const GlobalAlarmListener = () => {
     const { user } = useAuth();
     const [enabled, setEnabled] = useState(() => localStorage.getItem('alarms_enabled') === 'true');
     const [activeAlarm, setActiveAlarm] = useState(null);
-    const [nextAlarm, setNextAlarm] = useState(null);
-    const [showStopModal, setShowStopModal] = useState(false);
+    const [nextAlarm, setNextAlarm] = useState(null); // { title: string, minutes: number }
     const audioRef = useRef(null);
     const intervalRef = useRef(null);
 
     useEffect(() => {
-        const handleToggle = (e) => setEnabled(e.detail);
-        window.addEventListener('toggle-alarms', handleToggle);
-        
         if (user?.role === 'member' && enabled) {
             startListener();
         } else {
             stopListener();
         }
-        
-        return () => {
-            stopListener();
-            window.removeEventListener('toggle-alarms', handleToggle);
-        };
+        return () => stopListener();
     }, [user?.id, enabled]);
 
     const startListener = () => {
         if (intervalRef.current) return;
+        console.log('[Alarm] Starting global listener...');
         intervalRef.current = setInterval(checkAlarms, 60000); 
         checkAlarms(); 
     };
@@ -77,13 +71,13 @@ const GlobalAlarmListener = () => {
                 .eq('user_id', user.id)
                 .eq('is_read', false)
                 .order('created_at', { ascending: false })
-                .limit(1);
+                .limit(5);
 
             if (data && data.length > 0) {
                 const latest = data[0];
-                const lastId = localStorage.getItem('last_notif_id');
+                const lastNotifId = localStorage.getItem('last_notif_id');
                 
-                if (latest.id !== lastId) {
+                if (latest.id !== lastNotifId) {
                     localStorage.setItem('last_notif_id', latest.id);
                     if (Notification.permission === 'granted') {
                         new Notification(latest.title, {
@@ -124,65 +118,95 @@ const GlobalAlarmListener = () => {
             });
         });
         setNextAlarm(soonest);
-        window.dispatchEvent(new CustomEvent('next-alarm-update', { detail: soonest }));
     };
 
     const triggerAlarm = (routine) => {
         if (activeAlarm === routine.id) return;
         setActiveAlarm(routine.id);
-        setShowStopModal(true);
 
         if (Notification.permission === 'granted') {
-            new Notification(`⏰ ${routine.title}`, {
-                body: `Routine started! Open Zenith to respond.`,
+            new Notification(`⏰ Alarm: ${routine.title}`, {
+                body: `It's time for your scheduled routine! Respond within 15 minutes.`,
                 icon: '/zenith.png'
             });
         }
 
         if (audioRef.current) {
-            audioRef.current.currentTime = 0;
             audioRef.current.play().catch(e => console.warn('[Alarm] Audio blocked:', e));
         }
+
+        setTimeout(() => setActiveAlarm(null), 65000);
     };
 
-    const stopShouting = () => {
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
+    const toggleEnabled = async () => {
+        if (!enabled) {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                alert('Please enable notifications to use alarms.');
+                return;
+            }
+            if (audioRef.current) {
+                audioRef.current.play().then(() => {
+                    audioRef.current.pause();
+                    audioRef.current.currentTime = 0;
+                }).catch(() => {});
+            }
         }
-        setShowStopModal(false);
-        setActiveAlarm(null);
+        const newState = !enabled;
+        setEnabled(newState);
+        localStorage.setItem('alarms_enabled', newState);
+    };
+
+    const testAlarm = () => {
+        triggerAlarm({ title: 'Test Alarm', id: 'test' });
+        alert('Test triggered! If you didn\'t hear a sound or see a popup, check your phone\'s Notification & Sound settings.');
     };
 
     return (
         <>
             <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto" loop />
-            
-            {showStopModal && (
-                <div style={{
-                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)',
-                    zIndex: 100000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
-                }}>
-                    <div style={{
-                        background: 'var(--surface)', border: '1px solid var(--primary-500)', borderRadius: '24px',
-                        padding: '40px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 0 50px rgba(99,102,241,0.5)'
-                    }}>
-                        <div style={{ fontSize: '64px', marginBottom: '20px' }}>⏰</div>
-                        <h2 style={{ fontSize: '24px', margin: '0 0 10px 0' }}>It's Time!</h2>
-                        <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>Your routine is starting. Stop the alarm and get to work.</p>
-                        <button 
-                            onClick={stopShouting}
-                            style={{
-                                width: '100%', padding: '16px', borderRadius: '12px', border: 'none',
-                                background: 'var(--primary-500)', color: 'white', fontWeight: 800,
-                                fontSize: '18px', cursor: 'pointer', boxShadow: '0 4px 15px rgba(99,102,241,0.3)'
-                            }}
-                        >
-                            STOP ALARM
-                        </button>
-                    </div>
+            <div 
+                className="global-alarm-toggle"
+                onClick={toggleEnabled}
+                style={{
+                    position: 'fixed', bottom: '20px', right: '20px',
+                    padding: nextAlarm && enabled ? '0 16px 0 0' : '0',
+                    height: '48px', borderRadius: '24px',
+                    background: enabled ? 'var(--primary-500)' : 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    cursor: 'pointer', boxShadow: 'var(--shadow-xl)',
+                    zIndex: 9999, transition: 'all 0.5s',
+                    color: enabled ? 'white' : 'var(--text-muted)',
+                    overflow: 'hidden'
+                }}
+            >
+                <div style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {enabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
                 </div>
-            )}
+
+                {enabled && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); testAlarm(); }}
+                        style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', fontSize: '10px', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                        TEST
+                    </button>
+                )}
+
+                {enabled && nextAlarm && (
+                    <div style={{ display: 'flex', flexDirection: 'column', whiteSpace: 'nowrap', animation: 'fadeIn 0.3s' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', opacity: 0.8 }}>Next Alarm</span>
+                        <span style={{ fontSize: '13px', fontWeight: 700 }}>
+                            {nextAlarm.minutes === 0 ? 'Soon!' : `in ${nextAlarm.minutes}m`}
+                        </span>
+                    </div>
+                )}
+            </div>
+            <style>{`
+                .global-alarm-toggle:hover { transform: translateY(-4px); }
+                @keyframes fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+            `}</style>
         </>
     );
 };

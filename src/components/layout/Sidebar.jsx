@@ -83,7 +83,11 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: '/settings', icon: Settings, label: 'Settings' }
     ];
 
-    const consistencyLinks = []; // Hidden as requested
+    const consistencyLinks = [
+        { to: '/routines', icon: RefreshCw, label: 'Routines' },
+        { to: '/timetable', icon: ListTodo, label: 'AI Timetable' },
+        { to: '/diary', icon: Target, label: 'Learning Diary' }
+    ];
 
     const aiLinks = [
         { to: '/ai/assistant', icon: MessageSquare, label: 'AI Assistant' },

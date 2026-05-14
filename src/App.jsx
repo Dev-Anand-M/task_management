@@ -237,7 +237,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-          {/* <GlobalAlarmListener /> */}
+          <GlobalAlarmListener />
           {/* <BackHandler /> */}
           <AppRoutes />
         </AuthProvider>

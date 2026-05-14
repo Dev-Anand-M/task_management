@@ -105,22 +105,7 @@ const Timetable = () => {
                 </div>
             </div>
 
-            <div className="timetable-container" style={{ flex: 1, minHeight: 0 }}>
-                <style>{`
-                    .timetable-container {
-                        display: grid;
-                        grid-template-columns: 350px 1fr;
-                        gap: var(--space-lg);
-                    }
-                    @media (max-width: 1024px) {
-                        .timetable-container {
-                            grid-template-columns: 1fr;
-                            display: flex;
-                            flex-direction: column;
-                            gap: var(--space-xl);
-                        }
-                    }
-                `}</style>
+            <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: 'var(--space-lg)', flex: 1, minHeight: 0 }}>
                 {/* Chat Column */}
                 <Card style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: '1px solid var(--border)' }}>
                     <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
