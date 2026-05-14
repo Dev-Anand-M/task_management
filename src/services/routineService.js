@@ -15,6 +15,7 @@ export const routineService = {
         const { data, error } = await supabase
             .from('routines')
             .select('*')
+            .eq('is_active', true)
             .order('start_time', { ascending: true });
             
         if (error) throw error;
@@ -53,7 +54,7 @@ export const routineService = {
     async deleteRoutine(id) {
         const { error } = await supabase
             .from('routines')
-            .delete()
+            .update({ is_active: false })
             .eq('id', id);
         if (error) throw error;
     },
@@ -128,22 +129,23 @@ export const routineService = {
     checkLogConflicts(logs, newLog) {
         // newLog: { start_time: "HH:mm", minutes: number, routine_id: string }
         const toMinutes = (time) => {
+            if (!time) return 0;
             const [h, m] = time.split(':').map(Number);
             return h * 60 + m;
         };
 
         const newStart = toMinutes(newLog.start_time);
-        const newEnd = newStart + parseInt(newLog.minutes);
+        const newEnd = newStart + (parseInt(newLog.minutes) || 60);
 
         return logs.filter(log => {
             if (log.routine_id === newLog.routine_id) return false;
             if (log.status !== 'done') return false;
-            if (!log.actual_start_time || !log.time_spent_minutes) return false;
-
+            
+            // Use log's actual_start_time and time_spent_minutes
             const logStart = toMinutes(log.actual_start_time);
-            const logEnd = logStart + log.time_spent_minutes;
+            const logEnd = logStart + (log.time_spent_minutes || 60);
 
-            // Overlap logic: (StartA < EndB) and (EndA > StartB)
+            // Strict Overlap logic: (StartA < EndB) and (EndA > StartB)
             return (newStart < logEnd) && (newEnd > logStart);
         });
     },

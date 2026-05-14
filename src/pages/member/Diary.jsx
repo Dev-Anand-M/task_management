@@ -244,6 +244,74 @@ const Diary = () => {
         </Card>
     );
 
+    const renderTimelineView = () => {
+        const todayLogs = filteredLogs.filter(l => l.status === 'done' && l.actual_start_time);
+        const hours = Array.from({ length: 24 }, (_, i) => i);
+
+        const toMinutes = (time) => {
+            const [h, m] = time.split(':').map(Number);
+            return h * 60 + m;
+        };
+
+        return (
+            <div style={{ position: 'relative', background: 'var(--surface)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-xl)', border: '1px solid var(--border)', minHeight: '800px' }}>
+                <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
+                    {/* Time Axis */}
+                    <div style={{ width: '60px', flexShrink: 0 }}>
+                        {hours.map(h => (
+                            <div key={h} style={{ height: '60px', color: 'var(--text-muted)', fontSize: '10px', borderTop: '1px solid var(--border)', paddingTop: '4px' }}>
+                                {h}:00
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Timeline Grid */}
+                    <div style={{ flex: 1, position: 'relative', borderLeft: '1px solid var(--border)' }}>
+                        {todayLogs.map((log, i) => {
+                            const start = toMinutes(log.actual_start_time);
+                            const duration = log.time_spent_minutes || 30;
+                            const top = (start / 60) * 60; // 60px per hour
+                            const height = (duration / 60) * 60;
+                            
+                            // Simple overlap check for visual warning
+                            const hasOverlap = todayLogs.some(other => {
+                                if (other.id === log.id) return false;
+                                const otherStart = toMinutes(other.actual_start_time);
+                                const otherEnd = otherStart + other.time_spent_minutes;
+                                const logEnd = start + duration;
+                                return (start < otherEnd) && (logEnd > otherStart);
+                            });
+
+                            return (
+                                <div 
+                                    key={log.id} 
+                                    style={{
+                                        position: 'absolute', top: `${top}px`, left: '10px', right: '10px',
+                                        height: `${Math.max(height, 25)}px`,
+                                        background: hasOverlap ? 'rgba(239, 68, 68, 0.15)' : 'rgba(99, 102, 241, 0.1)',
+                                        border: `1px solid ${hasOverlap ? 'var(--error-500)' : 'var(--primary-500)'}`,
+                                        borderRadius: '8px', padding: '8px', overflow: 'hidden',
+                                        boxShadow: hasOverlap ? '0 0 15px rgba(239, 68, 68, 0.3)' : 'none',
+                                        zIndex: hasOverlap ? 2 : 1,
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <div style={{ fontSize: '11px', fontWeight: 700 }}>{log.routines?.title}</div>
+                                        {hasOverlap && <Badge variant="error" size="xs"><AlertTriangle size={10} /> Conflict</Badge>}
+                                    </div>
+                                    <div style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
+                                        {log.actual_start_time} • {duration}m
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="page-content animate-fade-in">
             <div className="flex flex-mobile-col justify-between items-center mb-xl gap-md">
@@ -255,6 +323,7 @@ const Diary = () => {
                 </div>
                 <div style={{ display: 'flex', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '4px', border: '1px solid var(--border)' }}>
                     <button onClick={() => setView('list')} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: view === 'list' ? 'var(--primary-500)' : 'transparent', color: view === 'list' ? 'white' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}>List</button>
+                    <button onClick={() => setView('timeline')} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: view === 'timeline' ? 'var(--primary-500)' : 'transparent', color: view === 'timeline' ? 'white' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}>Timeline</button>
                     <button onClick={() => setView('analytics')} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: view === 'analytics' ? 'var(--primary-500)' : 'transparent', color: view === 'analytics' ? 'white' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}>Analytics</button>
                     <button onClick={() => setView('mindmap')} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: view === 'mindmap' ? 'var(--primary-500)' : 'transparent', color: view === 'mindmap' ? 'white' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}>Mindmap</button>
                 </div>
@@ -304,6 +373,7 @@ const Diary = () => {
             ) : (
                 <>
                     {view === 'list' && renderListView()}
+                    {view === 'timeline' && renderTimelineView()}
                     {view === 'analytics' && renderAnalyticsView()}
                     {view === 'mindmap' && renderMindmapView()}
                 </>

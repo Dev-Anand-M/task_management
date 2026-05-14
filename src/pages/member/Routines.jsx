@@ -76,7 +76,6 @@ import { useNavigate } from 'react-router-dom';
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo, materials, allLogs }) => {
-    const [spentTime, setSpentTime] = useState(log?.time_spent_minutes || 0);
     const [actualStartTime, setActualStartTime] = useState(log?.actual_start_time || routine.start_time.slice(0, 5));
     const [notes, setNotes] = useState(log?.learning_notes || '');
     const [showDetails, setShowDetails] = useState(false);
@@ -88,29 +87,22 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo, material
     const isNext = nextAlarmInfo?.title === routine.title;
 
     const handleSave = async () => {
-        const mins = parseInt(spentTime);
-        if (!mins || mins <= 0) {
-            alert('Please enter the number of minutes spent on this task.');
-            return;
-        }
-
         // Conflict check for logs
         const logsArray = Object.values(allLogs || {});
         const conflicts = routineService.checkLogConflicts(logsArray, {
             start_time: actualStartTime,
-            minutes: mins,
+            minutes: routine.duration_minutes || 60,
             routine_id: routine.id
         });
 
         if (conflicts.length > 0) {
-            const conflictNames = conflicts.map(c => c.title || 'Another task').join(', ');
-            if (!window.confirm(`⚠️ Time Conflict!\n\nThis log overlaps with existing records. Continue anyway?`)) {
-                return;
-            }
+            const conflictNames = conflicts.map(c => c.routines?.title || 'Another task').join(', ');
+            alert(`🛑 STRICT BLOCK: Time Conflict Detected!\n\nThis slot is already occupied by: "${conflictNames}".\n\nYou must adjust your start time to avoid overlapping.`);
+            return;
         }
 
         await onUpdate(routine.id, {
-            time_spent_minutes: mins,
+            time_spent_minutes: routine.duration_minutes || 60,
             actual_start_time: actualStartTime,
             learning_notes: notes,
             status: 'done',
@@ -219,7 +211,7 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo, material
                         </div>
                     )}
                     <div className="flex flex-col gap-md">
-                        <div className="grid grid-cols-3 gap-md">
+                        <div className="grid grid-cols-2 gap-md">
                             <div>
                                 <label className="input-label">Actual Start</label>
                                 <Input 
@@ -230,20 +222,9 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo, material
                                 />
                             </div>
                             <div>
-                                <label className="input-label">Minutes Spent</label>
-                                <Input 
-                                    type="number" 
-                                    value={spentTime} 
-                                    onChange={e => setSpentTime(e.target.value)} 
-                                    placeholder="e.g. 45"
-                                    required
-                                    min="1"
-                                />
-                            </div>
-                            <div>
-                                <label className="input-label">Deadline</label>
-                                <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                                    {routine.deadline ? new Date(routine.deadline).toLocaleDateString() : 'None'}
+                                <label className="input-label">Duration (Planned)</label>
+                                <p style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--primary-500)' }}>
+                                    {routine.duration_minutes || 60} minutes
                                 </p>
                             </div>
                         </div>
@@ -277,6 +258,7 @@ const Routines = () => {
     const [form, setForm] = useState({ 
         title: '', 
         start_time: '08:00:00', 
+        duration_minutes: 60,
         days_of_week: [1,2,3,4,5], 
         deadline: '', 
         description: '',
@@ -513,6 +495,40 @@ const Routines = () => {
                 </div>
             )}
 
+            <div style={{ marginTop: 'var(--space-2xl)' }}>
+                <div className="flex items-center gap-sm mb-md">
+                    <Zap size={20} className="text-warning-500" />
+                    <h3 style={{ margin: 0 }}>Available Slots Today</h3>
+                </div>
+                <div className="flex flex-wrap gap-sm">
+                    {getFreeSlots().map((slot, i) => (
+                        <button 
+                            key={i}
+                            onClick={() => handleAddSlot(slot.start)}
+                            style={{ 
+                                padding: '12px 20px', background: 'var(--surface)', border: '1px dashed var(--primary-500)',
+                                borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s',
+                                display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left'
+                            }}
+                            className="hover:bg-primary-50 hover:border-solid"
+                        >
+                            <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--primary-500)' }}>FREE WINDOW</span>
+                            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700 }}>
+                                {formatMinutes(slot.start)} - {formatMinutes(slot.end)}
+                            </span>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                                ({slot.end - slot.start} mins available)
+                            </span>
+                        </button>
+                    ))}
+                    {getFreeSlots().length === 0 && (
+                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            Your day is fully packed! Great architecture.
+                        </p>
+                    )}
+                </div>
+            </div>
+
             {/* Add Routine Modal */}
             <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Create Routine">
                 <form onSubmit={handleCreate} className="flex flex-col gap-md">
@@ -531,13 +547,23 @@ const Routines = () => {
                         materials={studyMaterials}
                     />
                     {!form.is_anonymous && (
-                        <Input 
-                            label="Start Time" 
-                            type="time" 
-                            value={form.start_time} 
-                            onChange={e => setForm({...form, start_time: e.target.value})} 
-                            required 
-                        />
+                        <div className="grid grid-cols-2 gap-md">
+                            <Input 
+                                label="Start Time" 
+                                type="time" 
+                                value={form.start_time} 
+                                onChange={e => setForm({...form, start_time: e.target.value})} 
+                                required 
+                            />
+                            <Input 
+                                label="Duration (mins)" 
+                                type="number" 
+                                value={form.duration_minutes} 
+                                onChange={e => setForm({...form, duration_minutes: parseInt(e.target.value)})} 
+                                required 
+                                min="1"
+                            />
+                        </div>
                     )}
                     <div>
                         <label className="input-label">Repeat Days</label>
