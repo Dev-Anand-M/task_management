@@ -76,6 +76,7 @@ const Settings = () => {
     const { user, forceRefresh } = useAuth();
     const [notifications, setNotifications] = useState({
         push: false,
+        routineAlarms: localStorage.getItem('alarms_enabled') === 'true',
         taskReminders: true,
         quizResults: true
     });
@@ -234,6 +235,11 @@ const Settings = () => {
         const newNotifications = { ...notifications, [key]: value };
         setNotifications(newNotifications);
         syncNotificationsToDb(newNotifications);
+        
+        if (key === 'routineAlarms') {
+            localStorage.setItem('alarms_enabled', value);
+            window.dispatchEvent(new CustomEvent('toggle-alarms', { detail: value }));
+        }
     };
 
     const handleColorSchemeChange = (schemeId) => {
@@ -533,6 +539,7 @@ const Settings = () => {
                         )}
                         {[
                             { key: 'push', label: 'Push Notifications', desc: 'Native device/browser notifications' },
+                            { key: 'routineAlarms', label: 'Routine Alarms (Audio)', desc: 'Full screen audio alarms for your routines' },
                             { key: 'taskReminders', label: 'Task Reminders', desc: 'Get reminded about pending tasks' },
                             { key: 'quizResults', label: 'Quiz Results', desc: 'Notify when quiz is evaluated' }
                         ]
@@ -654,6 +661,21 @@ const Settings = () => {
                                 </label>
                             </div>
                         ))}
+
+                        {notifications.routineAlarms && (
+                            <div style={{ marginTop: 'var(--space-sm)', paddingLeft: 'var(--space-md)' }}>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    icon={Volume2}
+                                    onClick={() => {
+                                        window.dispatchEvent(new CustomEvent('test-alarm'));
+                                    }}
+                                >
+                                    Test Audio Alarm
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
                     {/* PWA Install Prompt */}

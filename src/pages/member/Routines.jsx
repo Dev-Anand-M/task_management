@@ -426,13 +426,15 @@ const Routines = () => {
                         onChange={e => setForm({...form, title: e.target.value})} 
                         required 
                     />
-                    <Input 
-                        label="Start Time" 
-                        type="time" 
-                        value={form.start_time} 
-                        onChange={e => setForm({...form, start_time: e.target.value})} 
-                        required 
-                    />
+                    {!form.is_anonymous && (
+                        <Input 
+                            label="Start Time" 
+                            type="time" 
+                            value={form.start_time} 
+                            onChange={e => setForm({...form, start_time: e.target.value})} 
+                            required 
+                        />
+                    )}
                     <div>
                         <label className="input-label">Repeat Days</label>
                         <div className="flex gap-xs">
@@ -458,7 +460,11 @@ const Routines = () => {
                             type="checkbox" 
                             id="is_anon"
                             checked={form.is_anonymous} 
-                            onChange={e => setForm({ ...form, is_anonymous: e.target.checked })} 
+                            onChange={e => setForm({ 
+                                ...form, 
+                                is_anonymous: e.target.checked,
+                                start_time: e.target.checked ? '00:00:00' : '08:00:00' 
+                            })} 
                             style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                         />
                         <label htmlFor="is_anon" style={{ fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
