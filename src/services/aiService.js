@@ -133,11 +133,15 @@ export const syncToDatabase = async () => {
 
         const model = localStorage.getItem('selected_ai_model');
         const usage = getUsageStats();
+        const priority = getProviderPriority();
+        const defaultProvider = localStorage.getItem('ai_default_provider');
 
         const aiSettings = {
             keys: keys,
             selected_model: model,
-            usage: usage
+            usage: usage,
+            provider_priority: priority,
+            default_provider: defaultProvider
         };
 
         await supabase
@@ -169,30 +173,86 @@ export const removeAPIKey = async (providerId) => {
 
 // Get selected model with smart fallback
 export const getSelectedModel = () => {
-    // 1. Check for manual selection first, but force SambaNova default when available
+    // 1. Check for manual selection first
     const manualSelection = localStorage.getItem('selected_ai_model');
     if (manualSelection) {
         const manualModel = AVAILABLE_MODELS.find(m => m.id === manualSelection);
-        const hasSamba = !!localStorage.getItem('sambanova_api_key');
-
-        // If SambaNova is configured and manual model is missing/legacy/non-Samba, normalize to SambaNova default
-        if (hasSamba && (!manualModel || manualModel.provider !== 'sambanova')) {
-            localStorage.setItem('selected_ai_model', 'Meta-Llama-3.3-70B-Instruct');
-            return 'Meta-Llama-3.3-70B-Instruct';
+        
+        // Check if the model's provider has a key
+        if (manualModel && getAPIKey(manualModel.provider)) {
+            return manualSelection;
         }
-
-        return manualSelection;
     }
 
-    // 2. Fallback to configured keys in order of preference (SambaNova first)
+    // 2. Use priority order if set
+    const priorityOrder = getProviderPriority();
+    for (const providerId of priorityOrder) {
+        if (getAPIKey(providerId)) {
+            const model = AVAILABLE_MODELS.find(m => m.provider === providerId);
+            if (model) {
+                localStorage.setItem('selected_ai_model', model.id);
+                return model.id;
+            }
+        }
+    }
+
+    // 3. Fallback to any configured provider
     if (localStorage.getItem('sambanova_api_key')) return 'Meta-Llama-3.3-70B-Instruct';
+    if (localStorage.getItem('groq_api_key')) return 'llama-3.3-70b-versatile';
     if (localStorage.getItem('gemini_api_key')) return 'gemini-1.5-flash';
     if (localStorage.getItem('openai_api_key')) return 'gpt-4o';
     if (localStorage.getItem('anthropic_api_key')) return 'claude-3-5-sonnet-20240620';
     if (localStorage.getItem('perplexity_api_key')) return 'llama-3.1-sonar-large-128k-online';
 
-    // Default Fallback (SambaNova)
+    // Default Fallback
     return 'Meta-Llama-3.3-70B-Instruct';
+};
+
+// Get provider priority order
+export const getProviderPriority = () => {
+    const saved = localStorage.getItem('ai_provider_priority');
+    if (saved) {
+        try {
+            return JSON.parse(saved);
+        } catch {
+            return ['sambanova', 'groq', 'gemini', 'openai', 'anthropic', 'perplexity'];
+        }
+    }
+    // Default priority
+    return ['sambanova', 'groq', 'gemini', 'openai', 'anthropic', 'perplexity'];
+};
+
+// Set provider priority order
+export const setProviderPriority = async (priorityArray) => {
+    localStorage.setItem('ai_provider_priority', JSON.stringify(priorityArray));
+    await syncToDatabase();
+};
+
+// Get default provider
+export const getDefaultProvider = () => {
+    const saved = localStorage.getItem('ai_default_provider');
+    if (saved && getAPIKey(saved)) {
+        return saved;
+    }
+    // Use first in priority order that has a key
+    const priority = getProviderPriority();
+    for (const providerId of priority) {
+        if (getAPIKey(providerId)) {
+            return providerId;
+        }
+    }
+    return 'sambanova';
+};
+
+// Set default provider
+export const setDefaultProvider = async (providerId) => {
+    localStorage.setItem('ai_default_provider', providerId);
+    // Also update selected model to match default provider
+    const model = AVAILABLE_MODELS.find(m => m.provider === providerId);
+    if (model) {
+        await setSelectedModel(model.id);
+    }
+    await syncToDatabase();
 };
 
 // Set selected model
@@ -264,6 +324,12 @@ export const loadFromDatabase = async () => {
             }
             if (settings.usage) {
                 localStorage.setItem('ai_usage_stats', JSON.stringify(settings.usage));
+            }
+            if (settings.provider_priority) {
+                localStorage.setItem('ai_provider_priority', JSON.stringify(settings.provider_priority));
+            }
+            if (settings.default_provider) {
+                localStorage.setItem('ai_default_provider', settings.default_provider);
             }
             return true;
         }
@@ -456,150 +522,158 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null, opti
     throw lastError;
 };
 
-// Generic AI completion function
+// Generic AI completion function with automatic fallback
 const generateContent = async (prompt, systemPrompt = '', modelId = null, signal = null, options = {}) => {
     let selectedModelId = modelId || getSelectedModel();
     let provider = getProviderForModel(selectedModelId);
+    
+    // Get priority order for fallback
+    const priorityOrder = getProviderPriority();
+    const attemptedProviders = new Set();
 
-    // Force SambaNova as execution default whenever its key is configured
-    const sambaKey = getAPIKey('sambanova');
-    if (sambaKey) {
-        const sambaModel = AVAILABLE_MODELS.find(m => m.id === selectedModelId && m.provider === 'sambanova')
-            || AVAILABLE_MODELS.find(m => m.provider === 'sambanova');
-        if (sambaModel) {
-            selectedModelId = sambaModel.id;
-            provider = PROVIDERS.SAMBANOVA;
-            localStorage.setItem('selected_ai_model', selectedModelId);
-        }
-    }
-
-    // Auto-healing: If selected provider has no key, try to find one that does
-    if (!getAPIKey(provider.id)) {
-        console.warn(`Provider ${provider.id} not configured. Attempting to fallback...`);
-        const validProvider = PROVIDERS.SAMBANOVA && getAPIKey('sambanova') ? PROVIDERS.SAMBANOVA : Object.values(PROVIDERS).find(p => getAPIKey(p.id));
-        if (validProvider) {
-            const newModel = AVAILABLE_MODELS.find(m => m.provider === validProvider.id);
-            if (newModel) {
-                console.log(`Fallback: Switching to ${validProvider.name} (${newModel.id})`);
-                selectedModelId = newModel.id;
-                provider = getProviderForModel(selectedModelId);
-                localStorage.setItem('selected_ai_model', selectedModelId);
+    // Try the selected provider first
+    attemptedProviders.add(provider.id);
+    
+    try {
+        return await attemptProviderGeneration(provider.id, selectedModelId, prompt, systemPrompt, signal, options);
+    } catch (error) {
+        console.warn(`[AI] ${provider.name} failed:`, error.message);
+        
+        // Try fallback providers in priority order
+        for (const fallbackProviderId of priorityOrder) {
+            if (attemptedProviders.has(fallbackProviderId)) continue;
+            if (!getAPIKey(fallbackProviderId)) continue;
+            
+            attemptedProviders.add(fallbackProviderId);
+            const fallbackModel = AVAILABLE_MODELS.find(m => m.provider === fallbackProviderId);
+            
+            if (fallbackModel) {
+                console.log(`[AI] Falling back to ${fallbackProviderId}...`);
+                try {
+                    return await attemptProviderGeneration(fallbackProviderId, fallbackModel.id, prompt, systemPrompt, signal, options);
+                } catch (fallbackError) {
+                    console.warn(`[AI] ${fallbackProviderId} also failed:`, fallbackError.message);
+                    continue;
+                }
             }
         }
+        
+        // If all providers failed, throw the original error
+        throw new Error(`All AI providers failed. Last error: ${error.message}`);
     }
+};
 
-    if (!provider) throw new Error('Invalid model selected');
+// Helper function to attempt generation with a specific provider
+const attemptProviderGeneration = async (providerId, modelId, prompt, systemPrompt, signal, options) => {
+    const provider = Object.values(PROVIDERS).find(p => p.id === providerId);
+    if (!provider) throw new Error('Invalid provider');
 
     const apiKey = getAPIKey(provider.id);
     if (!apiKey) {
-        throw new Error(`${provider.name} API key not configured. Please add it in settings.`);
+        throw new Error(`${provider.name} API key not configured`);
     }
 
     const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
 
-    try {
-        // --- GEMINI ---
-        if (provider.id === 'gemini') {
-            const endpoint = `/v1beta/models/${selectedModelId}:generateContent`;
-            const body = {
-                contents: [{ parts: [{ text: fullPrompt }] }],
-                generationConfig: { temperature: 0.7, topK: 40, topP: 0.95, maxOutputTokens: 8192 }
-            };
-            
-            const data = await callAIProxy('gemini', endpoint, apiKey, body, signal, options);
-            await incrementUsage('gemini');
-            return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        }
-
-        // --- OPENAI ---
-        if (provider.id === 'openai') {
-            const endpoint = '/v1/chat/completions';
-            const body = {
-                model: selectedModelId,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: prompt }
-                ],
-                temperature: 0.7,
-                max_tokens: 8192
-            };
-            
-            const data = await callAIProxy('openai', endpoint, apiKey, body, signal, options);
-            await incrementUsage('openai');
-            return data.choices?.[0]?.message?.content || '';
-        }
-
-        // --- ANTHROPIC ---
-        if (provider.id === 'anthropic') {
-            const endpoint = '/v1/messages';
-            const body = {
-                model: selectedModelId,
-                max_tokens: 4096,
-                system: systemPrompt,
-                messages: [{ role: 'user', content: prompt }]
-            };
-            
-            const data = await callAIProxy('anthropic', endpoint, apiKey, body, signal, options);
-            await incrementUsage('anthropic');
-            return data.content?.[0]?.text || '';
-        }
-
-        // --- PERPLEXITY ---
-        if (provider.id === 'perplexity') {
-            const endpoint = '/chat/completions';
-            const body = {
-                model: selectedModelId,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: prompt }
-                ]
-            };
-            
-            const data = await callAIProxy('perplexity', endpoint, apiKey, body, signal, options);
-            await incrementUsage('perplexity');
-            return data.choices?.[0]?.message?.content || '';
-        }
-
-        // --- SAMBANOVA ---
-        if (provider.id === 'sambanova') {
-            const endpoint = '/v1/chat/completions';
-            const body = {
-                model: selectedModelId,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: prompt }
-                ],
-                temperature: 0.7,
-                max_tokens: 8192
-            };
-            
-            const data = await callAIProxy('sambanova', endpoint, apiKey, body, signal, options);
-            await incrementUsage('sambanova');
-            return data.choices?.[0]?.message?.content || '';
-        }
+    // --- GEMINI ---
+    if (provider.id === 'gemini') {
+        const endpoint = `/v1beta/models/${modelId}:generateContent`;
+        const body = {
+            contents: [{ parts: [{ text: fullPrompt }] }],
+            generationConfig: { temperature: 0.7, topK: 40, topP: 0.95, maxOutputTokens: 8192 }
+        };
         
-        // --- GROQ ---
-        if (provider.id === 'groq') {
-            const endpoint = '/openai/v1/chat/completions';
-            const body = {
-                model: selectedModelId,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: prompt }
-                ],
-                temperature: 0.7,
-                max_tokens: 8192
-            };
-            
-            const data = await callAIProxy('groq', endpoint, apiKey, body, signal, options);
-            await incrementUsage('groq');
-            return data.choices?.[0]?.message?.content || '';
-        }
-
-    } catch (error) {
-        console.error('AI Service Error:', error);
-        throw error;
+        const data = await callAIProxy('gemini', endpoint, apiKey, body, signal, options);
+        await incrementUsage('gemini');
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     }
+
+    // --- OPENAI ---
+    if (provider.id === 'openai') {
+        const endpoint = '/v1/chat/completions';
+        const body = {
+            model: modelId,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: prompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 8192
+        };
+        
+        const data = await callAIProxy('openai', endpoint, apiKey, body, signal, options);
+        await incrementUsage('openai');
+        return data.choices?.[0]?.message?.content || '';
+    }
+
+    // --- ANTHROPIC ---
+    if (provider.id === 'anthropic') {
+        const endpoint = '/v1/messages';
+        const body = {
+            model: modelId,
+            max_tokens: 4096,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: prompt }]
+        };
+        
+        const data = await callAIProxy('anthropic', endpoint, apiKey, body, signal, options);
+        await incrementUsage('anthropic');
+        return data.content?.[0]?.text || '';
+    }
+
+    // --- PERPLEXITY ---
+    if (provider.id === 'perplexity') {
+        const endpoint = '/chat/completions';
+        const body = {
+            model: modelId,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: prompt }
+            ]
+        };
+        
+        const data = await callAIProxy('perplexity', endpoint, apiKey, body, signal, options);
+        await incrementUsage('perplexity');
+        return data.choices?.[0]?.message?.content || '';
+    }
+
+    // --- SAMBANOVA ---
+    if (provider.id === 'sambanova') {
+        const endpoint = '/v1/chat/completions';
+        const body = {
+            model: modelId,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: prompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 8192
+        };
+        
+        const data = await callAIProxy('sambanova', endpoint, apiKey, body, signal, options);
+        await incrementUsage('sambanova');
+        return data.choices?.[0]?.message?.content || '';
+    }
+    
+    // --- GROQ ---
+    if (provider.id === 'groq') {
+        const endpoint = '/openai/v1/chat/completions';
+        const body = {
+            model: modelId,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: prompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 8192
+        };
+        
+        const data = await callAIProxy('groq', endpoint, apiKey, body, signal, options);
+        await incrementUsage('groq');
+        return data.choices?.[0]?.message?.content || '';
+    }
+
+    throw new Error('Provider not implemented');
 };
 
 // AI Code Review

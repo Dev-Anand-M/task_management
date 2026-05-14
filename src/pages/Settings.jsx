@@ -101,6 +101,7 @@ const Settings = () => {
     const [loadingAISettings, setLoadingAISettings] = useState(true);
     const [validationMessage, setValidationMessage] = useState({ type: '', text: '' }); // type: 'success', 'error', 'warning'
     const [availableModels, setAvailableModels] = useState([]); // Dynamic models from API
+    const [providerPriority, setProviderPriority] = useState(['sambanova', 'groq', 'gemini', 'openai', 'anthropic', 'perplexity']);
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [isInstalled, setIsInstalled] = useState(false);
     const [swStatus, setSwStatus] = useState('Checking...');
@@ -179,6 +180,10 @@ const Settings = () => {
 
                 const stats = getUsageStats();
                 setUsageStats(stats);
+                
+                // Load provider priority
+                const { getProviderPriority } = await import('../services/aiService');
+                setProviderPriority(getProviderPriority());
 
                 setIsInstalled(window.matchMedia('(display-mode: standalone)').matches);
                 
@@ -1111,6 +1116,103 @@ const Settings = () => {
                                 </button>
                             );
                         })}
+                    </div>
+
+                    {/* Provider Priority Management */}
+                    <div style={{
+                        padding: 'var(--space-lg)',
+                        background: 'var(--surface)',
+                        borderRadius: 'var(--radius-lg)',
+                        border: '1px solid var(--border)',
+                        marginBottom: 'var(--space-lg)'
+                    }}>
+                        <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-sm)', color: 'var(--text-muted)' }}>
+                            ⚡ PROVIDER PRIORITY & FALLBACK
+                        </h4>
+                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-md)' }}>
+                            Set the order in which AI providers are used. If one fails or runs out of quota, the system automatically falls back to the next available provider.
+                        </p>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                            {providerPriority.map((pid, index) => {
+                                const providerNames = {
+                                    sambanova: 'SambaNova',
+                                    groq: 'Groq',
+                                    gemini: 'Google Gemini',
+                                    openai: 'OpenAI',
+                                    anthropic: 'Anthropic',
+                                    perplexity: 'Perplexity'
+                                };
+                                
+                                const moveProvider = async (direction) => {
+                                    const newPriority = [...providerPriority];
+                                    const newIndex = index + direction;
+                                    if (newIndex < 0 || newIndex >= newPriority.length) return;
+                                    [newPriority[index], newPriority[newIndex]] = [newPriority[newIndex], newPriority[index]];
+                                    setProviderPriority(newPriority);
+                                    const { setProviderPriority: savePriority } = await import('../services/aiService');
+                                    await savePriority(newPriority);
+                                };
+                                
+                                return (
+                                    <div key={pid} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 'var(--space-sm)',
+                                        padding: 'var(--space-sm)',
+                                        background: 'var(--card)',
+                                        borderRadius: 'var(--radius-md)',
+                                        border: '1px solid var(--border)'
+                                    }}>
+                                        <span style={{
+                                            width: '24px',
+                                            height: '24px',
+                                            borderRadius: '50%',
+                                            background: 'var(--primary-500)',
+                                            color: 'white',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: 'var(--text-xs)',
+                                            fontWeight: 700
+                                        }}>
+                                            {index + 1}
+                                        </span>
+                                        <span style={{ flex: 1, fontWeight: 500 }}>{providerNames[pid]}</span>
+                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                            <button
+                                                onClick={() => moveProvider(-1)}
+                                                disabled={index === 0}
+                                                style={{
+                                                    padding: '4px 8px',
+                                                    background: 'var(--surface)',
+                                                    border: '1px solid var(--border)',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    cursor: index === 0 ? 'not-allowed' : 'pointer',
+                                                    opacity: index === 0 ? 0.5 : 1
+                                                }}
+                                            >
+                                                ↑
+                                            </button>
+                                            <button
+                                                onClick={() => moveProvider(1)}
+                                                disabled={index === providerPriority.length - 1}
+                                                style={{
+                                                    padding: '4px 8px',
+                                                    background: 'var(--surface)',
+                                                    border: '1px solid var(--border)',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    cursor: index === providerPriority.length - 1 ? 'not-allowed' : 'pointer',
+                                                    opacity: index === providerPriority.length - 1 ? 0.5 : 1
+                                                }}
+                                            >
+                                                ↓
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* API Key Status */}
