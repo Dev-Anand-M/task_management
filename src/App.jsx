@@ -32,6 +32,8 @@ import StudyMaterials from './pages/member/StudyMaterials';
 import MemberCalendar from './pages/member/Calendar';
 import Planner from './pages/member/Planner';
 import Routines from './pages/member/Routines';
+import Diary from './pages/member/Diary';
+import Timetable from './pages/member/Timetable';
 
 // AI Pages
 import AIAssistant from './pages/ai/AIAssistant';
@@ -199,6 +201,8 @@ function AppRoutes() {
           <Route path="/calendar" element={<MemberCalendar />} />
           <Route path="/planner" element={<Planner />} />
           <Route path="/routines" element={<Routines />} />
+          <Route path="/diary" element={<Diary />} />
+          <Route path="/timetable" element={<Timetable />} />
         </Route>
 
         {/* Shared Routes */}
