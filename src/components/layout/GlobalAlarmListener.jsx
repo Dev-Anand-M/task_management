@@ -157,6 +157,11 @@ const GlobalAlarmListener = () => {
         localStorage.setItem('alarms_enabled', newState);
     };
 
+    const testAlarm = () => {
+        triggerAlarm({ title: 'Test Alarm', id: 'test' });
+        alert('Test triggered! If you didn\'t hear a sound or see a popup, check your phone\'s Notification & Sound settings.');
+    };
+
     return (
         <>
             <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto" loop />
@@ -179,6 +184,15 @@ const GlobalAlarmListener = () => {
                 <div style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {enabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
                 </div>
+
+                {enabled && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); testAlarm(); }}
+                        style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', fontSize: '10px', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                        TEST
+                    </button>
+                )}
 
                 {enabled && nextAlarm && (
                     <div style={{ display: 'flex', flexDirection: 'column', whiteSpace: 'nowrap', animation: 'fadeIn 0.3s' }}>

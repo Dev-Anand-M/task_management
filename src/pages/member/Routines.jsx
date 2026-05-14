@@ -12,13 +12,16 @@ import { useNavigate } from 'react-router-dom';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const RoutineItem = ({ routine, log, onUpdate, onDelete }) => {
+const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
     const [spentTime, setSpentTime] = useState(log?.time_spent_minutes || 0);
     const [notes, setNotes] = useState(log?.learning_notes || '');
     const [showDetails, setShowDetails] = useState(false);
     const isDone = log?.status === 'done';
     const isIgnored = log?.status === 'ignored';
     const isPostponed = log?.status === 'postponed';
+    
+    // Is this the very next alarm?
+    const isNext = nextAlarmInfo?.title === routine.title;
 
     const handleSave = async () => {
         await onUpdate(routine.id, {
@@ -71,6 +74,11 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete }) => {
                         <p style={{ margin: 0, fontWeight: 700, textDecoration: (isDone || isIgnored) ? 'line-through' : 'none' }}>
                             {routine.title}
                         </p>
+                        {isNext && !isDone && !isIgnored && (
+                            <Badge variant="primary" className="animate-pulse">
+                                Next in {nextAlarmInfo.minutes}m
+                            </Badge>
+                        )}
                         {isIgnored && <Badge variant="error">Missed</Badge>}
                         {log?.postponed_count > 0 && <Badge variant="warning" size="xs">Postponed {log.postponed_count}x</Badge>}
                     </div>
@@ -169,13 +177,19 @@ const Routines = () => {
         description: '' 
     });
     const [activeTimetable, setActiveTimetable] = useState(null);
+    const [nextAlarmInfo, setNextAlarmInfo] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
+        const handleNextAlarm = (e) => setNextAlarmInfo(e.detail);
+        window.addEventListener('next-alarm-update', handleNextAlarm);
+        
         if (user?.id) {
             fetchData();
             checkTodayTimetable();
         }
+        
+        return () => window.removeEventListener('next-alarm-update', handleNextAlarm);
     }, [user?.id, selectedDate]);
 
     const checkTodayTimetable = async () => {
@@ -357,6 +371,7 @@ const Routines = () => {
                             log={logs[routine.id]}
                             onUpdate={handleUpdateLog}
                             onDelete={() => handleDelete(routine.id)}
+                            nextAlarmInfo={nextAlarmInfo}
                         />
                     ))}
                 </div>
