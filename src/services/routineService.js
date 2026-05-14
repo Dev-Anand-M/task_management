@@ -95,9 +95,9 @@ export const routineService = {
             .from('ai_timetables')
             .upsert({
                 user_id: user.id,
-                week_start_date: weekStart,
+                week_start: weekStart,
                 schedule_data: scheduleData
-            }, { onConflict: 'user_id,week_start_date' })
+            }, { onConflict: 'user_id,week_start' })
             .select();
         if (error) throw error;
         return data[0];
@@ -109,7 +109,7 @@ export const routineService = {
             .from('ai_timetables')
             .select('*')
             .eq('user_id', user.id)
-            .eq('week_start_date', weekStart)
+            .eq('week_start', weekStart)
             .maybeSingle();
         if (error) throw error;
         return data;
