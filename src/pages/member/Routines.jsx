@@ -2,17 +2,80 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { routineService } from '../../services/routineService';
 import { Card, Badge, Button, Input, Modal, ProgressBar, LoadingSpinner } from '../../components/common';
-import {
-    RefreshCw, Plus, Trash2, CheckCircle, Circle, Clock, Bell,
-    Calendar, ChevronDown, ChevronRight, ChevronLeft, Sparkles, Brain, Send,
-    Flame, X, Edit3, Check, Mic, MicOff, Volume2, VolumeX,
-    History, BookOpen, AlertTriangle, BellRing
-} from 'lucide-react';
+import { Check, Clock, Trash2, Plus, AlertTriangle, CheckCircle, Circle, X, Book } from 'lucide-react';
+
+const MentionInput = ({ value, onChange, placeholder, materials, label }) => {
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [filter, setFilter] = useState('');
+    const [cursorPos, setCursorPos] = useState(0);
+
+    const handleTextChange = (e) => {
+        const text = e.target.value;
+        const pos = e.target.selectionStart;
+        setCursorPos(pos);
+        onChange(text);
+
+        const lastHash = text.lastIndexOf('#', pos - 1);
+        if (lastHash !== -1 && !text.slice(lastHash, pos).includes(' ')) {
+            setShowSuggestions(true);
+            setFilter(text.slice(lastHash + 1, pos).toLowerCase());
+        } else {
+            setShowSuggestions(false);
+        }
+    };
+
+    const selectMaterial = (title) => {
+        const lastHash = value.lastIndexOf('#', cursorPos - 1);
+        const before = value.slice(0, lastHash);
+        const after = value.slice(cursorPos);
+        onChange(`${before}#${title}${after}`);
+        setShowSuggestions(false);
+    };
+
+    const filtered = materials.filter(m => m.title.toLowerCase().includes(filter));
+
+    return (
+        <div style={{ position: 'relative' }}>
+            {label && <label className="input-label">{label}</label>}
+            <textarea 
+                className="input" 
+                style={{ minHeight: '100px', lineHeight: 1.6 }}
+                placeholder={placeholder}
+                value={value}
+                onChange={handleTextChange}
+            />
+            {showSuggestions && filtered.length > 0 && (
+                <Card style={{ 
+                    position: 'absolute', bottom: '100%', left: 0, right: 0, 
+                    zIndex: 100, maxHeight: '200px', overflowY: 'auto',
+                    boxShadow: 'var(--shadow-xl)', border: '1px solid var(--primary-500)',
+                    padding: '8px'
+                }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>STUDY MATERIALS</p>
+                    {filtered.map(m => (
+                        <div 
+                            key={m.id} 
+                            onClick={() => selectMaterial(m.title)}
+                            style={{ 
+                                padding: '8px 12px', cursor: 'pointer', borderRadius: '8px',
+                                display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--text-sm)'
+                            }}
+                            className="hover:bg-primary-50"
+                        >
+                            <Book size={14} className="text-primary-500" />
+                            {m.title}
+                        </div>
+                    ))}
+                </Card>
+            )}
+        </div>
+    );
+};
 import { useNavigate } from 'react-router-dom';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
+const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo, materials, allLogs }) => {
     const [spentTime, setSpentTime] = useState(log?.time_spent_minutes || 0);
     const [actualStartTime, setActualStartTime] = useState(log?.actual_start_time || routine.start_time.slice(0, 5));
     const [notes, setNotes] = useState(log?.learning_notes || '');
@@ -25,8 +88,29 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
     const isNext = nextAlarmInfo?.title === routine.title;
 
     const handleSave = async () => {
+        const mins = parseInt(spentTime);
+        if (!mins || mins <= 0) {
+            alert('Please enter the number of minutes spent on this task.');
+            return;
+        }
+
+        // Conflict check for logs
+        const logsArray = Object.values(allLogs || {});
+        const conflicts = routineService.checkLogConflicts(logsArray, {
+            start_time: actualStartTime,
+            minutes: mins,
+            routine_id: routine.id
+        });
+
+        if (conflicts.length > 0) {
+            const conflictNames = conflicts.map(c => c.title || 'Another task').join(', ');
+            if (!window.confirm(`⚠️ Time Conflict!\n\nThis log overlaps with existing records. Continue anyway?`)) {
+                return;
+            }
+        }
+
         await onUpdate(routine.id, {
-            time_spent_minutes: parseInt(spentTime) || 0,
+            time_spent_minutes: mins,
             actual_start_time: actualStartTime,
             learning_notes: notes,
             status: 'done',
@@ -142,6 +226,7 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
                                     type="time" 
                                     value={actualStartTime} 
                                     onChange={e => setActualStartTime(e.target.value)} 
+                                    required
                                 />
                             </div>
                             <div>
@@ -151,6 +236,8 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
                                     value={spentTime} 
                                     onChange={e => setSpentTime(e.target.value)} 
                                     placeholder="e.g. 45"
+                                    required
+                                    min="1"
                                 />
                             </div>
                             <div>
@@ -160,25 +247,13 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
                                 </p>
                             </div>
                         </div>
-                        <div>
-                            <label className="input-label">What did you learn today? (Diary Entry)</label>
-                            <textarea 
-                                value={notes}
-                                onChange={e => setNotes(e.target.value)}
-                                placeholder="Topics covered, insights, or tasks completed..."
-                                style={{ 
-                                    width: '100%', 
-                                    height: '100px', 
-                                    padding: '12px', 
-                                    borderRadius: 'var(--radius-md)',
-                                    background: 'var(--bg)',
-                                    color: 'var(--text)',
-                                    border: '1px solid var(--border)',
-                                    fontSize: 'var(--text-sm)',
-                                    resize: 'none'
-                                }}
-                            />
-                        </div>
+                        <MentionInput 
+                            label="What did you learn today? (Diary Entry)"
+                            placeholder="Topics covered, insights, or tasks completed... Type # to mention materials."
+                            value={notes}
+                            onChange={setNotes}
+                            materials={materials}
+                        />
                         <div className="flex gap-sm justify-end">
                             {!isDone && !isIgnored && <Button variant="ghost" onClick={handleIgnore} style={{ color: 'var(--error-500)' }}>Mark Ignored</Button>}
                             <Button variant="ghost" onClick={() => setShowDetails(false)}>Minimize</Button>
@@ -209,8 +284,28 @@ const Routines = () => {
     });
     const [activeTimetable, setActiveTimetable] = useState(null);
     const [nextAlarmInfo, setNextAlarmInfo] = useState(null);
-    const navigate = useNavigate();
+    const [studyMaterials, setStudyMaterials] = useState([]);
 
+    const fetchMaterials = async () => {
+        if (!user) return;
+        try {
+            const { data: notes } = await supabase.from('study_notes').select('id, title').eq('user_id', user.id);
+            const { data: shared } = await supabase.from('knowledge_base').select('id, title').eq('classroom_id', user.classroom_id);
+            setStudyMaterials([...(notes || []), ...(shared || [])]);
+        } catch (e) { console.warn('Failed to fetch materials:', e); }
+    };
+
+    useEffect(() => {
+        fetchData();
+        fetchMaterials();
+        
+        const channel = supabase.channel('routines_realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'routines' }, fetchData)
+            .subscribe();
+            
+        return () => supabase.removeChannel(channel);
+    }, [user?.id]);
+        
     useEffect(() => {
         const handleNextAlarm = (e) => setNextAlarmInfo(e.detail);
         window.addEventListener('next-alarm-update', handleNextAlarm);
@@ -411,6 +506,8 @@ const Routines = () => {
                             onUpdate={handleUpdateLog}
                             onDelete={() => handleDelete(routine.id)}
                             nextAlarmInfo={nextAlarmInfo}
+                            materials={studyMaterials}
+                            allLogs={logs}
                         />
                     ))}
                 </div>
@@ -425,6 +522,13 @@ const Routines = () => {
                         value={form.title} 
                         onChange={e => setForm({...form, title: e.target.value})} 
                         required 
+                    />
+                    <MentionInput 
+                        label="Description"
+                        placeholder="What is this routine about? Type # to link materials..."
+                        value={form.description}
+                        onChange={val => setForm({ ...form, description: val })}
+                        materials={studyMaterials}
                     />
                     {!form.is_anonymous && (
                         <Input 

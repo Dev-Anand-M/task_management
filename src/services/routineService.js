@@ -125,21 +125,43 @@ export const routineService = {
     /**
      * Check for time conflicts between routines
      */
+    checkLogConflicts(logs, newLog) {
+        // newLog: { start_time: "HH:mm", minutes: number, routine_id: string }
+        const toMinutes = (time) => {
+            const [h, m] = time.split(':').map(Number);
+            return h * 60 + m;
+        };
+
+        const newStart = toMinutes(newLog.start_time);
+        const newEnd = newStart + parseInt(newLog.minutes);
+
+        return logs.filter(log => {
+            if (log.routine_id === newLog.routine_id) return false;
+            if (log.status !== 'done') return false;
+            if (!log.actual_start_time || !log.time_spent_minutes) return false;
+
+            const logStart = toMinutes(log.actual_start_time);
+            const logEnd = logStart + log.time_spent_minutes;
+
+            // Overlap logic: (StartA < EndB) and (EndA > StartB)
+            return (newStart < logEnd) && (newEnd > logStart);
+        });
+    },
+
     checkConflicts(routines, newRoutine) {
+        if (newRoutine.is_anonymous) return []; // Anon routines don't have a fixed time
+        
         const conflicts = routines.filter(r => {
             if (r.id === newRoutine.id) return false;
-            if (!r.is_active) return false;
+            if (!r.is_active || r.is_anonymous) return false;
             
             // Check day overlap
             const commonDays = r.days_of_week.filter(d => newRoutine.days_of_week.includes(d));
             if (commonDays.length === 0) return false;
 
-            // Check time overlap (simplified as exact match or within 1 hour)
-            // In a real app, you'd use r.duration
             const rTime = r.start_time.slice(0, 5);
             const nTime = newRoutine.start_time.slice(0, 5);
             
-            // Simple check: same start time
             return rTime === nTime;
         });
         
