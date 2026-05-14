@@ -213,12 +213,13 @@ const TaskManager = () => {
                 if (taskData.assignment_type === 'everyone') {
                     targetMemberIds = members
                         .filter(m => taskData.is_global || m.classroom_id === taskData.classroom_id)
+                        .filter(m => m.id !== user?.id) // Exclude admin who created the task
                         .map(m => m.id);
                 } else {
-                    targetMemberIds = taskData.assigned_to || [];
+                    targetMemberIds = (taskData.assigned_to || []).filter(id => id !== user?.id); // Exclude admin
                 }
 
-                // Send notifications to each assigned member
+                // Send notifications to each assigned member (excluding the admin who assigned it)
                 const notifyPromises = targetMemberIds.map(async (memberId) => {
                     // 1. Create in-app notification
                     await db.createNotification({
@@ -237,7 +238,6 @@ const TaskManager = () => {
                 // Don't block the main flow if notifications fail
             }
             // -------------------------------
-
             await loadData();
             closeModal();
         } catch (error) {

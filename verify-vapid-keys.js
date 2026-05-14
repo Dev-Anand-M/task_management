@@ -2,7 +2,10 @@
 // Run with: node verify-vapid-keys.js
 // To check Vercel: node verify-vapid-keys.js --vercel
 
-const https = require('https');
+import https from 'https';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 console.log('=== VAPID Key Verification ===\n');
 
@@ -49,8 +52,6 @@ async function getVercelEnvVars(token, projectId) {
 // Check local .env
 async function checkLocal() {
     try {
-        require('dotenv').config();
-        
         console.log('📋 Expected Keys:');
         Object.entries(expectedKeys).forEach(([key, value]) => {
             console.log(`  ${key}: ${value.substring(0, 20)}...`);
@@ -86,7 +87,6 @@ async function checkLocal() {
         return allMatch;
     } catch (error) {
         console.error('Error:', error.message);
-        console.log('\nNote: Run "npm install dotenv" if you see a module error');
         return false;
     }
 }

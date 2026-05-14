@@ -319,12 +319,13 @@ const QuizBuilder = () => {
                 if (quizData.assignment_type === 'everyone') {
                     targetMemberIds = members
                         .filter(m => quizData.is_global || m.classroom_id === quizData.classroom_id)
+                        .filter(m => m.id !== user?.id) // Exclude admin who created the quiz
                         .map(m => m.id);
                 } else {
-                    targetMemberIds = quizData.assigned_to || [];
+                    targetMemberIds = (quizData.assigned_to || []).filter(id => id !== user?.id); // Exclude admin
                 }
 
-                // Send notifications to each assigned member
+                // Send notifications to each assigned member (excluding the admin who assigned it)
                 const notifyPromises = targetMemberIds.map(async (memberId) => {
                     // 1. Create in-app notification
                     await db.createNotification({

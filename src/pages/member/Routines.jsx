@@ -4,7 +4,7 @@ import { Card, Badge, Button, Input, Modal, ProgressBar } from '../../components
 import {
     RefreshCw, Plus, Trash2, CheckCircle, Circle, Clock, Bell,
     Calendar, ChevronDown, ChevronRight, Sparkles, Brain, Send,
-    Flame, X, Edit3, Check
+    Flame, X, Edit3, Check, Mic, MicOff, Volume2, VolumeX
 } from 'lucide-react';
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -64,12 +64,18 @@ const Routines = () => {
     const [data, setData] = useState({ routines: [], log: {}, aiChats: [] });
     const [showAdd, setShowAdd] = useState(false);
     const [showAI, setShowAI] = useState(false);
-    const [form, setForm] = useState({ title: '', time: '09:00', days: [1,2,3,4,5], dueDate: '', notes: '' });
+    const [form, setForm] = useState({ title: '', time: '09:00', days: [1,2,3,4,5], dueDate: '', notes: '', alarmEnabled: true });
     const [aiInput, setAiInput] = useState('');
     const [aiLoading, setAiLoading] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [editId, setEditId] = useState(null);
     const timersRef = useRef([]);
+    const [activeAlarm, setActiveAlarm] = useState(null);
+    const [isRecording, setIsRecording] = useState(false);
+    const [audioURL, setAudioURL] = useState(null);
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
+    const alarmAudioRef = useRef(null);
 
     useEffect(() => {
         if (user?.id) setData(load(user.id));
@@ -77,7 +83,106 @@ const Routines = () => {
 
     const persist = useCallback((d) => { setData(d); if (user?.id) save(user.id, d); }, [user?.id]);
 
-    // Schedule browser notifications for today's routines
+    // Alarm sound (simple beep using Web Audio API)
+    const playAlarmSound = () => {
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.3);
+            
+            // Repeat 3 times
+            setTimeout(() => {
+                const osc2 = audioContext.createOscillator();
+                const gain2 = audioContext.createGain();
+                osc2.connect(gain2);
+                gain2.connect(audioContext.destination);
+                osc2.frequency.value = 800;
+                osc2.type = 'sine';
+                gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
+                osc2.start();
+                osc2.stop(audioContext.currentTime + 0.3);
+            }, 400);
+            
+            setTimeout(() => {
+                const osc3 = audioContext.createOscillator();
+                const gain3 = audioContext.createGain();
+                osc3.connect(gain3);
+                gain3.connect(audioContext.destination);
+                osc3.frequency.value = 800;
+                osc3.type = 'sine';
+                gain3.gain.setValueAtTime(0.3, audioContext.currentTime);
+                osc3.start();
+                osc3.stop(audioContext.currentTime + 0.3);
+            }, 800);
+        } catch (error) {
+            console.error('Failed to play alarm sound:', error);
+        }
+    };
+
+    // Voice recording functions
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunksRef.current.push(event.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                const url = URL.createObjectURL(audioBlob);
+                setAudioURL(url);
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+        } catch (error) {
+            console.error('Failed to start recording:', error);
+            alert('Microphone access denied. Please allow microphone access to record notes.');
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
+
+    const saveVoiceNote = (routineId) => {
+        if (audioURL) {
+            const key = logKey(routineId, selectedDate);
+            persist({ 
+                ...data, 
+                log: { 
+                    ...data.log, 
+                    [key]: { 
+                        ...data.log[key], 
+                        voiceNote: audioURL,
+                        note: (data.log[key]?.note || '') + ' [Voice note attached]'
+                    } 
+                } 
+            });
+            setAudioURL(null);
+            setActiveAlarm(null);
+        }
+    };
+
+    // Schedule browser notifications and alarms for today's routines
     useEffect(() => {
         timersRef.current.forEach(clearTimeout);
         timersRef.current = [];
@@ -92,7 +197,14 @@ const Routines = () => {
             const diff = target - now;
             if (diff > 0 && diff < 86400000) {
                 const t = setTimeout(() => {
+                    // Show browser notification
                     new Notification(`⏰ ${r.title}`, { body: 'Time for your routine!', icon: '/zenith.png', tag: `routine-${r.id}` });
+                    
+                    // Show in-app alarm if enabled
+                    if (r.alarmEnabled !== false) {
+                        playAlarmSound();
+                        setActiveAlarm(r);
+                    }
                 }, diff);
                 timersRef.current.push(t);
             }
@@ -106,10 +218,11 @@ const Routines = () => {
         const routine = {
             id: Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
             title: form.title.trim(), time: form.time, days: form.days,
-            dueDate: form.dueDate || null, notes: form.notes, createdAt: new Date().toISOString()
+            dueDate: form.dueDate || null, notes: form.notes, createdAt: new Date().toISOString(),
+            alarmEnabled: form.alarmEnabled
         };
         persist({ ...data, routines: [...data.routines, routine] });
-        setForm({ title: '', time: '09:00', days: [1,2,3,4,5], dueDate: '', notes: '' });
+        setForm({ title: '', time: '09:00', days: [1,2,3,4,5], dueDate: '', notes: '', alarmEnabled: true });
         setShowAdd(false);
     };
 
@@ -355,6 +468,49 @@ const Routines = () => {
                         </div>
                     </div>
                     <Input label="Until Date (optional)" type="date" value={form.dueDate} onChange={e => setForm({...form, dueDate: e.target.value})} />
+                    
+                    {/* Alarm Toggle */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-sm)', background: 'var(--surface)', borderRadius: 'var(--radius-md)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                            <Bell size={18} style={{ color: 'var(--primary-500)' }} />
+                            <div>
+                                <p style={{ margin: 0, fontWeight: 600, fontSize: 'var(--text-sm)' }}>In-App Alarm</p>
+                                <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Play sound & show alarm popup</p>
+                            </div>
+                        </div>
+                        <label style={{ position: 'relative', display: 'inline-block', width: '48px', height: '24px' }}>
+                            <input
+                                type="checkbox"
+                                checked={form.alarmEnabled}
+                                onChange={(e) => setForm({...form, alarmEnabled: e.target.checked})}
+                                style={{ opacity: 0, width: 0, height: 0 }}
+                            />
+                            <span style={{
+                                position: 'absolute',
+                                cursor: 'pointer',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: form.alarmEnabled ? 'var(--primary-500)' : 'var(--border)',
+                                transition: 'all var(--transition-fast)',
+                                borderRadius: '24px'
+                            }}>
+                                <span style={{
+                                    position: 'absolute',
+                                    content: '',
+                                    height: '18px',
+                                    width: '18px',
+                                    left: form.alarmEnabled ? '26px' : '3px',
+                                    bottom: '3px',
+                                    background: 'white',
+                                    transition: 'all var(--transition-fast)',
+                                    borderRadius: '50%'
+                                }} />
+                            </span>
+                        </label>
+                    </div>
+                    
                     <div className="flex gap-sm justify-end mt-md">
                         <Button variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
                         <Button variant="primary" type="submit">Create</Button>
@@ -396,6 +552,152 @@ const Routines = () => {
                     )}
                 </div>
             </Modal>
+
+            {/* Alarm Popup */}
+            {activeAlarm && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10000,
+                    animation: 'fadeIn 0.3s ease-in-out'
+                }}>
+                    <Card style={{
+                        maxWidth: '500px',
+                        width: '90%',
+                        padding: 'var(--space-xl)',
+                        textAlign: 'center',
+                        animation: 'slideUp 0.3s ease-out',
+                        border: '3px solid var(--primary-500)',
+                        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+                    }}>
+                        <div style={{
+                            width: '80px',
+                            height: '80px',
+                            margin: '0 auto var(--space-lg)',
+                            background: 'var(--gradient-primary)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            animation: 'pulse 1.5s ease-in-out infinite'
+                        }}>
+                            <Bell size={40} color="white" />
+                        </div>
+                        
+                        <h2 style={{ margin: '0 0 var(--space-sm)', fontSize: 'var(--text-2xl)' }}>⏰ Time for Routine!</h2>
+                        <p style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--primary-500)', margin: '0 0 var(--space-lg)' }}>
+                            {activeAlarm.title}
+                        </p>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-xl)' }}>
+                            Scheduled for {activeAlarm.time}
+                        </p>
+
+                        {/* Voice Recording Section */}
+                        <div style={{
+                            padding: 'var(--space-lg)',
+                            background: 'var(--surface)',
+                            borderRadius: 'var(--radius-lg)',
+                            marginBottom: 'var(--space-lg)'
+                        }}>
+                            <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-md)' }}>
+                                Quick Voice Note
+                            </p>
+                            
+                            {!isRecording && !audioURL && (
+                                <Button
+                                    variant="primary"
+                                    icon={Mic}
+                                    onClick={startRecording}
+                                    style={{ width: '100%' }}
+                                >
+                                    Start Recording
+                                </Button>
+                            )}
+                            
+                            {isRecording && (
+                                <div>
+                                    <div style={{
+                                        width: '60px',
+                                        height: '60px',
+                                        margin: '0 auto var(--space-md)',
+                                        background: 'var(--error)',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        animation: 'pulse 1s ease-in-out infinite'
+                                    }}>
+                                        <Mic size={30} color="white" />
+                                    </div>
+                                    <p style={{ color: 'var(--error)', fontWeight: 600, marginBottom: 'var(--space-md)' }}>
+                                        Recording...
+                                    </p>
+                                    <Button
+                                        variant="secondary"
+                                        icon={MicOff}
+                                        onClick={stopRecording}
+                                        style={{ width: '100%' }}
+                                    >
+                                        Stop Recording
+                                    </Button>
+                                </div>
+                            )}
+                            
+                            {audioURL && (
+                                <div>
+                                    <audio src={audioURL} controls style={{ width: '100%', marginBottom: 'var(--space-md)' }} />
+                                    <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => setAudioURL(null)}
+                                            style={{ flex: 1 }}
+                                        >
+                                            Re-record
+                                        </Button>
+                                        <Button
+                                            variant="primary"
+                                            onClick={() => saveVoiceNote(activeAlarm.id)}
+                                            style={{ flex: 1 }}
+                                        >
+                                            Save Note
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setActiveAlarm(null)}
+                                style={{ flex: 1 }}
+                            >
+                                Dismiss
+                            </Button>
+                            <Button
+                                variant="primary"
+                                icon={CheckCircle}
+                                onClick={() => {
+                                    toggleLog(activeAlarm.id);
+                                    setActiveAlarm(null);
+                                    setAudioURL(null);
+                                }}
+                                style={{ flex: 1 }}
+                            >
+                                Mark Done
+                            </Button>
+                        </div>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 };
