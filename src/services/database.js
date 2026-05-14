@@ -452,6 +452,22 @@ export const getQuizAttempts = async () => {
     }
 };
 
+export const getQuizAttemptsByUser = async (userId) => {
+    try {
+        const { data, error } = await supabase
+            .from('quiz_attempts')
+            .select('*, quizzes!left(title, points)')
+            .eq('user_id', userId)
+            .order('completed_at', { ascending: false });
+        
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error in getQuizAttemptsByUser:', err);
+        return [];
+    }
+};
+
 export const updateQuizAttempt = async (id, updates) => {
     const { data, error } = await supabase.from('quiz_attempts').update(updates).eq('id', id).select().single();
     if (error) throw error;

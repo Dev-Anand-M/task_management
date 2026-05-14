@@ -579,45 +579,58 @@ const Settings = () => {
                                             
                                             if (item.key === 'push') {
                                                  try {
-                                                     const { subscribeToPush, unsubscribeFromPush } = await import('../lib/push');
+                                                     const { requestPushPermission, unsubscribePush } = await import('../lib/nativePush');
                                                      if (isChecked) {
-                                                         const subscription = await subscribeToPush();
+                                                         console.log('[Settings] Requesting push permission...');
+                                                         const subscription = await requestPushPermission();
+                                                         
                                                          if (subscription) {
-                                                             const subJson = subscription.toJSON();
-                                                             const deviceId = btoa(navigator.userAgent).substring(0, 8);
-                                                             const newSubscription = { ...subJson, deviceId, updatedAt: new Date().toISOString() };
-
-                                                             const currentSubs = user.preferences?.push_subscriptions || [];
-                                                             const otherSubs = currentSubs.filter(s => s.deviceId !== deviceId && s.endpoint !== subJson.endpoint);
-                                                             const updatedSubs = [...otherSubs, newSubscription];
-
-                                                             await supabase.from('profiles').update({
+                                                             console.log('[Settings] Got subscription:', subscription.endpoint);
+                                                             
+                                                             // Save subscription to database
+                                                             const { error } = await supabase.from('profiles').update({
+                                                                 push_subscription: subscription.toJSON(),
                                                                  preferences: { 
                                                                      ...user.preferences, 
-                                                                     push_subscriptions: updatedSubs,
                                                                      notifications: { ...notifications, push: true } 
                                                                  }
                                                              }).eq('id', user.id);
+                                                             
+                                                             if (error) {
+                                                                 console.error('[Settings] Failed to save subscription:', error);
+                                                                 alert('Failed to save push subscription. Please try again.');
+                                                                 setNotifications(prev => ({ ...prev, push: false }));
+                                                                 return;
+                                                             }
+                                                             
+                                                             console.log('[Settings] Successfully enabled push notifications');
                                                              setNotifications(prev => ({ ...prev, push: true }));
+                                                             await forceRefresh();
                                                          } else {
+                                                             console.error('[Settings] Failed to get subscription');
+                                                             alert('Could not enable notifications. Please check:\n\n1. You clicked "Allow" on the permission prompt\n2. Ad-blockers are disabled\n3. Browser supports notifications');
                                                              setNotifications(prev => ({ ...prev, push: false }));
                                                          }
                                                      } else {
-                                                         const subscription = await unsubscribeFromPush();
-                                                         if (subscription) {
-                                                             const currentSubs = user.preferences?.push_subscriptions || [];
-                                                             const updatedSubs = currentSubs.filter(s => s.endpoint !== subscription.endpoint);
-                                                             await supabase.from('profiles').update({
-                                                                 preferences: { 
-                                                                     ...user.preferences, 
-                                                                     push_subscriptions: updatedSubs,
-                                                                     notifications: { ...notifications, push: false } 
-                                                                 }
-                                                             }).eq('id', user.id);
+                                                         console.log('[Settings] Disabling push notifications...');
+                                                         await unsubscribePush();
+                                                         
+                                                         const { error } = await supabase.from('profiles').update({
+                                                             push_subscription: null,
+                                                             preferences: { 
+                                                                 ...user.preferences, 
+                                                                 notifications: { ...notifications, push: false } 
+                                                             }
+                                                         }).eq('id', user.id);
+                                                         
+                                                         if (error) {
+                                                             console.error('[Settings] Failed to update database:', error);
                                                          }
+                                                         
+                                                         console.log('[Settings] Successfully disabled push notifications');
                                                          setNotifications(prev => ({ ...prev, push: false }));
+                                                         await forceRefresh();
                                                      }
-                                                     await forceRefresh();
                                                  } catch (err) {
                                                      console.error("[Settings] Push toggle error:", err);
                                                      alert(`Error: ${err.message}`);
