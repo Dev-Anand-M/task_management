@@ -14,6 +14,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
     const [spentTime, setSpentTime] = useState(log?.time_spent_minutes || 0);
+    const [actualStartTime, setActualStartTime] = useState(log?.actual_start_time || routine.start_time.slice(0, 5));
     const [notes, setNotes] = useState(log?.learning_notes || '');
     const [showDetails, setShowDetails] = useState(false);
     const isDone = log?.status === 'done';
@@ -26,6 +27,7 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
     const handleSave = async () => {
         await onUpdate(routine.id, {
             time_spent_minutes: parseInt(spentTime) || 0,
+            actual_start_time: actualStartTime,
             learning_notes: notes,
             status: 'done',
             actual_response_time: new Date().toISOString()
@@ -54,6 +56,10 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
         setShowDetails(false);
     };
 
+    const isLocked = !routine.is_anonymous && !isDone && !isIgnored && (
+        new Date().toTimeString().slice(0, 5) < routine.start_time.slice(0, 5)
+    );
+
     return (
         <Card style={{ 
             borderLeft: `4px solid ${
@@ -62,24 +68,26 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
                 isPostponed ? 'var(--warning-500)' : 
                 isNext ? 'var(--primary-500)' : 'var(--border)'
             }`,
-            opacity: (isDone || isIgnored) ? 0.8 : 1,
+            opacity: (isDone || isIgnored || isLocked) ? 0.8 : 1,
             transition: 'all 0.3s',
             background: isNext ? 'rgba(99, 102, 241, 0.03)' : 'var(--surface)'
         }}>
             <div className="flex items-center gap-md">
                 <button 
+                    disabled={isLocked}
                     onClick={() => setShowDetails(!showDetails)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    style={{ background: 'none', border: 'none', cursor: isLocked ? 'not-allowed' : 'pointer', padding: 0 }}
                 >
                     {isDone ? <CheckCircle size={24} style={{ color: 'var(--success-500)' }} /> : 
                      isIgnored ? <X size={24} style={{ color: 'var(--error-500)' }} /> :
-                     <Circle size={24} style={{ color: 'var(--text-muted)' }} />}
+                     <Circle size={24} style={{ color: isLocked ? 'var(--border)' : 'var(--text-muted)' }} />}
                 </button>
                 
                 <div style={{ flex: 1 }}>
                     <div className="flex items-center gap-sm">
-                        <p style={{ margin: 0, fontWeight: 700, textDecoration: (isDone || isIgnored) ? 'line-through' : 'none' }}>
+                        <p style={{ margin: 0, fontWeight: 700, textDecoration: (isDone || isIgnored) ? 'line-through' : 'none', color: isLocked ? 'var(--text-muted)' : 'inherit' }}>
                             {routine.title}
+                            {isLocked && <span style={{ fontSize: '9px', fontWeight: 400, marginLeft: '8px' }}>(Locked until {routine.start_time.slice(0, 5)})</span>}
                         </p>
                         {isNext && !isDone && !isIgnored && (
                             <Badge variant="primary" className="animate-pulse">
@@ -100,11 +108,15 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
                 <div className="flex gap-sm items-center">
                     {!isDone && !isIgnored && (
                         <>
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                                <Button variant="ghost" size="xs" onClick={() => handlePostpone(15)}>+15m</Button>
-                                <Button variant="ghost" size="xs" onClick={() => handlePostpone(30)}>+30m</Button>
-                            </div>
-                            <Button variant="primary" size="sm" onClick={() => setShowDetails(true)} icon={Check}>Log</Button>
+                            {!isLocked && (
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    <Button variant="ghost" size="xs" onClick={() => handlePostpone(15)}>+15m</Button>
+                                    <Button variant="ghost" size="xs" onClick={() => handlePostpone(30)}>+30m</Button>
+                                </div>
+                            )}
+                            <Button variant="primary" size="sm" disabled={isLocked} onClick={() => setShowDetails(true)} icon={isLocked ? Clock : Check}>
+                                {isLocked ? 'Locked' : 'Log'}
+                            </Button>
                         </>
                     )}
                     <button onClick={onDelete} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: '4px' }}>
@@ -123,7 +135,15 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
                         </div>
                     )}
                     <div className="flex flex-col gap-md">
-                        <div className="grid grid-cols-2 gap-md">
+                        <div className="grid grid-cols-3 gap-md">
+                            <div>
+                                <label className="input-label">Actual Start</label>
+                                <Input 
+                                    type="time" 
+                                    value={actualStartTime} 
+                                    onChange={e => setActualStartTime(e.target.value)} 
+                                />
+                            </div>
                             <div>
                                 <label className="input-label">Minutes Spent</label>
                                 <Input 
@@ -134,9 +154,9 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
                                 />
                             </div>
                             <div>
-                                <label className="input-label">Deadline Reference</label>
+                                <label className="input-label">Deadline</label>
                                 <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                                    {routine.deadline ? new Date(routine.deadline).toLocaleDateString() : 'No hard deadline'}
+                                    {routine.deadline ? new Date(routine.deadline).toLocaleDateString() : 'None'}
                                 </p>
                             </div>
                         </div>
@@ -184,7 +204,8 @@ const Routines = () => {
         start_time: '08:00:00', 
         days_of_week: [1,2,3,4,5], 
         deadline: '', 
-        description: '' 
+        description: '',
+        is_anonymous: false
     });
     const [activeTimetable, setActiveTimetable] = useState(null);
     const [nextAlarmInfo, setNextAlarmInfo] = useState(null);
@@ -240,6 +261,14 @@ const Routines = () => {
 
     const handleCreate = async (e) => {
         e.preventDefault();
+        
+        // Conflict Detection
+        const conflicts = routineService.checkConflicts(routines, form);
+        if (conflicts.length > 0) {
+            const confirmCreate = confirm(`⚠️ Conflict Detected!\n\nThis routine overlaps with "${conflicts[0].title}" at ${conflicts[0].start_time.slice(0, 5)}.\n\nDo you want to create it anyway?`);
+            if (!confirmCreate) return;
+        }
+
         try {
             await routineService.createRoutine(form);
             setShowAdd(false);
@@ -423,6 +452,19 @@ const Routines = () => {
                                 </button>
                             ))}
                         </div>
+                    </div>
+                    <div style={{ marginTop: 'var(--space-md)', padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <input 
+                            type="checkbox" 
+                            id="is_anon"
+                            checked={form.is_anonymous} 
+                            onChange={e => setForm({ ...form, is_anonymous: e.target.checked })} 
+                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="is_anon" style={{ fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                            <strong style={{ display: 'block', color: 'var(--primary-500)' }}>Anonymous Routine</strong>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Allow retroactive logging (any time). Standard routines are locked until start time.</span>
+                        </label>
                     </div>
                     <Input 
                         label="Deadline (optional)" 

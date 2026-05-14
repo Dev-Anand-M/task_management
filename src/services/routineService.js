@@ -113,6 +113,30 @@ export const routineService = {
     /**
      * Smart Sync: Replace/Update routines without losing linked Diary logs
      */
+    /**
+     * Check for time conflicts between routines
+     */
+    checkConflicts(routines, newRoutine) {
+        const conflicts = routines.filter(r => {
+            if (r.id === newRoutine.id) return false;
+            if (!r.is_active) return false;
+            
+            // Check day overlap
+            const commonDays = r.days_of_week.filter(d => newRoutine.days_of_week.includes(d));
+            if (commonDays.length === 0) return false;
+
+            // Check time overlap (simplified as exact match or within 1 hour)
+            // In a real app, you'd use r.duration
+            const rTime = r.start_time.slice(0, 5);
+            const nTime = newRoutine.start_time.slice(0, 5);
+            
+            // Simple check: same start time
+            return rTime === nTime;
+        });
+        
+        return conflicts;
+    },
+
     async replaceAllRoutines(newRoutines) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
