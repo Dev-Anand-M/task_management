@@ -4,7 +4,7 @@ import { routineService } from '../../services/routineService';
 import { Card, Badge, Button, Input, Modal, ProgressBar, LoadingSpinner } from '../../components/common';
 import {
     RefreshCw, Plus, Trash2, CheckCircle, Circle, Clock, Bell,
-    Calendar, ChevronDown, ChevronRight, Sparkles, Brain, Send,
+    Calendar, ChevronDown, ChevronRight, ChevronLeft, Sparkles, Brain, Send,
     Flame, X, Edit3, Check, Mic, MicOff, Volume2, VolumeX,
     History, BookOpen, AlertTriangle
 } from 'lucide-react';
