@@ -740,7 +740,28 @@ const Settings = () => {
                                         if (data.success) {
                                             alert(`✅ Notification sent to ${data.sentCount || 0} device(s).`);
                                         } else {
+                                            alert("❌ Failed: " + data.error);
+                                        }
+                                    } catch (error) {
+                                        console.error("[TestPush] Error:", error);
+                                        alert("Error sending test: " + error.message);
+                                    }
+                                }}
+                            >
+                                Send Test Notification
+                            </Button>
+                            <p style={{ marginTop: '8px', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                Use this to verify if your current device is receiving alerts.
+                            </p>
+                        </div>
+                    )}
+                </Card>
+
+                {/* Account Info */}
+                <Card>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
                         <div style={{
+
                             width: '40px',
                             height: '40px',
                             background: 'var(--gradient-secondary)',
