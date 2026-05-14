@@ -576,22 +576,31 @@ export const markAllNotificationsRead = async (userId) => {
 export const createNotification = async (notification) => {
     await supabase.from('notifications').insert(notification);
     if (notification.user_id) {
-        fetch(`${window.location.origin}/api/push`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                user_id: notification.user_id,
-                title: notification.title,
-                body: notification.message,
-                link: notification.link,
-                data: { type: notification.type }
-            })
-        }).catch(e => console.warn('[Push] Error:', e));
+        // Get user's push subscription
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('push_subscription')
+            .eq('id', notification.user_id)
+            .single();
+        
+        if (profile?.push_subscription) {
+            fetch(`${window.location.origin}/api/native-push`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    subscription: profile.push_subscription,
+                    title: notification.title,
+                    body: notification.message,
+                    url: notification.link || '/',
+                    data: { type: notification.type }
+                })
+            }).catch(e => console.warn('[Push] Error:', e));
+        }
     }
 };
 
 export const notifyClassroom = async (classroomId, notification) => {
-    const { data: students } = await supabase.from('profiles').select('id').eq('classroom_id', classroomId).eq('role', 'member');
+    const { data: students } = await supabase.from('profiles').select('id, push_subscription').eq('classroom_id', classroomId).eq('role', 'member');
     if (!students || students.length === 0) return;
 
     const notifications = students.map(student => ({
@@ -605,24 +614,29 @@ export const notifyClassroom = async (classroomId, notification) => {
     }));
 
     await supabase.from('notifications').insert(notifications);
-    const userIds = students.map(s => s.id).filter(Boolean);
-    if (userIds.length > 0) {
-        fetch(`${window.location.origin}/api/push`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                user_ids: userIds,
-                title: notification.title,
-                body: notification.message,
-                link: notification.link,
-                data: { type: notification.type }
-            })
-        }).catch(e => console.warn('[Push] Error:', e));
-    }
+    
+    // Send push notifications to students who have subscriptions
+    const pushPromises = students
+        .filter(s => s.push_subscription)
+        .map(student => 
+            fetch(`${window.location.origin}/api/native-push`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    subscription: student.push_subscription,
+                    title: notification.title,
+                    body: notification.message,
+                    url: notification.link || '/',
+                    data: { type: notification.type }
+                })
+            }).catch(e => console.warn('[Push] Error:', e))
+        );
+    
+    await Promise.allSettled(pushPromises);
 };
 
 export const notifyAdmins = async (classroomId, notification) => {
-    const { data: admins } = await supabase.from('profiles').select('id').eq('classroom_id', classroomId).eq('role', 'admin');
+    const { data: admins } = await supabase.from('profiles').select('id, push_subscription').eq('classroom_id', classroomId).eq('role', 'admin');
     if (!admins || admins.length === 0) return;
 
     const notifications = admins.map(admin => ({
@@ -636,20 +650,25 @@ export const notifyAdmins = async (classroomId, notification) => {
     }));
 
     await supabase.from('notifications').insert(notifications);
-    const userIds = admins.map(a => a.id).filter(Boolean);
-    if (userIds.length > 0) {
-        fetch(`${window.location.origin}/api/push`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                user_ids: userIds,
-                title: notification.title,
-                body: notification.message,
-                link: notification.link,
-                data: { type: notification.type }
-            })
-        }).catch(e => console.warn('[Push] Error:', e));
-    }
+    
+    // Send push notifications to admins who have subscriptions
+    const pushPromises = admins
+        .filter(a => a.push_subscription)
+        .map(admin => 
+            fetch(`${window.location.origin}/api/native-push`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    subscription: admin.push_subscription,
+                    title: notification.title,
+                    body: notification.message,
+                    url: notification.link || '/',
+                    data: { type: notification.type }
+                })
+            }).catch(e => console.warn('[Push] Error:', e))
+        );
+    
+    await Promise.allSettled(pushPromises);
 };
 
 export const checkDeadlines = async (userId) => {

@@ -753,24 +753,40 @@ const Settings = () => {
                                     style={{ flex: 1, fontSize: '11px' }}
                                     onClick={async () => {
                                         try {
-                                            const res = await fetch(`${window.location.origin}/api/push`, {
+                                            // Get user's push subscription from database
+                                            const { data: profile } = await supabase
+                                                .from('profiles')
+                                                .select('push_subscription')
+                                                .eq('id', user.id)
+                                                .single();
+                                            
+                                            if (!profile?.push_subscription) {
+                                                alert("⚠️ No push subscription found.\n\nTry toggling Push Notifications OFF and ON again.");
+                                                return;
+                                            }
+                                            
+                                            console.log("[TestPush] Sending to subscription:", profile.push_subscription.endpoint);
+                                            
+                                            const res = await fetch(`${window.location.origin}/api/native-push`, {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({
-                                                    user_id: user.id,
+                                                    subscription: profile.push_subscription,
                                                     title: 'Native Push Test 🔔',
                                                     body: 'If you see this, background notifications are working perfectly!',
-                                                    link: '/settings'
+                                                    url: '/settings'
                                                 })
                                             });
+                                            
                                             const data = await res.json();
-                                            if (data.success && data.sentCount > 0) {
-                                                alert(`✅ Sent to ${data.sentCount} device(s). Check your OS notifications.`);
-                                            } else if (data.success && data.sentCount === 0) {
-                                                console.log("[Push Debug]", data.debug);
-                                                alert(`⚠️ Sent to 0 devices.\nReason: ${data.message}\n\nCheck browser console for debug info.`);
+                                            console.log("[TestPush] Response:", data);
+                                            
+                                            if (data.success) {
+                                                alert(`✅ Test notification sent!\n\nCheck your device for the notification.\n\nNote: Close the app to test background notifications.`);
+                                            } else if (data.expired) {
+                                                alert(`⚠️ Push subscription expired.\n\nPlease toggle Push Notifications OFF and ON again.`);
                                             } else {
-                                                alert("❌ Failed: " + data.error);
+                                                alert("❌ Failed: " + (data.error || 'Unknown error'));
                                             }
                                         } catch (error) {
                                             console.error("[TestPush] Error:", error);
