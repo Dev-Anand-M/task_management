@@ -186,14 +186,8 @@ export const AuthProvider = ({ children }) => {
     // logout with timeout — can NEVER hang
     const logout = useCallback(async () => {
         try {
-            if (user?.id) {
-                try {
-                    const { clearTokenFromDatabase } = await import('../lib/firebase');
-                    await clearTokenFromDatabase(user.id);
-                } catch (e) {
-                    console.warn("Could not clear FCM token:", e);
-                }
-            }
+            // Firebase logic removed - migrating to native push
+
             await Promise.race([
                 supabase.auth.signOut(),
                 new Promise(resolve => setTimeout(resolve, 3000))

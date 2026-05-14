@@ -58,14 +58,17 @@ self.addEventListener('push', event => {
     
     try {
         if (event.data) {
-            const payload = event.data.json();
-            data = { ...data, ...payload };
+            // Some browsers might send text instead of JSON
+            const text = event.data.text();
+            try {
+                const payload = JSON.parse(text);
+                data = { ...data, ...payload };
+            } catch (e) {
+                data.body = text;
+            }
         }
     } catch (e) {
         console.error('Error parsing push data:', e);
-        if (event.data) {
-            data.body = event.data.text();
-        }
     }
 
     const options = {
@@ -74,9 +77,12 @@ self.addEventListener('push', event => {
         badge: '/vite.svg',
         data: { url: data.url || '/' },
         vibrate: [100, 50, 100],
+        tag: 'zenith-notification', // Groups similar notifications
+        renotify: true, // Notifies again for the same tag
         actions: [
             { action: 'open', title: 'Open Zenith' }
-        ]
+        ],
+        requireInteraction: true // Keeps notification visible until user interacts
     };
 
     event.waitUntil(
@@ -87,20 +93,27 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
     event.notification.close();
     
-    const urlToOpen = event.notification.data?.url || '/';
+    const urlToOpen = new URL(event.notification.data?.url || '/', self.location.origin).href;
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then(windowClients => {
-                // Check if there is already a window open with this URL
+                // 1. Try to find an existing window and focus it
                 for (let i = 0; i < windowClients.length; i++) {
                     const client = windowClients[i];
-                    if (client.url.includes(self.location.origin) && 'focus' in client) {
+                    if (client.url === urlToOpen && 'focus' in client) {
+                        return client.focus();
+                    }
+                }
+                // 2. If not found, try to focus any Zenith window and navigate
+                for (let i = 0; i < windowClients.length; i++) {
+                    const client = windowClients[i];
+                    if ('focus' in client) {
                         client.navigate(urlToOpen);
                         return client.focus();
                     }
                 }
-                // If no window is open, open a new one
+                // 3. If no window open, open a new one
                 if (clients.openWindow) {
                     return clients.openWindow(urlToOpen);
                 }

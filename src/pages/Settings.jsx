@@ -676,85 +676,88 @@ const Settings = () => {
                         </div>
                     )}
 
-                    {/* Troubleshooting section */}
+                    {/* Troubleshooting & Status section */}
                     <div style={{ 
                         marginTop: 'var(--space-lg)', 
                         padding: 'var(--space-md)',
-                        background: 'rgba(239, 68, 68, 0.05)',
+                        background: 'var(--surface)',
                         borderRadius: 'var(--radius-md)',
-                        border: '1px solid rgba(239, 68, 68, 0.2)'
+                        border: '1px solid var(--border)'
                     }}>
-                        <h4 style={{ fontSize: 'var(--text-sm)', marginBottom: '4px', color: '#ef4444' }}>Troubleshooting</h4>
-                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)' }}>
-                            If notifications only appear when the app is open, try resetting the system.
-                        </p>
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
-                            onClick={async () => {
-                                if (window.confirm("This will clear all background services and refresh the app. Continue?")) {
-                                    if ('serviceWorker' in navigator) {
-                                        const regs = await navigator.serviceWorker.getRegistrations();
-                                        for (let reg of regs) {
-                                            await reg.unregister();
-                                        }
-                                    }
-                                    localStorage.clear();
-                                    sessionStorage.clear();
-                                    window.location.reload();
-                                }
-                            }}
-                        >
-                            Reset Notification System
-                        </Button>
-                    </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-sm)' }}>
+                            <h4 style={{ fontSize: 'var(--text-sm)', margin: 0, color: 'var(--text-muted)' }}>SYSTEM STATUS</h4>
+                            <Badge variant={('serviceWorker' in navigator) ? 'success' : 'error'}>
+                                {('serviceWorker' in navigator) ? 'PWA Supported' : 'No PWA Support'}
+                            </Badge>
+                        </div>
+                        
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Service Worker:</span>
+                                <span style={{ color: 'var(--success-600)' }}>Active (sw.js)</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Registered Devices:</span>
+                                <span>{user.preferences?.push_subscriptions?.length || 0}</span>
+                            </div>
+                        </div>
 
-                    {saving && <p style={{
-                        marginTop: 'var(--space-md)',
-                        fontSize: 'var(--text-xs)',
-                        color: 'var(--text-muted)',
-                        fontStyle: 'italic',
-                        textAlign: 'right'
-                    }}>
-                        Saving preferences...
-                    </p>}
-                    {notifications.push && (
-                        <div style={{ marginTop: 'var(--space-lg)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
                             <Button 
-                                variant="outline" 
+                                variant="ghost" 
                                 size="sm" 
+                                style={{ flex: 1, color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', fontSize: '11px' }}
                                 onClick={async () => {
-                                    try {
-                                        const res = await fetch(`${window.location.origin}/api/push`, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({
-                                                user_id: user.id,
-                                                title: 'Native Push Test 🔔',
-                                                body: 'If you see this, background notifications are working perfectly!',
-                                                link: '/settings'
-                                            })
-                                        });
-                                        const data = await res.json();
-                                        if (data.success) {
-                                            alert(`✅ Notification sent to ${data.sentCount || 0} device(s).`);
-                                        } else {
-                                            alert("❌ Failed: " + data.error);
+                                    if (window.confirm("This will clear all background services and refresh the app. Continue?")) {
+                                        if ('serviceWorker' in navigator) {
+                                            const regs = await navigator.serviceWorker.getRegistrations();
+                                            for (let reg of regs) {
+                                                await reg.unregister();
+                                            }
                                         }
-                                    } catch (error) {
-                                        console.error("[TestPush] Error:", error);
-                                        alert("Error sending test: " + error.message);
+                                        localStorage.clear();
+                                        sessionStorage.clear();
+                                        window.location.reload();
                                     }
                                 }}
                             >
-                                Send Test Notification
+                                Reset System
                             </Button>
-                            <p style={{ marginTop: '8px', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                                Use this to verify if your current device is receiving alerts.
-                            </p>
+                            
+                            {notifications.push && (
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    style={{ flex: 1, fontSize: '11px' }}
+                                    onClick={async () => {
+                                        try {
+                                            const res = await fetch(`${window.location.origin}/api/push`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    user_id: user.id,
+                                                    title: 'Native Push Test 🔔',
+                                                    body: 'If you see this, background notifications are working perfectly!',
+                                                    link: '/settings'
+                                                })
+                                            });
+                                            const data = await res.json();
+                                            if (data.success) {
+                                                alert(`✅ Sent to ${data.sentCount || 0} device(s). Check your OS notifications.`);
+                                            } else {
+                                                alert("❌ Failed: " + data.error);
+                                            }
+                                        } catch (error) {
+                                            console.error("[TestPush] Error:", error);
+                                            alert("Error sending test: " + error.message);
+                                        }
+                                    }}
+                                >
+                                    Test Alert
+                                </Button>
+                            )}
                         </div>
-                    )}
+                    </div>
                 </Card>
 
                 {/* Account Info */}

@@ -76,16 +76,29 @@ export default async function handler(req, res) {
         });
 
         const results = await Promise.allSettled(
-            allSubscriptions.map(async (subscription) => {
+            allSubscriptions.map(async (sub) => {
                 try {
-                    // web-push expects the subscription object to have endpoint and keys (p256dh, auth)
-                    await webpush.sendNotification(subscription, payload);
-                    return { success: true, endpoint: subscription.endpoint };
+                    // Extract only what web-push needs to avoid errors
+                    const pushSubscription = {
+                        endpoint: sub.endpoint,
+                        keys: {
+                            p256dh: sub.keys?.p256dh,
+                            auth: sub.keys?.auth
+                        }
+                    };
+                    
+                    if (!pushSubscription.endpoint || !pushSubscription.keys.p256dh || !pushSubscription.keys.auth) {
+                        console.warn('[Push] Skipping invalid subscription for user:', sub.userId);
+                        throw new Error('Invalid subscription format');
+                    }
+
+                    await webpush.sendNotification(pushSubscription, payload);
+                    return { success: true, endpoint: sub.endpoint };
                 } catch (err) {
                     if (err.statusCode === 404 || err.statusCode === 410) {
-                        // Subscription expired or gone - we should remove it from Supabase
-                        console.log('[Push] Subscription expired, should cleanup:', subscription.endpoint);
-                        // Optional: trigger cleanup logic here or via a separate job
+                        console.log('[Push] Subscription expired or gone:', sub.endpoint);
+                    } else {
+                        console.error('[Push] Error sending to endpoint:', sub.endpoint, err.message);
                     }
                     throw err;
                 }
