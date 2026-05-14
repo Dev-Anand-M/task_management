@@ -57,6 +57,12 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('[Push] Error sending notification:', error);
+        console.error('[Push] Error details:', {
+            statusCode: error.statusCode,
+            body: error.body,
+            headers: error.headers,
+            message: error.message
+        });
         
         // Handle specific errors
         if (error.statusCode === 410 || error.statusCode === 404) {
@@ -68,9 +74,18 @@ export default async function handler(req, res) {
             });
         }
         
+        if (error.statusCode === 401) {
+            return res.status(401).json({
+                success: false,
+                error: 'VAPID authentication failed. Check your VAPID keys.'
+            });
+        }
+        
         return res.status(500).json({ 
             success: false, 
-            error: error.message 
+            error: error.message,
+            statusCode: error.statusCode,
+            details: error.body
         });
     }
 }
