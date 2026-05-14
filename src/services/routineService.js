@@ -23,18 +23,27 @@ export const routineService = {
 
     async createRoutine(routine) {
         const { data: { user } } = await supabase.auth.getUser();
+        // Clean up empty strings for optional fields
+        const cleanedRoutine = { ...routine };
+        if (!cleanedRoutine.deadline) cleanedRoutine.deadline = null;
+        if (!cleanedRoutine.description) cleanedRoutine.description = null;
+
         const { data, error } = await supabase
             .from('routines')
-            .insert([{ ...routine, user_id: user.id }])
+            .insert([{ ...cleanedRoutine, user_id: user.id }])
             .select();
         if (error) throw error;
         return data[0];
     },
 
     async updateRoutine(id, updates) {
+        const cleanedUpdates = { ...updates };
+        if (cleanedUpdates.deadline === '') cleanedUpdates.deadline = null;
+        if (cleanedUpdates.description === '') cleanedUpdates.description = null;
+
         const { data, error } = await supabase
             .from('routines')
-            .update(updates)
+            .update(cleanedUpdates)
             .eq('id', id)
             .select();
         if (error) throw error;

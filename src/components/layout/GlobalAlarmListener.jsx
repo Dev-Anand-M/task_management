@@ -7,7 +7,8 @@ const GlobalAlarmListener = () => {
     const { user } = useAuth();
     const [enabled, setEnabled] = useState(() => localStorage.getItem('alarms_enabled') === 'true');
     const [activeAlarm, setActiveAlarm] = useState(null);
-    const [nextAlarm, setNextAlarm] = useState(null); // { title: string, minutes: number }
+    const [nextAlarm, setNextAlarm] = useState(null); 
+    const [showStopModal, setShowStopModal] = useState(false);
     const audioRef = useRef(null);
     const intervalRef = useRef(null);
 
@@ -130,9 +131,19 @@ const GlobalAlarmListener = () => {
         setNextAlarm(soonest);
     };
 
+    const stopShouting = () => {
+        setShowStopModal(false);
+        setActiveAlarm(null);
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+    };
+
     const triggerAlarm = (routine) => {
         if (activeAlarm === routine.id) return;
         setActiveAlarm(routine.id);
+        setShowStopModal(true);
 
         if (Notification.permission === 'granted') {
             new Notification(`⏰ Alarm: ${routine.title}`, {
@@ -144,8 +155,6 @@ const GlobalAlarmListener = () => {
         if (audioRef.current) {
             audioRef.current.play().catch(e => console.warn('[Alarm] Audio blocked:', e));
         }
-
-        setTimeout(() => setActiveAlarm(null), 65000);
     };
 
     const toggleEnabled = async () => {
