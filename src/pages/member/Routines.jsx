@@ -177,7 +177,6 @@ const Routines = () => {
         description: '' 
     });
     const [activeTimetable, setActiveTimetable] = useState(null);
-    const [currentAlarmId, setCurrentAlarmId] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -185,61 +184,6 @@ const Routines = () => {
             fetchData();
             checkTodayTimetable();
             
-            // Alarm System: Check every minute
-            const interval = setInterval(checkAlarms, 60000);
-            return () => clearInterval(interval);
-        }
-    }, [user?.id, selectedDate]);
-
-    const checkAlarms = useCallback(() => {
-        const now = new Date();
-        const currentTime = now.toTimeString().slice(0, 5); // HH:MM
-        const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
-        
-        routines.forEach(r => {
-            if (r.days_of_week.includes(dayOfWeek)) {
-                const routineTime = r.start_time.slice(0, 5);
-                
-                // Trigger Alarm exactly at start time
-                if (routineTime === currentTime) {
-                    if (currentAlarmId !== r.id) {
-                        setCurrentAlarmId(r.id);
-                        triggerNotification(r);
-                    }
-                }
-
-                // Check for Ignored status (if 15 mins passed and no response)
-                const log = logs[r.id];
-                if (log && log.status === 'pending') {
-                    const startTime = new Date(`${selectedDate}T${r.start_time}`);
-                    const diffMins = Math.floor((now - startTime) / 60000);
-                    if (diffMins >= 15) {
-                        handleUpdateLog(r.id, { status: 'ignored' });
-                    }
-                }
-            }
-        });
-    }, [routines, logs, currentAlarmId, selectedDate]);
-
-    const triggerNotification = (routine) => {
-        if (Notification.permission === "granted") {
-            new Notification("Routine Started!", {
-                body: `Time to work on: ${routine.title}. Open the app to respond.`,
-                icon: '/favicon.ico',
-                tag: routine.id // prevent duplicates
-            });
-        }
-        
-        // Play Sound
-        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-        audio.play().catch(e => console.log("Audio play blocked by browser"));
-
-        // Initialize log as pending if not exists
-        if (!logs[routine.id]) {
-            handleUpdateLog(routine.id, { status: 'pending' });
-        }
-    };
-
     const checkTodayTimetable = async () => {
         try {
             const today = new Date();

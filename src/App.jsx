@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/layout';
 import { ErrorBoundary, LoadingSpinner } from './components/common';
 import BackHandler from './components/layout/BackHandler';
+import GlobalAlarmListener from './components/layout/GlobalAlarmListener';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -236,7 +237,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-
+          <GlobalAlarmListener />
           {/* <BackHandler /> */}
           <AppRoutes />
         </AuthProvider>

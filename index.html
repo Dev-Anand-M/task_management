@@ -11,7 +11,6 @@
   <title>Zenith - Skill Enhancement Platform</title>
   <link rel="manifest" href="/manifest.json">
   
-  <!-- Global error handler -->
   <script>
     window.onerror = function(msg, url, lineNo, columnNo, error) {
       const errorDiv = document.createElement('div');
@@ -33,7 +32,6 @@
     };
   </script>
 
-  <!-- Microsoft Clarity -->
   <script type="text/javascript">
     (function(c,l,a,r,i,t,y){
       c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -42,13 +40,12 @@
     })(window, document, "clarity", "script", "wpzbwe3ooj");
   </script>
 
-  <!-- PWA Service Worker Registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(reg => console.log('[PWA] Service Worker registered:', reg.scope))
-          .catch(err => console.error('[PWA] Service Worker registration failed:', err));
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(reg => console.log('[PWA] Registered:', reg.scope))
+          .catch(err => console.error('[PWA] Registration failed:', err));
       });
     }
   </script>

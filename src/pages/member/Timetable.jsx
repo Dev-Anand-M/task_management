@@ -1,224 +1,232 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { routineService } from '../../services/routineService';
+import { manageRoutinesChat } from '../../services/aiService';
 import { Card, Badge, Button, Input, LoadingSpinner } from '../../components/common';
 import { 
-    Calendar, Sparkles, Send, Download, 
-    ChevronLeft, ChevronRight, Clock, Trash2,
-    CheckCircle, Brain
+    Calendar, Sparkles, Send, Clock, 
+    MessageSquare, Brain, RefreshCw, ChevronLeft, ChevronRight,
+    User, Bot, CheckCircle, AlertTriangle
 } from 'lucide-react';
 
 const Timetable = () => {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
-    const [generating, setGenerating] = useState(false);
-    const [timetable, setTimetable] = useState(null);
+    const [sending, setSending] = useState(false);
+    const [routines, setRoutines] = useState([]);
+    const [messages, setMessages] = useState([
+        { role: 'assistant', content: "Hello! I'm your AI Scheduling Architect. How can I help you organize your week? You can say things like 'Add DSA study at 8am on weekdays' or 'Clear my Wednesday afternoon'." }
+    ]);
     const [userInput, setUserInput] = useState('');
-    const [weekStart, setWeekStart] = useState(() => {
-        const d = new Date();
-        const day = d.getDay(), diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-        return new Date(d.setDate(diff)).toISOString().split('T')[0];
-    });
+    const chatEndRef = useRef(null);
 
     useEffect(() => {
-        fetchTimetable();
-    }, [weekStart, user?.id]);
+        fetchRoutines();
+    }, [user?.id]);
 
-    const fetchTimetable = async () => {
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    const fetchRoutines = async () => {
         if (!user?.id) return;
         setLoading(true);
         try {
-            const data = await routineService.getTimetable(weekStart);
-            setTimetable(data?.schedule_data || null);
+            const data = await routineService.getRoutines();
+            setRoutines(data);
         } catch (err) {
-            console.error('Failed to fetch timetable:', err);
+            console.error('Failed to fetch routines:', err);
         } finally {
             setLoading(false);
         }
     };
 
-    const generateTimetable = async () => {
-        if (!userInput.trim()) return;
-        setGenerating(true);
+    const handleSendMessage = async (e) => {
+        e.preventDefault();
+        if (!userInput.trim() || sending) return;
+
+        const userMsg = userInput;
+        setUserInput('');
+        setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+        setSending(true);
+
         try {
-            const { getAPIKey, getSelectedModel } = await import('../../services/aiService');
-            const modelId = getSelectedModel();
-            const apiKey = getAPIKey('sambanova'); // Defaulting to sambanova for speed
+            const response = await manageRoutinesChat(
+                [...messages, { role: 'user', content: userMsg }],
+                routines
+            );
 
-            const systemPrompt = `You are an AI Scheduling Architect. Create a detailed weekly timetable (Mon-Sun) based on user goals. 
-            Output ONLY a JSON object in this format:
-            {
-              "title": "Weekly Success Plan",
-              "days": {
-                "Monday": [{ "time": "08:00", "task": "DSA Study", "duration": "2h" }, ...],
-                ...
-              }
-            }
-            Include morning routines, study blocks, breaks, and exercise.`;
-
-            const res = await fetch('/api/ai-proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    provider: 'sambanova',
-                    endpoint: '/v1/chat/completions',
-                    apiKey,
-                    body: {
-                        model: modelId || 'Meta-Llama-3.1-70B-Instruct',
-                        messages: [
-                            { role: 'system', content: systemPrompt },
-                            { role: 'user', content: userInput }
-                        ],
-                        response_format: { type: "json_object" }
-                    }
-                })
-            });
-
-            const json = await res.json();
-            const schedule = JSON.parse(json.choices[0].message.content);
+            // Split response and metadata
+            const [text, metadataStr] = response.split('---METADATA---');
             
-            await routineService.saveTimetable(weekStart, schedule);
-            setTimetable(schedule);
-            setUserInput('');
+            if (metadataStr) {
+                try {
+                    const newRoutines = JSON.parse(metadataStr.trim());
+                    // Sync to DB immediately
+                    await routineService.replaceAllRoutines(newRoutines);
+                    await fetchRoutines(); // Refresh UI
+                } catch (e) {
+                    console.error("Failed to parse AI metadata:", e);
+                }
+            }
+
+            setMessages(prev => [...prev, { role: 'assistant', content: text.trim() }]);
         } catch (err) {
-            console.error('Generation failed:', err);
-            alert('Failed to generate timetable. Check your API key.');
+            setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I encountered an error while updating your schedule. " + err.message }]);
         } finally {
-            setGenerating(false);
+            setSending(false);
         }
     };
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const daysMap = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 7 };
 
     return (
-        <div className="page-content animate-fade-in">
-            <div className="flex flex-mobile-col justify-between items-center mb-xl">
+        <div className="page-content animate-fade-in" style={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
+            <div className="flex justify-between items-center mb-lg">
                 <div>
                     <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <Calendar className="text-primary-500" /> AI Timetable
+                        <Brain className="text-primary-500" /> AI Scheduling Architect
                     </h1>
-                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>Smart scheduling for your week</p>
+                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>Natural language timetable management</p>
                 </div>
                 <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                    <Button variant="ghost" icon={ChevronLeft} onClick={() => {
-                        const d = new Date(weekStart); d.setDate(d.getDate() - 7);
-                        setWeekStart(d.toISOString().split('T')[0]);
-                    }} />
-                    <Card style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', fontWeight: 700 }}>
-                        Week of {new Date(weekStart).toLocaleDateString()}
-                    </Card>
-                    <Button variant="ghost" icon={ChevronRight} onClick={() => {
-                        const d = new Date(weekStart); d.setDate(d.getDate() + 7);
-                        setWeekStart(d.toISOString().split('T')[0]);
-                    }} />
+                    <Button variant="ghost" icon={Calendar} onClick={() => {
+                        const icsContent = routineService.generateICS(routines);
+                        const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+                        const link = document.createElement('a');
+                        link.href = window.URL.createObjectURL(blob);
+                        link.setAttribute('download', 'zenith_routines.ics');
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }}>Export to Calendar</Button>
+                    <Badge variant="primary" icon={RefreshCw}>Live Sync Active</Badge>
                 </div>
             </div>
 
-            {!timetable && !generating ? (
-                <Card style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
-                    <Sparkles size={48} style={{ color: 'var(--primary-500)', marginBottom: 'var(--space-lg)' }} />
-                    <h2>No Weekly Plan Yet</h2>
-                    <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-xl)', maxWidth: '500px', margin: '0 auto var(--space-xl)' }}>
-                        Tell the AI how you want your week to look, and it will architect a professional timetable for you.
-                    </p>
-                    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-                        <textarea 
-                            value={userInput}
-                            onChange={e => setUserInput(e.target.value)}
-                            placeholder="Example: I want to study DSA every morning at 8am for 2 hours, have a lunch break at 1pm, and do coding projects in the evening. I also need 1 hour of gym 3 times a week."
-                            style={{ 
-                                width: '100%', 
-                                height: '120px', 
-                                padding: '16px', 
-                                borderRadius: 'var(--radius-lg)', 
-                                border: '1px solid var(--border)',
-                                background: 'var(--surface)',
-                                color: 'var(--text)',
-                                fontSize: 'var(--text-sm)',
-                                marginBottom: 'var(--space-md)',
-                                resize: 'none'
-                            }}
-                        />
-                        <Button 
-                            variant="primary" 
-                            icon={Brain} 
-                            onClick={generateTimetable} 
-                            disabled={!userInput.trim()}
-                            style={{ width: '100%', height: '48px' }}
-                        >
-                            Generate My Week
-                        </Button>
+            <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: 'var(--space-lg)', flex: 1, minHeight: 0 }}>
+                {/* Chat Column */}
+                <Card style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                    <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+                        <h3 style={{ margin: 0, fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <MessageSquare size={16} /> Strategy Chat
+                        </h3>
                     </div>
-                </Card>
-            ) : generating ? (
-                <Card style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
-                    <div className="flex flex-col items-center gap-md">
-                        <LoadingSpinner size="lg" />
-                        <h3>Architecting your schedule...</h3>
-                        <p style={{ color: 'var(--text-muted)' }}>The AI is analyzing your goals and optimizing your time.</p>
+                    
+                    <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                        {messages.map((msg, i) => (
+                            <div key={i} style={{ 
+                                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                                maxWidth: '85%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '4px'
+                            }}>
+                                <div style={{ 
+                                    padding: '12px', 
+                                    borderRadius: msg.role === 'user' ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                                    background: msg.role === 'user' ? 'var(--primary-500)' : 'var(--surface)',
+                                    color: msg.role === 'user' ? 'white' : 'var(--text)',
+                                    fontSize: 'var(--text-sm)',
+                                    boxShadow: 'var(--shadow-sm)',
+                                    border: msg.role === 'user' ? 'none' : '1px solid var(--border)'
+                                }}>
+                                    {msg.content}
+                                </div>
+                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: msg.role === 'user' ? 'right' : 'left' }}>
+                                    {msg.role === 'user' ? 'You' : 'Architect'}
+                                </span>
+                            </div>
+                        ))}
+                        {sending && (
+                            <div style={{ alignSelf: 'flex-start', padding: '12px', background: 'var(--surface)', borderRadius: '16px 16px 16px 2px' }}>
+                                <LoadingSpinner size="sm" />
+                            </div>
+                        )}
+                        <div ref={chatEndRef} />
                     </div>
-                </Card>
-            ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)' }}>
-                    {days.map(day => (
-                        <Card key={day} style={{ display: 'flex', flexDirection: 'column' }}>
-                            <div className="flex justify-between items-center mb-md">
-                                <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 800 }}>{day}</h3>
-                                <Badge variant="secondary">{timetable.days[day]?.length || 0} tasks</Badge>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-                                {timetable.days[day]?.map((item, i) => (
-                                    <div key={i} style={{ 
-                                        padding: 'var(--space-sm)', 
-                                        background: 'var(--bg)', 
-                                        borderRadius: 'var(--radius-md)',
-                                        borderLeft: '4px solid var(--primary-500)',
-                                        display: 'flex',
-                                        gap: 'var(--space-sm)'
-                                    }}>
-                                        <div style={{ color: 'var(--primary-500)', fontWeight: 700, fontSize: 'var(--text-xs)', width: '45px' }}>
-                                            {item.time}
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <p style={{ margin: 0, fontWeight: 600, fontSize: 'var(--text-sm)' }}>{item.task}</p>
-                                            <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>Duration: {item.duration}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                                {(!timetable.days[day] || timetable.days[day].length === 0) && (
-                                    <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)', textAlign: 'center' }}>No tasks scheduled</p>
-                                )}
-                            </div>
-                        </Card>
-                    ))}
-                    <Card style={{ gridColumn: '1 / -1', background: 'var(--surface-light)', border: '1px dashed var(--primary-500)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Sparkles size={18} className="text-primary-500" /> Activate Your Plan
-                            </h3>
-                            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-                                Sync these tasks to your active Routines to enable alarms and diary tracking.
-                            </p>
-                        </div>
+
+                    <form onSubmit={handleSendMessage} style={{ padding: 'var(--space-md)', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
                         <div className="flex gap-sm">
-                            <Button variant="ghost" onClick={() => setTimetable(null)}>Reset Plan</Button>
-                            <Button variant="primary" icon={CheckCircle} onClick={async () => {
-                                try {
-                                    setGenerating(true);
-                                    await routineService.syncTimetableToRoutines(timetable);
-                                    alert('Successfully synced to Routines! Check the Routines page for your new schedule.');
-                                    navigate('/routines');
-                                } catch (err) {
-                                    alert('Failed to sync: ' + err.message);
-                                } finally {
-                                    setGenerating(false);
-                                }
-                            }}>Sync to Routines</Button>
+                            <Input 
+                                placeholder="Describe your plan..." 
+                                value={userInput} 
+                                onChange={e => setUserInput(e.target.value)}
+                                disabled={sending}
+                                style={{ margin: 0 }}
+                            />
+                            <Button variant="primary" type="submit" disabled={sending || !userInput.trim()}>
+                                <Send size={18} />
+                            </Button>
+                        </div>
+                    </form>
+                </Card>
+
+                {/* Timetable View */}
+                <div style={{ overflowY: 'auto', paddingRight: '4px' }}>
+                    <Card style={{ marginBottom: 'var(--space-md)', background: 'linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%)', border: '1px solid var(--primary-500)' }}>
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-md">
+                                <RefreshCw className="text-primary-500 animate-spin-slow" />
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: 'var(--text-sm)' }}>Live Calendar Sync</h3>
+                                    <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                        Subscribe once, and your phone calendar will auto-update with the AI's plan.
+                                    </p>
+                                </div>
+                            </div>
+                            <Button variant="primary" size="sm" onClick={() => {
+                                const link = routineService.getCalendarSyncLink(user.id);
+                                navigator.clipboard.writeText(link);
+                                alert('Sync Link Copied! \n\nPaste this into Google Calendar -> "Add by URL" to sync Zenith with your phone.');
+                            }}>Copy Sync Link</Button>
                         </div>
                     </Card>
-                </div>
-            )}
 
+                    {loading ? (
+                        <div className="flex justify-center p-2xl"><LoadingSpinner size="lg" /></div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-md)' }}>
+                            {days.map(day => {
+                                const dayNum = daysMap[day];
+                                const dayRoutines = routines.filter(r => r.days_of_week.includes(dayNum))
+                                    .sort((a,b) => a.start_time.localeCompare(b.start_time));
+
+                                return (
+                                    <Card key={day} style={{ display: 'flex', flexDirection: 'column', minHeight: '150px' }}>
+                                        <div className="flex justify-between items-center mb-md">
+                                            <h3 style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 800 }}>{day}</h3>
+                                            <Badge variant={dayRoutines.length > 0 ? 'primary' : 'secondary'} size="xs">{dayRoutines.length}</Badge>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            {dayRoutines.map((r, i) => (
+                                                <div key={i} style={{ 
+                                                    padding: '8px', 
+                                                    background: 'var(--bg)', 
+                                                    borderRadius: '8px',
+                                                    borderLeft: '3px solid var(--primary-500)',
+                                                    fontSize: '11px'
+                                                }}>
+                                                    <div style={{ color: 'var(--primary-500)', fontWeight: 700, marginBottom: '2px' }}>
+                                                        {r.start_time.slice(0, 5)}
+                                                    </div>
+                                                    <div style={{ fontWeight: 600 }}>{r.title}</div>
+                                                </div>
+                                            ))}
+                                            {dayRoutines.length === 0 && (
+                                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '10px', fontStyle: 'italic', height: '60px' }}>
+                                                    Free Day
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 };

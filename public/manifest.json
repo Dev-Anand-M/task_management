@@ -1,44 +1,28 @@
 {
-  "name": "Zenith - Skill Enhancement Platform",
   "short_name": "Zenith",
-  "description": "Level up your skills with gamified learning",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#6366f1",
-  "orientation": "portrait",
-  "scope": "/",
-  "gcm_sender_id": "481294161850",
+  "name": "Zenith Productivity System",
   "icons": [
     {
-      "src": "/zenith.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
     },
     {
-      "src": "/zenith.png",
-      "sizes": "512x512",
+      "src": "zenith.png",
       "type": "image/png",
-      "purpose": "any maskable"
+      "sizes": "192x192"
     },
     {
-      "src": "/zenith.png",
-      "sizes": "1024x1024",
+      "src": "zenith.png",
       "type": "image/png",
-      "purpose": "any"
+      "sizes": "512x512"
     }
   ],
-  "shortcuts": [
-    {
-      "name": "Planner",
-      "url": "/planner",
-      "icons": [{ "src": "/zenith.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Routines",
-      "url": "/routines",
-      "icons": [{ "src": "/zenith.png", "sizes": "192x192" }]
-    }
-  ]
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#6366f1",
+  "background_color": "#0c0a09",
+  "orientation": "portrait",
+  "scope": "/",
+  "description": "AI-Powered Productivity & Consistency Architecture"
 }

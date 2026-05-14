@@ -749,6 +749,45 @@ Important:
     }
 };
 
+// AI Routine & Timetable Manager (Chat)
+export const manageRoutinesChat = async (messages, currentRoutines = [], model = null) => {
+    const systemPrompt = `You are an AI Scheduling Architect. Your goal is to help the user manage their daily routines and weekly timetable through conversation.
+    
+    CURRENT ROUTINES:
+    ${JSON.stringify(currentRoutines, null, 2)}
+    
+    DIRECTIONS:
+    1. Analyze the user's request.
+    2. Suggest a new schedule or modifications to the existing one.
+    3. You must output your response in two parts separated by a "---METADATA---" marker.
+    
+    PART 1: Natural conversational response (Explain what you're doing, why, and ask for confirmation if needed).
+    PART 2: A JSON array of routine objects that represent the DESIRED state of the user's schedule. 
+    
+    Each routine object in the JSON array must have:
+    - title (string)
+    - start_time (string, "HH:MM:SS")
+    - days_of_week (array of integers, 1=Mon, 7=Sun)
+    - description (string, optional)
+    - deadline (string, "YYYY-MM-DD", optional)
+    
+    If the user wants to DELETE a routine, simply omit it from the JSON array.
+    If the user wants to ADD a routine, include it in the array.
+    
+    Example Output:
+    "I've added DSA study at 8am and shifted your Gym to 6pm as requested. Does this look good?"
+    ---METADATA---
+    [
+      { "title": "DSA Study", "start_time": "08:00:00", "days_of_week": [1,2,3,4,5] },
+      { "title": "Gym", "start_time": "18:00:00", "days_of_week": [1,3,5] }
+    ]
+    
+    IMPORTANT: Always return the FULL list of active routines in the JSON part, not just the changes.`;
+
+    const response = await generateContent(messages[messages.length - 1].content, systemPrompt, model);
+    return response;
+};
+
 // AI Learning Path Generator
 export const generateLearningPath = async (skill, currentLevel = 'beginner', model = null) => {
     const systemPrompt = `You are a career and learning advisor. Create a comprehensive, detailed structured learning path for someone who wants to learn "${skill}" and is currently at ${currentLevel} level.
