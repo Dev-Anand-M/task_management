@@ -1072,13 +1072,14 @@ const Settings = () => {
                         borderBottom: '1px solid var(--border)',
                         marginBottom: 'var(--space-lg)'
                     }}>
-                        {['gemini', 'openai', 'anthropic', 'perplexity', 'sambanova'].map(pid => {
+                        {['gemini', 'openai', 'anthropic', 'perplexity', 'sambanova', 'groq'].map(pid => {
                             const pName = {
                                 gemini: 'Google Gemini',
                                 openai: 'OpenAI',
                                 anthropic: 'Anthropic',
                                 perplexity: 'Perplexity',
-                                sambanova: 'SambaNova'
+                                sambanova: 'SambaNova',
+                                groq: 'Groq'
                             }[pid];
                             return (
                                 <button
@@ -1256,7 +1257,9 @@ const Settings = () => {
                                 selectedProvider === 'gemini' ? 'https://makersuite.google.com/app/apikey' :
                                     selectedProvider === 'openai' ? 'https://platform.openai.com/api-keys' :
                                         selectedProvider === 'anthropic' ? 'https://console.anthropic.com/settings/keys' :
-                                            'https://www.perplexity.ai/settings/api'
+                                            selectedProvider === 'perplexity' ? 'https://www.perplexity.ai/settings/api' :
+                                                selectedProvider === 'groq' ? 'https://console.groq.com/keys' :
+                                                    'https://cloud.sambanova.ai/'
                             }
                             target="_blank"
                             rel="noopener noreferrer"
