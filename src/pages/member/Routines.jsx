@@ -105,7 +105,7 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
 
             {showDetails && (
                 <div style={{ marginTop: 'var(--space-md)', padding: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                    {isCurrentAlarm && !isDone && !isIgnored && (
+                    {!isDone && !isIgnored && (
                         <div style={{ marginBottom: 'var(--space-md)', padding: '8px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid var(--error-500)' }}>
                             <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--error-500)', fontWeight: 600 }}>
                                 <AlertTriangle size={12} /> Respond within 15 mins or it marks as Ignored!
