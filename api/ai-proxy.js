@@ -51,7 +51,8 @@ export default async function handler(req, res) {
       openai: 'https://api.openai.com',
       anthropic: 'https://api.anthropic.com',
       perplexity: 'https://api.perplexity.ai',
-      sambanova: 'https://api.sambanova.ai'
+      sambanova: 'https://api.sambanova.ai',
+      groq: 'https://api.groq.com'
     };
 
     const baseUrl = providerUrls[provider];
@@ -71,7 +72,7 @@ export default async function handler(req, res) {
     if (provider === 'gemini') {
       // Gemini uses query param
       url = `${url}?key=${apiKey}`;
-    } else if (provider === 'openai' || provider === 'perplexity' || provider === 'sambanova') {
+    } else if (provider === 'openai' || provider === 'perplexity' || provider === 'sambanova' || provider === 'groq') {
       headers['Authorization'] = `Bearer ${apiKey}`;
     } else if (provider === 'anthropic') {
       headers['x-api-key'] = apiKey;

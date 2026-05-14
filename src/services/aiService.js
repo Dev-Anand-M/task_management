@@ -7,7 +7,8 @@ export const PROVIDERS = {
     OPENAI: { id: 'openai', name: 'OpenAI', icon: '🧠', keyName: 'openai_api_key', url: 'https://platform.openai.com/api-keys' },
     ANTHROPIC: { id: 'anthropic', name: 'Anthropic Claude', icon: '🤖', keyName: 'anthropic_api_key', url: 'https://console.anthropic.com/settings/keys' },
     PERPLEXITY: { id: 'perplexity', name: 'Perplexity', icon: '🔍', keyName: 'perplexity_api_key', url: 'https://www.perplexity.ai/settings/api' },
-    SAMBANOVA: { id: 'sambanova', name: 'SambaNova', icon: '⚡', keyName: 'sambanova_api_key', url: 'https://cloud.sambanova.ai/' }
+    SAMBANOVA: { id: 'sambanova', name: 'SambaNova', icon: '⚡', keyName: 'sambanova_api_key', url: 'https://cloud.sambanova.ai/' },
+    GROQ: { id: 'groq', name: 'Groq', icon: '⚡', keyName: 'groq_api_key', url: 'https://console.groq.com/keys' }
 };
 
 // Available Models mapped to providers
@@ -16,6 +17,11 @@ export const AVAILABLE_MODELS = [
     { id: 'Meta-Llama-3.3-70B-Instruct', provider: 'sambanova', name: 'Llama 3.3 70B (Default)', description: 'Latest Meta model - Fast and powerful', inputTokenLimit: '128k', outputTokenLimit: '4k' },
     { id: 'DeepSeek-V3.2', provider: 'sambanova', name: 'DeepSeek V3.2 (SambaNova)', description: 'Powerful reasoning model', inputTokenLimit: '128k', outputTokenLimit: '4k' },
     { id: 'gemma-3-12b-it', provider: 'sambanova', name: 'Gemma 3 12B (SambaNova)', description: 'Google latest open model', inputTokenLimit: '128k', outputTokenLimit: '4k' },
+    
+    // Groq Models (Ultra Fast)
+    { id: 'llama-3.3-70b-versatile', provider: 'groq', name: 'Llama 3.3 70B (Groq)', description: 'Ultra-fast inference', inputTokenLimit: '128k', outputTokenLimit: '32k' },
+    { id: 'llama-3.1-8b-instant', provider: 'groq', name: 'Llama 3.1 8B Instant', description: 'Lightning fast responses', inputTokenLimit: '128k', outputTokenLimit: '8k' },
+    { id: 'mixtral-8x7b-32768', provider: 'groq', name: 'Mixtral 8x7B', description: 'Fast mixture of experts', inputTokenLimit: '32k', outputTokenLimit: '32k' },
     
     // Other Providers
     { id: 'gemini-1.5-flash', provider: 'gemini', name: 'Gemini 1.5 Flash', description: 'Stable and fast for everyone', inputTokenLimit: '1M', outputTokenLimit: '8k' },
@@ -282,7 +288,8 @@ export const validateAPIKey = async (providerId, key) => {
         openai: (k) => k.startsWith('sk-'),
         anthropic: (k) => k.startsWith('sk-ant-'),
         perplexity: (k) => k.startsWith('pplx-'),
-        sambanova: (k) => k.length >= 20
+        sambanova: (k) => k.length >= 20,
+        groq: (k) => k.startsWith('gsk_') || k.length >= 20
     };
 
     if (formatChecks[providerId] && !formatChecks[providerId](trimmedKey)) {
@@ -328,6 +335,17 @@ export const validateAPIKey = async (providerId, key) => {
             };
             await callAIProxy('sambanova', endpoint, trimmedKey, body);
             return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'sambanova') };
+        }
+        
+        if (providerId === 'groq') {
+            const endpoint = '/openai/v1/chat/completions';
+            const body = {
+                model: 'llama-3.3-70b-versatile',
+                messages: [{ role: 'user', content: 'test' }],
+                max_tokens: 1
+            };
+            await callAIProxy('groq', endpoint, trimmedKey, body);
+            return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'groq') };
         }
 
         return { valid: false, error: 'Unknown provider' };
@@ -557,6 +575,24 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
             
             const data = await callAIProxy('sambanova', endpoint, apiKey, body, signal, options);
             await incrementUsage('sambanova');
+            return data.choices?.[0]?.message?.content || '';
+        }
+        
+        // --- GROQ ---
+        if (provider.id === 'groq') {
+            const endpoint = '/openai/v1/chat/completions';
+            const body = {
+                model: selectedModelId,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.7,
+                max_tokens: 8192
+            };
+            
+            const data = await callAIProxy('groq', endpoint, apiKey, body, signal, options);
+            await incrementUsage('groq');
             return data.choices?.[0]?.message?.content || '';
         }
 
