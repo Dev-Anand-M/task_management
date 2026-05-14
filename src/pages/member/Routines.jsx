@@ -33,10 +33,15 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
         setShowDetails(false);
     };
 
-    const handlePostpone = async () => {
-        // Postpone logic: in a real app we'd adjust the time
+    const handlePostpone = async (minutes) => {
+        // Calculate new time for today only
+        const now = new Date();
+        const newTime = new Date(now.getTime() + minutes * 60000);
+        const timeStr = newTime.toTimeString().slice(0, 8);
+
         await onUpdate(routine.id, {
             status: 'postponed',
+            start_time: timeStr,
             postponed_count: (log?.postponed_count || 0) + 1
         });
         setShowDetails(false);
@@ -54,10 +59,12 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
             borderLeft: `4px solid ${
                 isDone ? 'var(--success-500)' : 
                 isIgnored ? 'var(--error-500)' : 
-                isPostponed ? 'var(--warning-500)' : 'var(--border)'
+                isPostponed ? 'var(--warning-500)' : 
+                isNext ? 'var(--primary-500)' : 'var(--border)'
             }`,
             opacity: (isDone || isIgnored) ? 0.8 : 1,
-            transition: 'all 0.3s'
+            transition: 'all 0.3s',
+            background: isNext ? 'rgba(99, 102, 241, 0.03)' : 'var(--surface)'
         }}>
             <div className="flex items-center gap-md">
                 <button 
@@ -76,24 +83,27 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo }) => {
                         </p>
                         {isNext && !isDone && !isIgnored && (
                             <Badge variant="primary" className="animate-pulse">
-                                Next in {nextAlarmInfo.minutes}m
+                                NEXT IN {nextAlarmInfo.minutes} MINS
                             </Badge>
                         )}
                         {isIgnored && <Badge variant="error">Missed</Badge>}
                         {log?.postponed_count > 0 && <Badge variant="warning" size="xs">Postponed {log.postponed_count}x</Badge>}
                     </div>
                     <div className="flex items-center gap-sm" style={{ marginTop: '2px' }}>
-                        <Badge variant="secondary" size="xs"><Clock size={10} /> {routine.start_time}</Badge>
+                        <Badge variant="secondary" size="xs"><Clock size={10} /> {routine.start_time.slice(0, 5)}</Badge>
                         <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                             {routine.days_of_week.map(d => DAYS[d-1]).join(', ')}
                         </span>
                     </div>
                 </div>
 
-                <div className="flex gap-sm">
+                <div className="flex gap-sm items-center">
                     {!isDone && !isIgnored && (
                         <>
-                            <Button variant="ghost" size="sm" onClick={handlePostpone} icon={Clock}>Postpone</Button>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                                <Button variant="ghost" size="xs" onClick={() => handlePostpone(15)}>+15m</Button>
+                                <Button variant="ghost" size="xs" onClick={() => handlePostpone(30)}>+30m</Button>
+                            </div>
                             <Button variant="primary" size="sm" onClick={() => setShowDetails(true)} icon={Check}>Log</Button>
                         </>
                     )}
