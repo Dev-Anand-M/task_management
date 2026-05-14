@@ -103,6 +103,24 @@ const Settings = () => {
     const [availableModels, setAvailableModels] = useState([]); // Dynamic models from API
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [isInstalled, setIsInstalled] = useState(false);
+    const [swStatus, setSwStatus] = useState('Checking...');
+    const [subCount, setSubCount] = useState(0);
+
+    // Check SW and Subscriptions status
+    useEffect(() => {
+        const checkStatus = async () => {
+            if ('serviceWorker' in navigator) {
+                try {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    setSwStatus(regs.length > 0 ? `Active (${regs.length})` : 'Not Found');
+                    const reg = await navigator.serviceWorker.ready;
+                    const sub = await reg.pushManager.getSubscription();
+                    setSubCount(sub ? 1 : 0);
+                } catch (e) { setSwStatus('Error'); }
+            } else { setSwStatus('Unsupported'); }
+        };
+        checkStatus();
+    }, [notifications.push]);
 
     // Load AI settings when provider changes or on mount
     useEffect(() => {
@@ -599,7 +617,7 @@ const Settings = () => {
                                                          }
                                                          setNotifications(prev => ({ ...prev, push: false }));
                                                      }
-                                                     forceRefresh();
+                                                     await forceRefresh();
                                                  } catch (err) {
                                                      console.error("[Settings] Push toggle error:", err);
                                                      alert(`Error: ${err.message}`);
@@ -694,11 +712,15 @@ const Settings = () => {
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <span>Service Worker:</span>
-                                <span style={{ color: 'var(--success-600)' }}>Active (sw.js)</span>
+                                <span style={{ color: swStatus.includes('Active') ? 'var(--success-600)' : 'var(--error)' }}>{swStatus}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span>Registered Devices:</span>
-                                <span>{user.preferences?.push_subscriptions?.length || 0}</span>
+                                <span>Browser Subscription:</span>
+                                <span style={{ color: subCount > 0 ? 'var(--success-600)' : 'var(--text-muted)' }}>{subCount > 0 ? 'Registered' : 'Not Found'}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Cloud Database:</span>
+                                <span>{user.preferences?.push_subscriptions?.length || 0} device(s)</span>
                             </div>
                         </div>
 
@@ -742,8 +764,11 @@ const Settings = () => {
                                                 })
                                             });
                                             const data = await res.json();
-                                            if (data.success) {
-                                                alert(`✅ Sent to ${data.sentCount || 0} device(s). Check your OS notifications.`);
+                                            if (data.success && data.sentCount > 0) {
+                                                alert(`✅ Sent to ${data.sentCount} device(s). Check your OS notifications.`);
+                                            } else if (data.success && data.sentCount === 0) {
+                                                console.log("[Push Debug]", data.debug);
+                                                alert(`⚠️ Sent to 0 devices.\nReason: ${data.message}\n\nCheck browser console for debug info.`);
                                             } else {
                                                 alert("❌ Failed: " + data.error);
                                             }

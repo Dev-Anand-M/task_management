@@ -46,7 +46,20 @@ export default async function handler(req, res) {
             .select('id, preferences')
             .in('id', targetUserIds);
 
-        if (fetchError) throw fetchError;
+        if (fetchError) {
+            console.error('[Push] Supabase fetch error:', fetchError);
+            throw fetchError;
+        }
+
+        if (!profiles || profiles.length === 0) {
+            console.warn('[Push] No profiles found for IDs:', targetUserIds);
+            return res.status(200).json({ 
+                success: true, 
+                sentCount: 0, 
+                message: 'User profile not found in database',
+                debug: { targetUserIds, profilesCount: profiles?.length || 0 }
+            });
+        }
 
         // 3. Flatten all subscriptions from all targeted users
         const allSubscriptions = [];
@@ -59,12 +72,22 @@ export default async function handler(req, res) {
                         userId: profile.id
                     });
                 });
+            } else {
+                console.log(`[Push] User ${profile.id} has no push_subscriptions array in preferences`);
             }
         });
 
         if (allSubscriptions.length === 0) {
-            console.log('[Push] No subscriptions found for users:', targetUserIds);
-            return res.status(200).json({ success: true, sentCount: 0, message: 'No devices registered' });
+            console.log('[Push] No active subscriptions found for users:', targetUserIds);
+            return res.status(200).json({ 
+                success: true, 
+                sentCount: 0, 
+                message: 'No registered devices found',
+                debug: { 
+                    profilesFound: profiles.length,
+                    preferencesKeys: profiles.map(p => Object.keys(p.preferences || {}))
+                }
+            });
         }
 
         // 4. Send notifications
