@@ -1,122 +1,132 @@
-const CACHE_NAME = 'zenith-cache-v2';
-const urlsToCache = [
-    '/',
-    '/vite.svg'
-];
+// Zenith Service Worker - Simple Push Notifications
+const CACHE_NAME = 'zenith-v1';
+const OFFLINE_URL = '/offline.html';
 
-self.addEventListener('install', event => {
-    // Skip waiting to activate immediately
-    self.skipWaiting();
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(urlsToCache))
-    );
+// Install event
+self.addEventListener('install', (event) => {
+  console.log('[SW] Installing service worker...');
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('[SW] Caching offline page');
+      return cache.addAll([
+        OFFLINE_URL,
+        '/manifest.json',
+        '/zenith.png'
+      ]).catch(err => console.warn('[SW] Failed to cache:', err));
+    })
+  );
+  self.skipWaiting();
 });
 
-self.addEventListener('activate', event => {
-    // Clean up old caches
-    event.waitUntil(
-        caches.keys().then(cacheNames => {
-            return Promise.all(
-                cacheNames.map(cacheName => {
-                    if (cacheName !== CACHE_NAME) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        })
-    );
+// Activate event
+self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating service worker...');
+  event.waitUntil(
+    Promise.all([
+      // Clean up old caches
+      caches.keys().then(names =>
+        Promise.all(
+          names.map(name => name !== CACHE_NAME ? caches.delete(name) : null)
+        )
+      ),
+      self.clients.claim()
+    ])
+  );
 });
 
-self.addEventListener('fetch', event => {
-    // Only cache GET requests and avoid API calls
-    if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
-        return;
-    }
-
-    event.respondWith(
-        fetch(event.request)
-            .then(response => {
-                // If fetch succeeds, return response and cache it
-                if (response.status === 200) {
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME)
-                        .then(cache => cache.put(event.request, responseClone));
-                }
-                return response;
-            })
-            .catch(() => {
-                // If fetch fails, try to serve from cache
-                return caches.match(event.request);
-            })
-    );
-});
-
-// ── Push Notification Handling ──────────────────────────────────────────────
-self.addEventListener('push', event => {
-    let data = { title: 'Zenith', body: 'New notification', icon: '/vite.svg', url: '/' };
-    
-    try {
-        if (event.data) {
-            // Some browsers might send text instead of JSON
-            const text = event.data.text();
-            try {
-                const payload = JSON.parse(text);
-                data = { ...data, ...payload };
-            } catch (e) {
-                data.body = text;
-            }
+// Fetch event - basic offline support
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+  
+  // Network first, fall back to cache
+  event.respondWith(
+    fetch(event.request)
+      .then(response => {
+        // Cache successful responses
+        if (response && response.ok) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseClone);
+          });
         }
-    } catch (e) {
-        console.error('Error parsing push data:', e);
+        return response;
+      })
+      .catch(() => {
+        // Try cache
+        return caches.match(event.request).then(cached => {
+          if (cached) return cached;
+          
+          // Return offline page for navigation requests
+          if (event.request.mode === 'navigate') {
+            return caches.match(OFFLINE_URL);
+          }
+          
+          return new Response('Offline', { status: 503 });
+        });
+      })
+  );
+});
+
+// ── Push Notification Handlers ────────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  console.log('[SW] Push notification received');
+  
+  let data = {
+    title: 'Zenith',
+    body: 'You have a new notification',
+    icon: '/zenith.png',
+    badge: '/zenith.png',
+    url: '/'
+  };
+  
+  try {
+    if (event.data) {
+      const payload = event.data.json();
+      data = { ...data, ...payload };
     }
-
-    const options = {
-        body: data.body,
-        icon: data.icon || '/vite.svg',
-        badge: '/vite.svg',
-        data: { url: data.url || '/' },
-        vibrate: [100, 50, 100],
-        tag: 'zenith-notification', // Groups similar notifications
-        renotify: true, // Notifies again for the same tag
-        actions: [
-            { action: 'open', title: 'Open Zenith' }
-        ],
-        requireInteraction: true // Keeps notification visible until user interacts
-    };
-
-    event.waitUntil(
-        self.registration.showNotification(data.title, options)
-    );
+  } catch (e) {
+    console.error('[SW] Error parsing push data:', e);
+  }
+  
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon,
+      badge: data.badge,
+      data: { url: data.url },
+      tag: data.tag || 'zenith-notification',
+      requireInteraction: false,
+      vibrate: [200, 100, 200]
+    })
+  );
 });
 
-self.addEventListener('notificationclick', event => {
-    event.notification.close();
-    
-    const urlToOpen = new URL(event.notification.data?.url || '/', self.location.origin).href;
-
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true })
-            .then(windowClients => {
-                // 1. Try to find an existing window and focus it
-                for (let i = 0; i < windowClients.length; i++) {
-                    const client = windowClients[i];
-                    if (client.url === urlToOpen && 'focus' in client) {
-                        return client.focus();
-                    }
-                }
-                // 2. If not found, try to focus any Zenith window and navigate
-                for (let i = 0; i < windowClients.length; i++) {
-                    const client = windowClients[i];
-                    if ('focus' in client) {
-                        client.navigate(urlToOpen);
-                        return client.focus();
-                    }
-                }
-                // 3. If no window open, open a new one
-                if (clients.openWindow) {
-                    return clients.openWindow(urlToOpen);
-                }
-            })
-    );
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked');
+  event.notification.close();
+  
+  const url = event.notification.data?.url || '/';
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(clientList => {
+        // Check if there's already a window open
+        for (const client of clientList) {
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            client.navigate(url);
+            return client.focus();
+          }
+        }
+        // Open new window if none exists
+        return clients.openWindow(url);
+      })
+  );
 });
+
+// Handle notification close
+self.addEventListener('notificationclose', (event) => {
+  console.log('[SW] Notification closed');
+});
+
+console.log('[SW] Service worker loaded');

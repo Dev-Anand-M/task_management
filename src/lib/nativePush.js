@@ -1,0 +1,178 @@
+// Native Push Notification API Wrapper (No external SDK needed)
+
+// VAPID public key - generate with: npx web-push generate-vapid-keys
+// You'll need to add this to your .env as VITE_VAPID_PUBLIC_KEY
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
+/**
+ * Check if push notifications are supported
+ */
+export const isPushSupported = () => {
+  return 'serviceWorker' in navigator && 
+         'PushManager' in window && 
+         'Notification' in window;
+};
+
+/**
+ * Check if service worker is registered
+ */
+export const isServiceWorkerRegistered = async () => {
+  if (!('serviceWorker' in navigator)) return false;
+  const registration = await navigator.serviceWorker.getRegistration();
+  return !!registration;
+};
+
+/**
+ * Register service worker
+ */
+export const registerServiceWorker = async () => {
+  if (!('serviceWorker' in navigator)) {
+    throw new Error('Service workers not supported');
+  }
+  
+  try {
+    console.log('[Push] Registering service worker...');
+    const registration = await navigator.serviceWorker.register('/sw.js', {
+      scope: '/'
+    });
+    console.log('[Push] Service worker registered:', registration.scope);
+    return registration;
+  } catch (error) {
+    console.error('[Push] Service worker registration failed:', error);
+    throw error;
+  }
+};
+
+/**
+ * Request notification permission and get push subscription
+ */
+export const requestPushPermission = async () => {
+  if (!isPushSupported()) {
+    throw new Error('Push notifications not supported');
+  }
+  
+  try {
+    console.log('[Push] Requesting notification permission...');
+    
+    // Request permission
+    const permission = await Notification.requestPermission();
+    console.log('[Push] Permission:', permission);
+    
+    if (permission !== 'granted') {
+      throw new Error('Notification permission denied');
+    }
+    
+    // Get or register service worker
+    let registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) {
+      registration = await registerServiceWorker();
+      // Wait for service worker to be ready
+      await navigator.serviceWorker.ready;
+    }
+    
+    // Check if already subscribed
+    let subscription = await registration.pushManager.getSubscription();
+    
+    if (!subscription) {
+      console.log('[Push] Creating new push subscription...');
+      
+      if (!VAPID_PUBLIC_KEY) {
+        throw new Error('VAPID public key not configured');
+      }
+      
+      // Subscribe to push notifications
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+      
+      console.log('[Push] Push subscription created');
+    } else {
+      console.log('[Push] Using existing push subscription');
+    }
+    
+    return subscription;
+  } catch (error) {
+    console.error('[Push] Error requesting push permission:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get current push subscription
+ */
+export const getPushSubscription = async () => {
+  if (!isPushSupported()) return null;
+  
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) return null;
+    
+    return await registration.pushManager.getSubscription();
+  } catch (error) {
+    console.error('[Push] Error getting subscription:', error);
+    return null;
+  }
+};
+
+/**
+ * Unsubscribe from push notifications
+ */
+export const unsubscribePush = async () => {
+  try {
+    const subscription = await getPushSubscription();
+    if (subscription) {
+      await subscription.unsubscribe();
+      console.log('[Push] Unsubscribed from push notifications');
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('[Push] Error unsubscribing:', error);
+    throw error;
+  }
+};
+
+/**
+ * Check current notification permission
+ */
+export const getNotificationPermission = () => {
+  if (!('Notification' in window)) return 'unsupported';
+  return Notification.permission;
+};
+
+/**
+ * Helper function to convert VAPID key
+ */
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+  
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+/**
+ * Debug helper - log push notification status
+ */
+export const debugPushStatus = async () => {
+  console.log('=== Push Notification Debug ===');
+  console.log('Push supported:', isPushSupported());
+  console.log('Notification permission:', getNotificationPermission());
+  console.log('Service worker registered:', await isServiceWorkerRegistered());
+  
+  const subscription = await getPushSubscription();
+  console.log('Push subscription:', subscription ? 'Active' : 'None');
+  if (subscription) {
+    console.log('Endpoint:', subscription.endpoint);
+  }
+  console.log('VAPID key configured:', !!VAPID_PUBLIC_KEY);
+  console.log('==============================');
+};
