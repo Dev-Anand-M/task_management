@@ -10,6 +10,17 @@ export default async function handler(req, res) {
     const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
     const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@zenith.app';
 
+    // Debug logging
+    console.log('[Push] VAPID Keys Check:', {
+        hasPublicKey: !!VAPID_PUBLIC_KEY,
+        hasPrivateKey: !!VAPID_PRIVATE_KEY,
+        publicKeyLength: VAPID_PUBLIC_KEY?.length,
+        privateKeyLength: VAPID_PRIVATE_KEY?.length,
+        publicKeyStart: VAPID_PUBLIC_KEY?.substring(0, 20),
+        privateKeyStart: VAPID_PRIVATE_KEY?.substring(0, 20),
+        subject: VAPID_SUBJECT
+    });
+
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
         return res.status(500).json({ 
             success: false, 
