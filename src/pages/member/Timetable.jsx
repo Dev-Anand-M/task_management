@@ -191,17 +191,34 @@ const Timetable = () => {
                             </div>
                         </Card>
                     ))}
-                    <Card style={{ gridColumn: '1 / -1', background: 'var(--surface-light)', border: '1px dashed var(--primary-500)' }}>
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h3 style={{ margin: 0 }}>Reset Week?</h3>
-                                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>You can regenerate your plan anytime.</p>
-                            </div>
-                            <Button variant="secondary" onClick={() => setTimetable(null)}>Regenerate Plan</Button>
+                    <Card style={{ gridColumn: '1 / -1', background: 'var(--surface-light)', border: '1px dashed var(--primary-500)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Sparkles size={18} className="text-primary-500" /> Activate Your Plan
+                            </h3>
+                            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                                Sync these tasks to your active Routines to enable alarms and diary tracking.
+                            </p>
+                        </div>
+                        <div className="flex gap-sm">
+                            <Button variant="ghost" onClick={() => setTimetable(null)}>Reset Plan</Button>
+                            <Button variant="primary" icon={CheckCircle} onClick={async () => {
+                                try {
+                                    setGenerating(true);
+                                    await routineService.syncTimetableToRoutines(timetable);
+                                    alert('Successfully synced to Routines! Check the Routines page for your new schedule.');
+                                    navigate('/routines');
+                                } catch (err) {
+                                    alert('Failed to sync: ' + err.message);
+                                } finally {
+                                    setGenerating(false);
+                                }
+                            }}>Sync to Routines</Button>
                         </div>
                     </Card>
                 </div>
             )}
+
         </div>
     );
 };

@@ -153,5 +153,45 @@ export const routineService = {
 
         if (error) throw error;
         return data;
+    },
+
+    /**
+     * Convert AI Timetable tasks into actual recurring Routines
+     */
+    async syncTimetableToRoutines(scheduleData) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const routinesToInsert = [];
+        const daysMap = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 7 };
+
+        // Group tasks by title and time to find recurring ones
+        const taskGroups = {}; // title_time -> { title, time, days }
+
+        Object.entries(scheduleData.days).forEach(([dayName, tasks]) => {
+            const dayNum = daysMap[dayName];
+            tasks.forEach(task => {
+                const key = `${task.task}_${task.time}`;
+                if (!taskGroups[key]) {
+                    taskGroups[key] = {
+                        user_id: user.id,
+                        title: task.task,
+                        start_time: task.time.includes(':') ? (task.time.length === 5 ? `${task.time}:00` : task.time) : `${task.time}:00:00`,
+                        days_of_week: []
+                    };
+                }
+                taskGroups[key].days_of_week.push(dayNum);
+            });
+        });
+
+        const insertData = Object.values(taskGroups);
+        
+        const { data, error } = await supabase
+            .from('routines')
+            .insert(insertData)
+            .select();
+
+        if (error) throw error;
+        return data;
     }
 };

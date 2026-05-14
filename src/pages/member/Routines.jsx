@@ -6,16 +6,23 @@ import {
     RefreshCw, Plus, Trash2, CheckCircle, Circle, Clock, Bell,
     Calendar, ChevronDown, ChevronRight, ChevronLeft, Sparkles, Brain, Send,
     Flame, X, Edit3, Check, Mic, MicOff, Volume2, VolumeX,
-    History, BookOpen, AlertTriangle
+    History, BookOpen, AlertTriangle, BellRing
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const RoutineItem = ({ routine, log, onUpdate, onDelete }) => {
+const RoutineItem = ({ routine, log, onUpdate, onDelete, isCurrentAlarm }) => {
     const [spentTime, setSpentTime] = useState(log?.time_spent_minutes || 0);
     const [notes, setNotes] = useState(log?.learning_notes || '');
-    const [showDetails, setShowDetails] = useState(false);
+    const [showDetails, setShowDetails] = useState(isCurrentAlarm || false);
     const isDone = log?.status === 'done';
+    const isIgnored = log?.status === 'ignored';
+    const isPostponed = log?.status === 'postponed';
+
+    useEffect(() => {
+        if (isCurrentAlarm) setShowDetails(true);
+    }, [isCurrentAlarm]);
 
     const handleSave = async () => {
         await onUpdate(routine.id, {
@@ -28,31 +35,51 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete }) => {
     };
 
     const handlePostpone = async () => {
-        // Simple postpone: add 30 mins to current time (client-side display or backend logic)
-        // For this demo, we'll just mark status as postponed in the log
+        // Postpone logic: in a real app we'd adjust the time
         await onUpdate(routine.id, {
             status: 'postponed',
             postponed_count: (log?.postponed_count || 0) + 1
         });
+        setShowDetails(false);
+    };
+
+    const handleIgnore = async () => {
+        await onUpdate(routine.id, {
+            status: 'ignored'
+        });
+        setShowDetails(false);
     };
 
     return (
         <Card style={{ 
-            borderLeft: `4px solid ${isDone ? 'var(--success-500)' : log?.status === 'postponed' ? 'var(--warning-500)' : 'var(--border)'}`,
-            opacity: isDone ? 0.8 : 1,
-            transition: 'all 0.3s'
+            borderLeft: `4px solid ${
+                isDone ? 'var(--success-500)' : 
+                isIgnored ? 'var(--error-500)' : 
+                isPostponed ? 'var(--warning-500)' : 
+                isCurrentAlarm ? 'var(--primary-500)' : 'var(--border)'
+            }`,
+            opacity: (isDone || isIgnored) ? 0.8 : 1,
+            transition: 'all 0.3s',
+            boxShadow: isCurrentAlarm ? '0 0 20px rgba(99, 102, 241, 0.3)' : 'none',
+            transform: isCurrentAlarm ? 'scale(1.02)' : 'none'
         }}>
             <div className="flex items-center gap-md">
                 <button 
                     onClick={() => setShowDetails(!showDetails)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                 >
-                    {isDone ? <CheckCircle size={24} style={{ color: 'var(--success-500)' }} /> : <Circle size={24} style={{ color: 'var(--text-muted)' }} />}
+                    {isDone ? <CheckCircle size={24} style={{ color: 'var(--success-500)' }} /> : 
+                     isIgnored ? <X size={24} style={{ color: 'var(--error-500)' }} /> :
+                     <Circle size={24} style={{ color: 'var(--text-muted)' }} />}
                 </button>
                 
                 <div style={{ flex: 1 }}>
                     <div className="flex items-center gap-sm">
-                        <p style={{ margin: 0, fontWeight: 700, textDecoration: isDone ? 'line-through' : 'none' }}>{routine.title}</p>
+                        <p style={{ margin: 0, fontWeight: 700, textDecoration: (isDone || isIgnored) ? 'line-through' : 'none' }}>
+                            {routine.title}
+                        </p>
+                        {isCurrentAlarm && <Badge variant="primary" className="animate-pulse">Active Alarm!</Badge>}
+                        {isIgnored && <Badge variant="error">Missed</Badge>}
                         {log?.postponed_count > 0 && <Badge variant="warning" size="xs">Postponed {log.postponed_count}x</Badge>}
                     </div>
                     <div className="flex items-center gap-sm" style={{ marginTop: '2px' }}>
@@ -64,8 +91,11 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete }) => {
                 </div>
 
                 <div className="flex gap-sm">
-                    {!isDone && (
-                        <Button variant="ghost" size="sm" onClick={handlePostpone}>Postpone</Button>
+                    {!isDone && !isIgnored && (
+                        <>
+                            <Button variant="ghost" size="sm" onClick={handlePostpone} icon={Clock}>Postpone</Button>
+                            <Button variant="primary" size="sm" onClick={() => setShowDetails(true)} icon={Check}>Log</Button>
+                        </>
                     )}
                     <button onClick={onDelete} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: '4px' }}>
                         <Trash2 size={16} />
@@ -74,38 +104,55 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete }) => {
             </div>
 
             {showDetails && (
-                <div style={{ marginTop: 'var(--space-md)', padding: 'var(--space-md)', background: 'var(--bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                <div style={{ marginTop: 'var(--space-md)', padding: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                    {isCurrentAlarm && !isDone && !isIgnored && (
+                        <div style={{ marginBottom: 'var(--space-md)', padding: '8px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid var(--error-500)' }}>
+                            <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--error-500)', fontWeight: 600 }}>
+                                <AlertTriangle size={12} /> Respond within 15 mins or it marks as Ignored!
+                            </p>
+                        </div>
+                    )}
                     <div className="flex flex-col gap-md">
-                        <div>
-                            <label className="input-label">Time Spent (minutes)</label>
-                            <Input 
-                                type="number" 
-                                value={spentTime} 
-                                onChange={e => setSpentTime(e.target.value)} 
-                                placeholder="How long did you study?"
-                            />
+                        <div className="grid grid-cols-2 gap-md">
+                            <div>
+                                <label className="input-label">Minutes Spent</label>
+                                <Input 
+                                    type="number" 
+                                    value={spentTime} 
+                                    onChange={e => setSpentTime(e.target.value)} 
+                                    placeholder="e.g. 45"
+                                />
+                            </div>
+                            <div>
+                                <label className="input-label">Deadline Reference</label>
+                                <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                                    {routine.deadline ? new Date(routine.deadline).toLocaleDateString() : 'No hard deadline'}
+                                </p>
+                            </div>
                         </div>
                         <div>
-                            <label className="input-label">Learning Diary (What did you learn?)</label>
+                            <label className="input-label">What did you learn today? (Diary Entry)</label>
                             <textarea 
                                 value={notes}
                                 onChange={e => setNotes(e.target.value)}
-                                placeholder="Topics covered, difficulties, mindmap nodes..."
+                                placeholder="Topics covered, insights, or tasks completed..."
                                 style={{ 
                                     width: '100%', 
-                                    height: '80px', 
+                                    height: '100px', 
                                     padding: '12px', 
                                     borderRadius: 'var(--radius-md)',
-                                    background: 'var(--surface)',
+                                    background: 'var(--bg)',
                                     color: 'var(--text)',
                                     border: '1px solid var(--border)',
-                                    fontSize: 'var(--text-sm)'
+                                    fontSize: 'var(--text-sm)',
+                                    resize: 'none'
                                 }}
                             />
                         </div>
                         <div className="flex gap-sm justify-end">
-                            <Button variant="ghost" onClick={() => setShowDetails(false)}>Cancel</Button>
-                            <Button variant="primary" onClick={handleSave}>Log Progress</Button>
+                            {!isDone && !isIgnored && <Button variant="ghost" onClick={handleIgnore} style={{ color: 'var(--error-500)' }}>Mark Ignored</Button>}
+                            <Button variant="ghost" onClick={() => setShowDetails(false)}>Minimize</Button>
+                            <Button variant="primary" onClick={handleSave}>{isDone ? 'Update Entry' : 'Finish & Save to Diary'}</Button>
                         </div>
                     </div>
                 </div>
@@ -129,12 +176,82 @@ const Routines = () => {
         deadline: '', 
         description: '' 
     });
+    const [activeTimetable, setActiveTimetable] = useState(null);
+    const [currentAlarmId, setCurrentAlarmId] = useState(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (user?.id) {
             fetchData();
+            checkTodayTimetable();
+            
+            // Alarm System: Check every minute
+            const interval = setInterval(checkAlarms, 60000);
+            return () => clearInterval(interval);
         }
     }, [user?.id, selectedDate]);
+
+    const checkAlarms = useCallback(() => {
+        const now = new Date();
+        const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+        const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+        
+        routines.forEach(r => {
+            if (r.days_of_week.includes(dayOfWeek)) {
+                const routineTime = r.start_time.slice(0, 5);
+                
+                // Trigger Alarm exactly at start time
+                if (routineTime === currentTime) {
+                    if (currentAlarmId !== r.id) {
+                        setCurrentAlarmId(r.id);
+                        triggerNotification(r);
+                    }
+                }
+
+                // Check for Ignored status (if 15 mins passed and no response)
+                const log = logs[r.id];
+                if (log && log.status === 'pending') {
+                    const startTime = new Date(`${selectedDate}T${r.start_time}`);
+                    const diffMins = Math.floor((now - startTime) / 60000);
+                    if (diffMins >= 15) {
+                        handleUpdateLog(r.id, { status: 'ignored' });
+                    }
+                }
+            }
+        });
+    }, [routines, logs, currentAlarmId, selectedDate]);
+
+    const triggerNotification = (routine) => {
+        if (Notification.permission === "granted") {
+            new Notification("Routine Started!", {
+                body: `Time to work on: ${routine.title}. Open the app to respond.`,
+                icon: '/favicon.ico',
+                tag: routine.id // prevent duplicates
+            });
+        }
+        
+        // Play Sound
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audio.play().catch(e => console.log("Audio play blocked by browser"));
+
+        // Initialize log as pending if not exists
+        if (!logs[routine.id]) {
+            handleUpdateLog(routine.id, { status: 'pending' });
+        }
+    };
+
+    const checkTodayTimetable = async () => {
+        try {
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+            const weekStart = new Date(today.setDate(diff)).toISOString().split('T')[0];
+            const data = await routineService.getTimetable(weekStart);
+            if (data) setActiveTimetable(data.schedule_data);
+        } catch (err) {
+            console.error("Failed to fetch current timetable:", err);
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -218,18 +335,40 @@ const Routines = () => {
 
     return (
         <div className="page-content animate-fade-in">
-            <div className="flex flex-mobile-col justify-between items-center mb-xl">
+            <div className="flex flex-mobile-col justify-between items-start mb-xl gap-md">
                 <div>
                     <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <RefreshCw className="text-primary-500" /> Daily Routines
+                        <Clock className="text-primary-500" /> My Routines
                     </h1>
-                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>Coursework consistency & learning logs</p>
+                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>Enforce discipline, track your progress</p>
                 </div>
-                <div className="flex gap-sm">
-                    <Button variant="secondary" icon={History} onClick={() => window.location.href='/diary'}>Diary</Button>
-                    <Button variant="primary" icon={Plus} onClick={() => setShowAdd(true)}>New Routine</Button>
+                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                    <Button variant="ghost" icon={Calendar} onClick={() => navigate('/timetable')}>View AI Timetable</Button>
+                    <Button variant="ghost" icon={BookOpen} onClick={() => navigate('/diary')}>Learning Diary</Button>
+                    <Button variant="primary" icon={Plus} onClick={() => setShowAdd(true)}>Add Routine</Button>
                 </div>
             </div>
+
+            {activeTimetable && (
+                <Card style={{ 
+                    marginBottom: 'var(--space-xl)', 
+                    background: 'linear-gradient(135deg, var(--primary-900) 0%, var(--bg) 100%)',
+                    border: '1px solid var(--primary-500)'
+                }}>
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-md">
+                            <Brain className="text-primary-500" />
+                            <div>
+                                <h3 style={{ margin: 0 }}>Today's AI Strategy</h3>
+                                <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                                    Based on your weekly architecture
+                                </p>
+                            </div>
+                        </div>
+                        <Badge variant="primary">Active Plan</Badge>
+                    </div>
+                </Card>
+            )}
 
             {/* Date Selector */}
             <div className="flex justify-between items-center mb-lg" style={{ background: 'var(--surface)', padding: 'var(--space-sm)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
@@ -280,6 +419,7 @@ const Routines = () => {
                             log={logs[routine.id]}
                             onUpdate={handleUpdateLog}
                             onDelete={() => handleDelete(routine.id)}
+                            isCurrentAlarm={currentAlarmId === routine.id}
                         />
                     ))}
                 </div>
