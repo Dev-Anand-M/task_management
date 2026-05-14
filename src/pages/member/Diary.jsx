@@ -6,7 +6,7 @@ import { Card, Badge, Button, ProgressBar, LoadingSpinner } from '../../componen
 import { 
     Target, Calendar, PieChart, Activity, 
     ChevronLeft, ChevronRight, Filter, BookOpen,
-    Zap, Award, TrendingUp, Brain
+    Zap, Award, TrendingUp, Brain, AlertTriangle
 } from 'lucide-react';
 
 const Diary = () => {
