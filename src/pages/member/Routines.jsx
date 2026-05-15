@@ -114,7 +114,8 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, onResetLog, nextAlarmIn
             actual_start_time: actualStartTime,
             learning_notes: notes,
             status: 'done',
-            actual_response_time: new Date().toISOString()
+            actual_response_time: new Date().toISOString(),
+            log_date: selectedDate
         });
         setShowDetails(false);
     };
@@ -128,14 +129,16 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, onResetLog, nextAlarmIn
         await onUpdate(routine.id, {
             status: 'postponed',
             start_time: timeStr,
-            postponed_count: (log?.postponed_count || 0) + 1
+            postponed_count: (log?.postponed_count || 0) + 1,
+            log_date: selectedDate
         });
         setShowDetails(false);
     };
 
     const handleIgnore = async () => {
         await onUpdate(routine.id, {
-            status: 'ignored'
+            status: 'ignored',
+            log_date: selectedDate
         });
         setShowDetails(false);
     };
