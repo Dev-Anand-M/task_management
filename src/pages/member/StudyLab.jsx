@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generateChat } from '../../services/aiService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import ReactMarkdown from 'react-markdown';
 
 const StudyLab = () => {
