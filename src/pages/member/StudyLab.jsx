@@ -176,12 +176,15 @@ const StudyLab = () => {
         setMessages(prev => [...prev, { role: 'user', content: text }, { role: 'assistant', content: `🖨️ Preparation complete. Sent ${type === 'all' ? 'the full document' : `page ${pageNum}`} to the printer.` }]);
     };
 
-    const handleSendMessage = async (e) => {
+    const handleSendMessage = async (e, systemMessage = null) => {
         e?.preventDefault();
-        if (!input.trim() || sending) return;
+        
+        const userMsg = systemMessage || input.trim();
+        if (!userMsg || sending) return;
 
-        const userMsg = input.trim();
-        setInput('');
+        if (!systemMessage) {
+            setInput('');
+        }
         
         // 1. Check for local commands (like print)
         if (handleCommand(userMsg)) {
