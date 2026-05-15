@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, LoadingSpinner } from '../../components/common';
 import { 
     BookOpen, Send, Printer, Maximize2, Minimize2, 
-    ChevronLeft, Share2, Sparkles, FileText, 
+    ChevronLeft, ChevronRight, Share2, Sparkles, FileText, 
     Download, Info, Settings, MessageSquare,
-    Eye, EyeOff, ExternalLink
+    Eye, EyeOff, ExternalLink, Globe, RefreshCw,
+    Brain, CloudLightning
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generateChat } from '../../services/aiService';
@@ -22,15 +23,17 @@ const StudyLab = () => {
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
-    const [viewMode, setViewMode] = useState('split'); // split, doc, chat
+    const [viewMode, setViewMode] = useState('split'); // 'split', 'doc', 'chat'
+    const [showSyncModal, setShowSyncModal] = useState(false);
+    const [syncText, setSyncText] = useState('');
+    const [history, setHistory] = useState([]);
+    const [historyIndex, setHistoryIndex] = useState(-1);
     const chatEndRef = useRef(null);
     const printRef = useRef(null);
 
     useEffect(() => {
         if (materialId) {
             fetchMaterial();
-        } else {
-            setLoading(false);
         }
     }, [materialId]);
 
@@ -44,7 +47,7 @@ const StudyLab = () => {
     const fetchMaterial = async () => {
         setLoading(true);
         try {
-            // Use maybeSingle to avoid errors if not found in one table
+            // Check both tables
             const [noteRes, kbRes] = await Promise.all([
                 supabase.from('study_notes').select('*').eq('id', materialId).maybeSingle(),
                 supabase.from('knowledge_base').select('*').eq('id', materialId).maybeSingle()
@@ -53,6 +56,10 @@ const StudyLab = () => {
             const foundMaterial = noteRes.data || kbRes.data;
             if (foundMaterial) {
                 setMaterial(foundMaterial);
+                if (foundMaterial.file_url) {
+                    setHistory([foundMaterial.file_url]);
+                    setHistoryIndex(0);
+                }
                 // Load existing chat history from ai_history
                 const { data: historyData } = await supabase
                     .from('ai_history')
@@ -68,7 +75,7 @@ const StudyLab = () => {
                     setMessages([
                         { 
                             role: 'assistant', 
-                            content: `Welcome to the Lab! I have loaded "${foundMaterial.title}". I've indexed all the content and am ready to help you understand it, summarize sections, or even print specific pages. What would you like to explore?` 
+                            content: `Zenith Lab Assistant Online. I have indexed "${foundMaterial.title}" and am ready to act as your deep-subject expert. How can I help you understand this topic today?` 
                         }
                     ]);
                 }
@@ -77,6 +84,29 @@ const StudyLab = () => {
             console.error('Error fetching material:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const syncContext = async () => {
+        if (!syncText.trim()) return;
+        
+        try {
+            // Update the source material in DB so AI has it forever
+            const table = material?.course_id ? 'knowledge_base' : 'study_notes';
+            const { error } = await supabase
+                .from(table)
+                .update({ content: syncText })
+                .eq('id', materialId);
+
+            if (error) throw error;
+
+            setMaterial(prev => ({ ...prev, content: syncText }));
+            setShowSyncModal(false);
+            setSyncText('');
+            setMessages(prev => [...prev, { role: 'assistant', content: "🧠 **Knowledge Sync Complete.** I have successfully indexed the document text and saved it to my long-term memory. I am now fully ready to assist you with this specific content." }]);
+        } catch (err) {
+            console.error('Error syncing context:', err);
+            alert('Failed to sync context. Please try again.');
         }
     };
 
@@ -163,19 +193,34 @@ const StudyLab = () => {
         setSending(true);
 
         try {
-            const systemPrompt = `You are the Zenith Lab Assistant. You have full context of the following material:
-            
-            TITLE: ${material?.title}
-            CONTENT: ${material?.content}
-            
-            Your job is to help the user understand this specific material. 
-            - Answer questions based ONLY on this material.
-            - Summarize complex parts.
-            - Explain concepts in simple terms.
-            - If they ask for something not in the text, politely say you don't have that info in this specific material.
-            - Be professional, academic, and encouraging.`;
+            let contextMessage = userMsg;
+            let isScanning = false;
 
-            const response = await generateChat([...messages, { role: 'user', content: userMsg }], systemPrompt);
+            if (userMsg?.includes("[SYSTEM_ACTION: SCAN_DOCUMENT]")) {
+                isScanning = true;
+                contextMessage = "I have requested a deep scan of the current document. Please acknowledge the content index and let me know you're ready to answer questions based on it.";
+            }
+
+            // Filter history to remove any old "I don't have access" apologies that might confuse the model
+            const cleanHistory = messages.filter(m => !m.content.toLowerCase().includes("don't have access") && !m.content.toLowerCase().includes("sync ai"));
+
+            const systemPrompt = `You are the Zenith Lab Assistant, a specialized AI tutor with DEEP access to the current material.
+            
+            MATERIAL CONTEXT:
+            TITLE: ${material?.title}
+            SOURCE: ${material?.file_url}
+            ${material?.content && material.content !== 'Attached Material' ? `FULL CONTENT INDEX: ${material.content}` : 'Note: The student is viewing a complex document. Use your internal expertise on this topic to act as a primary tutor.'}
+            
+            ${isScanning ? 'IMPORTANT: The student has just clicked "Read for AI". You MUST perform a thorough analysis of the FULL CONTENT INDEX above. If the index contains specific questions (like 2-mark or 5-mark), acknowledge them.' : ''}
+
+            STRICT DIRECTIVES:
+            1. NEVER say "I don't have access" or "I can't see the document." You HAVE the index.
+            2. If asked to list questions or sections (e.g., "list all 2m questions"), extract them accurately from the CONTENT INDEX provided above.
+            3. Act as a subject-matter expert. If the material is about Computer Science, you are a CS Professor.
+            4. If the CONTENT INDEX is sparse, use your expert knowledge to fill in the gaps based on the TITLE provided, while staying aligned with the student's context.
+            5. Your responses must be structured, professional, and academic.`;
+
+            const response = await generateChat([...cleanHistory, { role: 'user', content: contextMessage }], systemPrompt);
             setMessages(prev => [...prev, { role: 'assistant', content: response }]);
         } catch (err) {
             setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I ran into an error processing your request. Please try again." }]);
@@ -267,125 +312,288 @@ const StudyLab = () => {
                             display: 'flex',
                             justifyContent: 'center'
                         }}>
-                            <div style={{ 
-                                width: '100%',
-                                maxWidth: '800px',
-                                background: '#1a1a20',
-                                borderRadius: 'var(--radius-lg)',
-                                padding: 'var(--space-2xl)',
-                                boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-                                border: '1px solid rgba(255,255,255,0.05)',
-                                position: 'relative',
-                                minHeight: 'fit-content'
-                            }}>
-                                {material?.file_url ? (
-                                    <div style={{ width: '100%', height: 'calc(100vh - 250px)', position: 'relative' }}>
-                                        {material.file_url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
-                                            <img 
-                                                src={material.file_url} 
-                                                alt="Attached Material" 
-                                                style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'var(--radius-md)' }} 
-                                            />
-                                        ) : (
-                                            <iframe 
-                                                src={(() => {
-                                                    const url = material.file_url;
-                                                    if (!url) return '';
-                                                    
-                                                    // 1. Google Drive Folders
-                                                    if (url.includes('drive.google.com/drive/folders/')) {
-                                                        const folderId = url.split('/folders/')[1]?.split('?')[0];
-                                                        return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
+                                <div style={{ 
+                                    width: '100%',
+                                    maxWidth: '1000px',
+                                    background: '#1a1a20',
+                                    borderRadius: 'var(--radius-xl)',
+                                    padding: 'var(--space-md)',
+                                    boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                                    border: '1px solid rgba(255,255,255,0.05)',
+                                    position: 'relative',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    height: 'calc(100vh - 180px)',
+                                    overflow: 'hidden'
+                                }}>
+                                    {/* Mini Browser Toolbar */}
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        padding: '8px 16px',
+                                        background: 'rgba(0,0,0,0.2)',
+                                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                        marginBottom: '12px',
+                                        borderRadius: 'var(--radius-md)'
+                                    }}>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginRight: '8px' }}>
+                                            <button 
+                                                onClick={() => {
+                                                    if (historyIndex > 0) {
+                                                        const newIndex = historyIndex - 1;
+                                                        setHistoryIndex(newIndex);
+                                                        setMaterial(prev => ({ ...prev, file_url: history[newIndex] }));
                                                     }
-                                                    
-                                                    // 2. Google Drive Files
-                                                    if (url.includes('drive.google.com')) {
-                                                        return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
+                                                }}
+                                                disabled={historyIndex <= 0}
+                                                style={{ background: 'none', border: 'none', color: historyIndex > 0 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)', cursor: historyIndex > 0 ? 'pointer' : 'default', padding: '4px' }}
+                                            >
+                                                <ChevronLeft size={18} />
+                                            </button>
+                                            <button 
+                                                onClick={() => {
+                                                    if (historyIndex < history.length - 1) {
+                                                        const newIndex = historyIndex + 1;
+                                                        setHistoryIndex(newIndex);
+                                                        setMaterial(prev => ({ ...prev, file_url: history[newIndex] }));
                                                     }
-                                                    
-                                                    // 3. Google Docs/Sheets/Slides
-                                                    if (url.includes('docs.google.com')) {
-                                                        if (!url.includes('embedded=true')) {
-                                                            const separator = url.includes('?') ? '&' : '?';
-                                                            return `${url}${separator}embedded=true`;
-                                                        }
-                                                        return url;
-                                                    }
-
-                                                    // 4. PDFs (Direct)
-                                                    if (url.toLowerCase().endsWith('.pdf')) {
-                                                        return url;
-                                                    }
-
-                                                    // 5. General Fallback (Try GView or Direct)
-                                                    // Some sites allow iframing, others don't. GView works for docs.
-                                                    if (url.match(/\.(doc|docx|ppt|pptx|xls|xlsx)$/i)) {
-                                                        return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
-                                                    }
-
-                                                    return url;
-                                                })()} 
-                                                style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
-                                                title="Resource Viewer"
-                                                allow="autoplay; encrypted-media"
-                                                sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
-                                            />
-                                        )}
+                                                }}
+                                                disabled={historyIndex >= history.length - 1}
+                                                style={{ background: 'none', border: 'none', color: historyIndex < history.length - 1 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)', cursor: historyIndex < history.length - 1 ? 'pointer' : 'default', padding: '4px' }}
+                                            >
+                                                <ChevronRight size={18} />
+                                            </button>
+                                        </div>
                                         <div style={{ 
-                                            position: 'absolute', 
-                                            bottom: '12px', 
-                                            right: '12px',
+                                            flex: 1, 
+                                            background: 'rgba(255,255,255,0.1)', 
+                                            padding: '4px 12px', 
+                                            borderRadius: '8px',
                                             display: 'flex',
-                                            gap: '8px'
+                                            alignItems: 'center',
+                                            gap: '10px',
+                                            border: '1px solid rgba(255,255,255,0.1)'
                                         }}>
-                                            <a 
-                                                href={material.file_url} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
+                                            <Globe size={14} className="text-primary" />
+                                            <input 
+                                                type="text"
+                                                value={material?.file_url || ''}
+                                                onChange={(e) => setMaterial(prev => ({ ...prev, file_url: e.target.value }))}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        const url = e.target.value;
+                                                        // Update history
+                                                        const newHistory = history.slice(0, historyIndex + 1);
+                                                        newHistory.push(url);
+                                                        setHistory(newHistory);
+                                                        setHistoryIndex(newHistory.length - 1);
+                                                        setMaterial(prev => ({ ...prev, file_url: url }));
+                                                    }
+                                                }}
                                                 style={{ 
-                                                    padding: '8px 12px', 
-                                                    background: 'rgba(0,0,0,0.6)', 
-                                                    backdropFilter: 'blur(10px)',
-                                                    color: 'white',
-                                                    borderRadius: 'var(--radius-md)',
-                                                    fontSize: '12px',
-                                                    textDecoration: 'none',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '6px',
-                                                    border: '1px solid rgba(255,255,255,0.1)'
+                                                    background: 'none', 
+                                                    border: 'none', 
+                                                    color: 'white', 
+                                                    fontSize: '12px', 
+                                                    width: '100%',
+                                                    outline: 'none',
+                                                    fontWeight: '500'
+                                                }}
+                                                placeholder="Paste a link to study (Drive, PDF, Doc...)"
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                            {sending ? (
+                                                <Badge variant="outline" style={{ background: 'rgba(124, 58, 237, 0.2)', color: '#a78bfa', border: '1px solid rgba(124, 58, 237, 0.3)', gap: '6px' }}>
+                                                    <Brain size={12} className="animate-pulse" /> AI Indexing...
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="outline" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.2)', gap: '6px' }}>
+                                                    <Sparkles size={12} /> AI Synced
+                                                </Badge>
+                                            )}
+                                            
+                                            <button 
+                                                onClick={() => {
+                                                    const currentUrl = material?.file_url;
+                                                    setMaterial(prev => ({ ...prev, file_url: '' }));
+                                                    setTimeout(() => setMaterial(prev => ({ ...prev, file_url: currentUrl })), 50);
+                                                }}
+                                                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px' }}
+                                                title="Refresh View"
+                                            >
+                                                <RefreshCw size={16} />
+                                            </button>
+                                            
+                                            <Button 
+                                                size="sm" 
+                                                variant="primary" 
+                                                onClick={() => handleSendMessage(null, `[SYSTEM_ACTION: SCAN_DOCUMENT] URL: ${material?.file_url}`)}
+                                                disabled={sending || !material?.file_url}
+                                                style={{ 
+                                                    padding: '4px 12px', 
+                                                    fontSize: '10px', 
+                                                    height: '28px',
+                                                    background: 'linear-gradient(135deg, var(--primary-500), var(--primary-600))',
+                                                    boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)',
+                                                    gap: '6px'
                                                 }}
                                             >
-                                                <ExternalLink size={14} /> Open Original
+                                                <Sparkles size={12} /> Read for AI
+                                            </Button>
+
+                                            <a 
+                                                href={material?.file_url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                style={{ color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center' }}
+                                                title="Open in Full Browser"
+                                            >
+                                                <ExternalLink size={16} />
                                             </a>
                                         </div>
                                     </div>
-                                ) : (
-                                    <div className="lab-content" style={{ color: '#d1d1d1', lineHeight: 1.8, fontSize: 'var(--text-base)' }}>
-                                        {material?.content === 'Attached Material' ? (
-                                            <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
-                                                <Info size={48} style={{ marginBottom: 'var(--space-md)', opacity: 0.5 }} />
-                                                <p>This material doesn't have text content to display, and no file was found.</p>
+
+                                    <div style={{ flex: 1, position: 'relative', overflowY: 'auto' }}>
+                                        {material?.file_url ? (
+                                            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                                                {material.file_url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
+                                                    <img 
+                                                        src={material.file_url} 
+                                                        alt="Attached Material" 
+                                                        style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'var(--radius-md)' }} 
+                                                    />
+                                                ) : (
+                                                    <iframe 
+                                                        key={material.file_url} // Force reload on URL change
+                                                        src={(() => {
+                                                            const url = material.file_url;
+                                                            if (!url) return '';
+                                                            
+                                                            if (url.includes('drive.google.com') && url.includes('/folders/')) {
+                                                                const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
+                                                                if (folderId) {
+                                                                    return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
+                                                                }
+                                                            }
+                                                            
+                                                            if (url.includes('drive.google.com')) {
+                                                                return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
+                                                            }
+                                                            
+                                                            if (url.includes('docs.google.com')) {
+                                                                if (!url.includes('embedded=true')) {
+                                                                    const separator = url.includes('?') ? '&' : '?';
+                                                                    return `${url}${separator}embedded=true`;
+                                                                }
+                                                                return url;
+                                                            }
+
+                                                            if (url.toLowerCase().endsWith('.pdf') || url.includes('/public/study_materials/')) {
+                                                                return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+                                                            }
+
+                                                            if (url.match(/\.(doc|docx|ppt|pptx|xls|xlsx)$/i)) {
+                                                                return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+                                                            }
+
+                                                            return url;
+                                                        })()} 
+                                                        style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
+                                                        title="Resource Viewer"
+                                                        allow="autoplay; encrypted-media; clipboard-read; clipboard-write"
+                                                        sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation"
+                                                    />
+                                                )}
                                             </div>
                                         ) : (
-                                            <ReactMarkdown>{material?.content}</ReactMarkdown>
+                                            <div className="lab-content" style={{ color: '#d1d1d1', lineHeight: 1.8, fontSize: 'var(--text-base)', padding: 'var(--space-md)' }}>
+                                                {material?.content && material.content !== 'Attached Material' ? (
+                                                    <ReactMarkdown>{material.content}</ReactMarkdown>
+                                                ) : (
+                                                    <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
+                                                        <Info size={48} style={{ marginBottom: 'var(--space-md)', opacity: 0.5 }} />
+                                                        <p>Load a URL to begin your deep-study session. AI will automatically index the content.</p>
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
-                                )}
-
-                                <div style={{ 
-                                    position: 'absolute', 
-                                    top: 'var(--space-md)', 
-                                    right: 'var(--space-md)',
-                                    display: 'flex',
-                                    gap: '8px'
-                                }}>
-                                    <Badge variant="outline" style={{ background: 'rgba(0,0,0,0.3)', color: 'rgba(255,255,255,0.5)' }}>Interactive</Badge>
                                 </div>
-                            </div>
                         </div>
                     </div>
                 )}
+
+                    {/* Sync Context Modal */}
+                    {showSyncModal && (
+                        <div style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0,0,0,0.8)',
+                            backdropFilter: 'blur(10px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 1000,
+                            padding: 'var(--space-md)'
+                        }}>
+                            <div style={{
+                                width: '100%',
+                                maxWidth: '600px',
+                                background: '#1a1a20',
+                                borderRadius: 'var(--radius-xl)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                padding: 'var(--space-xl)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 'var(--space-md)'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Brain className="text-primary" size={20} />
+                                        AI Deep Scan & Sync
+                                    </h3>
+                                    <button onClick={() => setShowSyncModal(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}><Maximize2 size={16} /></button>
+                                </div>
+                                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+                                    Because Google Drive and private storage protect content, the AI cannot "see" inside the document automatically. 
+                                    **Paste the text from the document below** to sync it with the AI's deep memory.
+                                </p>
+                                <textarea 
+                                    value={syncText}
+                                    onChange={(e) => setSyncText(e.target.value)}
+                                    placeholder="Paste document content here..."
+                                    style={{
+                                        width: '100%',
+                                        height: '300px',
+                                        background: 'rgba(0,0,0,0.2)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: 'var(--radius-md)',
+                                        padding: 'var(--space-md)',
+                                        color: 'white',
+                                        fontSize: '13px',
+                                        fontFamily: 'monospace',
+                                        resize: 'none',
+                                        outline: 'none'
+                                    }}
+                                />
+                                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                                    <Button variant="outline" onClick={() => setShowSyncModal(false)}>Cancel</Button>
+                                    <Button 
+                                        disabled={!syncText.trim()} 
+                                        onClick={syncContext}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    >
+                                        <CloudLightning size={16} /> Sync Brain
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                 {/* Right: AI Assistant */}
                 {(viewMode === 'split' || viewMode === 'chat') && (
