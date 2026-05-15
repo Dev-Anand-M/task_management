@@ -140,8 +140,14 @@ const Calendar = () => {
                         const dateStr = toLocalISO(iter);
                         const createdDate = toLocalISO(r.created_at);
                         
+                        // Allow 1-day grace period for 'Yesterday'
+                        const todayISO = toLocalISO(new Date());
+                        const yesterday = new Date(new Date().getTime() - 86400000);
+                        const yesterdayISO = toLocalISO(yesterday);
+                        const isGracePeriod = (dateStr === yesterdayISO && createdDate === todayISO);
+
                         // Check if within valid date range
-                        const isAfterCreation = dateStr >= createdDate;
+                        const isAfterCreation = dateStr >= createdDate || isGracePeriod;
                         const isBeforeDeadline = !r.deadline || dateStr <= r.deadline;
 
                         if (isAfterCreation && isBeforeDeadline) {

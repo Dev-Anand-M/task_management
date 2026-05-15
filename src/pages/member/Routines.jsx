@@ -532,7 +532,14 @@ const Routines = () => {
             return local.toISOString().split('T')[0];
         };
         const createdDate = toLocalISO(r.created_at);
-        if (createdDate > selectedDate) return false;
+        
+        // Allow logging for 'Yesterday' even if created today (grace period for late-night additions)
+        const todayISO = toLocalISO(new Date());
+        const yesterday = new Date(new Date().getTime() - 86400000);
+        const yesterdayISO = toLocalISO(yesterday);
+        const isGracePeriod = (selectedDate === yesterdayISO && createdDate === todayISO);
+
+        if (createdDate > selectedDate && !isGracePeriod) return false;
         
         // Don't show if after deadline
         if (r.deadline && new Date(r.deadline) < d) return false;
