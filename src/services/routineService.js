@@ -152,6 +152,17 @@ export const routineService = {
     async updateLog(routineId, updates) {
         return this.logRoutineProgress(routineId, updates);
     },
+    async deleteLog(routineId, logDate) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { error } = await supabase
+            .from('routine_logs')
+            .delete()
+            .eq('routine_id', routineId)
+            .eq('user_id', user.id)
+            .eq('log_date', logDate);
+        if (error) throw error;
+        return true;
+    },
 
     /**
      * Smart Sync: Replace/Update routines without losing linked Diary logs

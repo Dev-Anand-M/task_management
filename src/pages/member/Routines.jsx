@@ -80,7 +80,7 @@ import { useNavigate } from 'react-router-dom';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo, materials, allLogs }) => {
+const RoutineItem = ({ routine, log, onUpdate, onDelete, onResetLog, nextAlarmInfo, materials, allLogs }) => {
     const [actualStartTime, setActualStartTime] = useState(log?.actual_start_time || routine.start_time.slice(0, 5));
     const [actualDuration, setActualDuration] = useState(log?.time_spent_minutes || routine.duration_minutes || 60);
     const [notes, setNotes] = useState(log?.learning_notes || '');
@@ -187,6 +187,16 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo, material
                 </div>
 
                 <div className="flex gap-sm items-center">
+                    {(isDone || isIgnored) && (
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => onResetLog(routine.id)} 
+                            style={{ color: 'var(--text-muted)', fontSize: '10px' }}
+                        >
+                            Reset
+                        </Button>
+                    )}
                     {!isDone && !isIgnored && (
                         <>
                             {!isLocked && (
@@ -375,6 +385,17 @@ const Routines = () => {
         }
     };
 
+    const handleResetLog = async (routineId) => {
+        if (confirm('Clear today\'s log for this routine?')) {
+            try {
+                await routineService.deleteLog(routineId, selectedDate);
+                fetchData();
+            } catch (err) {
+                console.error('Reset log failed:', err);
+            }
+        }
+    };
+
     const handleDelete = async (id) => {
         if (confirm('Are you sure you want to delete this routine?')) {
             try {
@@ -540,6 +561,7 @@ const Routines = () => {
                             log={logs[routine.id]}
                             onUpdate={handleUpdateLog}
                             onDelete={() => handleDelete(routine.id)}
+                            onResetLog={handleResetLog}
                             nextAlarmInfo={nextAlarmInfo}
                             materials={studyMaterials}
                             allLogs={logs}
