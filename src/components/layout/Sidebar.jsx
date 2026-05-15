@@ -77,6 +77,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
         { to: '/tasks', icon: ListTodo, label: 'Tasks' },
         { to: '/quizzes', icon: HelpCircle, label: 'Quizzes' },
+        { to: '/study-materials', icon: Brain, label: 'Study Materials' },
         { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
         { to: '/calendar', icon: Calendar, label: 'Calendar' },
         { to: '/profile', icon: User, label: 'Profile' },
