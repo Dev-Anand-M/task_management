@@ -110,12 +110,34 @@ const Timetable = () => {
                 todayLogs
             );
 
-            // Split response and metadata
-            const [text, metadataStr] = response.split('---METADATA---');
+            // Robust Split: Find metadata marker anywhere or try to extract JSON
+            let text = response;
+            let metadataStr = '';
+            
+            if (response.includes('---METADATA---')) {
+                const parts = response.split('---METADATA---');
+                text = parts[0];
+                metadataStr = parts[1];
+            } else if (response.includes('{"routines":')) {
+                // Fallback: Try to find start of JSON if marker is missing
+                const jsonStart = response.indexOf('{"routines":');
+                text = response.substring(0, jsonStart);
+                metadataStr = response.substring(jsonStart);
+            }
             
             if (metadataStr) {
                 try {
-                    const metadata = JSON.parse(metadataStr.trim());
+                    // Clean metadata string from markdown blocks
+                    let cleanedMetadata = metadataStr.trim();
+                    if (cleanedMetadata.startsWith('```')) {
+                        const lines = cleanedMetadata.split('\n');
+                        if (lines[0].startsWith('```')) lines.shift();
+                        if (lines[lines.length - 1].startsWith('```')) lines.pop();
+                        cleanedMetadata = lines.join('\n').trim();
+                    }
+
+                    const metadata = JSON.parse(cleanedMetadata);
+                    console.log('Processed AI Metadata:', metadata);
                     
                     // 1. Sync Timetable (Routines)
                     if (metadata.routines) {
@@ -135,6 +157,7 @@ const Timetable = () => {
                     await fetchRoutines(); // Refresh UI
                 } catch (e) {
                     console.error("Failed to parse AI metadata:", e);
+                    console.error("Raw metadata string was:", metadataStr);
                 }
             }
 

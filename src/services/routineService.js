@@ -211,13 +211,17 @@ export const routineService = {
 
         newRoutines.forEach(nr => {
             // Validation & Normalization for AI output
-            if (!nr.title || !nr.start_time) return;
+            if (!nr.title) return;
 
-            // Ensure start_time is HH:mm:ss
-            let formattedTime = nr.start_time;
+            // Ensure start_time is HH:mm:ss (Required by DB)
+            let formattedTime = nr.start_time || '00:00:00';
             if (formattedTime.length === 5) formattedTime += ':00';
-            else if (formattedTime.length === 1) formattedTime = `0${formattedTime}:00:00`;
-            else if (formattedTime.length === 2) formattedTime = `${formattedTime}:00:00`;
+            else if (formattedTime.length === 1 || formattedTime.length === 2) {
+                const hour = formattedTime.padStart(2, '0');
+                formattedTime = `${hour}:00:00`;
+            }
+            // If it's still invalid or too short, fallback to 00:00:00
+            if (!/^\d{2}:\d{2}/.test(formattedTime)) formattedTime = '00:00:00';
 
             // Ensure days_of_week is an array of integers
             let days = nr.days_of_week || [1,2,3,4,5,6,7];

@@ -868,19 +868,40 @@ export const manageRoutinesChat = async (messages, currentRoutines = [], todayLo
     
     PART 1: Natural conversational response.
     PART 2: A JSON object containing:
-    - routines: (array) The FULL list of active recurring routines.
+    - routines: (array) The FULL list of active recurring routines. Each routine should have: { "title": string, "start_time": "HH:mm", "days_of_week": number[], "description": string, "is_anonymous": boolean }.
     - logUpdates: (array) Optional. Objects with { "routine_id": string, "status": "done"|"ignored"|"postponed", "notes": string }
     
-    Example Output for "Skip gym today":
+    SPECIAL CASE (Flexible/Anytime Tasks):
+    If the user says "I'll do it anytime" or "at my convenience", set "is_anonymous": true. This allows them to log it whenever they want.
+    
+    Example 1 (Routine Add): "Add 1h Study at 8pm every day"
+    "Sure! I've added a daily 8 PM study session to your timetable."
+    ---METADATA---
+    {
+      "routines": [ ...all routines... ],
+      "logUpdates": []
+    }
+
+    Example 2 (Log Update): "Skip gym today"
     "No problem, I've marked your Gym session as ignored for today. Take some rest!"
     ---METADATA---
     {
       "routines": [ ...all routines... ],
       "logUpdates": [
-        { "routine_id": "gym_uuid_here", "status": "ignored", "notes": "User said they can't do it today via chat." }
+        { "routine_id": "gym_uuid_here", "status": "ignored", "notes": "User said they can't do it today." }
       ]
     }
     
+    Example 3 (Flexible/Anytime): "I want to do Skillrack daily at my convenience"
+    "Okay! I've added Skillrack as a flexible daily routine. You can log it anytime you finish it."
+    ---METADATA---
+    {
+      "routines": [
+        ...all routines...,
+        { "title": "Skillrack", "start_time": "00:00", "days_of_week": [1,2,3,4,5,6,7], "description": "Flexible practice", "is_anonymous": true }
+      ]
+    }
+
     IMPORTANT: 
     - Always return the "routines" array in metadata.
     - Only include "logUpdates" when the user explicitly mentions a change to *today's* specific instances.`;
