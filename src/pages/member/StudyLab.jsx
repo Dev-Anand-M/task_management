@@ -474,21 +474,21 @@ const StudyLab = () => {
                                                             const url = material.file_url;
                                                             if (!url) return '';
                                                             
+                                                            if (url.includes('drive.google.com') && (url.includes('/file/d/') || url.includes('id='))) {
+                                                                const fileId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
+                                                                if (fileId) {
+                                                                    // Use the stable /preview mode but with relaxed sandbox for selection
+                                                                    return `https://drive.google.com/file/d/${fileId}/preview`;
+                                                                }
+                                                            }
+                                                            
                                                             if (url.includes('drive.google.com') && url.includes('/folders/')) {
                                                                 const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
                                                                 if (folderId) {
                                                                     return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
                                                                 }
                                                             }
-                                                            
-                                                            if (url.includes('drive.google.com') && (url.includes('/file/d/') || url.includes('id='))) {
-                                                                const fileId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
-                                                                if (fileId) {
-                                                                    // The Explorer viewer is much better for text selection/copying than /preview
-                                                                    return `https://docs.google.com/viewer?srcid=${fileId}&pid=explorer&efh=false&a=v&chrome=false&embedded=true`;
-                                                                }
-                                                            }
-                                                            
+
                                                             if (url.includes('drive.google.com')) {
                                                                 return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
                                                             }
