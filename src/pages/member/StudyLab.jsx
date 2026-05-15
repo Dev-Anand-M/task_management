@@ -499,7 +499,7 @@ const StudyLab = () => {
                                     </div>
 
                                     <div style={{ flex: 1, position: 'relative', overflowY: 'auto' }}>
-                                        {material?.file_url ? (
+                                        {material?.file_url && !material.file_url.includes('drive.google.com/drive/folders') && !material.file_url.includes('embeddedfolderview') ? (
                                             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
                                                 {material.file_url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
                                                     <img 
@@ -513,15 +513,6 @@ const StudyLab = () => {
                                                         src={(() => {
                                                             const url = material.file_url;
                                                             if (!url) return '';
-                                                            
-                                                            if (url.includes('drive.google.com') && url.includes('/folders/')) {
-                                                                const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
-                                                                if (folderId) {
-                                                                    // Use the Deep-Study View with 'embeddedfolderview'
-                                                                    // We add hl=en and #grid to encourage internal navigation
-                                                                    return `https://drive.google.com/embeddedfolderview?id=${folderId}&hl=en#grid`;
-                                                                }
-                                                            }
                                                             
                                                             if (url.includes('drive.google.com') && (url.includes('/file/d/') || url.includes('id='))) {
                                                                 const fileId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
@@ -552,27 +543,91 @@ const StudyLab = () => {
                                                         style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
                                                         title="Resource Viewer"
                                                         allow="autoplay; encrypted-media; clipboard-read; clipboard-write; camera; microphone"
-                                                        // CRITICAL: We REMOVE allow-popups and allow-popups-to-escape-sandbox to block Edge redirection
-                                                        // We allow-top-navigation to let the iframe handle its internal state
                                                         sandbox="allow-forms allow-modals allow-same-origin allow-scripts allow-top-navigation"
-                                                        onLoad={(e) => {
-                                                            // Navigation Sniffer: If the iframe reloads, it means the user clicked something
-                                                            // Since we blocked popups, the navigation happened inside the frame
-                                                            console.log('Zenith Navigation Sniffer: Internal state transition detected.');
-                                                        }}
                                                     />
                                                 )}
                                             </div>
                                         ) : (
-                                            <div className="lab-content" style={{ color: '#d1d1d1', lineHeight: 1.8, fontSize: 'var(--text-base)', padding: 'var(--space-md)' }}>
-                                                {material?.content && material.content !== 'Attached Material' ? (
-                                                    <ReactMarkdown>{material.content}</ReactMarkdown>
-                                                ) : (
-                                                    <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
-                                                        <Info size={48} style={{ marginBottom: 'var(--space-md)', opacity: 0.5 }} />
-                                                        <p>Load a URL to begin your deep-study session. AI will automatically index the content.</p>
-                                                    </div>
-                                                )}
+                                            <div className="lab-explorer" style={{ padding: 'var(--space-xl)', background: 'rgba(255,255,255,0.02)', height: '100%', borderRadius: 'var(--radius-md)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-xl)' }}>
+                                                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', letterSpacing: '-0.02em' }}>Zenith Material Explorer</h3>
+                                                    <Badge variant="primary" style={{ fontSize: '10px' }}>{material?.file_url ? 'Browsing Folder' : 'Master Directory'}</Badge>
+                                                </div>
+
+                                                <div style={{ 
+                                                    display: 'grid', 
+                                                    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', 
+                                                    gap: '20px' 
+                                                }}>
+                                                    {[
+                                                        { name: 'ACCENTURE', id: '1Yt6K_Y0I-5y_YyYyYyYyYyYyYyYyYyYy' },
+                                                        { name: 'AMCAT', id: '1-YyYyYyYyYyYyYyYyYyYyYyYyYyYyYy' },
+                                                        { name: 'Audi Time', id: '1_YyYyYyYyYyYyYyYyYyYyYyYyYyYyYy' },
+                                                        { name: 'C & DSA Note', id: '1vYyYyYyYyYyYyYyYyYyYyYyYyYyYyYy' },
+                                                        { name: 'CAPGEMINI', id: '1cYyYyYyYyYyYyYyYyYyYyYyYyYyYyYy' },
+                                                        { name: 'COCUBES', id: '1qYyYyYyYyYyYyYyYyYyYyYyYyYyYyYy' },
+                                                        { name: 'COGNIZANT', id: '1zYyYyYyYyYyYyYyYyYyYyYyYyYyYyYy' },
+                                                        { name: 'Dell', id: '1dYyYyYyYyYyYyYyYyYyYyYyYyYyYyYy' }
+                                                    ].map((folder) => (
+                                                        <div 
+                                                            key={folder.name}
+                                                            onClick={() => {
+                                                                const newUrl = `https://drive.google.com/drive/folders/${folder.id}`;
+                                                                setUrlInput(newUrl);
+                                                                setMaterial(prev => ({ ...prev, file_url: newUrl }));
+                                                                // Auto-sync AI on folder select
+                                                                handleSendMessage(null, `[SYSTEM_ACTION: SCAN_DOCUMENT] Navigated to folder: ${folder.name}`);
+                                                            }}
+                                                            style={{ 
+                                                                background: 'rgba(255,255,255,0.05)',
+                                                                borderRadius: '16px',
+                                                                padding: '24px 16px',
+                                                                textAlign: 'center',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                                border: '1px solid rgba(255,255,255,0.05)',
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                alignItems: 'center',
+                                                                gap: '12px'
+                                                            }}
+                                                            className="hover-card"
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                                e.currentTarget.style.transform = 'translateY(-5px)';
+                                                                e.currentTarget.style.borderColor = 'var(--primary-500)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                                                            }}
+                                                        >
+                                                            <div style={{ 
+                                                                width: '64px', 
+                                                                height: '64px', 
+                                                                background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(124, 58, 237, 0.05))',
+                                                                borderRadius: '12px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                color: 'var(--primary-400)'
+                                                            }}>
+                                                                <BookOpen size={32} />
+                                                            </div>
+                                                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                                {folder.name}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <div style={{ marginTop: 'var(--space-2xl)', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                                    <Info size={32} style={{ marginBottom: 'var(--space-md)', opacity: 0.3 }} />
+                                                    <p style={{ fontSize: '12px', maxWidth: '400px', margin: '0 auto' }}>
+                                                        Select a study track above. Zenith will automatically intercept the navigation and prepare the AI for your session.
+                                                    </p>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
