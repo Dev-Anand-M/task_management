@@ -2,21 +2,74 @@ import { supabase as supabaseClient } from '../lib/supabase';
 export const supabase = supabaseClient;
 
 // ============================================
-// PROFILES
+// AUTH & PROFILES
 // ============================================
-// Helper for safe user retrieval to avoid hangs
-const getActiveUser = async () => {
+
+export const getActiveUser = async () => {
     try {
-        // Try session first (fast, local)
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) return session.user;
-        
-        // Fallback to getUser without aggressive timeout
         const { data: { user } } = await supabase.auth.getUser();
         return user;
     } catch (e) {
         console.error('getActiveUser failed:', e);
         return null;
+    }
+};
+
+export const getProfileById = async (id) => {
+    try {
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', id).single();
+        if (error) throw error;
+        return data;
+    } catch (err) {
+        console.error('Error in getProfileById:', err);
+        return null;
+    }
+};
+
+export const getProfiles = async () => {
+    try {
+        const { data, error } = await supabase.from('profiles').select('*').order('name');
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error in getProfiles:', err);
+        return [];
+    }
+};
+
+export const updateProfile = async (id, updates) => {
+    try {
+        const { data, error } = await supabase.from('profiles').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    } catch (err) {
+        console.error('Error in updateProfile:', err);
+        throw err;
+    }
+};
+
+export const uploadAvatar = async (userId, file) => {
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${userId}-${Math.random()}.${fileExt}`;
+        const filePath = `avatars/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('profiles')
+            .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('profiles')
+            .getPublicUrl(filePath);
+
+        return publicUrl;
+    } catch (err) {
+        console.error('Error in uploadAvatar:', err);
+        throw err;
     }
 };
 
