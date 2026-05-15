@@ -232,12 +232,41 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, onResetLog, nextAlarmIn
                         <div className="grid grid-cols-2 gap-md">
                             <div>
                                 <label className="input-label">Actual Start</label>
-                                <Input 
-                                    type="time" 
-                                    value={actualStartTime} 
-                                    onChange={e => setActualStartTime(e.target.value)} 
-                                    required
-                                />
+                                <div className="flex items-center gap-xs">
+                                    <Input 
+                                        type="time" 
+                                        value={actualStartTime} 
+                                        onChange={e => setActualStartTime(e.target.value)} 
+                                        required
+                                        style={{ flex: 1 }}
+                                    />
+                                    <div style={{ display: 'flex', background: 'var(--surface)', borderRadius: '8px', border: '1px solid var(--border)', padding: '2px' }}>
+                                        {['AM', 'PM'].map(p => {
+                                            const isPM = parseInt(actualStartTime.split(':')[0]) >= 12;
+                                            const active = (p === 'PM' && isPM) || (p === 'AM' && !isPM);
+                                            return (
+                                                <button
+                                                    key={p}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const [h, m] = actualStartTime.split(':').map(Number);
+                                                        let newH = h;
+                                                        if (p === 'PM' && h < 12) newH = h + 12;
+                                                        if (p === 'AM' && h >= 12) newH = h - 12;
+                                                        setActualStartTime(`${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+                                                    }}
+                                                    style={{
+                                                        padding: '4px 8px', borderRadius: '6px', border: 'none', fontSize: '10px', fontWeight: 800,
+                                                        cursor: 'pointer', background: active ? 'var(--primary-500)' : 'transparent',
+                                                        color: active ? 'white' : 'var(--text-muted)', transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    {p}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             </div>
                             <div>
                                 <label className="input-label">Time Spent (mins)</label>
@@ -626,13 +655,44 @@ const Routines = () => {
                     />
                     {!form.is_anonymous && (
                         <div className="grid grid-cols-2 gap-md">
-                            <Input 
-                                label="Start Time" 
-                                type="time" 
-                                value={form.start_time} 
-                                onChange={e => setForm({...form, start_time: e.target.value})} 
-                                required 
-                            />
+                            <div>
+                                <label className="input-label">Start Time</label>
+                                <div className="flex items-center gap-xs">
+                                    <Input 
+                                        type="time" 
+                                        value={form.start_time} 
+                                        onChange={e => setForm({...form, start_time: e.target.value})} 
+                                        required 
+                                        style={{ flex: 1 }}
+                                    />
+                                    <div style={{ display: 'flex', background: 'var(--surface)', borderRadius: '8px', border: '1px solid var(--border)', padding: '2px' }}>
+                                        {['AM', 'PM'].map(p => {
+                                            const isPM = parseInt(form.start_time.split(':')[0]) >= 12;
+                                            const active = (p === 'PM' && isPM) || (p === 'AM' && !isPM);
+                                            return (
+                                                <button
+                                                    key={p}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const [h, m] = form.start_time.split(':').map(Number);
+                                                        let newH = h;
+                                                        if (p === 'PM' && h < 12) newH = h + 12;
+                                                        if (p === 'AM' && h >= 12) newH = h - 12;
+                                                        setForm({...form, start_time: `${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:00`});
+                                                    }}
+                                                    style={{
+                                                        padding: '4px 8px', borderRadius: '6px', border: 'none', fontSize: '10px', fontWeight: 800,
+                                                        cursor: 'pointer', background: active ? 'var(--primary-500)' : 'transparent',
+                                                        color: active ? 'white' : 'var(--text-muted)', transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    {p}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
                             <Input 
                                 label="Duration (mins)" 
                                 type="number" 
