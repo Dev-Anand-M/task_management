@@ -30,32 +30,45 @@ const StudyLab = () => {
     const [historyIndex, setHistoryIndex] = useState(-1);
     const [urlInput, setUrlInput] = useState('');
     const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
+    const [isSyncing, setIsSyncing] = useState(false);
     const chatEndRef = useRef(null);
     const printRef = useRef(null);
 
-    // Clipboard Intelligence: Detects if the user copied a new Drive link and offers to sync
+    // Hyper-Sync: Aggressive focus/clipboard monitor for instantaneous capture
     useEffect(() => {
         if (!autoSyncEnabled) return;
 
-        const checkClipboard = async () => {
+        const syncWithClipboard = async () => {
             try {
-                // We only check if the window is focused to avoid being intrusive
-                if (!document.hasFocus()) return;
-
+                // Check if window is focused or if we just returned from a blur (click)
                 const text = await navigator.clipboard.readText();
-                if (text && text.includes('drive.google.com') && text !== material?.file_url && text !== urlInput) {
-                    console.log('Clipboard Intelligence: Detected new Drive link', text);
+                if (text && text.includes('drive.google.com') && text !== material?.file_url) {
+                    console.log('Hyper-Sync: Instantaneous capture detected', text);
+                    setIsSyncing(true);
                     setUrlInput(text);
-                    // We don't auto-navigate to avoid jumping, but we update the bar for one-click sync
+                    setMaterial(prev => ({ ...prev, file_url: text }));
+                    
+                    // Auto-trigger AI scan on capture
+                    handleSendMessage(null, `[SYSTEM_ACTION: SCAN_DOCUMENT] Instant sync detected: ${text}`);
+                    
+                    setTimeout(() => setIsSyncing(false), 2000);
                 }
             } catch (err) {
-                // Clipboard access might be denied, ignore silently
+                // Ignore silent errors (clipboard permissions)
             }
         };
 
-        const interval = setInterval(checkClipboard, 2000);
-        return () => clearInterval(interval);
-    }, [material?.file_url, urlInput, autoSyncEnabled]);
+        // Listen for window focus to trigger an immediate check when returning from Edge
+        window.addEventListener('focus', syncWithClipboard);
+        
+        // High-frequency polling (500ms) for that "Instant" feel
+        const interval = setInterval(syncWithClipboard, 500);
+        
+        return () => {
+            window.removeEventListener('focus', syncWithClipboard);
+            clearInterval(interval);
+        };
+    }, [material?.file_url, autoSyncEnabled]);
 
     useEffect(() => {
         if (materialId) {
@@ -499,6 +512,25 @@ const StudyLab = () => {
                                     </div>
 
                                     <div style={{ flex: 1, position: 'relative', overflowY: 'auto' }}>
+                                        {isSyncing && (
+                                            <div style={{ 
+                                                position: 'absolute', 
+                                                inset: 0, 
+                                                background: 'rgba(15, 23, 42, 0.8)', 
+                                                zIndex: 50, 
+                                                display: 'flex', 
+                                                flexDirection: 'column', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'center',
+                                                backdropFilter: 'blur(8px)',
+                                                borderRadius: 'var(--radius-md)',
+                                                border: '1px solid var(--primary-500)'
+                                            }}>
+                                                <Brain size={48} className="animate-pulse text-primary" style={{ marginBottom: '1rem' }} />
+                                                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white' }}>Hyper-Sync Active</h3>
+                                                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem' }}>Teleporting study context into Lab...</p>
+                                            </div>
+                                        )}
                                         {material?.file_url ? (
                                             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
                                                 {material.file_url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
