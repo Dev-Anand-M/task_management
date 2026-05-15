@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, Input, Modal } from '../../components/common';
 import {
     BookOpen, Plus, Trash2, Search, Edit3, Pin, PinOff,
@@ -25,6 +25,8 @@ const NOTE_COLORS = [
 
 const StudyMaterials = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
+    const { id: urlId } = useParams();
     const { id: urlId } = useParams();
     const [activeTab, setActiveTab] = useState('shared');
     const [sharedMaterials, setSharedMaterials] = useState([]);
@@ -362,10 +364,13 @@ const StudyMaterials = () => {
                                                     {item.content !== 'Attached Material' ? item.content : 'View attached resource.'}
                                                 </p>
                                                 {item.file_url && (
-                                                    <div style={{ marginBottom: 'var(--space-md)' }}>
+                                                    <div style={{ marginBottom: 'var(--space-md)', display: 'flex', gap: '8px' }}>
                                                         <a href={item.file_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'var(--primary-50)', color: 'var(--primary-600)', borderRadius: 'var(--radius-md)', textDecoration: 'none', fontWeight: 600, fontSize: 'var(--text-sm)' }} className="hover:bg-primary-100 transition-colors" onClick={e => e.stopPropagation()}>
-                                                            {item.material_type === 'file' ? <><Download size={14} /> Download File</> : <><ExternalLink size={14} /> Open Link</>}
+                                                            {item.material_type === 'file' ? <><Download size={14} /> Download</> : <><ExternalLink size={14} /> Open</>}
                                                         </a>
+                                                        <Button size="xs" variant="primary" style={{ padding: '8px 16px' }} onClick={(e) => { e.stopPropagation(); navigate(`/study-lab/${item.id}`); }}>
+                                                            <Sparkles size={14} style={{ marginRight: '4px' }} /> Lab
+                                                        </Button>
                                                     </div>
                                                 )}
                                                 {item.tags?.length > 0 && (
@@ -431,9 +436,14 @@ const StudyMaterials = () => {
             <Modal isOpen={!!viewingItem} onClose={() => setViewingItem(null)} title={viewingItem?.title || ''} size="full">
                 {viewingItem && (
                     <div>
-                        <div className="flex flex-wrap gap-sm mb-md">
-                            <Badge variant="accent">{viewingItem.subject || viewingItem.category || 'General'}</Badge>
-                            {viewingItem.color && <div style={{ width: 12, height: 12, borderRadius: '50%', background: viewingItem.color }} />}
+                        <div className="flex flex-wrap justify-between items-center gap-sm mb-md">
+                            <div className="flex gap-sm">
+                                <Badge variant="accent">{viewingItem.subject || viewingItem.category || 'General'}</Badge>
+                                {viewingItem.color && <div style={{ width: 12, height: 12, borderRadius: '50%', background: viewingItem.color }} />}
+                            </div>
+                            <Button size="sm" variant="primary" onClick={() => { navigate(`/study-lab/${viewingItem.id}`); setViewingItem(null); }}>
+                                <Sparkles size={16} className="mr-sm" /> Enter Study Lab
+                            </Button>
                         </div>
                         {viewingItem.file_url && viewingItem.material_type === 'file' ? (
                             <div style={{ marginTop: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: 'var(--space-xl)', textAlign: 'center', border: '1px solid var(--border)' }}>
@@ -591,7 +601,13 @@ const NoteCard = ({ note, onEdit, onDelete, onTogglePin, onView }) => {
         <Card style={{ borderLeft: accentBorder, cursor: 'pointer', position: 'relative' }} onClick={() => onView(note)}>
             <div className="flex justify-between items-start mb-sm">
                 <Badge variant="secondary" size="xs">{note.category || 'General'}</Badge>
-                <div style={{ display: 'flex', gap: '2px' }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); window.location.href = `/study-lab/${note.id}`; }} 
+                        style={{ background: 'var(--primary-50)', border: 'none', cursor: 'pointer', padding: '4px 8px', color: 'var(--primary-600)', borderRadius: '4px', fontSize: '10px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}
+                    >
+                        <Sparkles size={10} /> LAB
+                    </button>
                     <button onClick={() => onTogglePin(note)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: note.is_pinned ? 'var(--primary-500)' : 'var(--text-muted)', transition: 'color 0.2s' }} title={note.is_pinned ? 'Unpin' : 'Pin'}>
                         {note.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
                     </button>

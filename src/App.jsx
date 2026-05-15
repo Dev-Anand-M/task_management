@@ -35,6 +35,7 @@ import Planner from './pages/member/Planner';
 import Routines from './pages/member/Routines';
 import Diary from './pages/member/Diary';
 import Timetable from './pages/member/Timetable';
+import StudyLab from './pages/member/StudyLab';
 
 // AI Pages
 import AIAssistant from './pages/ai/AIAssistant';
@@ -205,6 +206,8 @@ function AppRoutes() {
           <Route path="/routines" element={<Routines />} />
           <Route path="/diary" element={<Diary />} />
           <Route path="/timetable" element={<Timetable />} />
+          <Route path="/study-lab" element={<StudyLab />} />
+          <Route path="/study-lab/:id" element={<StudyLab />} />
         </Route>
 
         {/* Shared Routes */}
