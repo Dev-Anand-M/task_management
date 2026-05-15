@@ -92,7 +92,11 @@ export const routineService = {
 
     async logRoutineProgress(routineId, data) {
         const { data: { user } } = await supabase.auth.getUser();
-        const logDate = new Date().toISOString().split('T')[0];
+        // Use local date instead of UTC to avoid date mismatch at early morning
+        const now = new Date();
+        const offset = now.getTimezoneOffset();
+        const localDate = new Date(now.getTime() - (offset * 60 * 1000));
+        const logDate = localDate.toISOString().split('T')[0];
         
         // Fetch routine details to snapshot
         const { data: routine } = await supabase

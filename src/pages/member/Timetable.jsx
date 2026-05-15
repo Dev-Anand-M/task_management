@@ -7,9 +7,9 @@ import { Card, Badge, Button, Input, LoadingSpinner } from '../../components/com
 import { 
     Calendar, Sparkles, Send, Clock, 
     MessageSquare, Brain, RefreshCw, ChevronLeft, ChevronRight,
-    User, Bot, CheckCircle, AlertTriangle
+    User, Bot, CheckCircle, AlertTriangle, Zap
 } from 'lucide-react';
-import { format12h } from '../../utils/timeFormat';
+import { format12h, getLocalDatePickerDate } from '../../utils/timeFormat';
 
 const Timetable = () => {
     const { user } = useAuth();
@@ -83,7 +83,7 @@ const Timetable = () => {
         try {
             const [routineData, logData] = await Promise.all([
                 routineService.getRoutines(),
-                routineService.getLogsForDate(new Date().toISOString().split('T')[0])
+                routineService.getLogsForDate(getLocalDatePickerDate())
             ]);
             setRoutines(routineData);
             setTodayLogs(logData);

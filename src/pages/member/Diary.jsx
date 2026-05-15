@@ -19,7 +19,14 @@ const Diary = () => {
     const [filter, setFilter] = useState('all'); // all, done, ignored, postponed
     const [selectedRoutine, setSelectedRoutine] = useState('all');
     const [view, setView] = useState('list'); // list, analytics, mindmap
-    const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
+    // Use local month instead of UTC to avoid mismatch at beginning of month
+    const getInitialMonth = () => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        return `${year}-${month}`;
+    };
+    const [selectedMonth, setSelectedMonth] = useState(getInitialMonth()); // YYYY-MM
 
     useEffect(() => {
         fetchLogs();

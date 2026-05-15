@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { routineService } from '../../services/routineService';
 import { supabase } from '../../lib/supabase';
-import { format12h, minutesTo12h } from '../../utils/timeFormat';
+import { format12h, minutesTo12h, getLocalDatePickerDate } from '../../utils/timeFormat';
 import { Card, Badge, Button, Input, Modal, ProgressBar, LoadingSpinner } from '../../components/common';
 import { 
     Check, Clock, Trash2, Plus, AlertTriangle, CheckCircle, Circle, X, Book, Zap, Calendar, BookOpen, Brain,
@@ -262,7 +262,7 @@ const Routines = () => {
     const [routines, setRoutines] = useState([]);
     const [logs, setLogs] = useState({}); // routineId -> log object
     const [showAdd, setShowAdd] = useState(false);
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(getLocalDatePickerDate());
     
     const [form, setForm] = useState({ 
         title: '', 
@@ -314,7 +314,7 @@ const Routines = () => {
             const today = new Date();
             const dayOfWeek = today.getDay();
             const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-            const weekStart = new Date(today.setDate(diff)).toISOString().split('T')[0];
+            const weekStart = getLocalDatePickerDate(new Date(today.setDate(diff)));
             const data = await routineService.getTimetable(weekStart);
             if (data) setActiveTimetable(data.schedule_data);
         } catch (err) {
@@ -440,7 +440,7 @@ const Routines = () => {
     const navDate = (dir) => {
         const d = new Date(selectedDate);
         d.setDate(d.getDate() + dir);
-        setSelectedDate(d.toISOString().split('T')[0]);
+        setSelectedDate(getLocalDatePickerDate(d));
     };
 
     // Filter routines active for selected date

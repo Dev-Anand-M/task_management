@@ -18,3 +18,9 @@ export const minutesTo12h = (totalMinutes) => {
     const h12 = hours % 12 || 12;
     return `${h12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
 };
+
+export const getLocalDatePickerDate = (date = new Date()) => {
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().split('T')[0];
+};
