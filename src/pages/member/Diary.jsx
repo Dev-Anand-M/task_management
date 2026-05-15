@@ -162,9 +162,11 @@ const Diary = () => {
                         </div>
                         {log.actual_response_time && (
                             <div style={{ textAlign: 'right' }}>
-                                <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>Logged at</p>
                                 <p style={{ margin: 0, fontWeight: 600, fontSize: 'var(--text-xs)' }}>
                                     {new Date(log.actual_response_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 400, marginLeft: '4px' }}>
+                                        on {new Date(log.actual_response_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                    </span>
                                 </p>
                                 {log.actual_start_time && log.actual_start_time.slice(0, 5) !== '00:00' && (
                                     <p style={{ margin: 0, fontSize: '9px', color: 'var(--text-muted)' }}>
