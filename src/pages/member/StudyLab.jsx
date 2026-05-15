@@ -29,8 +29,15 @@ const StudyLab = () => {
     const [history, setHistory] = useState([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
     const [urlInput, setUrlInput] = useState('');
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
     const chatEndRef = useRef(null);
     const printRef = useRef(null);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         if (material?.file_url && urlInput === '') {
@@ -300,35 +307,42 @@ const StudyLab = () => {
                 </div>
             </header>
 
-            <main style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-                {/* Left: Document Viewer (Media Player Style) */}
+            <main style={{ 
+                flex: 1, 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
+                overflow: 'hidden' 
+            }}>
+                {/* Left: Document Viewer */}
                 {(viewMode === 'split' || viewMode === 'doc') && (
                     <div style={{ 
-                        flex: viewMode === 'doc' ? 1 : 1, 
+                        flex: 1, 
                         display: 'flex', 
                         flexDirection: 'column',
-                        borderRight: '1px solid rgba(255,255,255,0.05)',
-                        background: '#0f0f12'
+                        borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                        borderBottom: isMobile ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                        background: '#0f0f12',
+                        height: isMobile && viewMode === 'split' ? '50%' : '100%'
                     }}>
                         <div style={{ 
                             flex: 1, 
-                            padding: 'var(--space-xl)', 
+                            padding: isMobile ? 'var(--space-sm)' : 'var(--space-md)', 
                             overflowY: 'auto',
                             display: 'flex',
                             justifyContent: 'center'
                         }}>
                                 <div style={{ 
                                     width: '100%',
-                                    maxWidth: '1000px',
+                                    maxWidth: viewMode === 'doc' ? '1200px' : 'none',
                                     background: '#1a1a20',
                                     borderRadius: 'var(--radius-xl)',
-                                    padding: 'var(--space-md)',
+                                    padding: 'var(--space-sm)',
                                     boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
                                     border: '1px solid rgba(255,255,255,0.05)',
                                     position: 'relative',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    height: 'calc(100vh - 180px)',
+                                    height: '100%',
                                     overflow: 'hidden'
                                 }}>
                                     {/* Mini Browser Toolbar */}
@@ -599,7 +613,9 @@ const StudyLab = () => {
                 {/* Right: AI Assistant */}
                 {(viewMode === 'split' || viewMode === 'chat') && (
                     <div style={{ 
-                        width: viewMode === 'chat' ? '100%' : '450px', 
+                        width: isMobile || viewMode === 'chat' ? '100%' : '450px', 
+                        flex: isMobile && viewMode === 'split' ? 'none' : 1,
+                        height: isMobile && viewMode === 'split' ? '50%' : '100%',
                         display: 'flex', 
                         flexDirection: 'column',
                         background: 'rgba(20, 20, 25, 0.4)',
@@ -625,12 +641,15 @@ const StudyLab = () => {
                                     <div style={{ 
                                         padding: '16px', 
                                         borderRadius: msg.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-                                        background: msg.role === 'user' ? 'var(--primary-600)' : 'rgba(255,255,255,0.05)',
+                                        background: msg.role === 'user' ? 'var(--primary-600)' : 'rgba(255,255,255,0.08)',
                                         color: 'white',
-                                        fontSize: 'var(--text-sm)',
+                                        fontSize: '14px',
+                                        fontWeight: '500',
                                         lineHeight: 1.6,
                                         boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                        border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.05)'
+                                        border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                                        wordBreak: 'break-word',
+                                        overflowWrap: 'anywhere'
                                     }}>
                                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                                     </div>

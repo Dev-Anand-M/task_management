@@ -191,8 +191,8 @@ body {
   --dark-surface: #292524;
   --dark-card: #3a3633;
   --dark-border: #57534e;
-  --dark-text: #fafaf9;
-  --dark-text-muted: #a8a29e;
+  --dark-text: #ffffff;
+  --dark-text-muted: #d6d3d1;
 
   /* Light Theme Colors - Clean White */
   --light-bg: #ffffff;
@@ -394,8 +394,10 @@ body {
   height: 100%;
   margin: 0;
   padding: 0;
+  font-weight: 500; /* Increased base weight for better visibility */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* Abstract Background Pattern */

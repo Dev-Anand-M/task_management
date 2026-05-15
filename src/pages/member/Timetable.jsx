@@ -20,7 +20,14 @@ const Timetable = () => {
         { role: 'assistant', content: "Hello! I'm your AI Scheduling Architect. How can I help you organize your week? You can say things like 'Add DSA study at 8am on weekdays' or 'Clear my Wednesday afternoon'." }
     ]);
     const [userInput, setUserInput] = useState('');
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
     const chatEndRef = useRef(null);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         fetchRoutines();
@@ -106,10 +113,10 @@ const Timetable = () => {
         <div className="page-content animate-fade-in" style={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
             <div className="flex justify-between items-center mb-lg">
                 <div>
-                    <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <Brain className="text-primary-500" /> AI Scheduling Architect
+                    <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', fontSize: isMobile ? 'var(--text-xl)' : 'var(--text-4xl)' }}>
+                        <Brain className="text-primary-500" /> {isMobile ? 'AI Planner' : 'AI Scheduling Architect'}
                     </h1>
-                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>Natural language timetable management</p>
+                    <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: isMobile ? '10px' : 'var(--text-sm)' }}>Natural language timetable management</p>
                 </div>
                 <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
                     <Button variant="ghost" icon={Calendar} onClick={() => {
@@ -126,9 +133,25 @@ const Timetable = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: 'var(--space-lg)', flex: 1, minHeight: 0 }}>
+            <div style={{ 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row', 
+                gap: 'var(--space-lg)', 
+                flex: 1, 
+                minHeight: 0,
+                overflowY: isMobile ? 'auto' : 'hidden'
+            }}>
                 {/* Chat Column */}
-                <Card style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                <Card style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    padding: 0, 
+                    overflow: 'hidden', 
+                    border: '1px solid var(--border)',
+                    width: isMobile ? '100%' : '350px',
+                    height: isMobile ? '400px' : 'auto',
+                    flexShrink: 0
+                }}>
                     <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
                         <h3 style={{ margin: 0, fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <MessageSquare size={16} /> Strategy Chat
@@ -147,11 +170,14 @@ const Timetable = () => {
                                 <div style={{ 
                                     padding: '12px', 
                                     borderRadius: msg.role === 'user' ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
-                                    background: msg.role === 'user' ? 'var(--primary-500)' : 'var(--surface)',
+                                    background: msg.role === 'user' ? 'var(--primary-600)' : 'var(--surface)',
                                     color: msg.role === 'user' ? 'white' : 'var(--text)',
-                                    fontSize: 'var(--text-sm)',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
                                     boxShadow: 'var(--shadow-sm)',
-                                    border: msg.role === 'user' ? 'none' : '1px solid var(--border)'
+                                    border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
+                                    wordBreak: 'break-word',
+                                    overflowWrap: 'anywhere'
                                 }}>
                                     {msg.content}
                                 </div>
