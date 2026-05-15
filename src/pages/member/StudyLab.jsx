@@ -5,7 +5,8 @@ import {
     BookOpen, Send, Printer, Maximize2, Minimize2, 
     ChevronLeft, Share2, Sparkles, FileText, 
     Download, Info, Settings, MessageSquare,
-    Eye, EyeOff, ExternalLink, Globe, RefreshCw
+    Eye, EyeOff, ExternalLink, Globe, RefreshCw,
+    Brain, CloudLightning
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generateChat } from '../../services/aiService';
@@ -22,15 +23,15 @@ const StudyLab = () => {
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
-    const [viewMode, setViewMode] = useState('split'); // split, doc, chat
+    const [viewMode, setViewMode] = useState('split'); // 'split', 'doc', 'chat'
+    const [showSyncModal, setShowSyncModal] = useState(false);
+    const [syncText, setSyncText] = useState('');
     const chatEndRef = useRef(null);
     const printRef = useRef(null);
 
     useEffect(() => {
         if (materialId) {
             fetchMaterial();
-        } else {
-            setLoading(false);
         }
     }, [materialId]);
 
@@ -44,7 +45,7 @@ const StudyLab = () => {
     const fetchMaterial = async () => {
         setLoading(true);
         try {
-            // Use maybeSingle to avoid errors if not found in one table
+            // Check both tables
             const [noteRes, kbRes] = await Promise.all([
                 supabase.from('study_notes').select('*').eq('id', materialId).maybeSingle(),
                 supabase.from('knowledge_base').select('*').eq('id', materialId).maybeSingle()
@@ -68,7 +69,7 @@ const StudyLab = () => {
                     setMessages([
                         { 
                             role: 'assistant', 
-                            content: `Welcome to the Lab! I have loaded "${foundMaterial.title}". I've indexed all the content and am ready to help you understand it, summarize sections, or even print specific pages. What would you like to explore?` 
+                            content: `Welcome to the Lab! I have loaded "${foundMaterial.title}". I've indexed the metadata, but if you want me to analyze the internal text deeply, please use the **Sync AI** button to provide the content.` 
                         }
                     ]);
                 }
@@ -77,6 +78,29 @@ const StudyLab = () => {
             console.error('Error fetching material:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const syncContext = async () => {
+        if (!syncText.trim()) return;
+        
+        try {
+            // Update the source material in DB so AI has it forever
+            const table = material?.course_id ? 'knowledge_base' : 'study_notes';
+            const { error } = await supabase
+                .from(table)
+                .update({ content: syncText })
+                .eq('id', materialId);
+
+            if (error) throw error;
+
+            setMaterial(prev => ({ ...prev, content: syncText }));
+            setShowSyncModal(false);
+            setSyncText('');
+            setMessages(prev => [...prev, { role: 'assistant', content: "🧠 **Knowledge Sync Complete.** I have successfully indexed the document text and saved it to my long-term memory. I am now fully ready to assist you with this specific content." }]);
+        } catch (err) {
+            console.error('Error syncing context:', err);
+            alert('Failed to sync context. Please try again.');
         }
     };
 
@@ -271,147 +295,244 @@ const StudyLab = () => {
                             display: 'flex',
                             justifyContent: 'center'
                         }}>
-                            <div style={{ 
-                                width: '100%',
-                                maxWidth: '1000px',
-                                background: '#1a1a20',
-                                borderRadius: 'var(--radius-xl)',
-                                padding: 'var(--space-md)',
-                                boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-                                border: '1px solid rgba(255,255,255,0.05)',
-                                position: 'relative',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                height: 'calc(100vh - 180px)',
-                                overflow: 'hidden'
-                            }}>
-                                {/* Mini Browser Toolbar */}
-                                <div style={{
+                                <div style={{ 
+                                    width: '100%',
+                                    maxWidth: '1000px',
+                                    background: '#1a1a20',
+                                    borderRadius: 'var(--radius-xl)',
+                                    padding: 'var(--space-md)',
+                                    boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                                    border: '1px solid rgba(255,255,255,0.05)',
+                                    position: 'relative',
                                     display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '12px',
-                                    padding: '8px 16px',
-                                    background: 'rgba(0,0,0,0.2)',
-                                    borderBottom: '1px solid rgba(255,255,255,0.05)',
-                                    marginBottom: '12px',
-                                    borderRadius: 'var(--radius-md)'
+                                    flexDirection: 'column',
+                                    height: 'calc(100vh - 180px)',
+                                    overflow: 'hidden'
                                 }}>
-                                    <div style={{ display: 'flex', gap: '6px' }}>
-                                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ff5f56' }}></div>
-                                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ffbd2e' }}></div>
-                                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#27c93f' }}></div>
-                                    </div>
-                                    <div style={{ 
-                                        flex: 1, 
-                                        background: 'rgba(255,255,255,0.05)', 
-                                        padding: '4px 12px', 
-                                        borderRadius: '6px',
-                                        fontSize: '11px',
-                                        color: 'rgba(255,255,255,0.5)',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
+                                    {/* Mini Browser Toolbar */}
+                                    <div style={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '8px',
-                                        border: '1px solid rgba(255,255,255,0.05)'
+                                        gap: '12px',
+                                        padding: '8px 16px',
+                                        background: 'rgba(0,0,0,0.2)',
+                                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                        marginBottom: '12px',
+                                        borderRadius: 'var(--radius-md)'
                                     }}>
-                                        <Globe size={12} />
-                                        {material?.file_url || 'Local Document'}
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ff5f56' }}></div>
+                                            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ffbd2e' }}></div>
+                                            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#27c93f' }}></div>
+                                        </div>
+                                        <div style={{ 
+                                            flex: 1, 
+                                            background: 'rgba(255,255,255,0.05)', 
+                                            padding: '2px 8px', 
+                                            borderRadius: '6px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            border: '1px solid rgba(255,255,255,0.05)'
+                                        }}>
+                                            <Globe size={12} className="text-muted" />
+                                            <input 
+                                                type="text"
+                                                value={material?.file_url || ''}
+                                                onChange={(e) => setMaterial(prev => ({ ...prev, file_url: e.target.value }))}
+                                                style={{ 
+                                                    background: 'none', 
+                                                    border: 'none', 
+                                                    color: 'rgba(255,255,255,0.7)', 
+                                                    fontSize: '11px', 
+                                                    width: '100%',
+                                                    outline: 'none'
+                                                }}
+                                                placeholder="https://..."
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button 
+                                                onClick={() => setShowSyncModal(true)}
+                                                style={{ 
+                                                    background: material?.content && material.content !== 'Attached Material' ? 'rgba(124, 58, 237, 0.2)' : 'rgba(239, 68, 68, 0.2)', 
+                                                    border: `1px solid ${material?.content && material.content !== 'Attached Material' ? 'rgba(124, 58, 237, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`, 
+                                                    color: material?.content && material.content !== 'Attached Material' ? '#a78bfa' : '#fca5a5', 
+                                                    cursor: 'pointer', 
+                                                    padding: '4px 8px', 
+                                                    borderRadius: '4px', 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: '4px', 
+                                                    fontSize: '10px',
+                                                    animation: !material?.content || material.content === 'Attached Material' ? 'pulse 2s infinite' : 'none'
+                                                }}
+                                                title="Sync Document Context with AI"
+                                            >
+                                                <Brain size={12} /> Sync AI
+                                            </button>
+                                            <button 
+                                                onClick={() => {
+                                                    const currentUrl = material?.file_url;
+                                                    setMaterial(prev => ({ ...prev, file_url: '' }));
+                                                    setTimeout(() => setMaterial(prev => ({ ...prev, file_url: currentUrl })), 50);
+                                                }}
+                                                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px' }}
+                                                title="Refresh View"
+                                            >
+                                                <RefreshCw size={14} />
+                                            </button>
+                                            <a 
+                                                href={material?.file_url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                style={{ color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center' }}
+                                                title="Open in Full Browser"
+                                            >
+                                                <ExternalLink size={14} />
+                                            </a>
+                                        </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                        <button 
-                                            onClick={() => {
-                                                const currentUrl = material?.file_url;
-                                                setMaterial(prev => ({ ...prev, file_url: '' }));
-                                                setTimeout(() => setMaterial(prev => ({ ...prev, file_url: currentUrl })), 50);
-                                            }}
-                                            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px' }}
-                                            title="Refresh"
-                                        >
-                                            <RefreshCw size={14} />
-                                        </button>
-                                        <a 
-                                            href={material?.file_url} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            style={{ color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center' }}
-                                            title="Open in New Tab"
-                                        >
-                                            <ExternalLink size={14} />
-                                        </a>
+
+                                    <div style={{ flex: 1, position: 'relative', overflowY: 'auto' }}>
+                                        {material?.file_url ? (
+                                            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                                                {material.file_url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
+                                                    <img 
+                                                        src={material.file_url} 
+                                                        alt="Attached Material" 
+                                                        style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'var(--radius-md)' }} 
+                                                    />
+                                                ) : (
+                                                    <iframe 
+                                                        key={material.file_url} // Force reload on URL change
+                                                        src={(() => {
+                                                            const url = material.file_url;
+                                                            if (!url) return '';
+                                                            
+                                                            if (url.includes('drive.google.com') && url.includes('/folders/')) {
+                                                                const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
+                                                                if (folderId) {
+                                                                    return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
+                                                                }
+                                                            }
+                                                            
+                                                            if (url.includes('drive.google.com')) {
+                                                                return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
+                                                            }
+                                                            
+                                                            if (url.includes('docs.google.com')) {
+                                                                if (!url.includes('embedded=true')) {
+                                                                    const separator = url.includes('?') ? '&' : '?';
+                                                                    return `${url}${separator}embedded=true`;
+                                                                }
+                                                                return url;
+                                                            }
+
+                                                            if (url.toLowerCase().endsWith('.pdf')) {
+                                                                return url;
+                                                            }
+
+                                                            if (url.match(/\.(doc|docx|ppt|pptx|xls|xlsx)$/i)) {
+                                                                return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+                                                            }
+
+                                                            return url;
+                                                        })()} 
+                                                        style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
+                                                        title="Resource Viewer"
+                                                        allow="autoplay; encrypted-media; clipboard-read; clipboard-write"
+                                                        sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation"
+                                                    />
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="lab-content" style={{ color: '#d1d1d1', lineHeight: 1.8, fontSize: 'var(--text-base)', padding: 'var(--space-md)' }}>
+                                                {material?.content && material.content !== 'Attached Material' ? (
+                                                    <ReactMarkdown>{material.content}</ReactMarkdown>
+                                                ) : (
+                                                    <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
+                                                        <Info size={48} style={{ marginBottom: 'var(--space-md)', opacity: 0.5 }} />
+                                                        <p>No active file or synced context. Load a URL or use "Sync AI" to provide context.</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-
-                                <div style={{ flex: 1, position: 'relative', overflowY: 'auto' }}>
-                                    {material?.file_url ? (
-                                        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                                            {material.file_url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
-                                                <img 
-                                                    src={material.file_url} 
-                                                    alt="Attached Material" 
-                                                    style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'var(--radius-md)' }} 
-                                                />
-                                            ) : (
-                                                <iframe 
-                                                    key={material.file_url} // Force reload on URL change
-                                                    src={(() => {
-                                                        const url = material.file_url;
-                                                        if (!url) return '';
-                                                        
-                                                        if (url.includes('drive.google.com') && url.includes('/folders/')) {
-                                                            const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
-                                                            if (folderId) {
-                                                                return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
-                                                            }
-                                                        }
-                                                        
-                                                        if (url.includes('drive.google.com')) {
-                                                            return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
-                                                        }
-                                                        
-                                                        if (url.includes('docs.google.com')) {
-                                                            if (!url.includes('embedded=true')) {
-                                                                const separator = url.includes('?') ? '&' : '?';
-                                                                return `${url}${separator}embedded=true`;
-                                                            }
-                                                            return url;
-                                                        }
-
-                                                        if (url.toLowerCase().endsWith('.pdf')) {
-                                                            return url;
-                                                        }
-
-                                                        if (url.match(/\.(doc|docx|ppt|pptx|xls|xlsx)$/i)) {
-                                                            return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
-                                                        }
-
-                                                        return url;
-                                                    })()} 
-                                                    style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
-                                                    title="Resource Viewer"
-                                                    allow="autoplay; encrypted-media"
-                                                    sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
-                                                />
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="lab-content" style={{ color: '#d1d1d1', lineHeight: 1.8, fontSize: 'var(--text-base)', padding: 'var(--space-md)' }}>
-                                            {material?.content === 'Attached Material' ? (
-                                                <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
-                                                    <Info size={48} style={{ marginBottom: 'var(--space-md)', opacity: 0.5 }} />
-                                                    <p>This material doesn't have text content to display, and no file was found.</p>
-                                                </div>
-                                            ) : (
-                                                <ReactMarkdown>{material?.content}</ReactMarkdown>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
                         </div>
                     </div>
                 )}
+
+                    {/* Sync Context Modal */}
+                    {showSyncModal && (
+                        <div style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0,0,0,0.8)',
+                            backdropFilter: 'blur(10px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 1000,
+                            padding: 'var(--space-md)'
+                        }}>
+                            <div style={{
+                                width: '100%',
+                                maxWidth: '600px',
+                                background: '#1a1a20',
+                                borderRadius: 'var(--radius-xl)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                padding: 'var(--space-xl)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 'var(--space-md)'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Brain className="text-primary" size={20} />
+                                        AI Deep Scan & Sync
+                                    </h3>
+                                    <button onClick={() => setShowSyncModal(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}><Maximize2 size={16} /></button>
+                                </div>
+                                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+                                    Because Google Drive and private storage protect content, the AI cannot "see" inside the document automatically. 
+                                    **Paste the text from the document below** to sync it with the AI's deep memory.
+                                </p>
+                                <textarea 
+                                    value={syncText}
+                                    onChange={(e) => setSyncText(e.target.value)}
+                                    placeholder="Paste document content here..."
+                                    style={{
+                                        width: '100%',
+                                        height: '300px',
+                                        background: 'rgba(0,0,0,0.2)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: 'var(--radius-md)',
+                                        padding: 'var(--space-md)',
+                                        color: 'white',
+                                        fontSize: '13px',
+                                        fontFamily: 'monospace',
+                                        resize: 'none',
+                                        outline: 'none'
+                                    }}
+                                />
+                                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                                    <Button variant="outline" onClick={() => setShowSyncModal(false)}>Cancel</Button>
+                                    <Button 
+                                        disabled={!syncText.trim()} 
+                                        onClick={syncContext}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    >
+                                        <CloudLightning size={16} /> Sync Brain
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                 {/* Right: AI Assistant */}
                 {(viewMode === 'split' || viewMode === 'chat') && (
