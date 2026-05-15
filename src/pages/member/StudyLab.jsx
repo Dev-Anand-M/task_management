@@ -29,8 +29,33 @@ const StudyLab = () => {
     const [history, setHistory] = useState([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
     const [urlInput, setUrlInput] = useState('');
+    const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
     const chatEndRef = useRef(null);
     const printRef = useRef(null);
+
+    // Clipboard Intelligence: Detects if the user copied a new Drive link and offers to sync
+    useEffect(() => {
+        if (!autoSyncEnabled) return;
+
+        const checkClipboard = async () => {
+            try {
+                // We only check if the window is focused to avoid being intrusive
+                if (!document.hasFocus()) return;
+
+                const text = await navigator.clipboard.readText();
+                if (text && text.includes('drive.google.com') && text !== material?.file_url && text !== urlInput) {
+                    console.log('Clipboard Intelligence: Detected new Drive link', text);
+                    setUrlInput(text);
+                    // We don't auto-navigate to avoid jumping, but we update the bar for one-click sync
+                }
+            } catch (err) {
+                // Clipboard access might be denied, ignore silently
+            }
+        };
+
+        const interval = setInterval(checkClipboard, 2000);
+        return () => clearInterval(interval);
+    }, [material?.file_url, urlInput, autoSyncEnabled]);
 
     useEffect(() => {
         if (materialId) {
@@ -401,14 +426,25 @@ const StudyLab = () => {
                                                 style={{ 
                                                     background: 'none', 
                                                     border: 'none', 
-                                                    color: 'white', 
+                                                    color: urlInput !== material?.file_url ? 'var(--primary-400)' : 'white', 
                                                     fontSize: '12px', 
                                                     width: '100%',
                                                     outline: 'none',
-                                                    fontWeight: '500'
+                                                    fontWeight: '500',
+                                                    transition: 'color 0.3s ease'
                                                 }}
                                                 placeholder="Paste a link to study (Drive, PDF, Doc...)"
                                             />
+                                            {urlInput !== material?.file_url && (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    onClick={() => setMaterial(prev => ({ ...prev, file_url: urlInput }))}
+                                                    style={{ height: '24px', padding: '0 8px', fontSize: '10px', color: 'var(--primary-400)' }}
+                                                >
+                                                    Sync Now
+                                                </Button>
+                                            )}
                                         </div>
                                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                             {sending ? (
