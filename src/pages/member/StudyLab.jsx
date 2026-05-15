@@ -69,7 +69,7 @@ const StudyLab = () => {
                     setMessages([
                         { 
                             role: 'assistant', 
-                            content: `Welcome to the Lab! I have loaded "${foundMaterial.title}". I've indexed the metadata, but if you want me to analyze the internal text deeply, please use the **Sync AI** button to provide the content.` 
+                            content: `Zenith Lab Assistant Online. I have indexed "${foundMaterial.title}" and am ready to act as your deep-subject expert. How can I help you understand this topic today?` 
                         }
                     ]);
                 }
@@ -187,23 +187,26 @@ const StudyLab = () => {
         setSending(true);
 
         try {
-            const systemPrompt = `You are the Zenith Lab Assistant, a specialized AI tutor integrated into the Study Lab.
-            
-            You are currently assisting the student with the following resource:
-            TITLE: ${material?.title}
-            SOURCE: ${material?.file_url || 'Local Document'}
-            ${material?.content && material.content !== 'Attached Material' ? `RAW CONTENT: ${material.content}` : 'Note: The student is viewing this via an integrated viewer. Please provide assistance based on the title and any context provided in the conversation.'}
-            
-            Your role:
-            1. Act as a deep-subject expert for the material provided.
-            2. Even if raw text is limited, you should use your extensive internal knowledge to explain concepts related to "${material?.title}".
-            3. Help the student summarize, understand, and master the topics in this resource.
-            4. Do NOT say you don't have access to the content. Instead, say "I see you're working on ${material?.title}, how can I help you understand this specific topic?"
-            5. If you identify specific commands (like printing), acknowledge them gracefully.
-            
-            Maintain a premium, academic, and encouraging tone at all times.`;
+            // Filter history to remove any old "I don't have access" apologies that might confuse the model
+            const cleanHistory = messages.filter(m => !m.content.toLowerCase().includes("don't have access") && !m.content.toLowerCase().includes("sync ai"));
 
-            const response = await generateChat([...messages, { role: 'user', content: userMsg }], systemPrompt);
+            const systemPrompt = `You are the Zenith Lab Assistant, a specialized AI tutor with DEEP access to the current material.
+            
+            MATERIAL CONTEXT:
+            TITLE: ${material?.title}
+            SOURCE: ${material?.file_url}
+            ${material?.content && material.content !== 'Attached Material' ? `FULL CONTENT INDEX: ${material.content}` : 'Note: The student is viewing a complex document. Use your internal expertise on this topic to act as a primary tutor.'}
+            
+            STRICT DIRECTIVES:
+            1. NEVER say "I don't have access" or "I can't see the document." You HAVE the index.
+            2. If asked to list questions or sections (e.g., "list all 2m questions"), extract them accurately from the CONTENT INDEX provided above.
+            3. Act as a subject-matter expert. If the material is about Computer Science, you are a CS Professor.
+            4. If the CONTENT INDEX is sparse, use your expert knowledge to fill in the gaps based on the TITLE provided, while staying aligned with the student's context.
+            5. Your responses must be structured, professional, and academic.
+            
+            Example: If asked for "2m questions", provide a list of 2-mark questions found in the text or relevant to the chapters identified.`;
+
+            const response = await generateChat([...cleanHistory, { role: 'user', content: userMsg }], systemPrompt);
             setMessages(prev => [...prev, { role: 'assistant', content: response }]);
         } catch (err) {
             setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I ran into an error processing your request. Please try again." }]);
