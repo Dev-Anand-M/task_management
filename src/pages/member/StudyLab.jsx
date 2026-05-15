@@ -406,34 +406,34 @@ const StudyLab = () => {
                                                     placeholder="Paste a link to study (Drive, PDF, Doc...)"
                                                 />
                                             </div>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                            <Badge variant="outline" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)', gap: '6px' }}>
-                                                <EyeOff size={12} /> AI Visibility Restricted
-                                            </Badge>
                                             
-                                            <button 
-                                                onClick={() => {
-                                                    const currentUrl = material?.file_url;
-                                                    setMaterial(prev => ({ ...prev, file_url: '' }));
-                                                    setTimeout(() => setMaterial(prev => ({ ...prev, file_url: currentUrl })), 50);
-                                                }}
-                                                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px' }}
-                                                title="Refresh View"
-                                            >
-                                                <RefreshCw size={16} />
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                                <Badge variant="outline" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)', gap: '6px' }}>
+                                                    <EyeOff size={12} /> AI Visibility Restricted
+                                                </Badge>
+                                                
+                                                <button 
+                                                    onClick={() => {
+                                                        const currentUrl = material?.file_url;
+                                                        setMaterial(prev => ({ ...prev, file_url: '' }));
+                                                        setTimeout(() => setMaterial(prev => ({ ...prev, file_url: currentUrl })), 50);
+                                                    }}
+                                                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px' }}
+                                                    title="Refresh View"
+                                                >
+                                                    <RefreshCw size={16} />
+                                                </button>
 
-                                            <a 
-                                                href={material?.file_url} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                style={{ color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center' }}
-                                                title="Open in Full Browser"
-                                            >
-                                                <ExternalLink size={16} />
-                                            </a>
-                                        </div>
+                                                <a 
+                                                    href={material?.file_url} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    style={{ color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center' }}
+                                                    title="Open in Full Browser"
+                                                >
+                                                    <ExternalLink size={16} />
+                                                </a>
+                                            </div>
                                     </div>
 
                                     <div style={{ flex: 1, position: 'relative', overflowY: 'auto' }}>
