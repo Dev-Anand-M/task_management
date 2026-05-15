@@ -13,11 +13,14 @@ import {
     Award,
     Star,
     Flame,
-    Target
+    Target,
+    Zap
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { formatDate, getDifficultyColor } from '../../utils/constants';
+import { format12h } from '../../utils/timeFormat';
 import { useMiniReload } from '../../hooks/useMiniReload';
+import { routineService } from '../../services/routineService';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -34,12 +37,14 @@ const Calendar = () => {
         if (!user?.id) return;
         try {
             if (!silent) setLoading(true);
-            const [tasks, submissions, quizzes, quizAttempts] = await Promise.race([
+            const [tasks, submissions, quizzes, quizAttempts, routines, routineLogs] = await Promise.race([
                 Promise.all([
                     db.getTasks().catch(() => []),
                     db.getSubmissionsByUser(user.id).catch(() => []),
                     db.getQuizzes().catch(() => []),
-                    db.getQuizAttemptsByUser(user.id).catch(() => [])
+                    db.getQuizAttemptsByUser(user.id).catch(() => []),
+                    routineService.getRoutines().catch(() => []),
+                    routineService.getAllLogs().catch(() => [])
                 ]),
                 new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 10000))
             ]);
@@ -115,6 +120,34 @@ const Calendar = () => {
                 });
             });
 
+            // Routines (Virtual events based on recurrence)
+            // We'll show routines for the current viewed month (+/- some buffer)
+            const calendarStart = new Date(year, month - 1, 1);
+            const calendarEnd = new Date(year, month + 2, 0);
+            
+            (routines || []).forEach(r => {
+                let iter = new Date(calendarStart);
+                while (iter <= calendarEnd) {
+                    const dayNum = iter.getDay() === 0 ? 7 : iter.getDay(); // 1=Mon, 7=Sun
+                    if (r.days_of_week.includes(dayNum)) {
+                        // Check if there's a log for this specific date
+                        const dateStr = iter.toISOString().split('T')[0];
+                        const log = (routineLogs || []).find(l => l.routine_id === r.id && l.log_date === dateStr);
+                        
+                        allEvents.push({
+                            id: `routine-${r.id}-${dateStr}`,
+                            title: `🔄 ${r.title}`,
+                            date: new Date(iter),
+                            type: 'routine',
+                            status: log ? log.status : (iter < today ? 'missed' : 'scheduled'),
+                            routineId: r.id,
+                            startTime: r.start_time
+                        });
+                    }
+                    iter.setDate(iter.getDate() + 1);
+                }
+            });
+
             setEvents(allEvents);
         } catch (e) {
             console.error('[Calendar] Load error:', e);
@@ -175,6 +208,10 @@ const Calendar = () => {
         if (type === 'submission' && status === 'approved') return 'var(--success-500)';
         if (type === 'submission' && status === 'rejected') return 'var(--error-500)';
         if (type === 'submission') return 'var(--warning-500)';
+        if (type === 'routine' && status === 'done') return 'var(--success-500)';
+        if (type === 'routine' && status === 'missed') return 'var(--error-500)';
+        if (type === 'routine' && status === 'scheduled') return 'var(--primary-400)';
+        if (type === 'routine') return 'var(--primary-500)';
         return 'var(--text-muted)';
     };
 
@@ -285,9 +322,9 @@ const Calendar = () => {
                             {[
                                 { label: 'Task Due', color: 'var(--primary-500)' },
                                 { label: 'Quiz', color: '#8b5cf6' },
-                                { label: 'Approved', color: 'var(--success-500)' },
-                                { label: 'Pending', color: 'var(--warning-500)' },
-                                { label: 'Failed/Rejected', color: 'var(--error-500)' }
+                                { label: 'Routine Done', color: 'var(--success-500)' },
+                                { label: 'Routine Scheduled', color: 'var(--primary-400)' },
+                                { label: 'Missed/Failed', color: 'var(--error-500)' }
                             ].map(l => (
                                 <div key={l.label} className="flex items-center gap-xs" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: l.color }} />
@@ -327,8 +364,9 @@ const Calendar = () => {
                                         transition: 'all 0.15s'
                                     }}>
                                         <div className="flex items-center gap-sm">
-                                            {e.type === 'task' || e.type === 'task-created' ? <ListTodo size={14} /> : <HelpCircle size={14} />}
+                                            {e.type === 'routine' ? <Zap size={14} className="text-primary-500" /> : (e.type === 'task' || e.type === 'task-created' ? <ListTodo size={14} /> : <HelpCircle size={14} />)}
                                             <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, flex: 1 }}>{e.title}</span>
+                                            {e.type === 'routine' && e.startTime && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{format12h(e.startTime)}</span>}
                                         </div>
                                         <div className="flex items-center gap-sm" style={{ marginTop: '4px' }}>
                                             {e.points && <Badge variant="accent" size="xs">{e.points} XP</Badge>}
@@ -376,7 +414,8 @@ const Calendar = () => {
                                     <div style={{ flex: 1 }}>
                                         <p style={{ margin: 0, fontWeight: 600, fontSize: 'var(--text-sm)' }}>{e.title}</p>
                                         <div className="flex items-center gap-sm" style={{ marginTop: '4px' }}>
-                                            <Badge variant={e.type.includes('quiz') ? 'accent' : 'primary'} size="xs">{e.type.replace('-', ' ')}</Badge>
+                                            <Badge variant={e.type === 'routine' ? 'success' : e.type.includes('quiz') ? 'accent' : 'primary'} size="xs">{e.type.replace('-', ' ')}</Badge>
+                                            {e.type === 'routine' && e.startTime && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{format12h(e.startTime)}</span>}
                                             {e.points && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{e.points} XP</span>}
                                         </div>
                                     </div>

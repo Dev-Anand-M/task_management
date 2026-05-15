@@ -146,17 +146,18 @@ const Diary = () => {
                                 <Badge variant={log.status === 'done' ? 'success' : log.status === 'ignored' ? 'error' : 'warning'}>
                                     {log.status === 'ignored' ? 'MISSED' : log.status.toUpperCase()}
                                 </Badge>
-                                <span style={{ fontWeight: 700, fontSize: 'var(--text-lg)' }}>{log.routines?.title}</span>
+                                <span style={{ fontWeight: 700, fontSize: 'var(--text-lg)' }}>{log.snapshot_title || log.routines?.title}</span>
+                                {(log.routines?.is_anonymous) && <Badge variant="accent" size="xs">FLEXIBLE</Badge>}
                             </div>
                             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-                                <Calendar size={12} /> {new Date(log.log_date).toLocaleDateString()} • {log.time_spent_minutes} mins spent • Started at {format12h(log.actual_start_time)}
+                                <Calendar size={12} /> {new Date(log.log_date).toLocaleDateString()} • {log.time_spent_minutes} mins spent • Scheduled at {format12h(log.snapshot_start_time || log.routines?.start_time)}
                             </p>
                         </div>
-                        {log.actual_response_time && (
+                        {(log.actual_response_time || log.actual_start_time) && (
                             <div style={{ textAlign: 'right' }}>
                                 <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>Logged at</p>
                                 <p style={{ margin: 0, fontWeight: 600, fontSize: 'var(--text-xs)' }}>
-                                    {new Date(log.actual_response_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {log.actual_start_time ? log.actual_start_time.slice(0, 5) : new Date(log.actual_response_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </p>
                             </div>
                         )}

@@ -94,12 +94,21 @@ export const routineService = {
         const { data: { user } } = await supabase.auth.getUser();
         const logDate = new Date().toISOString().split('T')[0];
         
+        // Fetch routine details to snapshot
+        const { data: routine } = await supabase
+            .from('routines')
+            .select('title, start_time')
+            .eq('id', routineId)
+            .single();
+
         const { data: result, error } = await supabase
             .from('routine_logs')
             .upsert({
                 routine_id: routineId,
                 user_id: user.id,
                 log_date: logDate,
+                snapshot_title: routine?.title,
+                snapshot_start_time: routine?.start_time,
                 ...data
             }, { onConflict: 'routine_id,log_date' })
             .select();

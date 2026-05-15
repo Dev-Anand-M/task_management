@@ -320,8 +320,9 @@ const Timetable = () => {
                                                     borderLeft: '3px solid var(--primary-500)',
                                                     fontSize: '11px'
                                                 }}>
-                                                    <div style={{ color: 'var(--primary-500)', fontWeight: 700, marginBottom: '2px' }}>
-                                                        {format12h(r.start_time)}
+                                                    <div style={{ color: 'var(--primary-500)', fontWeight: 700, marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        {r.is_anonymous ? <Zap size={10} fill="currentColor" /> : <Clock size={10} />}
+                                                        {r.is_anonymous ? 'Flexible' : format12h(r.start_time)}
                                                     </div>
                                                     <div style={{ fontWeight: 600 }}>{r.title}</div>
                                                 </div>
