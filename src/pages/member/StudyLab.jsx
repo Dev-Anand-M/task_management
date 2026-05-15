@@ -460,23 +460,28 @@ const StudyLab = () => {
                                                             const url = material.file_url;
                                                             if (!url) return '';
                                                             
-                                                            if (url.includes('drive.google.com') && (url.includes('/file/d/') || url.includes('id='))) {
+                                                            if (url.includes('drive.google.com') && (url.includes('/file/d/') || url.includes('id=')) && !url.includes('/folders/')) {
                                                                 const fileId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
-                                                                if (fileId) {
+                                                                if (fileId && !url.includes('folders')) {
                                                                     // Use the stable /preview mode but with relaxed sandbox for selection
                                                                     return `https://drive.google.com/file/d/${fileId}/preview`;
                                                                 }
                                                             }
                                                             
-                                                            if (url.includes('drive.google.com') && url.includes('/folders/')) {
-                                                                const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
+                                                            if (url.includes('drive.google.com') && url.includes('folders')) {
+                                                                // Robust folder ID extraction
+                                                                const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
                                                                 if (folderId) {
                                                                     return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
                                                                 }
                                                             }
 
                                                             if (url.includes('drive.google.com')) {
-                                                                return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
+                                                                // Fallback for other drive links
+                                                                if (url.includes('/view') || url.includes('/edit')) {
+                                                                    return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
+                                                                }
+                                                                return url;
                                                             }
                                                             
                                                             if (url.includes('docs.google.com')) {
