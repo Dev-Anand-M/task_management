@@ -130,8 +130,15 @@ const Calendar = () => {
                 while (iter <= calendarEnd) {
                     const dayNum = iter.getDay() === 0 ? 7 : iter.getDay(); // 1=Mon, 7=Sun
                     if (r.days_of_week.includes(dayNum)) {
-                        const dateStr = iter.toISOString().split('T')[0];
-                        const createdDate = new Date(r.created_at).toISOString().split('T')[0];
+                        const toLocalISO = (date) => {
+                            const d = new Date(date);
+                            const offset = d.getTimezoneOffset();
+                            const local = new Date(d.getTime() - (offset * 60 * 1000));
+                            return local.toISOString().split('T')[0];
+                        };
+
+                        const dateStr = toLocalISO(iter);
+                        const createdDate = toLocalISO(r.created_at);
                         
                         // Check if within valid date range
                         const isAfterCreation = dateStr >= createdDate;

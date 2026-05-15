@@ -525,7 +525,13 @@ const Routines = () => {
         const day = d.getDay() === 0 ? 7 : d.getDay();
         
         // Don't show routines before they were created
-        const createdDate = new Date(r.created_at).toISOString().split('T')[0];
+        const toLocalISO = (date) => {
+            const dr = new Date(date);
+            const offset = dr.getTimezoneOffset();
+            const local = new Date(dr.getTime() - (offset * 60 * 1000));
+            return local.toISOString().split('T')[0];
+        };
+        const createdDate = toLocalISO(r.created_at);
         if (createdDate > selectedDate) return false;
         
         // Don't show if after deadline
