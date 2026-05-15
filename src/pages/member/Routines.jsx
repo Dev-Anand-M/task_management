@@ -3,7 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { routineService } from '../../services/routineService';
 import { Card, Badge, Button, Input, Modal, ProgressBar, LoadingSpinner } from '../../components/common';
 import { 
-    Check, Clock, Trash2, Plus, AlertTriangle, CheckCircle, Circle, X, Book, Zap, Calendar, BookOpen, Brain 
+    Check, Clock, Trash2, Plus, AlertTriangle, CheckCircle, Circle, X, Book, Zap, Calendar, BookOpen, Brain,
+    ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 const MentionInput = ({ value, onChange, placeholder, materials, label }) => {
