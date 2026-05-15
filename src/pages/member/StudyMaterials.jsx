@@ -27,7 +27,6 @@ const StudyMaterials = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { id: urlId } = useParams();
-    const { id: urlId } = useParams();
     const [activeTab, setActiveTab] = useState('shared');
     const [sharedMaterials, setSharedMaterials] = useState([]);
     const [myNotes, setMyNotes] = useState([]);
