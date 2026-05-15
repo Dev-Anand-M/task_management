@@ -28,8 +28,15 @@ const StudyLab = () => {
     const [syncText, setSyncText] = useState('');
     const [history, setHistory] = useState([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
+    const [urlInput, setUrlInput] = useState('');
     const chatEndRef = useRef(null);
     const printRef = useRef(null);
+
+    useEffect(() => {
+        if (material?.file_url && urlInput === '') {
+            setUrlInput(material.file_url);
+        }
+    }, [material?.file_url]);
 
     useEffect(() => {
         if (materialId) {
@@ -59,6 +66,7 @@ const StudyLab = () => {
                 if (foundMaterial.file_url) {
                     setHistory([foundMaterial.file_url]);
                     setHistoryIndex(0);
+                    setUrlInput(foundMaterial.file_url);
                 }
                 // Load existing chat history from ai_history
                 const { data: historyData } = await supabase
@@ -75,7 +83,7 @@ const StudyLab = () => {
                     setMessages([
                         { 
                             role: 'assistant', 
-                            content: `Zenith Lab Assistant Online. I have indexed "${foundMaterial.title}" and am ready to act as your deep-subject expert. How can I help you understand this topic today?` 
+                            content: `Zenith Lab Assistant Online. **Note: I cannot see the document viewer directly.** To help you accurately, please copy and paste the specific sections you're studying into our chat. How can I help you today?` 
                         }
                     ]);
                 }
