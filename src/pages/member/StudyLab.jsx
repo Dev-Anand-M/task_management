@@ -5,7 +5,7 @@ import {
     BookOpen, Send, Printer, Maximize2, Minimize2, 
     ChevronLeft, Share2, Sparkles, FileText, 
     Download, Info, Settings, MessageSquare,
-    Eye, EyeOff
+    Eye, EyeOff, ExternalLink
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generateChat } from '../../services/aiService';
@@ -41,10 +41,10 @@ const StudyLab = () => {
     const fetchMaterial = async () => {
         setLoading(true);
         try {
-            // Check both study_notes and knowledge_base
+            // Use maybeSingle to avoid errors if not found in one table
             const [noteRes, kbRes] = await Promise.all([
-                supabase.from('study_notes').select('*').eq('id', materialId).single(),
-                supabase.from('knowledge_base').select('*').eq('id', materialId).single()
+                supabase.from('study_notes').select('*').eq('id', materialId).maybeSingle(),
+                supabase.from('knowledge_base').select('*').eq('id', materialId).maybeSingle()
             ]);
 
             const foundMaterial = noteRes.data || kbRes.data;
