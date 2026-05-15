@@ -388,6 +388,49 @@ const Routines = () => {
         }));
     };
 
+    const getFreeSlots = () => {
+        const today = new Date(selectedDate).getDay() || 7; // 1-7
+        const todayRoutines = routines.filter(r => r.days_of_week.includes(today) && r.is_active);
+        
+        const intervals = todayRoutines.map(r => {
+            const [h, m] = r.start_time.split(':').map(Number);
+            const start = h * 60 + m;
+            return { start, end: start + (r.duration_minutes || 60) };
+        }).sort((a, b) => a.start) || [];
+
+        const freeSlots = [];
+        let current = 480; // Start at 8 AM
+        const dayEnd = 1320; // End at 10 PM
+
+        intervals.forEach(int => {
+            if (int.start > current + 15) {
+                freeSlots.push({ start: current, end: int.start });
+            }
+            current = Math.max(current, int.end);
+        });
+
+        if (current < dayEnd) {
+            freeSlots.push({ start: current, end: dayEnd });
+        }
+
+        return freeSlots;
+    };
+
+    const formatMinutes = (total) => {
+        const h = Math.floor(total / 60);
+        const m = total % 60;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    };
+
+    const handleAddSlot = (startMinutes) => {
+        setForm({
+            ...form,
+            start_time: `${formatMinutes(startMinutes)}:00`,
+            is_anonymous: false
+        });
+        setShowAdd(true);
+    };
+
     const navDate = (dir) => {
         const d = new Date(selectedDate);
         d.setDate(d.getDate() + dir);
