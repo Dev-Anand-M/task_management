@@ -501,7 +501,14 @@ const Routines = () => {
     const activeRoutines = routines.filter(r => {
         const d = new Date(selectedDate);
         const day = d.getDay() === 0 ? 7 : d.getDay();
+        
+        // Don't show routines before they were created
+        const createdDate = new Date(r.created_at).toISOString().split('T')[0];
+        if (createdDate > selectedDate) return false;
+        
+        // Don't show if after deadline
         if (r.deadline && new Date(r.deadline) < d) return false;
+        
         return r.days_of_week.includes(day);
     });
 

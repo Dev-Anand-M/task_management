@@ -130,19 +130,27 @@ const Calendar = () => {
                 while (iter <= calendarEnd) {
                     const dayNum = iter.getDay() === 0 ? 7 : iter.getDay(); // 1=Mon, 7=Sun
                     if (r.days_of_week.includes(dayNum)) {
-                        // Check if there's a log for this specific date
                         const dateStr = iter.toISOString().split('T')[0];
-                        const log = (routineLogs || []).find(l => l.routine_id === r.id && l.log_date === dateStr);
+                        const createdDate = new Date(r.created_at).toISOString().split('T')[0];
                         
-                        allEvents.push({
-                            id: `routine-${r.id}-${dateStr}`,
-                            title: `🔄 ${r.title}`,
-                            date: new Date(iter),
-                            type: 'routine',
-                            status: log ? log.status : (iter < today ? 'missed' : 'scheduled'),
-                            routineId: r.id,
-                            startTime: r.start_time
-                        });
+                        // Check if within valid date range
+                        const isAfterCreation = dateStr >= createdDate;
+                        const isBeforeDeadline = !r.deadline || dateStr <= r.deadline;
+
+                        if (isAfterCreation && isBeforeDeadline) {
+                            // Check if there's a log for this specific date
+                            const log = (routineLogs || []).find(l => l.routine_id === r.id && l.log_date === dateStr);
+                            
+                            allEvents.push({
+                                id: `routine-${r.id}-${dateStr}`,
+                                title: `🔄 ${r.title}`,
+                                date: new Date(iter),
+                                type: 'routine',
+                                status: log ? log.status : (iter < today ? 'missed' : 'scheduled'),
+                                routineId: r.id,
+                                startTime: r.start_time
+                            });
+                        }
                     }
                     iter.setDate(iter.getDate() + 1);
                 }
