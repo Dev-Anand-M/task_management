@@ -229,6 +229,15 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, onResetLog, nextAlarmIn
                         </div>
                     )}
                     <div className="flex flex-col gap-md">
+                        <div style={{ padding: '8px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--primary-500)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Calendar size={14} className="text-primary-500" />
+                            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700 }}>
+                                Target Day: <span style={{ color: 'var(--primary-500)' }}>{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                            </span>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                                (Use date arrows at top to log for other days)
+                            </span>
+                        </div>
                         <div className="grid grid-cols-2 gap-md">
                             <div>
                                 <label className="input-label">Actual Start</label>

@@ -157,7 +157,7 @@ const Diary = () => {
                                 {(log.routines?.is_anonymous) && <Badge variant="accent" size="xs">FLEXIBLE</Badge>}
                             </div>
                             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-                                <Calendar size={12} /> {new Date(log.log_date).toLocaleDateString()} • {log.time_spent_minutes} mins spent • Scheduled at {format12h(log.snapshot_start_time || log.routines?.start_time)}
+                                <Calendar size={12} /> {new Date(log.log_date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })} • {log.time_spent_minutes} mins spent • Scheduled at {format12h(log.snapshot_start_time || log.routines?.start_time)}
                             </p>
                         </div>
                         {log.actual_response_time && (
