@@ -481,6 +481,14 @@ const StudyLab = () => {
                                                                 }
                                                             }
                                                             
+                                                            if (url.includes('drive.google.com') && (url.includes('/file/d/') || url.includes('id='))) {
+                                                                const fileId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
+                                                                if (fileId) {
+                                                                    // The Explorer viewer is much better for text selection/copying than /preview
+                                                                    return `https://docs.google.com/viewer?srcid=${fileId}&pid=explorer&efh=false&a=v&chrome=false&embedded=true`;
+                                                                }
+                                                            }
+                                                            
                                                             if (url.includes('drive.google.com')) {
                                                                 return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
                                                             }
@@ -505,8 +513,8 @@ const StudyLab = () => {
                                                         })()} 
                                                         style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
                                                         title="Resource Viewer"
-                                                        allow="autoplay; encrypted-media; clipboard-read; clipboard-write"
-                                                        sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation"
+                                                        allow="autoplay; encrypted-media; clipboard-read; clipboard-write; camera; microphone"
+                                                        // Removed strict sandbox to allow native browser clipboard/selection features
                                                     />
                                                 )}
                                             </div>
