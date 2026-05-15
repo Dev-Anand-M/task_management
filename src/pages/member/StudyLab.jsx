@@ -327,15 +327,15 @@ const StudyLab = () => {
                                         </div>
                                         <div style={{ 
                                             flex: 1, 
-                                            background: 'rgba(255,255,255,0.05)', 
-                                            padding: '2px 8px', 
-                                            borderRadius: '6px',
+                                            background: 'rgba(255,255,255,0.1)', 
+                                            padding: '4px 12px', 
+                                            borderRadius: '8px',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '8px',
-                                            border: '1px solid rgba(255,255,255,0.05)'
+                                            gap: '10px',
+                                            border: '1px solid rgba(255,255,255,0.1)'
                                         }}>
-                                            <Globe size={12} className="text-muted" />
+                                            <Globe size={14} className="text-primary" />
                                             <input 
                                                 type="text"
                                                 value={material?.file_url || ''}
@@ -343,34 +343,26 @@ const StudyLab = () => {
                                                 style={{ 
                                                     background: 'none', 
                                                     border: 'none', 
-                                                    color: 'rgba(255,255,255,0.7)', 
-                                                    fontSize: '11px', 
+                                                    color: 'white', 
+                                                    fontSize: '12px', 
                                                     width: '100%',
-                                                    outline: 'none'
+                                                    outline: 'none',
+                                                    fontWeight: '500'
                                                 }}
-                                                placeholder="https://..."
+                                                placeholder="Paste a link to study (Drive, PDF, Doc...)"
                                             />
                                         </div>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button 
-                                                onClick={() => setShowSyncModal(true)}
-                                                style={{ 
-                                                    background: material?.content && material.content !== 'Attached Material' ? 'rgba(124, 58, 237, 0.2)' : 'rgba(239, 68, 68, 0.2)', 
-                                                    border: `1px solid ${material?.content && material.content !== 'Attached Material' ? 'rgba(124, 58, 237, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`, 
-                                                    color: material?.content && material.content !== 'Attached Material' ? '#a78bfa' : '#fca5a5', 
-                                                    cursor: 'pointer', 
-                                                    padding: '4px 8px', 
-                                                    borderRadius: '4px', 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    gap: '4px', 
-                                                    fontSize: '10px',
-                                                    animation: !material?.content || material.content === 'Attached Material' ? 'pulse 2s infinite' : 'none'
-                                                }}
-                                                title="Sync Document Context with AI"
-                                            >
-                                                <Brain size={12} /> Sync AI
-                                            </button>
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                            {sending ? (
+                                                <Badge variant="outline" style={{ background: 'rgba(124, 58, 237, 0.2)', color: '#a78bfa', border: '1px solid rgba(124, 58, 237, 0.3)', gap: '6px' }}>
+                                                    <Brain size={12} className="animate-pulse" /> AI Indexing...
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="outline" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.2)', gap: '6px' }}>
+                                                    <Sparkles size={12} /> AI Synced
+                                                </Badge>
+                                            )}
+                                            
                                             <button 
                                                 onClick={() => {
                                                     const currentUrl = material?.file_url;
@@ -380,7 +372,7 @@ const StudyLab = () => {
                                                 style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px' }}
                                                 title="Refresh View"
                                             >
-                                                <RefreshCw size={14} />
+                                                <RefreshCw size={16} />
                                             </button>
                                             <a 
                                                 href={material?.file_url} 
@@ -389,7 +381,7 @@ const StudyLab = () => {
                                                 style={{ color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center' }}
                                                 title="Open in Full Browser"
                                             >
-                                                <ExternalLink size={14} />
+                                                <ExternalLink size={16} />
                                             </a>
                                         </div>
                                     </div>
@@ -429,8 +421,8 @@ const StudyLab = () => {
                                                                 return url;
                                                             }
 
-                                                            if (url.toLowerCase().endsWith('.pdf')) {
-                                                                return url;
+                                                            if (url.toLowerCase().endsWith('.pdf') || url.includes('/public/study_materials/')) {
+                                                                return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
                                                             }
 
                                                             if (url.match(/\.(doc|docx|ppt|pptx|xls|xlsx)$/i)) {
@@ -453,7 +445,7 @@ const StudyLab = () => {
                                                 ) : (
                                                     <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
                                                         <Info size={48} style={{ marginBottom: 'var(--space-md)', opacity: 0.5 }} />
-                                                        <p>No active file or synced context. Load a URL or use "Sync AI" to provide context.</p>
+                                                        <p>Load a URL to begin your deep-study session. AI will automatically index the content.</p>
                                                     </div>
                                                 )}
                                             </div>
