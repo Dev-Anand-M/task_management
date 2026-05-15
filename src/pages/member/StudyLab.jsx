@@ -5,7 +5,7 @@ import {
     BookOpen, Send, Printer, Maximize2, Minimize2, 
     ChevronLeft, Share2, Sparkles, FileText, 
     Download, Info, Settings, MessageSquare,
-    Eye, EyeOff, ExternalLink
+    Eye, EyeOff, ExternalLink, Globe, RefreshCw
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generateChat } from '../../services/aiService';
@@ -269,118 +269,138 @@ const StudyLab = () => {
                         }}>
                             <div style={{ 
                                 width: '100%',
-                                maxWidth: '800px',
+                                maxWidth: '1000px',
                                 background: '#1a1a20',
-                                borderRadius: 'var(--radius-lg)',
-                                padding: 'var(--space-2xl)',
+                                borderRadius: 'var(--radius-xl)',
+                                padding: 'var(--space-md)',
                                 boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
                                 border: '1px solid rgba(255,255,255,0.05)',
                                 position: 'relative',
-                                minHeight: 'fit-content'
+                                display: 'flex',
+                                flexDirection: 'column',
+                                height: 'calc(100vh - 180px)',
+                                overflow: 'hidden'
                             }}>
-                                {material?.file_url ? (
-                                    <div style={{ width: '100%', height: 'calc(100vh - 250px)', position: 'relative' }}>
-                                        {material.file_url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
-                                            <img 
-                                                src={material.file_url} 
-                                                alt="Attached Material" 
-                                                style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'var(--radius-md)' }} 
-                                            />
-                                        ) : (
-                                            <iframe 
-                                                src={(() => {
-                                                    const url = material.file_url;
-                                                    if (!url) return '';
-                                                    
-                                                    // 1. Google Drive Folders
-                                                    if (url.includes('drive.google.com/drive/folders/')) {
-                                                        const folderId = url.split('/folders/')[1]?.split('?')[0];
-                                                        return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
-                                                    }
-                                                    
-                                                    // 2. Google Drive Files
-                                                    if (url.includes('drive.google.com')) {
-                                                        return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
-                                                    }
-                                                    
-                                                    // 3. Google Docs/Sheets/Slides
-                                                    if (url.includes('docs.google.com')) {
-                                                        if (!url.includes('embedded=true')) {
-                                                            const separator = url.includes('?') ? '&' : '?';
-                                                            return `${url}${separator}embedded=true`;
-                                                        }
-                                                        return url;
-                                                    }
-
-                                                    // 4. PDFs (Direct)
-                                                    if (url.toLowerCase().endsWith('.pdf')) {
-                                                        return url;
-                                                    }
-
-                                                    // 5. General Fallback (Try GView or Direct)
-                                                    // Some sites allow iframing, others don't. GView works for docs.
-                                                    if (url.match(/\.(doc|docx|ppt|pptx|xls|xlsx)$/i)) {
-                                                        return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
-                                                    }
-
-                                                    return url;
-                                                })()} 
-                                                style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
-                                                title="Resource Viewer"
-                                                allow="autoplay; encrypted-media"
-                                                sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
-                                            />
-                                        )}
-                                        <div style={{ 
-                                            position: 'absolute', 
-                                            bottom: '12px', 
-                                            right: '12px',
-                                            display: 'flex',
-                                            gap: '8px'
-                                        }}>
-                                            <a 
-                                                href={material.file_url} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                style={{ 
-                                                    padding: '8px 12px', 
-                                                    background: 'rgba(0,0,0,0.6)', 
-                                                    backdropFilter: 'blur(10px)',
-                                                    color: 'white',
-                                                    borderRadius: 'var(--radius-md)',
-                                                    fontSize: '12px',
-                                                    textDecoration: 'none',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '6px',
-                                                    border: '1px solid rgba(255,255,255,0.1)'
-                                                }}
-                                            >
-                                                <ExternalLink size={14} /> Open Original
-                                            </a>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="lab-content" style={{ color: '#d1d1d1', lineHeight: 1.8, fontSize: 'var(--text-base)' }}>
-                                        {material?.content === 'Attached Material' ? (
-                                            <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
-                                                <Info size={48} style={{ marginBottom: 'var(--space-md)', opacity: 0.5 }} />
-                                                <p>This material doesn't have text content to display, and no file was found.</p>
-                                            </div>
-                                        ) : (
-                                            <ReactMarkdown>{material?.content}</ReactMarkdown>
-                                        )}
-                                    </div>
-                                )}
-
-                                <div style={{ 
-                                    position: 'absolute', 
-                                    top: 'var(--space-md)', 
-                                    right: 'var(--space-md)',
+                                {/* Mini Browser Toolbar */}
+                                <div style={{
                                     display: 'flex',
-                                    gap: '8px'
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    padding: '8px 16px',
+                                    background: 'rgba(0,0,0,0.2)',
+                                    borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                    marginBottom: '12px',
+                                    borderRadius: 'var(--radius-md)'
                                 }}>
-                                    <Badge variant="outline" style={{ background: 'rgba(0,0,0,0.3)', color: 'rgba(255,255,255,0.5)' }}>Interactive</Badge>
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ff5f56' }}></div>
+                                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ffbd2e' }}></div>
+                                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#27c93f' }}></div>
+                                    </div>
+                                    <div style={{ 
+                                        flex: 1, 
+                                        background: 'rgba(255,255,255,0.05)', 
+                                        padding: '4px 12px', 
+                                        borderRadius: '6px',
+                                        fontSize: '11px',
+                                        color: 'rgba(255,255,255,0.5)',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        border: '1px solid rgba(255,255,255,0.05)'
+                                    }}>
+                                        <Globe size={12} />
+                                        {material?.file_url || 'Local Document'}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button 
+                                            onClick={() => {
+                                                const currentUrl = material?.file_url;
+                                                setMaterial(prev => ({ ...prev, file_url: '' }));
+                                                setTimeout(() => setMaterial(prev => ({ ...prev, file_url: currentUrl })), 50);
+                                            }}
+                                            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px' }}
+                                            title="Refresh"
+                                        >
+                                            <RefreshCw size={14} />
+                                        </button>
+                                        <a 
+                                            href={material?.file_url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            style={{ color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center' }}
+                                            title="Open in New Tab"
+                                        >
+                                            <ExternalLink size={14} />
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div style={{ flex: 1, position: 'relative', overflowY: 'auto' }}>
+                                    {material?.file_url ? (
+                                        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                                            {material.file_url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
+                                                <img 
+                                                    src={material.file_url} 
+                                                    alt="Attached Material" 
+                                                    style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'var(--radius-md)' }} 
+                                                />
+                                            ) : (
+                                                <iframe 
+                                                    key={material.file_url} // Force reload on URL change
+                                                    src={(() => {
+                                                        const url = material.file_url;
+                                                        if (!url) return '';
+                                                        
+                                                        if (url.includes('drive.google.com/drive/folders/')) {
+                                                            const folderId = url.split('/folders/')[1]?.split('?')[0];
+                                                            return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
+                                                        }
+                                                        
+                                                        if (url.includes('drive.google.com')) {
+                                                            return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
+                                                        }
+                                                        
+                                                        if (url.includes('docs.google.com')) {
+                                                            if (!url.includes('embedded=true')) {
+                                                                const separator = url.includes('?') ? '&' : '?';
+                                                                return `${url}${separator}embedded=true`;
+                                                            }
+                                                            return url;
+                                                        }
+
+                                                        if (url.toLowerCase().endsWith('.pdf')) {
+                                                            return url;
+                                                        }
+
+                                                        if (url.match(/\.(doc|docx|ppt|pptx|xls|xlsx)$/i)) {
+                                                            return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+                                                        }
+
+                                                        return url;
+                                                    })()} 
+                                                    style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
+                                                    title="Resource Viewer"
+                                                    allow="autoplay; encrypted-media"
+                                                    sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
+                                                />
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="lab-content" style={{ color: '#d1d1d1', lineHeight: 1.8, fontSize: 'var(--text-base)', padding: 'var(--space-md)' }}>
+                                            {material?.content === 'Attached Material' ? (
+                                                <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
+                                                    <Info size={48} style={{ marginBottom: 'var(--space-md)', opacity: 0.5 }} />
+                                                    <p>This material doesn't have text content to display, and no file was found.</p>
+                                                </div>
+                                            ) : (
+                                                <ReactMarkdown>{material?.content}</ReactMarkdown>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
