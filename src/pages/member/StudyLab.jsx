@@ -531,7 +531,7 @@ const StudyLab = () => {
                                                 <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem' }}>Teleporting study context into Lab...</p>
                                             </div>
                                         )}
-                                        {material?.file_url ? (
+                                        {material?.file_url && !material.file_url.includes('drive.google.com/drive/folders') && !material.file_url.includes('embeddedfolderview') ? (
                                             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
                                                 {material.file_url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
                                                     <img 
@@ -546,14 +546,6 @@ const StudyLab = () => {
                                                             const url = material.file_url;
                                                             if (!url) return '';
                                                             
-                                                            if (url.includes('drive.google.com') && url.includes('/folders/')) {
-                                                                const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
-                                                                if (folderId) {
-                                                                    // Use the most stable embedded view for folders to avoid 403/Redirection
-                                                                    return `https://drive.google.com/embeddedfolderview?id=${folderId}&hl=en#grid`;
-                                                                }
-                                                            }
-
                                                             if (url.includes('drive.google.com') && (url.includes('/file/d/') || url.includes('id='))) {
                                                                 const fileId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
                                                                 if (fileId) {
@@ -583,6 +575,7 @@ const StudyLab = () => {
                                                         style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
                                                         title="Resource Viewer"
                                                         allow="autoplay; encrypted-media; clipboard-read; clipboard-write; camera; microphone"
+                                                        // CRITICAL: Block popups to prevent browser breakout
                                                         sandbox="allow-forms allow-modals allow-same-origin allow-scripts allow-top-navigation"
                                                     />
                                                 )}
