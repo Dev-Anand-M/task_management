@@ -702,9 +702,6 @@ const StudyLab = () => {
                                     <Send size={18} />
                                 </button>
                             </form>
-                            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '8px', textAlign: 'center' }}>
-                                Try: "Summarize this page", "What is the main concept?", or "Print page 1"
-                            </p>
                         </div>
                     </div>
                 )}
