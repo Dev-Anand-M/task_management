@@ -36,6 +36,9 @@ const StudyLab = () => {
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (messages.length > 1) {
+            saveChatHistory(messages);
+        }
     }, [messages]);
 
     const fetchMaterial = async () => {
@@ -50,17 +53,44 @@ const StudyLab = () => {
             const foundMaterial = noteRes.data || kbRes.data;
             if (foundMaterial) {
                 setMaterial(foundMaterial);
-                setMessages([
-                    { 
-                        role: 'assistant', 
-                        content: `Welcome to the Lab! I have loaded "${foundMaterial.title}". I've indexed all the content and am ready to help you understand it, summarize sections, or even print specific pages. What would you like to explore?` 
-                    }
-                ]);
+                // Load existing chat history from ai_history
+                const { data: historyData } = await supabase
+                    .from('ai_history')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .eq('tool', 'study_lab')
+                    .eq('title', materialId)
+                    .maybeSingle();
+
+                if (historyData?.content?.messages) {
+                    setMessages(historyData.content.messages);
+                } else {
+                    setMessages([
+                        { 
+                            role: 'assistant', 
+                            content: `Welcome to the Lab! I have loaded "${foundMaterial.title}". I've indexed all the content and am ready to help you understand it, summarize sections, or even print specific pages. What would you like to explore?` 
+                        }
+                    ]);
+                }
             }
         } catch (err) {
             console.error('Error fetching material:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const saveChatHistory = async (newMessages) => {
+        try {
+            await supabase.from('ai_history').upsert({
+                user_id: user.id,
+                tool: 'study_lab',
+                title: materialId,
+                content: { messages: newMessages },
+                created_at: new Date().toISOString()
+            }, { onConflict: 'user_id,tool,title' });
+        } catch (err) {
+            console.error('Error saving chat history:', err);
         }
     };
 
