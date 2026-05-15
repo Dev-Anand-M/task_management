@@ -27,6 +27,7 @@ const Diary = () => {
         return `${year}-${month}`;
     };
     const [selectedMonth, setSelectedMonth] = useState(getInitialMonth()); // YYYY-MM
+    const isMobile = window.innerWidth < 768;
 
     useEffect(() => {
         fetchLogs();
@@ -376,7 +377,7 @@ const Diary = () => {
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: color }} />
-                                        {l.learning_notes.length > 25 ? l.learning_notes.substring(0, 22) + '...' : l.learning_notes}
+                                        {(l.learning_notes || '').length > 25 ? (l.learning_notes || '').substring(0, 22) + '...' : (l.learning_notes || '')}
                                     </div>
                                 </div>
                             </div>
