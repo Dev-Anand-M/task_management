@@ -248,15 +248,60 @@ const StudyLab = () => {
                                 position: 'relative',
                                 minHeight: 'fit-content'
                             }}>
-                                {material?.file_url && (material.file_url.endsWith('.pdf') || material.file_url.includes('storage')) ? (
-                                    <iframe 
-                                        src={material.file_url} 
-                                        style={{ width: '100%', height: '80vh', border: 'none', borderRadius: 'var(--radius-md)' }}
-                                        title="Document"
-                                    />
+                                {material?.file_url ? (
+                                    <div style={{ width: '100%', height: 'calc(100vh - 250px)', position: 'relative' }}>
+                                        {material.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                            <img 
+                                                src={material.file_url} 
+                                                alt="Attached Material" 
+                                                style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'var(--radius-md)' }} 
+                                            />
+                                        ) : (
+                                            <iframe 
+                                                src={material.file_url.endsWith('.pdf') ? material.file_url : `https://docs.google.com/gview?url=${encodeURIComponent(material.file_url)}&embedded=true`} 
+                                                style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
+                                                title="Document Viewer"
+                                            />
+                                        )}
+                                        <div style={{ 
+                                            position: 'absolute', 
+                                            bottom: '12px', 
+                                            right: '12px',
+                                            display: 'flex',
+                                            gap: '8px'
+                                        }}>
+                                            <a 
+                                                href={material.file_url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                style={{ 
+                                                    padding: '8px 12px', 
+                                                    background: 'rgba(0,0,0,0.6)', 
+                                                    backdropFilter: 'blur(10px)',
+                                                    color: 'white',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    fontSize: '12px',
+                                                    textDecoration: 'none',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    border: '1px solid rgba(255,255,255,0.1)'
+                                                }}
+                                            >
+                                                <ExternalLink size={14} /> Open Original
+                                            </a>
+                                        </div>
+                                    </div>
                                 ) : (
                                     <div className="lab-content" style={{ color: '#d1d1d1', lineHeight: 1.8, fontSize: 'var(--text-base)' }}>
-                                        <ReactMarkdown>{material?.content}</ReactMarkdown>
+                                        {material?.content === 'Attached Material' ? (
+                                            <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
+                                                <Info size={48} style={{ marginBottom: 'var(--space-md)', opacity: 0.5 }} />
+                                                <p>This material doesn't have text content to display, and no file was found.</p>
+                                            </div>
+                                        ) : (
+                                            <ReactMarkdown>{material?.content}</ReactMarkdown>
+                                        )}
                                     </div>
                                 )}
 
