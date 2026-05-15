@@ -28,6 +28,7 @@ const StudyLab = () => {
     const [syncText, setSyncText] = useState('');
     const [history, setHistory] = useState([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
+    const [urlInput, setUrlInput] = useState('');
     const chatEndRef = useRef(null);
     const printRef = useRef(null);
 
@@ -36,6 +37,12 @@ const StudyLab = () => {
             fetchMaterial();
         }
     }, [materialId]);
+
+    useEffect(() => {
+        if (material?.file_url) {
+            setUrlInput(material.file_url);
+        }
+    }, [material?.file_url]);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -378,8 +385,8 @@ const StudyLab = () => {
                                             <Globe size={14} className="text-primary" />
                                             <input 
                                                 type="text"
-                                                value={material?.file_url || ''}
-                                                onChange={(e) => setMaterial(prev => ({ ...prev, file_url: e.target.value }))}
+                                                value={urlInput}
+                                                onChange={(e) => setUrlInput(e.target.value)}
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter') {
                                                         const url = e.target.value;
@@ -474,13 +481,12 @@ const StudyLab = () => {
                                                             if (url.includes('drive.google.com') && url.includes('/folders/')) {
                                                                 const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
                                                                 if (folderId) {
-                                                                    // Use the mobile view which is much better for staying in-app during navigation
-                                                                    return `https://drive.google.com/drive/mobile/folders/${folderId}?usp=sharing`;
+                                                                    // REVERT: Use the most stable embedded view to avoid 403 errors
+                                                                    return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
                                                                 }
                                                             }
                                                             
                                                             if (url.includes('drive.google.com')) {
-                                                                // For single files, preview is best
                                                                 return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
                                                             }
                                                             
