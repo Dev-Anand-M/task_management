@@ -773,7 +773,7 @@ const Routines = () => {
                             onChange={e => setForm({ 
                                 ...form, 
                                 is_anonymous: e.target.checked,
-                                start_time: e.target.checked ? '00:00:00' : '08:00:00' 
+                                start_time: e.target.checked ? '23:59:00' : '08:00:00' 
                             })} 
                             style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                         />
