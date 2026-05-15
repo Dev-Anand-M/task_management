@@ -163,17 +163,21 @@ const StudyLab = () => {
         setSending(true);
 
         try {
-            const systemPrompt = `You are the Zenith Lab Assistant. You have full context of the following material:
+            const systemPrompt = `You are the Zenith Lab Assistant, a specialized AI tutor integrated into the Study Lab.
             
+            You are currently assisting the student with the following resource:
             TITLE: ${material?.title}
-            CONTENT: ${material?.content}
+            SOURCE: ${material?.file_url || 'Local Document'}
+            ${material?.content && material.content !== 'Attached Material' ? `RAW CONTENT: ${material.content}` : 'Note: The student is viewing this via an integrated viewer. Please provide assistance based on the title and any context provided in the conversation.'}
             
-            Your job is to help the user understand this specific material. 
-            - Answer questions based ONLY on this material.
-            - Summarize complex parts.
-            - Explain concepts in simple terms.
-            - If they ask for something not in the text, politely say you don't have that info in this specific material.
-            - Be professional, academic, and encouraging.`;
+            Your role:
+            1. Act as a deep-subject expert for the material provided.
+            2. Even if raw text is limited, you should use your extensive internal knowledge to explain concepts related to "${material?.title}".
+            3. Help the student summarize, understand, and master the topics in this resource.
+            4. Do NOT say you don't have access to the content. Instead, say "I see you're working on ${material?.title}, how can I help you understand this specific topic?"
+            5. If you identify specific commands (like printing), acknowledge them gracefully.
+            
+            Maintain a premium, academic, and encouraging tone at all times.`;
 
             const response = await generateChat([...messages, { role: 'user', content: userMsg }], systemPrompt);
             setMessages(prev => [...prev, { role: 'assistant', content: response }]);
