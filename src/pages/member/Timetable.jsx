@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { routineService } from '../../services/routineService';
 import { manageRoutinesChat } from '../../services/aiService';
+import { supabase } from '../../lib/supabase';
 import { Card, Badge, Button, Input, LoadingSpinner } from '../../components/common';
 import { 
     Calendar, Sparkles, Send, Clock, 
@@ -35,7 +36,46 @@ const Timetable = () => {
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (messages.length > 1) {
+            saveChatHistory(messages);
+        }
     }, [messages]);
+
+    useEffect(() => {
+        if (user?.id) {
+            fetchChatHistory();
+        }
+    }, [user?.id]);
+
+    const fetchChatHistory = async () => {
+        try {
+            const { data } = await supabase
+                .from('ai_history')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('tool', 'timetable_architect')
+                .maybeSingle();
+
+            if (data?.content?.messages) {
+                setMessages(data.content.messages);
+            }
+        } catch (err) {
+            console.error('Error fetching chat history:', err);
+        }
+    };
+
+    const saveChatHistory = async (newMessages) => {
+        try {
+            await supabase.from('ai_history').upsert({
+                user_id: user.id,
+                tool: 'timetable_architect',
+                title: 'Main Timetable Chat',
+                content: { messages: newMessages }
+            }, { onConflict: 'user_id,tool,title' });
+        } catch (err) {
+            console.error('Error saving chat history:', err);
+        }
+    };
 
     const fetchRoutines = async () => {
         if (!user?.id) return;

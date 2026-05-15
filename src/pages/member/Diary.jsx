@@ -42,6 +42,32 @@ const Diary = () => {
             setLoading(false);
         }
     };
+    
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.shiftKey && e.altKey && (e.key === 'C' || e.key === 'c')) {
+                handleClearAllLogs();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    const handleClearAllLogs = async () => {
+        if (window.confirm('⚠️ CRITICAL: Are you sure you want to PERMANENTLY DELETE all diary logs? This cannot be undone.')) {
+            try {
+                setLoading(true);
+                await routineService.clearAllLogs();
+                await fetchLogs();
+                alert('Success: All diary records have been cleared.');
+            } catch (err) {
+                console.error('Failed to clear logs:', err);
+                alert('Error: Failed to clear records.');
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
 
     // --- Analytics Helpers ---
     const filteredLogs = logs.filter(l => {
@@ -279,6 +305,8 @@ const Diary = () => {
                     {mindmapLogs.map((l, i) => {
                         const total = mindmapLogs.length;
                         const angle = (i / total) * Math.PI * 2;
+
+                        
                         // Use multiple rings for better distribution
                         const ring = (i % 2 === 0) ? 1 : 1.6;
                         const radius = isMobile ? (80 * ring) : (180 * ring);

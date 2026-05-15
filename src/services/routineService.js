@@ -79,6 +79,17 @@ export const routineService = {
         return data;
     },
 
+    async clearAllLogs() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+        const { error } = await supabase
+            .from('routine_logs')
+            .delete()
+            .eq('user_id', user.id);
+        if (error) throw error;
+        return true;
+    },
+
     async logRoutineProgress(routineId, data) {
         const { data: { user } } = await supabase.auth.getUser();
         const logDate = new Date().toISOString().split('T')[0];
@@ -199,26 +210,46 @@ export const routineService = {
         const seenInNew = new Set();
 
         newRoutines.forEach(nr => {
-            const key = `${nr.title.toLowerCase()}_${nr.start_time.slice(0, 5)}`;
+            // Validation & Normalization for AI output
+            if (!nr.title || !nr.start_time) return;
+
+            // Ensure start_time is HH:mm:ss
+            let formattedTime = nr.start_time;
+            if (formattedTime.length === 5) formattedTime += ':00';
+            else if (formattedTime.length === 1) formattedTime = `0${formattedTime}:00:00`;
+            else if (formattedTime.length === 2) formattedTime = `${formattedTime}:00:00`;
+
+            // Ensure days_of_week is an array of integers
+            let days = nr.days_of_week || [1,2,3,4,5,6,7];
+            if (!Array.isArray(days)) days = [1,2,3,4,5,6,7];
+            days = days.map(d => parseInt(d)).filter(d => !isNaN(d) && d >= 1 && d <= 7);
+
+            const routineData = {
+                ...nr,
+                start_time: formattedTime,
+                days_of_week: days,
+                user_id: user.id,
+                is_active: true
+            };
+
+            const key = `${nr.title.toLowerCase()}_${formattedTime.slice(0, 5)}`;
             seenInNew.add(key);
+
             if (currentMap[key]) {
                 routinesToUpdate.push({
                     id: currentMap[key].id,
-                    ...nr,
-                    user_id: user.id,
-                    is_active: true
+                    ...routineData
                 });
             } else {
-                routinesToInsert.push({
-                    ...nr,
-                    user_id: user.id,
-                    is_active: true
-                });
+                routinesToInsert.push(routineData);
             }
         });
 
         const routinesToDelete = currentRoutines
-            .filter(r => !seenInNew.has(`${r.title.toLowerCase()}_${r.start_time.slice(0, 5)}`))
+            .filter(r => {
+                const key = `${r.title.toLowerCase()}_${r.start_time.slice(0, 5)}`;
+                return !seenInNew.has(key);
+            })
             .map(r => r.id);
 
         if (routinesToDelete.length > 0) {
