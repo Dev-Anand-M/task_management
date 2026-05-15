@@ -446,44 +446,6 @@ const StudyLab = () => {
                                                     <RefreshCw size={16} />
                                                 </button>
 
-                                                <button 
-                                                    onClick={async () => {
-                                                        try {
-                                                            const text = await navigator.clipboard.readText();
-                                                            if (text && text.trim().startsWith('http')) {
-                                                                const url = text.trim();
-                                                                setUrlInput(url);
-                                                                const newHistory = history.slice(0, historyIndex + 1);
-                                                                newHistory.push(url);
-                                                                setHistory(newHistory);
-                                                                setHistoryIndex(newHistory.length - 1);
-                                                                setMaterial(prev => ({ ...prev, file_url: url }));
-                                                            } else {
-                                                                alert('Please copy a valid link (starting with http) first!');
-                                                            }
-                                                        } catch (err) {
-                                                            alert('Clipboard permission needed! Please paste manually or allow access.');
-                                                        }
-                                                    }}
-                                                    style={{ 
-                                                        background: 'var(--primary-500)', 
-                                                        border: 'none', 
-                                                        color: 'white', 
-                                                        cursor: 'pointer', 
-                                                        padding: '4px 8px',
-                                                        borderRadius: '6px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '4px',
-                                                        fontSize: '10px',
-                                                        fontWeight: 'bold',
-                                                        boxShadow: '0 0 15px var(--primary-500)/30'
-                                                    }}
-                                                    title="Teleport: Load link from clipboard"
-                                                >
-                                                    <Zap size={14} fill="currentColor" /> TELEPORT
-                                                </button>
-
                                                 <a 
                                                     href={material?.file_url} 
                                                     target="_blank" 
