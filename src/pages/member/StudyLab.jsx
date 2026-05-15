@@ -481,12 +481,17 @@ const StudyLab = () => {
                                                             if (url.includes('drive.google.com') && url.includes('/folders/')) {
                                                                 const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
                                                                 if (folderId) {
-                                                                    // REVERT: Use the most stable embedded view to avoid 403 errors
+                                                                    // Deep-Study View: Optimized for internal folder navigation
                                                                     return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
                                                                 }
                                                             }
                                                             
-                                                            if (url.includes('drive.google.com')) {
+                                                            if (url.includes('drive.google.com') && (url.includes('/file/d/') || url.includes('id='))) {
+                                                                const fileId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
+                                                                if (fileId) {
+                                                                    // Use the Explorer view which is better for internal frame navigation
+                                                                    return `https://docs.google.com/viewer?srcid=${fileId}&pid=explorer&efh=false&a=v&chrome=false&embedded=true`;
+                                                                }
                                                                 return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
                                                             }
                                                             
