@@ -196,34 +196,28 @@ const StudyLab = () => {
         setSending(true);
 
         try {
-            let contextMessage = userMsg;
-            let isScanning = false;
-
-            if (userMsg?.includes("[SYSTEM_ACTION: SCAN_DOCUMENT]")) {
-                isScanning = true;
-                contextMessage = "I have requested a deep scan of the current document. Please acknowledge the content index and let me know you're ready to answer questions based on it.";
-            }
-
-            // Filter history to remove any old "I don't have access" apologies that might confuse the model
+            // Filter history to remove old apologies
             const cleanHistory = messages.filter(m => !m.content.toLowerCase().includes("don't have access") && !m.content.toLowerCase().includes("sync ai"));
 
-            const systemPrompt = `You are the Zenith Lab Assistant, a specialized AI tutor with DEEP access to the current material.
+            const systemPrompt = `You are the Zenith Lab Assistant. 
             
-            MATERIAL CONTEXT:
+            CRITICAL DISCLOSURE:
+            1. You CANNOT see the document viewer or the material's file content directly.
+            2. You MUST inform the student of this limitation if they ask questions about the current document's specific text.
+            3. ASK the student to copy and paste the relevant text into the chat for analysis.
+            4. If the student has already pasted content into the chat history, use it.
+            
+            MATERIAL METADATA:
             TITLE: ${material?.title}
-            SOURCE: ${material?.file_url}
-            ${material?.content && material.content !== 'Attached Material' ? `FULL CONTENT INDEX: ${material.content}` : 'Note: The student is viewing a complex document. Use your internal expertise on this topic to act as a primary tutor.'}
             
-            ${isScanning ? 'IMPORTANT: The student has just clicked "Read for AI". You MUST perform a thorough analysis of the FULL CONTENT INDEX above. If the index contains specific questions (like 2-mark or 5-mark), acknowledge them.' : ''}
-
+            ${material?.content && material.content !== 'Attached Material' ? `STORED INDEX: ${material.content}` : 'The student has not yet synced/pasted content.'}
+            
             STRICT DIRECTIVES:
-            1. NEVER say "I don't have access" or "I can't see the document." You HAVE the index.
-            2. If asked to list questions or sections (e.g., "list all 2m questions"), extract them accurately from the CONTENT INDEX provided above.
-            3. Act as a subject-matter expert. If the material is about Computer Science, you are a CS Professor.
-            4. If the CONTENT INDEX is sparse, use your expert knowledge to fill in the gaps based on the TITLE provided, while staying aligned with the student's context.
-            5. Your responses must be structured, professional, and academic.`;
+            - Be transparent about your vision limitation.
+            - Provide academic guidance based ONLY on pasted text or the TITLE metadata.
+            - Maintain a professional CS Professor persona.`;
 
-            const response = await generateChat([...cleanHistory, { role: 'user', content: contextMessage }], systemPrompt);
+            const response = await generateChat([...cleanHistory, { role: 'user', content: userMsg }], systemPrompt);
             setMessages(prev => [...prev, { role: 'assistant', content: response }]);
         } catch (err) {
             setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I ran into an error processing your request. Please try again." }]);
@@ -340,82 +334,83 @@ const StudyLab = () => {
                                         marginBottom: '12px',
                                         borderRadius: 'var(--radius-md)'
                                     }}>
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginRight: '8px' }}>
-                                            <button 
-                                                onClick={() => {
-                                                    if (historyIndex > 0) {
-                                                        const newIndex = historyIndex - 1;
-                                                        setHistoryIndex(newIndex);
-                                                        setMaterial(prev => ({ ...prev, file_url: history[newIndex] }));
-                                                    }
-                                                }}
-                                                disabled={historyIndex <= 0}
-                                                style={{ background: 'none', border: 'none', color: historyIndex > 0 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)', cursor: historyIndex > 0 ? 'pointer' : 'default', padding: '4px' }}
-                                            >
-                                                <ChevronLeft size={18} />
-                                            </button>
-                                            <button 
-                                                onClick={() => {
-                                                    if (historyIndex < history.length - 1) {
-                                                        const newIndex = historyIndex + 1;
-                                                        setHistoryIndex(newIndex);
-                                                        setMaterial(prev => ({ ...prev, file_url: history[newIndex] }));
-                                                    }
-                                                }}
-                                                disabled={historyIndex >= history.length - 1}
-                                                style={{ background: 'none', border: 'none', color: historyIndex < history.length - 1 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)', cursor: historyIndex < history.length - 1 ? 'pointer' : 'default', padding: '4px' }}
-                                            >
-                                                <ChevronRight size={18} />
-                                            </button>
-                                        </div>
-                                        <div style={{ 
-                                            flex: 1, 
-                                            background: 'rgba(255,255,255,0.1)', 
-                                            padding: '4px 12px', 
-                                            borderRadius: '8px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '10px',
-                                            border: '1px solid rgba(255,255,255,0.1)'
-                                        }}>
-                                            <Globe size={14} className="text-primary" />
-                                            <input 
-                                                type="text"
-                                                value={material?.file_url || ''}
-                                                onChange={(e) => setMaterial(prev => ({ ...prev, file_url: e.target.value }))}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        const url = e.target.value;
-                                                        // Update history
-                                                        const newHistory = history.slice(0, historyIndex + 1);
-                                                        newHistory.push(url);
-                                                        setHistory(newHistory);
-                                                        setHistoryIndex(newHistory.length - 1);
-                                                        setMaterial(prev => ({ ...prev, file_url: url }));
-                                                    }
-                                                }}
-                                                style={{ 
-                                                    background: 'none', 
-                                                    border: 'none', 
-                                                    color: 'white', 
-                                                    fontSize: '12px', 
-                                                    width: '100%',
-                                                    outline: 'none',
-                                                    fontWeight: '500'
-                                                }}
-                                                placeholder="Paste a link to study (Drive, PDF, Doc...)"
-                                            />
+                                            <div style={{ display: 'flex', gap: '4px' }}>
+                                                <button 
+                                                    onClick={() => {
+                                                        if (historyIndex > 0) {
+                                                            const newIndex = historyIndex - 1;
+                                                            setHistoryIndex(newIndex);
+                                                            const prevUrl = history[newIndex];
+                                                            setUrlInput(prevUrl);
+                                                            setMaterial(prev => ({ ...prev, file_url: prevUrl }));
+                                                        }
+                                                    }}
+                                                    disabled={historyIndex <= 0}
+                                                    style={{ background: 'none', border: 'none', color: historyIndex > 0 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)', cursor: historyIndex > 0 ? 'pointer' : 'default', padding: '4px' }}
+                                                >
+                                                    <ChevronLeft size={18} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => {
+                                                        if (historyIndex < history.length - 1) {
+                                                            const newIndex = historyIndex + 1;
+                                                            setHistoryIndex(newIndex);
+                                                            const nextUrl = history[newIndex];
+                                                            setUrlInput(nextUrl);
+                                                            setMaterial(prev => ({ ...prev, file_url: nextUrl }));
+                                                        }
+                                                    }}
+                                                    disabled={historyIndex >= history.length - 1}
+                                                    style={{ background: 'none', border: 'none', color: historyIndex < history.length - 1 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)', cursor: historyIndex < history.length - 1 ? 'pointer' : 'default', padding: '4px' }}
+                                                >
+                                                    <ChevronRight size={18} />
+                                                </button>
+                                            </div>
+                                            
+                                            <div style={{ 
+                                                flex: 1, 
+                                                background: 'rgba(255,255,255,0.1)', 
+                                                padding: '4px 12px', 
+                                                borderRadius: '8px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '10px',
+                                                border: '1px solid rgba(255,255,255,0.1)'
+                                            }}>
+                                                <Globe size={14} className="text-primary" />
+                                                <input 
+                                                    type="text"
+                                                    value={urlInput}
+                                                    onChange={(e) => setUrlInput(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            const url = e.target.value;
+                                                            // Clear future history if we're in the middle and branch off
+                                                            const newHistory = history.slice(0, historyIndex + 1);
+                                                            newHistory.push(url);
+                                                            setHistory(newHistory);
+                                                            setHistoryIndex(newHistory.length - 1);
+                                                            setMaterial(prev => ({ ...prev, file_url: url }));
+                                                        }
+                                                    }}
+                                                    style={{ 
+                                                        background: 'none', 
+                                                        border: 'none', 
+                                                        color: urlInput !== material?.file_url ? 'var(--primary-400)' : 'white', 
+                                                        fontSize: '12px', 
+                                                        width: '100%',
+                                                        outline: 'none',
+                                                        fontWeight: '500',
+                                                        transition: 'color 0.3s ease'
+                                                    }}
+                                                    placeholder="Paste a link to study (Drive, PDF, Doc...)"
+                                                />
+                                            </div>
                                         </div>
                                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                            {sending ? (
-                                                <Badge variant="outline" style={{ background: 'rgba(124, 58, 237, 0.2)', color: '#a78bfa', border: '1px solid rgba(124, 58, 237, 0.3)', gap: '6px' }}>
-                                                    <Brain size={12} className="animate-pulse" /> AI Indexing...
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="outline" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.2)', gap: '6px' }}>
-                                                    <Sparkles size={12} /> AI Synced
-                                                </Badge>
-                                            )}
+                                            <Badge variant="outline" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)', gap: '6px' }}>
+                                                <EyeOff size={12} /> AI Visibility Restricted
+                                            </Badge>
                                             
                                             <button 
                                                 onClick={() => {
@@ -428,23 +423,6 @@ const StudyLab = () => {
                                             >
                                                 <RefreshCw size={16} />
                                             </button>
-                                            
-                                            <Button 
-                                                size="sm" 
-                                                variant="primary" 
-                                                onClick={() => handleSendMessage(null, `[SYSTEM_ACTION: SCAN_DOCUMENT] URL: ${material?.file_url}`)}
-                                                disabled={sending || !material?.file_url}
-                                                style={{ 
-                                                    padding: '4px 12px', 
-                                                    fontSize: '10px', 
-                                                    height: '28px',
-                                                    background: 'linear-gradient(135deg, var(--primary-500), var(--primary-600))',
-                                                    boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)',
-                                                    gap: '6px'
-                                                }}
-                                            >
-                                                <Sparkles size={12} /> Read for AI
-                                            </Button>
 
                                             <a 
                                                 href={material?.file_url} 
