@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, LoadingSpinner } from '../../components/common';
 import { 
     BookOpen, Send, Printer, Maximize2, Minimize2, 
-    ChevronLeft, Share2, Sparkles, FileText, 
+    ChevronLeft, ChevronRight, Share2, Sparkles, FileText, 
     Download, Info, Settings, MessageSquare,
     Eye, EyeOff, ExternalLink, Globe, RefreshCw,
     Brain, CloudLightning
@@ -26,6 +26,8 @@ const StudyLab = () => {
     const [viewMode, setViewMode] = useState('split'); // 'split', 'doc', 'chat'
     const [showSyncModal, setShowSyncModal] = useState(false);
     const [syncText, setSyncText] = useState('');
+    const [history, setHistory] = useState([]);
+    const [historyIndex, setHistoryIndex] = useState(-1);
     const chatEndRef = useRef(null);
     const printRef = useRef(null);
 
@@ -54,6 +56,10 @@ const StudyLab = () => {
             const foundMaterial = noteRes.data || kbRes.data;
             if (foundMaterial) {
                 setMaterial(foundMaterial);
+                if (foundMaterial.file_url) {
+                    setHistory([foundMaterial.file_url]);
+                    setHistoryIndex(0);
+                }
                 // Load existing chat history from ai_history
                 const { data: historyData } = await supabase
                     .from('ai_history')
@@ -323,10 +329,33 @@ const StudyLab = () => {
                                         marginBottom: '12px',
                                         borderRadius: 'var(--radius-md)'
                                     }}>
-                                        <div style={{ display: 'flex', gap: '6px' }}>
-                                            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ff5f56' }}></div>
-                                            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ffbd2e' }}></div>
-                                            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#27c93f' }}></div>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginRight: '8px' }}>
+                                            <button 
+                                                onClick={() => {
+                                                    if (historyIndex > 0) {
+                                                        const newIndex = historyIndex - 1;
+                                                        setHistoryIndex(newIndex);
+                                                        setMaterial(prev => ({ ...prev, file_url: history[newIndex] }));
+                                                    }
+                                                }}
+                                                disabled={historyIndex <= 0}
+                                                style={{ background: 'none', border: 'none', color: historyIndex > 0 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)', cursor: historyIndex > 0 ? 'pointer' : 'default', padding: '4px' }}
+                                            >
+                                                <ChevronLeft size={18} />
+                                            </button>
+                                            <button 
+                                                onClick={() => {
+                                                    if (historyIndex < history.length - 1) {
+                                                        const newIndex = historyIndex + 1;
+                                                        setHistoryIndex(newIndex);
+                                                        setMaterial(prev => ({ ...prev, file_url: history[newIndex] }));
+                                                    }
+                                                }}
+                                                disabled={historyIndex >= history.length - 1}
+                                                style={{ background: 'none', border: 'none', color: historyIndex < history.length - 1 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)', cursor: historyIndex < history.length - 1 ? 'pointer' : 'default', padding: '4px' }}
+                                            >
+                                                <ChevronRight size={18} />
+                                            </button>
                                         </div>
                                         <div style={{ 
                                             flex: 1, 
@@ -343,6 +372,17 @@ const StudyLab = () => {
                                                 type="text"
                                                 value={material?.file_url || ''}
                                                 onChange={(e) => setMaterial(prev => ({ ...prev, file_url: e.target.value }))}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        const url = e.target.value;
+                                                        // Update history
+                                                        const newHistory = history.slice(0, historyIndex + 1);
+                                                        newHistory.push(url);
+                                                        setHistory(newHistory);
+                                                        setHistoryIndex(newHistory.length - 1);
+                                                        setMaterial(prev => ({ ...prev, file_url: url }));
+                                                    }
+                                                }}
                                                 style={{ 
                                                     background: 'none', 
                                                     border: 'none', 
