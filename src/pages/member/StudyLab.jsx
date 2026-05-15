@@ -474,11 +474,13 @@ const StudyLab = () => {
                                                             if (url.includes('drive.google.com') && url.includes('/folders/')) {
                                                                 const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
                                                                 if (folderId) {
-                                                                    return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
+                                                                    // Use the mobile view which is much better for staying in-app during navigation
+                                                                    return `https://drive.google.com/drive/mobile/folders/${folderId}?usp=sharing`;
                                                                 }
                                                             }
                                                             
                                                             if (url.includes('drive.google.com')) {
+                                                                // For single files, preview is best
                                                                 return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
                                                             }
                                                             
@@ -502,8 +504,8 @@ const StudyLab = () => {
                                                         })()} 
                                                         style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
                                                         title="Resource Viewer"
-                                                        allow="autoplay; encrypted-media; clipboard-read; clipboard-write"
-                                                        sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation"
+                                                        allow="autoplay; encrypted-media; clipboard-read; clipboard-write; camera; microphone"
+                                                        sandbox="allow-forms allow-modals allow-popups allow-same-origin allow-scripts allow-top-navigation"
                                                     />
                                                 )}
                                             </div>
