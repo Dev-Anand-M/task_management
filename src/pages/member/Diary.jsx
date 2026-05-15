@@ -223,77 +223,145 @@ const Diary = () => {
         </div>
     );
 
-    const renderMindmapView = () => (
-        <Card style={{ 
-            textAlign: 'center', 
-            padding: 'var(--space-2xl)', 
-            minHeight: '500px', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            position: 'relative',
-            overflow: 'hidden'
-        }}>
-            <div style={{
-                position: 'absolute',
-                inset: 0,
-                opacity: 0.05,
-                background: 'radial-gradient(circle at center, var(--primary-500) 0%, transparent 70%)',
-                zIndex: 0
-            }} />
-            
-            <div style={{ zIndex: 1 }}>
-                <Brain size={64} style={{ color: 'var(--primary-500)', marginBottom: 'var(--space-lg)', filter: 'drop-shadow(0 0 20px rgba(99, 102, 241, 0.4))' }} />
-                <h3 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800 }}>Knowledge Mindmap</h3>
-                <p style={{ color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto var(--space-2xl)' }}>Visualizing your learning connections from your diary logs</p>
-            </div>
-
-            <div style={{ 
+    const renderMindmapView = () => {
+        const mindmapLogs = logs.filter(l => l.learning_notes).slice(0, 15);
+        
+        return (
+            <Card style={{ 
+                textAlign: 'center', 
+                padding: isMobile ? 'var(--space-md)' : 'var(--space-2xl)', 
+                minHeight: '600px', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center',
                 position: 'relative',
-                width: '100%',
-                height: '300px',
-                zIndex: 1
+                overflow: 'hidden',
+                background: 'radial-gradient(circle at center, #1a1a24 0%, #0f0f12 100%)',
+                border: '1px solid var(--primary-900)'
             }}>
-                {logs.filter(l => l.learning_notes).slice(0, 12).map((l, i) => {
-                    const angle = (i / 12) * Math.PI * 2;
-                    const radius = 120 + (i % 3) * 30;
-                    const x = Math.cos(angle) * radius;
-                    const y = Math.sin(angle) * radius;
-                    
-                    return (
-                        <div key={i} style={{
-                            position: 'absolute',
-                            left: `calc(50% + ${x}px)`,
-                            top: `calc(50% + ${y}px)`,
-                            transform: 'translate(-50%, -50%)',
-                            padding: '10px 16px',
-                            background: 'var(--surface)',
-                            color: 'var(--text)',
-                            borderRadius: '12px',
-                            border: '1px solid var(--primary-500)',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-                            whiteSpace: 'nowrap',
-                            animation: `float ${3 + i % 2}s ease-in-out infinite`,
-                            animationDelay: `${i * 0.2}s`
-                        }}>
-                            <div style={{ position: 'absolute', width: '2px', height: `${radius}px`, background: 'var(--primary-500)', opacity: 0.2, top: y > 0 ? `-${radius}px` : '100%', left: '50%', transform: `rotate(${angle + Math.PI/2}rad)`, transformOrigin: 'top' }} />
-                            {l.learning_notes.split(' ').slice(0, 3).join(' ')}
-                        </div>
-                    );
-                })}
-            </div>
+                {/* Background Glow */}
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: 0.1,
+                    background: 'radial-gradient(circle at center, var(--primary-500) 0%, transparent 70%)',
+                    zIndex: 0
+                }} />
+                
+                {/* Center Core */}
+                <div style={{ 
+                    zIndex: 10, 
+                    position: 'relative',
+                    background: 'rgba(99, 102, 241, 0.1)',
+                    padding: 'var(--space-xl)',
+                    borderRadius: '50%',
+                    border: '1px solid var(--primary-500)',
+                    backdropFilter: 'blur(8px)',
+                    boxShadow: '0 0 40px rgba(99, 102, 241, 0.2)'
+                }}>
+                    <Brain size={isMobile ? 32 : 48} style={{ color: 'var(--primary-500)', filter: 'drop-shadow(0 0 10px var(--primary-500))' }} />
+                    <div style={{ marginTop: '8px' }}>
+                        <h3 style={{ fontSize: isMobile ? 'var(--text-sm)' : 'var(--text-lg)', fontWeight: 800, margin: 0 }}>CORE</h3>
+                        <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: 0 }}>KNOWLEDGE</p>
+                    </div>
+                </div>
 
-            <style>{`
-                @keyframes float {
-                    0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
-                    50% { transform: translate(-50%, -50%) translateY(-10px); }
-                }
-            `}</style>
-        </Card>
-    );
+                {/* Nodes & Connections */}
+                <div style={{ 
+                    position: 'absolute',
+                    inset: 0,
+                    zIndex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}>
+                    {mindmapLogs.map((l, i) => {
+                        const total = mindmapLogs.length;
+                        const angle = (i / total) * Math.PI * 2;
+                        // Use multiple rings for better distribution
+                        const ring = (i % 2 === 0) ? 1 : 1.6;
+                        const radius = isMobile ? (80 * ring) : (180 * ring);
+                        const x = Math.cos(angle) * radius;
+                        const y = Math.sin(angle) * radius;
+                        
+                        const color = i % 3 === 0 ? 'var(--primary-500)' : i % 3 === 1 ? 'var(--success-500)' : 'var(--warning-500)';
+                        
+                        return (
+                            <div key={i} style={{ position: 'absolute' }}>
+                                {/* Connection Line */}
+                                <div style={{ 
+                                    position: 'absolute', 
+                                    width: `${radius}px`, 
+                                    height: '1px', 
+                                    background: `linear-gradient(90deg, ${color} 0%, transparent 100%)`, 
+                                    opacity: 0.2, 
+                                    top: '0', 
+                                    left: '0', 
+                                    transform: `rotate(${angle}rad)`, 
+                                    transformOrigin: 'left center' 
+                                }} />
+                                
+                                {/* Node */}
+                                <div 
+                                    className="mindmap-node"
+                                    style={{
+                                        position: 'absolute',
+                                        left: `${x}px`,
+                                        top: `${y}px`,
+                                        transform: 'translate(-50%, -50%)',
+                                        padding: '8px 12px',
+                                        background: 'rgba(26, 26, 36, 0.9)',
+                                        color: 'white',
+                                        borderRadius: '12px',
+                                        border: `1px solid ${color}`,
+                                        fontSize: isMobile ? '9px' : '11px',
+                                        fontWeight: 700,
+                                        boxShadow: `0 4px 20px rgba(0,0,0,0.5), 0 0 10px ${color}33`,
+                                        whiteSpace: 'nowrap',
+                                        cursor: 'pointer',
+                                        zIndex: 5,
+                                        transition: 'all 0.3s ease',
+                                        animation: `float ${4 + i % 2}s ease-in-out infinite`,
+                                        animationDelay: `${i * 0.3}s`
+                                    }}
+                                    onClick={() => {
+                                        setFilter('all');
+                                        setSelectedRoutine(l.routine_id);
+                                        setView('list');
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: color }} />
+                                        {l.learning_notes.length > 25 ? l.learning_notes.substring(0, 22) + '...' : l.learning_notes}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div style={{ position: 'absolute', bottom: 'var(--space-md)', width: '100%', textAlign: 'center', zIndex: 10 }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)', margin: 0 }}>
+                        {isMobile ? 'Nodes scaled for mobile view' : 'Click nodes to filter and view full logs'}
+                    </p>
+                </div>
+
+                <style>{`
+                    .mindmap-node:hover {
+                        transform: translate(-50%, -50%) scale(1.1) !important;
+                        background: var(--surface) !important;
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 20px var(--primary-500)66 !important;
+                        z-index: 20 !important;
+                    }
+                    @keyframes float {
+                        0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+                        50% { transform: translate(-50%, -50%) translateY(-10px); }
+                    }
+                `}</style>
+            </Card>
+        );
+    };
 
     const renderTimelineView = () => {
         const todayLogs = filteredLogs.filter(l => l.status === 'done' && l.actual_start_time);

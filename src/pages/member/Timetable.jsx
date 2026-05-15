@@ -139,7 +139,7 @@ const Timetable = () => {
                 gap: 'var(--space-lg)', 
                 flex: 1, 
                 minHeight: 0,
-                overflowY: isMobile ? 'auto' : 'hidden'
+                overflowY: 'auto'
             }}>
                 {/* Chat Column */}
                 <Card style={{ 
@@ -149,45 +149,47 @@ const Timetable = () => {
                     overflow: 'hidden', 
                     border: '1px solid var(--border)',
                     width: isMobile ? '100%' : '350px',
-                    height: isMobile ? '400px' : 'auto',
-                    flexShrink: 0
+                    height: isMobile ? '500px' : 'auto',
+                    flexShrink: 0,
+                    boxShadow: 'var(--shadow-lg)',
+                    borderRadius: 'var(--radius-xl)'
                 }}>
-                    <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
-                        <h3 style={{ margin: 0, fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <MessageSquare size={16} /> Strategy Chat
+                    <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border)', background: 'rgba(99, 102, 241, 0.05)' }}>
+                        <h3 style={{ margin: 0, fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary-500)' }}>
+                            <Sparkles size={16} /> Strategy & Planning
                         </h3>
                     </div>
                     
-                    <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
                         {messages.map((msg, i) => (
                             <div key={i} style={{ 
                                 alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                                maxWidth: '85%',
+                                maxWidth: '90%',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '4px'
+                                gap: '2px'
                             }}>
                                 <div style={{ 
-                                    padding: '12px', 
-                                    borderRadius: msg.role === 'user' ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                                    padding: '10px 14px', 
+                                    borderRadius: msg.role === 'user' ? '18px 18px 2px 18px' : '18px 18px 18px 2px',
                                     background: msg.role === 'user' ? 'var(--primary-600)' : 'var(--surface)',
                                     color: msg.role === 'user' ? 'white' : 'var(--text)',
-                                    fontSize: '14px',
+                                    fontSize: '13px',
                                     fontWeight: '500',
                                     boxShadow: 'var(--shadow-sm)',
                                     border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
                                     wordBreak: 'break-word',
-                                    overflowWrap: 'anywhere'
+                                    lineHeight: '1.4'
                                 }}>
                                     {msg.content}
                                 </div>
-                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: msg.role === 'user' ? 'right' : 'left' }}>
+                                <span style={{ fontSize: '9px', color: 'var(--text-muted)', textAlign: msg.role === 'user' ? 'right' : 'left', margin: '0 4px' }}>
                                     {msg.role === 'user' ? 'You' : 'Architect'}
                                 </span>
                             </div>
                         ))}
                         {sending && (
-                            <div style={{ alignSelf: 'flex-start', padding: '12px', background: 'var(--surface)', borderRadius: '16px 16px 16px 2px' }}>
+                            <div style={{ alignSelf: 'flex-start', padding: '10px 14px', background: 'var(--surface)', borderRadius: '18px 18px 18px 2px', border: '1px solid var(--border)' }}>
                                 <LoadingSpinner size="sm" />
                             </div>
                         )}
@@ -197,13 +199,13 @@ const Timetable = () => {
                     <form onSubmit={handleSendMessage} style={{ padding: 'var(--space-md)', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
                         <div className="flex gap-sm">
                             <Input 
-                                placeholder="Describe your plan..." 
+                                placeholder="e.g. Add 2h study every Mon" 
                                 value={userInput} 
                                 onChange={e => setUserInput(e.target.value)}
                                 disabled={sending}
-                                style={{ margin: 0 }}
+                                style={{ margin: 0, borderRadius: 'var(--radius-full)' }}
                             />
-                            <Button variant="primary" type="submit" disabled={sending || !userInput.trim()}>
+                            <Button variant="primary" type="submit" disabled={sending || !userInput.trim()} style={{ borderRadius: 'var(--radius-full)', width: '42px', height: '42px', padding: 0 }}>
                                 <Send size={18} />
                             </Button>
                         </div>
@@ -211,7 +213,7 @@ const Timetable = () => {
                 </Card>
 
                 {/* Timetable View */}
-                <div style={{ overflowY: 'auto', paddingRight: '4px' }}>
+                <div style={{ flex: 1, minWidth: 0, paddingRight: '4px' }}>
                     <Card style={{ marginBottom: 'var(--space-md)', background: 'linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%)', border: '1px solid var(--primary-500)' }}>
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-md">

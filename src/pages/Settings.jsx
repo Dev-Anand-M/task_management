@@ -17,7 +17,8 @@ import {
     Brain,
     Key,
     ExternalLink,
-    Plus
+    Plus,
+    Volume2
 } from 'lucide-react';
 
 const colorSchemes = [

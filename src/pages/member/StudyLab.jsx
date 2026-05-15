@@ -272,31 +272,35 @@ const StudyLab = () => {
         }}>
             {/* Header */}
             <header style={{ 
-                height: '64px', 
-                padding: '0 var(--space-lg)', 
+                height: isMobile ? 'auto' : '64px', 
+                padding: isMobile ? 'var(--space-sm) var(--space-md)' : '0 var(--space-lg)', 
                 display: 'flex', 
-                alignItems: 'center', 
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center', 
                 justifyContent: 'space-between',
-                background: 'rgba(20, 20, 25, 0.8)',
-                backdropFilter: 'blur(10px)',
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
-                zIndex: 10
+                background: 'rgba(20, 20, 25, 0.95)',
+                backdropFilter: 'blur(15px)',
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                gap: isMobile ? 'var(--space-sm)' : '0',
+                zIndex: 100
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
                     <button 
                         onClick={() => navigate(-1)}
-                        style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer' }}
+                        style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: isMobile ? '32px' : '36px', height: isMobile ? '32px' : '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer' }}
                     >
-                        <ChevronLeft size={20} />
+                        <ChevronLeft size={isMobile ? 18 : 20} />
                     </button>
                     <div>
-                        <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 700, margin: 0 }}>{material?.title}</h2>
-                        <span style={{ fontSize: '10px', color: 'var(--primary-400)' }}>Study Lab Active</span>
+                        <h2 style={{ fontSize: isMobile ? 'var(--text-xs)' : 'var(--text-sm)', fontWeight: 700, margin: 0 }}>
+                            {isMobile ? (material?.title?.length > 25 ? material.title.substring(0, 22) + '...' : material?.title) : material?.title}
+                        </h2>
+                        <span style={{ fontSize: '9px', color: 'var(--primary-400)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Study Lab Mode</span>
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                    <Button size="sm" variant="outline" onClick={() => handlePrint('all')} style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', justifyContent: isMobile ? 'space-between' : 'flex-end' }}>
+                    <Button size="sm" variant="outline" onClick={() => handlePrint('all')} style={{ borderColor: 'rgba(255,255,255,0.1)', padding: isMobile ? '6px' : undefined }}>
                         <Printer size={16} />
                     </Button>
                     <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius-md)', padding: '4px', display: 'flex', gap: '2px' }}>
@@ -311,7 +315,7 @@ const StudyLab = () => {
                 flex: 1, 
                 display: 'flex', 
                 flexDirection: isMobile ? 'column' : 'row',
-                overflow: 'hidden' 
+                overflow: isMobile ? 'auto' : 'hidden' 
             }}>
                 {/* Left: Document Viewer */}
                 {(viewMode === 'split' || viewMode === 'doc') && (
@@ -322,11 +326,12 @@ const StudyLab = () => {
                         borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.05)',
                         borderBottom: isMobile ? '1px solid rgba(255,255,255,0.05)' : 'none',
                         background: '#0f0f12',
-                        height: isMobile && viewMode === 'split' ? '50%' : '100%'
+                        height: isMobile && viewMode === 'split' ? '55vh' : '100%',
+                        minHeight: isMobile && viewMode === 'split' ? '400px' : 'auto'
                     }}>
                         <div style={{ 
                             flex: 1, 
-                            padding: isMobile ? 'var(--space-sm)' : 'var(--space-md)', 
+                            padding: isMobile ? 'var(--space-xs)' : 'var(--space-md)', 
                             overflowY: 'auto',
                             display: 'flex',
                             justifyContent: 'center'
@@ -335,8 +340,8 @@ const StudyLab = () => {
                                     width: '100%',
                                     maxWidth: viewMode === 'doc' ? '1200px' : 'none',
                                     background: '#1a1a20',
-                                    borderRadius: 'var(--radius-xl)',
-                                    padding: 'var(--space-sm)',
+                                    borderRadius: isMobile ? 'var(--radius-md)' : 'var(--radius-xl)',
+                                    padding: isMobile ? '4px' : 'var(--space-sm)',
                                     boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
                                     border: '1px solid rgba(255,255,255,0.05)',
                                     position: 'relative',
@@ -614,8 +619,9 @@ const StudyLab = () => {
                 {(viewMode === 'split' || viewMode === 'chat') && (
                     <div style={{ 
                         width: isMobile || viewMode === 'chat' ? '100%' : '450px', 
-                        flex: isMobile && viewMode === 'split' ? 'none' : 1,
-                        height: isMobile && viewMode === 'split' ? '50%' : '100%',
+                        flex: isMobile && viewMode === 'split' ? 1 : (isMobile || viewMode === 'chat' ? 'none' : 1),
+                        height: isMobile && viewMode === 'split' ? 'auto' : '100%',
+                        minHeight: isMobile && viewMode === 'split' ? '500px' : 'auto',
                         display: 'flex', 
                         flexDirection: 'column',
                         background: 'rgba(20, 20, 25, 0.4)',
@@ -625,10 +631,10 @@ const StudyLab = () => {
                         <div style={{ 
                             flex: 1, 
                             overflowY: 'auto', 
-                            padding: 'var(--space-lg)',
+                            padding: isMobile ? 'var(--space-md)' : 'var(--space-lg)',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: 'var(--space-lg)'
+                            gap: isMobile ? 'var(--space-md)' : 'var(--space-lg)'
                         }}>
                             {messages.map((msg, i) => (
                                 <div key={i} style={{ 
@@ -639,13 +645,13 @@ const StudyLab = () => {
                                     gap: '6px'
                                 }}>
                                     <div style={{ 
-                                        padding: '16px', 
+                                        padding: isMobile ? '12px 14px' : '16px', 
                                         borderRadius: msg.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
                                         background: msg.role === 'user' ? 'var(--primary-600)' : 'rgba(255,255,255,0.08)',
                                         color: 'white',
-                                        fontSize: '14px',
+                                        fontSize: isMobile ? '13px' : '14px',
                                         fontWeight: '500',
-                                        lineHeight: 1.6,
+                                        lineHeight: 1.5,
                                         boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                                         border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.1)',
                                         wordBreak: 'break-word',
@@ -670,7 +676,7 @@ const StudyLab = () => {
                         </div>
 
                         {/* Input Area */}
-                        <div style={{ padding: 'var(--space-lg)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ padding: isMobile ? 'var(--space-md)' : 'var(--space-lg)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                             <form onSubmit={handleSendMessage} style={{ position: 'relative' }}>
                                 <textarea 
                                     value={input}

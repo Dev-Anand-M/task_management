@@ -17,61 +17,7 @@ export const getActiveUser = async () => {
     }
 };
 
-export const getProfileById = async (id) => {
-    try {
-        const { data, error } = await supabase.from('profiles').select('*').eq('id', id).single();
-        if (error) throw error;
-        return data;
-    } catch (err) {
-        console.error('Error in getProfileById:', err);
-        return null;
-    }
-};
-
-export const getProfiles = async () => {
-    try {
-        const { data, error } = await supabase.from('profiles').select('*').order('name');
-        if (error) throw error;
-        return data || [];
-    } catch (err) {
-        console.error('Error in getProfiles:', err);
-        return [];
-    }
-};
-
-export const updateProfile = async (id, updates) => {
-    try {
-        const { data, error } = await supabase.from('profiles').update(updates).eq('id', id).select().single();
-        if (error) throw error;
-        return data;
-    } catch (err) {
-        console.error('Error in updateProfile:', err);
-        throw err;
-    }
-};
-
-export const uploadAvatar = async (userId, file) => {
-    try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${userId}-${Math.random()}.${fileExt}`;
-        const filePath = `avatars/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-            .from('profiles')
-            .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-            .from('profiles')
-            .getPublicUrl(filePath);
-
-        return publicUrl;
-    } catch (err) {
-        console.error('Error in uploadAvatar:', err);
-        throw err;
-    }
-};
+// No duplicates here, but I'll remove the first set of Profile functions to use the better ones later.
 
 // GLOBAL QUERY TIMEOUT WRAPPER (increased for reliability)
 export const withTimeout = async (promise, ms = 30000) => {
@@ -107,6 +53,17 @@ export const getMembers = async () => {
     }
 };
 
+export const getProfiles = async () => {
+    try {
+        const { data, error } = await supabase.from('profiles').select('*').order('name');
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error in getProfiles:', err);
+        return [];
+    }
+};
+
 export const getProfileById = async (id) => {
     try {
         const { data, error } = await withTimeout(supabase.from('profiles').select('*').eq('id', id).single(), 10000);
@@ -119,26 +76,34 @@ export const getProfileById = async (id) => {
 };
 
 export const updateProfile = async (id, updates) => {
-    const { data, error } = await supabase.from('profiles').update(updates).eq('id', id).select().single();
-    if (error) throw error;
-    return data;
+    try {
+        const { data, error } = await supabase.from('profiles').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    } catch (err) {
+        console.error('Error in updateProfile:', err);
+        throw err;
+    }
 };
 
 export const uploadAvatar = async (userId, file) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `${userId}/${fileName}`;
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        const filePath = `${userId}/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
+        const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(filePath, file, { upsert: true });
 
-    if (uploadError) {
-        throw uploadError;
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        return data.publicUrl;
+    } catch (err) {
+        console.error('Error in uploadAvatar:', err);
+        throw err;
     }
-
-    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-    return data.publicUrl;
 };
 
 export const uploadStudyMaterial = async (file) => {
@@ -782,6 +747,12 @@ export const getClassrooms = async () => {
 export const createClassroom = async (name, description) => {
     const user = await getActiveUser();
     const { data, error } = await supabase.from('classrooms').insert({ name, description, created_by: user.id }).select().single();
+    if (error) throw error;
+    return data;
+};
+
+export const updateClassroom = async (id, updates) => {
+    const { data, error } = await supabase.from('classrooms').update(updates).eq('id', id).select().single();
     if (error) throw error;
     return data;
 };
