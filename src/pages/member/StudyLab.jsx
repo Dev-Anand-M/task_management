@@ -193,6 +193,14 @@ const StudyLab = () => {
         setSending(true);
 
         try {
+            let contextMessage = userMsg;
+            let isScanning = false;
+
+            if (userMsg?.includes("[SYSTEM_ACTION: SCAN_DOCUMENT]")) {
+                isScanning = true;
+                contextMessage = "I have requested a deep scan of the current document. Please acknowledge the content index and let me know you're ready to answer questions based on it.";
+            }
+
             // Filter history to remove any old "I don't have access" apologies that might confuse the model
             const cleanHistory = messages.filter(m => !m.content.toLowerCase().includes("don't have access") && !m.content.toLowerCase().includes("sync ai"));
 
@@ -203,16 +211,16 @@ const StudyLab = () => {
             SOURCE: ${material?.file_url}
             ${material?.content && material.content !== 'Attached Material' ? `FULL CONTENT INDEX: ${material.content}` : 'Note: The student is viewing a complex document. Use your internal expertise on this topic to act as a primary tutor.'}
             
+            ${isScanning ? 'IMPORTANT: The student has just clicked "Read for AI". You MUST perform a thorough analysis of the FULL CONTENT INDEX above. If the index contains specific questions (like 2-mark or 5-mark), acknowledge them.' : ''}
+
             STRICT DIRECTIVES:
             1. NEVER say "I don't have access" or "I can't see the document." You HAVE the index.
             2. If asked to list questions or sections (e.g., "list all 2m questions"), extract them accurately from the CONTENT INDEX provided above.
             3. Act as a subject-matter expert. If the material is about Computer Science, you are a CS Professor.
             4. If the CONTENT INDEX is sparse, use your expert knowledge to fill in the gaps based on the TITLE provided, while staying aligned with the student's context.
-            5. Your responses must be structured, professional, and academic.
-            
-            Example: If asked for "2m questions", provide a list of 2-mark questions found in the text or relevant to the chapters identified.`;
+            5. Your responses must be structured, professional, and academic.`;
 
-            const response = await generateChat([...cleanHistory, { role: 'user', content: userMsg }], systemPrompt);
+            const response = await generateChat([...cleanHistory, { role: 'user', content: contextMessage }], systemPrompt);
             setMessages(prev => [...prev, { role: 'assistant', content: response }]);
         } catch (err) {
             setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I ran into an error processing your request. Please try again." }]);
@@ -417,6 +425,24 @@ const StudyLab = () => {
                                             >
                                                 <RefreshCw size={16} />
                                             </button>
+                                            
+                                            <Button 
+                                                size="sm" 
+                                                variant="primary" 
+                                                onClick={() => handleSendMessage(null, `[SYSTEM_ACTION: SCAN_DOCUMENT] URL: ${material?.file_url}`)}
+                                                disabled={sending || !material?.file_url}
+                                                style={{ 
+                                                    padding: '4px 12px', 
+                                                    fontSize: '10px', 
+                                                    height: '28px',
+                                                    background: 'linear-gradient(135deg, var(--primary-500), var(--primary-600))',
+                                                    boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)',
+                                                    gap: '6px'
+                                                }}
+                                            >
+                                                <Sparkles size={12} /> Read for AI
+                                            </Button>
+
                                             <a 
                                                 href={material?.file_url} 
                                                 target="_blank" 
