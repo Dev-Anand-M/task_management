@@ -82,6 +82,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo, materials, allLogs }) => {
     const [actualStartTime, setActualStartTime] = useState(log?.actual_start_time || routine.start_time.slice(0, 5));
+    const [actualDuration, setActualDuration] = useState(log?.time_spent_minutes || routine.duration_minutes || 60);
     const [notes, setNotes] = useState(log?.learning_notes || '');
     const [showDetails, setShowDetails] = useState(false);
     const isDone = log?.status === 'done';
@@ -96,21 +97,17 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo, material
         const logsArray = Object.values(allLogs || {});
         const conflicts = routineService.checkLogConflicts(logsArray, {
             start_time: actualStartTime,
-            minutes: routine.duration_minutes || 60,
+            minutes: actualDuration,
             routine_id: routine.id
         });
 
         if (conflicts.length > 0) {
-            const conflictNames = conflicts.map(c => {
-                const r = routines.find(rout => rout.id === c.routine_id);
-                return r?.title || 'Another task';
-            }).join(', ');
-            alert(`🛑 STRICT BLOCK: Time Conflict Detected!\n\nThis slot is already occupied by: "${conflictNames}".\n\nYou must adjust your start time to avoid overlapping.`);
+            alert(`🛑 STRICT BLOCK: Time Conflict Detected!\n\nThis slot overlaps with another logged activity.\n\nYou must adjust your start time or duration to avoid overlapping.`);
             return;
         }
 
         await onUpdate(routine.id, {
-            time_spent_minutes: routine.duration_minutes || 60,
+            time_spent_minutes: actualDuration,
             actual_start_time: actualStartTime,
             learning_notes: notes,
             status: 'done',
@@ -230,10 +227,14 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo, material
                                 />
                             </div>
                             <div>
-                                <label className="input-label">Duration (Planned)</label>
-                                <p style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--primary-500)' }}>
-                                    {routine.duration_minutes || 60} minutes
-                                </p>
+                                <label className="input-label">Time Spent (mins)</label>
+                                <Input 
+                                    type="number" 
+                                    value={actualDuration} 
+                                    onChange={e => setActualDuration(parseInt(e.target.value) || 0)} 
+                                    min="1"
+                                    required
+                                />
                             </div>
                         </div>
                         <MentionInput 
