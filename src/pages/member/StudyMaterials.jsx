@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import { Card, Button, Badge, Input, Modal } from '../../components/common';
 import {
     BookOpen, Plus, Trash2, Search, Edit3, Pin, PinOff,
@@ -24,6 +25,7 @@ const NOTE_COLORS = [
 
 const StudyMaterials = () => {
     const { user } = useAuth();
+    const { id: urlId } = useParams();
     const [activeTab, setActiveTab] = useState('shared');
     const [sharedMaterials, setSharedMaterials] = useState([]);
     const [myNotes, setMyNotes] = useState([]);
@@ -77,6 +79,16 @@ const StudyMaterials = () => {
             .subscribe();
         return () => supabase.removeChannel(channel);
     }, [user?.id, user?.classroom_id, loadData]);
+
+    useEffect(() => {
+        if (urlId && (sharedMaterials.length > 0 || myNotes.length > 0)) {
+            const item = [...sharedMaterials, ...myNotes].find(i => i.id === urlId);
+            if (item) {
+                setViewingItem(item);
+                setActiveTab(sharedMaterials.find(m => m.id === urlId) ? 'shared' : 'notes');
+            }
+        }
+    }, [urlId, sharedMaterials, myNotes]);
 
     // Note CRUD
     const handleSaveNote = async (e) => {

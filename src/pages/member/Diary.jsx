@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { routineService } from '../../services/routineService';
 import { Card, Badge, Button, ProgressBar, LoadingSpinner } from '../../components/common';
 import { format12h, minutesTo12h } from '../../utils/timeFormat';
+import { Link } from 'react-router-dom';
 import { 
     Target, Calendar, PieChart, Activity, 
     ChevronLeft, ChevronRight, Filter, BookOpen,
@@ -14,6 +15,7 @@ const Diary = () => {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [logs, setLogs] = useState([]);
+    const [materials, setMaterials] = useState([]);
     const [filter, setFilter] = useState('all'); // all, done, ignored, postponed
     const [selectedRoutine, setSelectedRoutine] = useState('all');
     const [view, setView] = useState('list'); // list, analytics, mindmap
@@ -27,18 +29,15 @@ const Diary = () => {
         if (!user?.id) return;
         setLoading(true);
         try {
-            // In a real app, we'd fetch for the selected month
-            // For now, let's fetch all and filter client-side
-            const { data, error } = await supabase
-                .from('routine_logs')
-                .select('*, routines(*)')
-                .eq('user_id', user.id)
-                .order('log_date', { ascending: false });
-                
-            if (error) throw error;
-            setLogs(data);
+            const [logData, notes, shared] = await Promise.all([
+                routineService.getAllLogs(),
+                supabase.from('study_notes').select('id, title').eq('user_id', user.id),
+                supabase.from('knowledge_base').select('id, title').eq('classroom_id', user.classroom_id)
+            ]);
+            setLogs(logData);
+            setMaterials([...(notes.data || []), ...(shared.data || [])]);
         } catch (err) {
-            console.error('Failed to fetch logs:', err);
+            console.error('Failed to fetch diary data:', err);
         } finally {
             setLoading(false);
         }
@@ -59,6 +58,37 @@ const Diary = () => {
     };
 
     const uniqueRoutines = Array.from(new Set(logs.map(l => l.routines).filter(Boolean).map(r => JSON.stringify(r)))).map(s => JSON.parse(s));
+
+    const LinkifiedText = ({ text }) => {
+        if (!text) return null;
+        
+        // Split by # followed by non-space characters
+        const parts = text.split(/(#[^\s,]+)/g);
+        
+        return (
+            <p style={{ margin: 0, fontSize: 'var(--text-sm)', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+                {parts.map((part, i) => {
+                    if (part.startsWith('#')) {
+                        const title = part.slice(1);
+                        const match = materials.find(m => m.title.toLowerCase() === title.toLowerCase());
+                        if (match) {
+                            return (
+                                <Link 
+                                    key={i} 
+                                    to={`/study-materials/${match.id}`}
+                                    style={{ color: 'var(--primary-500)', fontWeight: 700, textDecoration: 'none' }}
+                                    className="hover:underline"
+                                >
+                                    {part}
+                                </Link>
+                            );
+                        }
+                    }
+                    return part;
+                })}
+            </p>
+        );
+    };
 
     const renderListView = () => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
@@ -95,7 +125,7 @@ const Diary = () => {
                             boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
                         }}>
                             <p style={{ margin: '0 0 8px 0', fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--primary-500)', letterSpacing: '1px' }}>Insight Log</p>
-                            <p style={{ margin: 0, fontSize: 'var(--text-sm)', lineHeight: 1.6, color: 'var(--text-secondary)' }}>{log.learning_notes}</p>
+                            <LinkifiedText text={log.learning_notes} />
                         </div>
                     )}
                 </Card>

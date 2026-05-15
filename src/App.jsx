@@ -199,6 +199,7 @@ function AppRoutes() {
           <Route path="/quizzes/:quizId" element={<Quizzes />} />
           <Route path="/xp-history" element={<XPHistory />} />
           <Route path="/study-materials" element={<StudyMaterials />} />
+          <Route path="/study-materials/:id" element={<StudyMaterials />} />
           <Route path="/calendar" element={<MemberCalendar />} />
           <Route path="/planner" element={<Planner />} />
           <Route path="/routines" element={<Routines />} />

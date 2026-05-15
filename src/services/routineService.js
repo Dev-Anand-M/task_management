@@ -70,6 +70,15 @@ export const routineService = {
         return data;
     },
 
+    async getAllLogs() {
+        const { data, error } = await supabase
+            .from('routine_logs')
+            .select('*, routines(*)')
+            .order('log_date', { ascending: false });
+        if (error) throw error;
+        return data;
+    },
+
     async logRoutineProgress(routineId, data) {
         const { data: { user } } = await supabase.auth.getUser();
         const logDate = new Date().toISOString().split('T')[0];
