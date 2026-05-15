@@ -740,6 +740,97 @@ export const switchClassroom = async (classroomId) => {
     return data;
 };
 
+export const getClassroomById = async (id) => {
+    try {
+        const { data, error } = await supabase.from('classrooms').select('*').eq('id', id).maybeSingle();
+        if (error) throw error;
+        return data;
+    } catch (err) {
+        console.error('Error in getClassroomById:', err);
+        return null;
+    }
+};
+
+export const getMembersByClassroom = async (classroomId) => {
+    try {
+        const { data, error } = await supabase.from('profiles').select('*').eq('classroom_id', classroomId).order('name');
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error in getMembersByClassroom:', err);
+        return [];
+    }
+};
+
+export const getTasksByClassroom = async (classroomId) => {
+    try {
+        const { data, error } = await supabase.from('tasks').select('*').eq('classroom_id', classroomId).order('created_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error in getTasksByClassroom:', err);
+        return [];
+    }
+};
+
+export const getSubmissionsByClassroom = async (classroomId) => {
+    try {
+        const { data, error } = await supabase
+            .from('submissions')
+            .select('*, tasks!inner(*), profiles(*)')
+            .eq('tasks.classroom_id', classroomId)
+            .order('submitted_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error in getSubmissionsByClassroom:', err);
+        return [];
+    }
+};
+
+export const getAnnouncementsByClassroom = async (classroomId) => {
+    try {
+        const { data, error } = await supabase.from('announcements').select('*, profiles(*)').eq('classroom_id', classroomId).order('created_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error in getAnnouncementsByClassroom:', err);
+        return [];
+    }
+};
+
+export const getClassroomStats = async (classroomId) => {
+    try {
+        const [members, tasks, submissions] = await Promise.all([
+            getMembersByClassroom(classroomId),
+            getTasksByClassroom(classroomId),
+            getSubmissionsByClassroom(classroomId)
+        ]);
+
+        const studentCount = members.filter(m => m.role === 'member').length;
+        const totalTaskCount = tasks.length;
+        const approvedSubmissions = submissions.filter(s => s.status === 'approved').length;
+
+        // Calculate average completion
+        let avgCompletion = 0;
+        if (studentCount > 0 && totalTaskCount > 0) {
+            avgCompletion = (approvedSubmissions / (studentCount * totalTaskCount)) * 100;
+        }
+
+        const totalEarnedPoints = members.reduce((sum, m) => sum + (m.xp || 0), 0);
+
+        return {
+            members: studentCount,
+            tasks: totalTaskCount,
+            avgCompletion,
+            earnedPoints: totalEarnedPoints
+        };
+    } catch (err) {
+        console.error('Error calculating classroom stats:', err);
+        return null;
+    }
+};
+
 // ============================================
 // ANNOUNCEMENTS
 // ============================================
