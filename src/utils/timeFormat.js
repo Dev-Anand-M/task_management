@@ -8,7 +8,13 @@ export const format12h = (timeStr) => {
     const hours = parseInt(h);
     const ampm = hours >= 12 ? 'PM' : 'AM';
     const h12 = hours % 12 || 12;
-    return `${h12}:${m} ${ampm}`;
+    const time = `${h12}:${m} ${ampm}`;
+    
+    // Add helpful labels for midnight and noon
+    if (h === '00' && m === '00') return `${time} (Midnight)`;
+    if (h === '12' && m === '00') return `${time} (Noon)`;
+    
+    return time;
 };
 
 export const minutesTo12h = (totalMinutes) => {

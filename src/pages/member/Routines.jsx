@@ -729,6 +729,11 @@ const Routines = () => {
                                         })}
                                     </div>
                                 </div>
+                                {form.start_time.startsWith('00:00') && (
+                                    <p style={{ fontSize: '10px', color: 'var(--warning-500)', marginTop: '4px', fontStyle: 'italic' }}>
+                                        Note: 12:00 AM is the **start** of the day.
+                                    </p>
+                                )}
                             </div>
                             <Input 
                                 label="Duration (mins)" 
