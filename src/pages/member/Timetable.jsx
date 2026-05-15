@@ -15,6 +15,7 @@ const Timetable = () => {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [routines, setRoutines] = useState([]);
+    const [todayLogs, setTodayLogs] = useState([]);
     const [messages, setMessages] = useState([
         { role: 'assistant', content: "Hello! I'm your AI Scheduling Architect. How can I help you organize your week? You can say things like 'Add DSA study at 8am on weekdays' or 'Clear my Wednesday afternoon'." }
     ]);
@@ -33,8 +34,12 @@ const Timetable = () => {
         if (!user?.id) return;
         setLoading(true);
         try {
-            const data = await routineService.getRoutines();
-            setRoutines(data);
+            const [routineData, logData] = await Promise.all([
+                routineService.getRoutines(),
+                routineService.getLogsForDate(new Date().toISOString().split('T')[0])
+            ]);
+            setRoutines(routineData);
+            setTodayLogs(logData);
         } catch (err) {
             console.error('Failed to fetch routines:', err);
         } finally {
@@ -54,7 +59,8 @@ const Timetable = () => {
         try {
             const response = await manageRoutinesChat(
                 [...messages, { role: 'user', content: userMsg }],
-                routines
+                routines,
+                todayLogs
             );
 
             // Split response and metadata
@@ -62,9 +68,23 @@ const Timetable = () => {
             
             if (metadataStr) {
                 try {
-                    const newRoutines = JSON.parse(metadataStr.trim());
-                    // Sync to DB immediately
-                    await routineService.replaceAllRoutines(newRoutines);
+                    const metadata = JSON.parse(metadataStr.trim());
+                    
+                    // 1. Sync Timetable (Routines)
+                    if (metadata.routines) {
+                        await routineService.replaceAllRoutines(metadata.routines);
+                    }
+                    
+                    // 2. Perform Log Actions (Today's instances)
+                    if (metadata.logUpdates) {
+                        for (const update of metadata.logUpdates) {
+                            await routineService.logRoutineProgress(update.routine_id, {
+                                status: update.status,
+                                learning_notes: update.notes || `Updated via AI: ${userMsg}`
+                            });
+                        }
+                    }
+
                     await fetchRoutines(); // Refresh UI
                 } catch (e) {
                     console.error("Failed to parse AI metadata:", e);

@@ -676,6 +676,99 @@ const attemptProviderGeneration = async (providerId, modelId, prompt, systemProm
     throw new Error('Provider not implemented');
 };
 
+// --- CHAT GENERATION (Multi-turn) ---
+export const generateChat = async (messages, systemPrompt = '', modelId = null, signal = null, options = {}) => {
+    let selectedModelId = modelId || getSelectedModel();
+    let provider = getProviderForModel(selectedModelId);
+    
+    const priorityOrder = getProviderPriority();
+    const attemptedProviders = new Set();
+    attemptedProviders.add(provider.id);
+    
+    const attemptChat = async (pid, mid) => {
+        const p = Object.values(PROVIDERS).find(pv => pv.id === pid);
+        const apiKey = getAPIKey(pid);
+        if (!apiKey) throw new Error(`${p.name} API key not configured`);
+
+        // --- GEMINI (Chat format) ---
+        if (pid === 'gemini') {
+            const endpoint = `/v1beta/models/${mid}:generateContent`;
+            // Transform OpenAI-style messages to Gemini
+            const contents = messages.map(m => ({
+                role: m.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: m.content }]
+            }));
+            
+            // Add system prompt to the first user message or as a system instruction if supported
+            // For simplicity and compatibility, we'll prepend it to the first user message if present
+            if (systemPrompt && contents.length > 0) {
+                contents[0].parts[0].text = `[SYSTEM INSTRUCTION: ${systemPrompt}]\n\n${contents[0].parts[0].text}`;
+            }
+
+            const body = {
+                contents,
+                generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+            };
+            
+            const data = await callAIProxy('gemini', endpoint, apiKey, body, signal, options);
+            await incrementUsage('gemini');
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        }
+
+        // --- OPENAI / SAMBANOVA / GROQ / PERPLEXITY (standard format) ---
+        if (['openai', 'sambanova', 'groq', 'perplexity'].includes(pid)) {
+            const endpoint = pid === 'groq' ? '/openai/v1/chat/completions' : (pid === 'perplexity' ? '/chat/completions' : '/v1/chat/completions');
+            const body = {
+                model: mid,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    ...messages
+                ],
+                temperature: 0.7
+            };
+            
+            const data = await callAIProxy(pid, endpoint, apiKey, body, signal, options);
+            await incrementUsage(pid);
+            return data.choices?.[0]?.message?.content || '';
+        }
+
+        // --- ANTHROPIC ---
+        if (pid === 'anthropic') {
+            const endpoint = '/v1/messages';
+            const body = {
+                model: mid,
+                max_tokens: 4096,
+                system: systemPrompt,
+                messages: messages.filter(m => m.role !== 'system')
+            };
+            
+            const data = await callAIProxy('anthropic', endpoint, apiKey, body, signal, options);
+            await incrementUsage('anthropic');
+            return data.content?.[0]?.text || '';
+        }
+
+        throw new Error('Provider chat not implemented');
+    };
+
+    try {
+        return await attemptChat(provider.id, selectedModelId);
+    } catch (error) {
+        for (const fallbackId of priorityOrder) {
+            if (attemptedProviders.has(fallbackId)) continue;
+            if (!getAPIKey(fallbackId)) continue;
+            
+            attemptedProviders.add(fallbackId);
+            const fallbackModel = AVAILABLE_MODELS.find(m => m.provider === fallbackId);
+            if (fallbackModel) {
+                try {
+                    return await attemptChat(fallbackId, fallbackModel.id);
+                } catch (e) { continue; }
+            }
+        }
+        throw error;
+    }
+};
+
 // AI Code Review
 export const reviewCode = async (code, language = 'javascript', model = null) => {
     const systemPrompt = `You are an expert code reviewer. Analyze the following ${language} code in explicit detail and provide:
@@ -750,42 +843,49 @@ Important:
 };
 
 // AI Routine & Timetable Manager (Chat)
-export const manageRoutinesChat = async (messages, currentRoutines = [], model = null) => {
+export const manageRoutinesChat = async (messages, currentRoutines = [], todayLogs = [], model = null) => {
+    const now = new Date();
+    const dateString = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
     const systemPrompt = `You are an AI Scheduling Architect. Your goal is to help the user manage their daily routines and weekly timetable through conversation.
     
-    CURRENT ROUTINES:
+    CURRENT CONTEXT:
+    - Today's Date: ${dateString}
+    - Current Time: ${timeString}
+    
+    TODAY'S PROGRESS LOGS:
+    ${JSON.stringify(todayLogs, null, 2)}
+    
+    CURRENT RECURRING ROUTINES:
     ${JSON.stringify(currentRoutines, null, 2)}
     
     DIRECTIONS:
-    1. Analyze the user's request.
-    2. Suggest a new schedule or modifications to the existing one.
-    3. You must output your response in two parts separated by a "---METADATA---" marker.
+    1. Analyze the user's request. You have full memory of the conversation.
+    2. Suggest a new schedule or modifications.
+    3. INSTANT ACTIONS: If the user says they can't do something today, or they just finished a task, use the "logUpdates" field.
+    4. You must output your response in two parts separated by a "---METADATA---" marker.
     
-    PART 1: Natural conversational response (Explain what you're doing, why, and ask for confirmation if needed).
-    PART 2: A JSON array of routine objects that represent the DESIRED state of the user's schedule. 
+    PART 1: Natural conversational response.
+    PART 2: A JSON object containing:
+    - routines: (array) The FULL list of active recurring routines.
+    - logUpdates: (array) Optional. Objects with { "routine_id": string, "status": "done"|"ignored"|"postponed", "notes": string }
     
-    Each routine object in the JSON array must have:
-    - title (string)
-    - start_time (string, "HH:MM:SS")
-    - days_of_week (array of integers, 1=Mon, 7=Sun)
-    - description (string, optional)
-    - deadline (string, "YYYY-MM-DD", optional)
-    
-    If the user wants to DELETE a routine, simply omit it from the JSON array.
-    If the user wants to ADD a routine, include it in the array.
-    
-    Example Output:
-    "I've added DSA study at 8am and shifted your Gym to 6pm as requested. Does this look good?"
+    Example Output for "Skip gym today":
+    "No problem, I've marked your Gym session as ignored for today. Take some rest!"
     ---METADATA---
-    [
-      { "title": "DSA Study", "start_time": "08:00:00", "days_of_week": [1,2,3,4,5] },
-      { "title": "Gym", "start_time": "18:00:00", "days_of_week": [1,3,5] }
-    ]
+    {
+      "routines": [ ...all routines... ],
+      "logUpdates": [
+        { "routine_id": "gym_uuid_here", "status": "ignored", "notes": "User said they can't do it today via chat." }
+      ]
+    }
     
-    IMPORTANT: Always return the FULL list of active routines in the JSON part, not just the changes.`;
+    IMPORTANT: 
+    - Always return the "routines" array in metadata.
+    - Only include "logUpdates" when the user explicitly mentions a change to *today's* specific instances.`;
 
-    const response = await generateContent(messages[messages.length - 1].content, systemPrompt, model);
-    return response;
+    return generateChat(messages, systemPrompt, model);
 };
 
 // AI Learning Path Generator
