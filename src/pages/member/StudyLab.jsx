@@ -517,15 +517,15 @@ const StudyLab = () => {
                                                             if (url.includes('drive.google.com') && url.includes('/folders/')) {
                                                                 const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
                                                                 if (folderId) {
-                                                                    // Deep-Study View: Optimized for internal folder navigation
-                                                                    return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
+                                                                    // Use the Deep-Study View with 'embeddedfolderview'
+                                                                    // We add hl=en and #grid to encourage internal navigation
+                                                                    return `https://drive.google.com/embeddedfolderview?id=${folderId}&hl=en#grid`;
                                                                 }
                                                             }
                                                             
                                                             if (url.includes('drive.google.com') && (url.includes('/file/d/') || url.includes('id='))) {
                                                                 const fileId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
                                                                 if (fileId) {
-                                                                    // Use the Explorer view which is better for internal frame navigation
                                                                     return `https://docs.google.com/viewer?srcid=${fileId}&pid=explorer&efh=false&a=v&chrome=false&embedded=true`;
                                                                 }
                                                                 return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
@@ -552,7 +552,14 @@ const StudyLab = () => {
                                                         style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
                                                         title="Resource Viewer"
                                                         allow="autoplay; encrypted-media; clipboard-read; clipboard-write; camera; microphone"
-                                                        sandbox="allow-forms allow-modals allow-popups allow-same-origin allow-scripts allow-top-navigation"
+                                                        // CRITICAL: We REMOVE allow-popups and allow-popups-to-escape-sandbox to block Edge redirection
+                                                        // We allow-top-navigation to let the iframe handle its internal state
+                                                        sandbox="allow-forms allow-modals allow-same-origin allow-scripts allow-top-navigation"
+                                                        onLoad={(e) => {
+                                                            // Navigation Sniffer: If the iframe reloads, it means the user clicked something
+                                                            // Since we blocked popups, the navigation happened inside the frame
+                                                            console.log('Zenith Navigation Sniffer: Internal state transition detected.');
+                                                        }}
                                                     />
                                                 )}
                                             </div>
