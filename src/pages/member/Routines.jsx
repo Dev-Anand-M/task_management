@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { routineService } from '../../services/routineService';
 import { supabase } from '../../lib/supabase';
+import { format12h, minutesTo12h } from '../../utils/timeFormat';
 import { Card, Badge, Button, Input, Modal, ProgressBar, LoadingSpinner } from '../../components/common';
 import { 
     Check, Clock, Trash2, Plus, AlertTriangle, CheckCircle, Circle, X, Book, Zap, Calendar, BookOpen, Brain,
@@ -170,7 +171,7 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo, material
                     <div className="flex items-center gap-sm">
                         <p style={{ margin: 0, fontWeight: 700, textDecoration: (isDone || isIgnored) ? 'line-through' : 'none', color: isLocked ? 'var(--text-muted)' : 'inherit' }}>
                             {routine.title}
-                            {isLocked && <span style={{ fontSize: '9px', fontWeight: 400, marginLeft: '8px' }}>(Locked until {routine.start_time.slice(0, 5)})</span>}
+                            {isLocked && <span style={{ fontSize: '9px', fontWeight: 400, marginLeft: '8px' }}>(Locked until {format12h(routine.start_time)})</span>}
                         </p>
                         {isNext && !isDone && !isIgnored && (
                             <Badge variant="primary" className="animate-pulse">
@@ -181,7 +182,7 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo, material
                         {log?.postponed_count > 0 && <Badge variant="warning" size="xs">Postponed {log.postponed_count}x</Badge>}
                     </div>
                     <div className="flex items-center gap-sm" style={{ marginTop: '2px' }}>
-                        <Badge variant="secondary" size="xs"><Clock size={10} /> {routine.start_time.slice(0, 5)}</Badge>
+                        <Badge variant="secondary" size="xs"><Clock size={10} /> {format12h(routine.start_time)}</Badge>
                         <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                             {routine.days_of_week.map(d => DAYS[d-1]).join(', ')}
                         </span>
@@ -565,7 +566,7 @@ const Routines = () => {
                         >
                             <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--primary-500)' }}>FREE WINDOW</span>
                             <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700 }}>
-                                {formatMinutes(slot.start)} - {formatMinutes(slot.end)}
+                                {minutesTo12h(slot.start)} - {minutesTo12h(slot.end)}
                             </span>
                             <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                                 ({slot.end - slot.start} mins available)

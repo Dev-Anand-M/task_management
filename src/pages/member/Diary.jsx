@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { routineService } from '../../services/routineService';
 import { Card, Badge, Button, ProgressBar, LoadingSpinner } from '../../components/common';
+import { format12h, minutesTo12h } from '../../utils/timeFormat';
 import { 
     Target, Calendar, PieChart, Activity, 
     ChevronLeft, ChevronRight, Filter, BookOpen,
@@ -72,7 +73,7 @@ const Diary = () => {
                                 <span style={{ fontWeight: 700, fontSize: 'var(--text-lg)' }}>{log.routines?.title}</span>
                             </div>
                             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-                                <Calendar size={12} /> {new Date(log.log_date).toLocaleDateString()} • {log.time_spent_minutes} mins spent
+                                <Calendar size={12} /> {new Date(log.log_date).toLocaleDateString()} • {log.time_spent_minutes} mins spent • Started at {format12h(log.actual_start_time)}
                             </p>
                         </div>
                         {log.actual_response_time && (
@@ -260,7 +261,7 @@ const Diary = () => {
                     <div style={{ width: '60px', flexShrink: 0 }}>
                         {hours.map(h => (
                             <div key={h} style={{ height: '60px', color: 'var(--text-muted)', fontSize: '10px', borderTop: '1px solid var(--border)', paddingTop: '4px' }}>
-                                {h}:00
+                                {format12h(`${h.toString().padStart(2, '0')}:00`)}
                             </div>
                         ))}
                     </div>
@@ -301,7 +302,7 @@ const Diary = () => {
                                         {hasOverlap && <Badge variant="error" size="xs"><AlertTriangle size={10} /> Conflict</Badge>}
                                     </div>
                                     <div style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
-                                        {log.actual_start_time} • {duration}m
+                                        {format12h(log.actual_start_time)} • {duration}m
                                     </div>
                                 </div>
                             );

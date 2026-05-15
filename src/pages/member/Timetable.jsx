@@ -8,6 +8,7 @@ import {
     MessageSquare, Brain, RefreshCw, ChevronLeft, ChevronRight,
     User, Bot, CheckCircle, AlertTriangle
 } from 'lucide-react';
+import { format12h } from '../../utils/timeFormat';
 
 const Timetable = () => {
     const { user } = useAuth();
@@ -209,7 +210,7 @@ const Timetable = () => {
                                                     fontSize: '11px'
                                                 }}>
                                                     <div style={{ color: 'var(--primary-500)', fontWeight: 700, marginBottom: '2px' }}>
-                                                        {r.start_time.slice(0, 5)}
+                                                        {format12h(r.start_time)}
                                                     </div>
                                                     <div style={{ fontWeight: 600 }}>{r.title}</div>
                                                 </div>
