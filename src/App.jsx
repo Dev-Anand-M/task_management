@@ -182,11 +182,11 @@ function AppRoutes() {
           <Route path="team" element={<TeamManagement />} />
           <Route path="invite-codes" element={<InviteCodes />} />
           <Route path="member/:userId" element={<AdminMemberProfile />} />
+          
+          {/* Classroom Management (Admins Only) */}
+          <Route path="classroom" element={<ClassroomSettings />} />
+          <Route path="classroom/:id" element={<ClassroomDetail />} />
         </Route>
-
-        {/* Shared Classroom Routes (Accessible by both Admin and Member) */}
-        <Route path="/admin/classroom" element={<ClassroomSettings />} />
-        <Route path="/admin/classroom/:id" element={<ClassroomDetail />} />
 
         {/* Member Section */}
         {/* We can technically allow admins to see these or restrict them. 
