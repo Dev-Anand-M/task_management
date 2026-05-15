@@ -492,7 +492,6 @@ const StudyLab = () => {
                                                         style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
                                                         title="Resource Viewer"
                                                         allow="autoplay; encrypted-media; clipboard-read; clipboard-write; camera; microphone"
-                                                        // Removed strict sandbox to allow native browser clipboard/selection features
                                                     />
                                                 )}
                                             </div>
