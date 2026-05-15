@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { routineService } from '../../services/routineService';
+import { supabase } from '../../lib/supabase';
 import { Card, Badge, Button, Input, Modal, ProgressBar, LoadingSpinner } from '../../components/common';
 import { 
     Check, Clock, Trash2, Plus, AlertTriangle, CheckCircle, Circle, X, Book, Zap, Calendar, BookOpen, Brain,
