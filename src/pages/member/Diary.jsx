@@ -62,30 +62,50 @@ const Diary = () => {
     const LinkifiedText = ({ text }) => {
         if (!text) return null;
         
-        // Split by # followed by non-space characters
-        const parts = text.split(/(#[^\s,]+)/g);
+        // Sort materials by title length (longest first) to prevent partial matches 
+        // (e.g., matching "#Physics" instead of "#Physics Chapter 1")
+        const sortedMaterials = [...materials].sort((a, b) => b.title.length - a.title.length);
+        
+        // We use an array of elements that can be strings or React components
+        let elements = [text];
+        
+        sortedMaterials.forEach(material => {
+            const mention = `#${material.title}`;
+            const newElements = [];
+            
+            elements.forEach(el => {
+                if (typeof el !== 'string') {
+                    newElements.push(el);
+                    return;
+                }
+                
+                // Escape special regex characters in the title
+                const escapedMention = mention.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const parts = el.split(new RegExp(`(${escapedMention})`, 'gi'));
+                
+                parts.forEach((part, index) => {
+                    if (part.toLowerCase() === mention.toLowerCase()) {
+                        newElements.push(
+                            <Link 
+                                key={`${material.id}-${index}`} 
+                                to={`/study-materials/${material.id}`}
+                                style={{ color: 'var(--primary-500)', fontWeight: 700, textDecoration: 'none' }}
+                                className="hover:underline"
+                            >
+                                {part}
+                            </Link>
+                        );
+                    } else if (part) {
+                        newElements.push(part);
+                    }
+                });
+            });
+            elements = newElements;
+        });
         
         return (
             <p style={{ margin: 0, fontSize: 'var(--text-sm)', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-                {parts.map((part, i) => {
-                    if (part.startsWith('#')) {
-                        const title = part.slice(1);
-                        const match = materials.find(m => m.title.toLowerCase() === title.toLowerCase());
-                        if (match) {
-                            return (
-                                <Link 
-                                    key={i} 
-                                    to={`/study-materials/${match.id}`}
-                                    style={{ color: 'var(--primary-500)', fontWeight: 700, textDecoration: 'none' }}
-                                    className="hover:underline"
-                                >
-                                    {part}
-                                </Link>
-                            );
-                        }
-                    }
-                    return part;
-                })}
+                {elements}
             </p>
         );
     };
