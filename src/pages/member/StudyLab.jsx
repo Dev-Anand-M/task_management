@@ -499,7 +499,7 @@ const StudyLab = () => {
                                     </div>
 
                                     <div style={{ flex: 1, position: 'relative', overflowY: 'auto' }}>
-                                        {material?.file_url && !material.file_url.includes('drive.google.com/drive/folders') && !material.file_url.includes('embeddedfolderview') ? (
+                                        {material?.file_url ? (
                                             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
                                                 {material.file_url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
                                                     <img 
@@ -514,6 +514,14 @@ const StudyLab = () => {
                                                             const url = material.file_url;
                                                             if (!url) return '';
                                                             
+                                                            if (url.includes('drive.google.com') && url.includes('/folders/')) {
+                                                                const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
+                                                                if (folderId) {
+                                                                    // Use the most stable embedded view for folders to avoid 403/Redirection
+                                                                    return `https://drive.google.com/embeddedfolderview?id=${folderId}&hl=en#grid`;
+                                                                }
+                                                            }
+
                                                             if (url.includes('drive.google.com') && (url.includes('/file/d/') || url.includes('id='))) {
                                                                 const fileId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
                                                                 if (fileId) {
@@ -551,7 +559,7 @@ const StudyLab = () => {
                                             <div className="lab-explorer" style={{ padding: 'var(--space-xl)', background: 'rgba(255,255,255,0.02)', height: '100%', borderRadius: 'var(--radius-md)' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-xl)' }}>
                                                     <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', letterSpacing: '-0.02em' }}>Zenith Material Explorer</h3>
-                                                    <Badge variant="primary" style={{ fontSize: '10px' }}>{material?.file_url ? 'Browsing Folder' : 'Master Directory'}</Badge>
+                                                    <Badge variant="primary" style={{ fontSize: '10px' }}>Master Directory</Badge>
                                                 </div>
 
                                                 <div style={{ 
@@ -560,7 +568,7 @@ const StudyLab = () => {
                                                     gap: '20px' 
                                                 }}>
                                                     {[
-                                                        { name: 'ACCENTURE', id: '1Yt6K_Y0I-5y_YyYyYyYyYyYyYyYyYyYy' },
+                                                        { name: 'ACCENTURE', id: '1NC5wLHUMUye5_5zHzSgTgXDUdVmh43Z' },
                                                         { name: 'AMCAT', id: '1-YyYyYyYyYyYyYyYyYyYyYyYyYyYyYy' },
                                                         { name: 'Audi Time', id: '1_YyYyYyYyYyYyYyYyYyYyYyYyYyYyYy' },
                                                         { name: 'C & DSA Note', id: '1vYyYyYyYyYyYyYyYyYyYyYyYyYyYyYy' },
@@ -575,7 +583,6 @@ const StudyLab = () => {
                                                                 const newUrl = `https://drive.google.com/drive/folders/${folder.id}`;
                                                                 setUrlInput(newUrl);
                                                                 setMaterial(prev => ({ ...prev, file_url: newUrl }));
-                                                                // Auto-sync AI on folder select
                                                                 handleSendMessage(null, `[SYSTEM_ACTION: SCAN_DOCUMENT] Navigated to folder: ${folder.name}`);
                                                             }}
                                                             style={{ 
