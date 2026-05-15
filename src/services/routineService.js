@@ -239,9 +239,13 @@ export const routineService = {
 
         const now = new Date();
         for (const routine of routines) {
+            // Skip anonymous routines - they have no strict window
+            if (routine.is_anonymous) continue;
+
             const todayLog = routine.routine_logs?.find(l => l.log_date === today);
             const startTime = new Date(`${today}T${routine.start_time}`);
             const diffMinutes = (now - startTime) / (1000 * 60);
+            
             if (diffMinutes > 15 && (!todayLog || todayLog.status === 'pending')) {
                 await this.logRoutineProgress(routine.id, {
                     status: 'ignored',

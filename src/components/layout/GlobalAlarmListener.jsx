@@ -34,7 +34,7 @@ const GlobalAlarmListener = () => {
     const startListener = () => {
         if (intervalRef.current) return;
         console.log('[Alarm] Starting global listener...');
-        intervalRef.current = setInterval(checkAlarms, 60000); 
+        intervalRef.current = setInterval(checkAlarms, 30000); 
         checkAlarms(); 
     };
 
@@ -55,6 +55,7 @@ const GlobalAlarmListener = () => {
 
             const triggerRoutine = routines.find(r => 
                 r.is_active && 
+                !r.is_anonymous &&
                 r.days_of_week.includes(currentDay) && 
                 r.start_time.slice(0, 5) === currentTimeStr
             );
