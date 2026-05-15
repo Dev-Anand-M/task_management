@@ -234,6 +234,16 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, onResetLog, nextAlarmIn
                             <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700 }}>
                                 Target Day: <span style={{ color: 'var(--primary-500)' }}>{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
                             </span>
+                            {new Date().getHours() < 5 && selectedDate === getLocalDatePickerDate() && (
+                                <Button 
+                                    variant="ghost" 
+                                    size="xs" 
+                                    onClick={() => navDate(-1)}
+                                    style={{ marginLeft: 'var(--space-sm)', fontSize: '9px', background: 'rgba(239, 68, 68, 0.05)', color: 'var(--error-500)' }}
+                                >
+                                    Log for Yesterday?
+                                </Button>
+                            )}
                             <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
                                 (Use date arrows at top to log for other days)
                             </span>
