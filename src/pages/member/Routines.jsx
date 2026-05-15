@@ -34,7 +34,7 @@ const MentionInput = ({ value, onChange, placeholder, materials, label }) => {
         setShowSuggestions(false);
     };
 
-    const filtered = materials.filter(m => m.title.toLowerCase().includes(filter));
+    const filtered = (materials || []).filter(m => m.title.toLowerCase().includes(filter));
 
     return (
         <div style={{ position: 'relative' }}>
@@ -98,7 +98,10 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, nextAlarmInfo, material
         });
 
         if (conflicts.length > 0) {
-            const conflictNames = conflicts.map(c => c.routines?.title || 'Another task').join(', ');
+            const conflictNames = conflicts.map(c => {
+                const r = routines.find(rout => rout.id === c.routine_id);
+                return r?.title || 'Another task';
+            }).join(', ');
             alert(`🛑 STRICT BLOCK: Time Conflict Detected!\n\nThis slot is already occupied by: "${conflictNames}".\n\nYou must adjust your start time to avoid overlapping.`);
             return;
         }
