@@ -81,7 +81,10 @@ import { useNavigate } from 'react-router-dom';
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const RoutineItem = ({ routine, log, onUpdate, onDelete, onResetLog, nextAlarmInfo, materials, allLogs }) => {
-    const [actualStartTime, setActualStartTime] = useState(log?.actual_start_time || routine.start_time.slice(0, 5));
+    const [actualStartTime, setActualStartTime] = useState(
+        log?.actual_start_time || 
+        (routine.is_anonymous ? new Date().toTimeString().slice(0, 5) : routine.start_time.slice(0, 5))
+    );
     const [actualDuration, setActualDuration] = useState(log?.time_spent_minutes || routine.duration_minutes || 60);
     const [notes, setNotes] = useState(log?.learning_notes || '');
     const [showDetails, setShowDetails] = useState(false);

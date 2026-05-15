@@ -160,12 +160,17 @@ const Diary = () => {
                                 <Calendar size={12} /> {new Date(log.log_date).toLocaleDateString()} • {log.time_spent_minutes} mins spent • Scheduled at {format12h(log.snapshot_start_time || log.routines?.start_time)}
                             </p>
                         </div>
-                        {(log.actual_response_time || log.actual_start_time) && (
+                        {log.actual_response_time && (
                             <div style={{ textAlign: 'right' }}>
                                 <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>Logged at</p>
                                 <p style={{ margin: 0, fontWeight: 600, fontSize: 'var(--text-xs)' }}>
-                                    {log.actual_start_time ? log.actual_start_time.slice(0, 5) : new Date(log.actual_response_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {new Date(log.actual_response_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </p>
+                                {log.actual_start_time && log.actual_start_time.slice(0, 5) !== '00:00' && (
+                                    <p style={{ margin: 0, fontSize: '9px', color: 'var(--text-muted)' }}>
+                                        Started {log.actual_start_time.slice(0, 5)}
+                                    </p>
+                                )}
                             </div>
                         )}
                     </div>
