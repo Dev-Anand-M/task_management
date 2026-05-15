@@ -250,7 +250,7 @@ const StudyLab = () => {
                             }}>
                                 {material?.file_url ? (
                                     <div style={{ width: '100%', height: 'calc(100vh - 250px)', position: 'relative' }}>
-                                        {material.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                        {material.file_url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
                                             <img 
                                                 src={material.file_url} 
                                                 alt="Attached Material" 
@@ -258,9 +258,47 @@ const StudyLab = () => {
                                             />
                                         ) : (
                                             <iframe 
-                                                src={material.file_url.endsWith('.pdf') ? material.file_url : `https://docs.google.com/gview?url=${encodeURIComponent(material.file_url)}&embedded=true`} 
+                                                src={(() => {
+                                                    const url = material.file_url;
+                                                    if (!url) return '';
+                                                    
+                                                    // 1. Google Drive Folders
+                                                    if (url.includes('drive.google.com/drive/folders/')) {
+                                                        const folderId = url.split('/folders/')[1]?.split('?')[0];
+                                                        return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
+                                                    }
+                                                    
+                                                    // 2. Google Drive Files
+                                                    if (url.includes('drive.google.com')) {
+                                                        return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
+                                                    }
+                                                    
+                                                    // 3. Google Docs/Sheets/Slides
+                                                    if (url.includes('docs.google.com')) {
+                                                        if (!url.includes('embedded=true')) {
+                                                            const separator = url.includes('?') ? '&' : '?';
+                                                            return `${url}${separator}embedded=true`;
+                                                        }
+                                                        return url;
+                                                    }
+
+                                                    // 4. PDFs (Direct)
+                                                    if (url.toLowerCase().endsWith('.pdf')) {
+                                                        return url;
+                                                    }
+
+                                                    // 5. General Fallback (Try GView or Direct)
+                                                    // Some sites allow iframing, others don't. GView works for docs.
+                                                    if (url.match(/\.(doc|docx|ppt|pptx|xls|xlsx)$/i)) {
+                                                        return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+                                                    }
+
+                                                    return url;
+                                                })()} 
                                                 style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
-                                                title="Document Viewer"
+                                                title="Resource Viewer"
+                                                allow="autoplay; encrypted-media"
+                                                sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
                                             />
                                         )}
                                         <div style={{ 
