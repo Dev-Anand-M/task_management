@@ -355,9 +355,11 @@ const StudyLab = () => {
                                                         const url = material.file_url;
                                                         if (!url) return '';
                                                         
-                                                        if (url.includes('drive.google.com/drive/folders/')) {
-                                                            const folderId = url.split('/folders/')[1]?.split('?')[0];
-                                                            return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
+                                                        if (url.includes('drive.google.com') && url.includes('/folders/')) {
+                                                            const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
+                                                            if (folderId) {
+                                                                return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
+                                                            }
                                                         }
                                                         
                                                         if (url.includes('drive.google.com')) {
