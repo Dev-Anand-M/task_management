@@ -385,9 +385,24 @@ const Calendar = () => {
                                         transition: 'all 0.15s'
                                     }}>
                                         <div className="flex items-center gap-sm">
-                                            {e.type === 'routine' ? <Zap size={14} className="text-primary-500" /> : (e.type === 'task' || e.type === 'task-created' ? <ListTodo size={14} /> : <HelpCircle size={14} />)}
+                                            {e.type === 'routine' ? <Zap size={14} className={e.status === 'done' ? "text-success-500" : "text-primary-500"} /> : (e.type === 'task' || e.type === 'task-created' ? <ListTodo size={14} /> : <HelpCircle size={14} />)}
                                             <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, flex: 1 }}>{e.title}</span>
                                             {e.type === 'routine' && e.startTime && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{format12h(e.startTime)}</span>}
+                                            {e.type === 'routine' && e.status === 'done' && (
+                                                <Button 
+                                                    size="xs" 
+                                                    variant="ghost" 
+                                                    onClick={async () => {
+                                                        if (confirm('Reset this log?')) {
+                                                            await routineService.deleteLog(e.routineId, toLocalISO(e.date));
+                                                            loadEvents(true);
+                                                        }
+                                                    }}
+                                                    style={{ color: 'var(--error-500)', padding: '2px 4px', height: 'auto' }}
+                                                >
+                                                    Reset
+                                                </Button>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-sm" style={{ marginTop: '4px' }}>
                                             {e.points && <Badge variant="accent" size="xs">{e.points} XP</Badge>}

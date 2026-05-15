@@ -171,21 +171,19 @@ const Diary = () => {
                                 <Calendar size={12} /> {new Date(log.log_date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })} • {log.time_spent_minutes} mins spent • Scheduled at {format12h(log.snapshot_start_time || log.routines?.start_time)}
                             </p>
                         </div>
-                        {log.actual_response_time && (
-                            <div style={{ textAlign: 'right' }}>
-                                <p style={{ margin: 0, fontWeight: 600, fontSize: 'var(--text-xs)' }}>
-                                    {new Date(log.actual_response_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 400, marginLeft: '4px' }}>
-                                        on {new Date(log.actual_response_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                    </span>
-                                </p>
-                                {log.actual_start_time && log.actual_start_time.slice(0, 5) !== '00:00' && (
-                                    <p style={{ margin: 0, fontSize: '9px', color: 'var(--text-muted)' }}>
-                                        Started {log.actual_start_time.slice(0, 5)}
-                                    </p>
-                                )}
+                        <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                Recorded at {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}
                             </div>
-                        )}
+                            <div style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
+                                on {new Date(log.created_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            </div>
+                            {log.actual_start_time && (
+                                <div style={{ fontSize: '10px', color: 'var(--primary-500)', fontWeight: 700, marginTop: '4px' }}>
+                                    Started {log.actual_start_time.slice(0, 5)}
+                                </div>
+                            )}
+                        </div>
                     </div>
                     {log.learning_notes && (
                         <div style={{ 
