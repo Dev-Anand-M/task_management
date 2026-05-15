@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { routineService } from '../../services/routineService';
 import { Card, Badge, Button, ProgressBar, LoadingSpinner } from '../../components/common';
 import { format12h, minutesTo12h } from '../../utils/timeFormat';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { 
     Target, Calendar, PieChart, Activity, 
     ChevronLeft, ChevronRight, Filter, BookOpen,
@@ -28,6 +28,16 @@ const Diary = () => {
     };
     const [selectedMonth, setSelectedMonth] = useState(getInitialMonth()); // YYYY-MM
     const isMobile = window.innerWidth < 768;
+
+    const location = useLocation();
+    
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const viewParam = params.get('view');
+        if (viewParam && ['list', 'timeline', 'analytics', 'mindmap'].includes(viewParam)) {
+            setView(viewParam);
+        }
+    }, [location.search]);
 
     useEffect(() => {
         fetchLogs();
@@ -484,11 +494,29 @@ const Diary = () => {
                     </h1>
                     <p style={{ color: 'var(--text-muted)', margin: 0 }}>Your consistency logs and analytics</p>
                 </div>
-                <div style={{ display: 'flex', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '4px', border: '1px solid var(--border)' }}>
-                    <button onClick={() => setView('list')} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: view === 'list' ? 'var(--primary-500)' : 'transparent', color: view === 'list' ? 'white' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}>List</button>
-                    <button onClick={() => setView('timeline')} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: view === 'timeline' ? 'var(--primary-500)' : 'transparent', color: view === 'timeline' ? 'white' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}>Timeline</button>
-                    <button onClick={() => setView('analytics')} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: view === 'analytics' ? 'var(--primary-500)' : 'transparent', color: view === 'analytics' ? 'white' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}>Analytics</button>
-                    <button onClick={() => setView('mindmap')} style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: view === 'mindmap' ? 'var(--primary-500)' : 'transparent', color: view === 'mindmap' ? 'white' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}>Mindmap</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Mode:</span>
+                    <select 
+                        value={view} 
+                        onChange={(e) => setView(e.target.value)}
+                        style={{ 
+                            padding: '8px 16px', 
+                            borderRadius: 'var(--radius-lg)', 
+                            background: 'var(--surface)', 
+                            color: 'var(--primary-500)', 
+                            border: '1px solid var(--primary-500)', 
+                            fontSize: 'var(--text-sm)',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            outline: 'none',
+                            boxShadow: '0 0 10px rgba(99, 102, 241, 0.1)'
+                        }}
+                    >
+                        <option value="list">📜 List View</option>
+                        <option value="timeline">⏳ Timeline</option>
+                        <option value="analytics">📊 Analytics</option>
+                        <option value="mindmap">🧠 Mindmap</option>
+                    </select>
                 </div>
             </div>
 

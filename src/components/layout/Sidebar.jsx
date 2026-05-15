@@ -90,6 +90,11 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: '/diary', icon: Target, label: 'Learning Diary' }
     ];
 
+    const memberAiLinks = [
+        { to: '/diary?view=mindmap', icon: Brain, label: 'Mindmap' },
+        { to: '/ai/assistant', icon: MessageSquare, label: 'AI Assistant' }
+    ];
+
     const aiLinks = [
         { to: '/ai/assistant', icon: MessageSquare, label: 'AI Assistant' },
         { to: '/ai/code-review', icon: Code, label: 'Code Review' },
@@ -281,6 +286,46 @@ const Sidebar = ({ isOpen, onClose }) => {
                             </div>
                             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                 {consistencyLinks.map(link => (
+                                    <li key={link.to}>
+                                        <NavLink
+                                            to={link.to}
+                                            replace={true}
+                                            onClick={onClose}
+                                            style={({ isActive }) => ({
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 'var(--space-sm)',
+                                                padding: '0.625rem var(--space-md)',
+                                                borderRadius: 'var(--radius-md)',
+                                                color: isActive ? '#fef3c7' : 'rgba(255,255,255,0.8)',
+                                                background: isActive ? 'rgba(255,255,255,0.2)' : 'transparent',
+                                                textDecoration: 'none',
+                                                fontSize: 'var(--text-sm)',
+                                                fontWeight: isActive ? 600 : 500,
+                                                transition: 'all var(--transition-fast)',
+                                                borderLeft: isActive ? '2px solid #fef3c7' : '2px solid transparent',
+                                                marginLeft: '0'
+                                            })}
+                                        >
+                                            <link.icon size={18} />
+                                            <span style={{ flex: 1 }}>{link.label}</span>
+                                        </NavLink>
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <div style={{
+                                fontSize: '10px',
+                                color: 'rgba(255,255,255,0.6)',
+                                padding: 'var(--space-md) var(--space-sm) var(--space-xs)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.1em',
+                                fontWeight: 600
+                            }}>
+                                AI Labs
+                            </div>
+                            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                {memberAiLinks.map(link => (
                                     <li key={link.to}>
                                         <NavLink
                                             to={link.to}
