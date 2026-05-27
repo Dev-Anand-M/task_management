@@ -29,9 +29,9 @@ export default async function handler(req, res) {
         }
     }
 
-    const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
-    const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-    const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@zenith.app';
+    const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "BDh_CLMgIPlfMDObBg2nesGZQ4ObJjfN0rUrPh9-W9iV3RojHkPsmEx6FsV0x_9XqsMU5It-zvGlNTnNxpBzgc0";
+    const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "DLgvMH_99zrztgXzuY50i6gVHXZGTUBqAVwxpHLV8Gg";
+    const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:dev.klinux@proton.me';
 
     // Debug logging
     console.log('[Push] VAPID Keys Check:', {

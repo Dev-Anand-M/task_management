@@ -62,13 +62,28 @@ export const requestPushPermission = async () => {
       throw new Error('Notification permission denied');
     }
     
-    // Get or register service worker
-    let registration = await navigator.serviceWorker.getRegistration();
-    if (!registration) {
-      registration = await registerServiceWorker();
-      // Wait for service worker to be ready
+    // ── Resilient SW Registration & Cleanup ──────────────────────────────────
+    // Aggressively unregister conflicting legacy service workers to avoid background push routing issues.
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    let swRegistration = null;
+    
+    for (const reg of registrations) {
+      const activeUrl = reg.active?.scriptURL || '';
+      if (activeUrl.includes('sw.js')) {
+        swRegistration = reg;
+      } else {
+        console.log('[Push] Unregistering conflicting legacy service worker:', activeUrl);
+        await reg.unregister();
+      }
+    }
+    
+    // Explicitly register sw.js if not already present
+    if (!swRegistration) {
+      swRegistration = await registerServiceWorker();
       await navigator.serviceWorker.ready;
     }
+    
+    let registration = swRegistration;
     
     // Check if already subscribed
     let subscription = await registration.pushManager.getSubscription();
