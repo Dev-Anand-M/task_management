@@ -742,7 +742,7 @@ const Settings = () => {
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <span>Cloud Database:</span>
-                                <span>{user.preferences?.push_subscriptions?.length || 0} device(s)</span>
+                                <span>{user.push_subscription ? 1 : (user.preferences?.push_subscriptions?.length || 0)} device(s)</span>
                             </div>
                         </div>
 

@@ -1,17 +1,6 @@
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 
-// VAPID keys should be generated once and stored in environment variables
-// Use the keys generated for this project
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "BIywJYLliCeDy38uq2Km1pgXg2-PjstbPuFusw-aikMwbHE7Z4M1CZnDSlJPsxL2bMFx0Dn3OfNlQAy9vqfYQcI";
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "dIsljl-BVN0fz37z_jmmSYZ1Pb1dk6Rs3TdWKRws3GU";
-
-webpush.setVapidDetails(
-    'mailto:support@zenith.app',
-    VAPID_PUBLIC_KEY,
-    VAPID_PRIVATE_KEY
-);
-
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -19,6 +8,19 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+    // ── VAPID Configuration ──────────────────────────────────────────────────
+    // Load dynamically at request time to ensure environment variables are populated.
+    // Falls back to correct project VAPID keys matching the client registration.
+    const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "BDh_CLMgIPlfMDObBg2nesGZQ4ObJjfN0rUrPh9-W9iV3RojHkPsmEx6FsV0x_9XqsMU5It-zvGlNTnNxpBzgc0";
+    const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "DLgvMH_99zrztgXzuY50i6gVHXZGTUBqAVwxpHLV8Gg";
+    const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:dev.klinux@proton.me';
+
+    webpush.setVapidDetails(
+        VAPID_SUBJECT,
+        VAPID_PUBLIC_KEY,
+        VAPID_PRIVATE_KEY
+    );
 
     try {
         const {
@@ -40,10 +42,10 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, error: 'No user targets provided' });
         }
 
-        // 2. Fetch subscriptions for these users from Supabase
+        // 2. Fetch subscriptions for these users from Supabase (including the correct push_subscription column)
         const { data: profiles, error: fetchError } = await supabase
             .from('profiles')
-            .select('id, preferences')
+            .select('id, preferences, push_subscription')
             .in('id', targetUserIds);
 
         if (fetchError) {
@@ -64,16 +66,26 @@ export default async function handler(req, res) {
         // 3. Flatten all subscriptions from all targeted users
         const allSubscriptions = [];
         profiles.forEach(profile => {
+            // First check the primary native push subscription column
+            if (profile.push_subscription && profile.push_subscription.endpoint) {
+                allSubscriptions.push({
+                    ...profile.push_subscription,
+                    userId: profile.id
+                });
+            }
+
+            // Check legacy preferences push subscriptions array (fallback)
             const subs = profile.preferences?.push_subscriptions;
             if (Array.isArray(subs)) {
                 subs.forEach(sub => {
-                    allSubscriptions.push({
-                        ...sub,
-                        userId: profile.id
-                    });
+                    // Avoid duplicating the subscription if it matches the primary one
+                    if (sub && sub.endpoint && sub.endpoint !== profile.push_subscription?.endpoint) {
+                        allSubscriptions.push({
+                            ...sub,
+                            userId: profile.id
+                        });
+                    }
                 });
-            } else {
-                console.log(`[Push] User ${profile.id} has no push_subscriptions array in preferences`);
             }
         });
 
