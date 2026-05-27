@@ -8,7 +8,8 @@ const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
  * Check if push notifications are supported
  */
 export const isPushSupported = () => {
-  return 'serviceWorker' in navigator && 
+  return window.isSecureContext &&
+         'serviceWorker' in navigator && 
          'PushManager' in window && 
          'Notification' in window;
 };
@@ -48,7 +49,7 @@ export const registerServiceWorker = async () => {
  */
 export const requestPushPermission = async () => {
   if (!isPushSupported()) {
-    throw new Error('Push notifications not supported');
+    throw new Error('Push notifications not supported in this environment (must be a secure context)');
   }
   
   try {
@@ -57,7 +58,25 @@ export const requestPushPermission = async () => {
     
     if (permission === 'default') {
       console.log('[Push] Prompting user for notification permission...');
-      permission = await Notification.requestPermission();
+      
+      // Resilient permission request wrapper with callback support and a 5-second timeout race
+      permission = await Promise.race([
+        new Promise((resolve) => {
+          try {
+            const p = Notification.requestPermission(resolve);
+            if (p && typeof p.then === 'function') {
+              p.then(resolve).catch(() => resolve(Notification.permission));
+            }
+          } catch (err) {
+            resolve(Notification.permission);
+          }
+        }),
+        new Promise((resolve) => setTimeout(() => {
+          console.warn('[Push] Permission request timed out. Checking current state.');
+          resolve(Notification.permission);
+        }, 5000))
+      ]);
+      
       console.log('[Push] User prompt response:', permission);
     }
     
