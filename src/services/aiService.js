@@ -1,6 +1,7 @@
 // AI Service supporting multiple providers (Gemini, OpenAI, Anthropic, Perplexity)
 
 import { supabase } from '../lib/supabase';
+import { getKnowledgeBase } from './database';
 
 export const PROVIDERS = {
     GEMINI: { id: 'gemini', name: 'Google Gemini', icon: '✨', keyName: 'gemini_api_key', url: 'https://makersuite.google.com/app/apikey' },
@@ -456,10 +457,14 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null, opti
             }
 
             
+            // Get current session token for API auth
+            const { data: { session: authSession } } = await supabase.auth.getSession();
+
             const response = await fetch(proxyUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...(authSession?.access_token ? { 'Authorization': `Bearer ${authSession.access_token}` } : {})
                 },
                 body: JSON.stringify({
                     provider,
@@ -1010,7 +1015,7 @@ export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null
     // 1. Fetch relevant knowledge (RAG)
     let relevantContext = "";
     try {
-        const knowledge = await db.getKnowledgeBase(quizData.classroom_id);
+        const knowledge = await getKnowledgeBase(quizData.classroom_id);
         
         // Simple keyword-based retrieval for context
         const contextSnippets = knowledge.filter(k => {

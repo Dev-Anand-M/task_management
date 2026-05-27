@@ -1,9 +1,32 @@
 // Native Web Push API (No OneSignal needed)
 import webpush from 'web-push';
+import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    // Auth verification - require valid Supabase session
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+    if (supabaseUrl && supabaseKey) {
+        try {
+            const sb = createClient(supabaseUrl, supabaseKey);
+            const { data: { user }, error } = await sb.auth.getUser(authHeader.split(' ')[1]);
+            if (error || !user) {
+                return res.status(401).json({ error: 'Invalid or expired session' });
+            }
+        } catch (authError) {
+            console.error('[Push] Auth verification failed:', authError.message);
+            return res.status(401).json({ error: 'Authentication failed' });
+        }
     }
 
     const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;

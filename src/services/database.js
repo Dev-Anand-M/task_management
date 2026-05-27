@@ -607,6 +607,19 @@ export const markAllNotificationsRead = async (userId) => {
     return true;
 };
 
+// Internal helper: send push notification with auth
+const _sendPush = async (body) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return fetch(`${window.location.origin}/api/native-push`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+        },
+        body: JSON.stringify(body)
+    });
+};
+
 export const createNotification = async (notification) => {
     await supabase.from('notifications').insert(notification);
     if (notification.user_id) {
@@ -618,16 +631,12 @@ export const createNotification = async (notification) => {
             .single();
         
         if (profile?.push_subscription) {
-            fetch(`${window.location.origin}/api/native-push`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    subscription: profile.push_subscription,
-                    title: notification.title,
-                    body: notification.message,
-                    url: notification.link || '/',
-                    data: { type: notification.type }
-                })
+            _sendPush({
+                subscription: profile.push_subscription,
+                title: notification.title,
+                body: notification.message,
+                url: notification.link || '/',
+                data: { type: notification.type }
             }).catch(e => console.warn('[Push] Error:', e));
         }
     }
@@ -653,16 +662,12 @@ export const notifyClassroom = async (classroomId, notification) => {
     const pushPromises = students
         .filter(s => s.push_subscription)
         .map(student => 
-            fetch(`${window.location.origin}/api/native-push`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    subscription: student.push_subscription,
-                    title: notification.title,
-                    body: notification.message,
-                    url: notification.link || '/',
-                    data: { type: notification.type }
-                })
+            _sendPush({
+                subscription: student.push_subscription,
+                title: notification.title,
+                body: notification.message,
+                url: notification.link || '/',
+                data: { type: notification.type }
             }).catch(e => console.warn('[Push] Error:', e))
         );
     
@@ -689,16 +694,12 @@ export const notifyAdmins = async (classroomId, notification) => {
     const pushPromises = admins
         .filter(a => a.push_subscription)
         .map(admin => 
-            fetch(`${window.location.origin}/api/native-push`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    subscription: admin.push_subscription,
-                    title: notification.title,
-                    body: notification.message,
-                    url: notification.link || '/',
-                    data: { type: notification.type }
-                })
+            _sendPush({
+                subscription: admin.push_subscription,
+                title: notification.title,
+                body: notification.message,
+                url: notification.link || '/',
+                data: { type: notification.type }
             }).catch(e => console.warn('[Push] Error:', e))
         );
     
@@ -906,5 +907,58 @@ export const updateStudyNote = async (id, updates) => {
 
 export const deleteStudyNote = async (id) => {
     await supabase.from('study_notes').delete().eq('id', id);
+    return true;
+};
+
+// ============================================
+// PASSWORD RESET
+// ============================================
+export const sendPasswordResetEmail = async (email) => {
+    try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/login`
+        });
+        if (error) return { success: false, error: error.message };
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+};
+
+export const adminResetPassword = async (userId, newPassword) => {
+    try {
+        // Uses Supabase Admin API via edge function or service role
+        // Fallback: update via supabase.auth.admin (requires service_role key server-side)
+        const { error } = await supabase.rpc('admin_reset_password', {
+            target_user_id: userId,
+            new_password: newPassword
+        });
+        if (error) {
+            // Fallback: try the admin auth API directly (only works with service_role key)
+            return { success: false, error: error.message + '. You may need to set up a Supabase Edge Function for admin password resets.' };
+        }
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+};
+
+// ============================================
+// KNOWLEDGE BASE CRUD (Add / Delete)
+// ============================================
+export const addKnowledgeSnippet = async (snippet) => {
+    const user = await getActiveUser();
+    const { data, error } = await supabase
+        .from('knowledge_base')
+        .insert({ ...snippet, created_by: user.id })
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+};
+
+export const deleteKnowledgeSnippet = async (id) => {
+    const { error } = await supabase.from('knowledge_base').delete().eq('id', id);
+    if (error) throw error;
     return true;
 };

@@ -1,6 +1,8 @@
 // Vercel Serverless Function - AI API Proxy
 // Handles CORS and routes requests to AI providers
 
+import { createClient } from '@supabase/supabase-js';
+
 export default async function handler(req, res) {
   // CORS headers - must be set first
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -25,6 +27,28 @@ export default async function handler(req, res) {
       method: req.method,
       allowedMethods: ['POST'] 
     });
+  }
+
+  // Auth verification - require valid Supabase session
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (supabaseUrl && supabaseKey) {
+    try {
+      const sb = createClient(supabaseUrl, supabaseKey);
+      const { data: { user }, error } = await sb.auth.getUser(authHeader.split(' ')[1]);
+      if (error || !user) {
+        return res.status(401).json({ error: 'Invalid or expired session' });
+      }
+    } catch (authError) {
+      console.error('[AI Proxy] Auth verification failed:', authError.message);
+      return res.status(401).json({ error: 'Authentication failed' });
+    }
   }
 
   try {
