@@ -569,70 +569,73 @@ const Settings = () => {
                                         type="checkbox"
                                         checked={notifications[item.key]}
                                         onChange={async (e) => {
-                                            const isChecked = e.target.checked;
-                                            
-                                            if (item.key === 'push') {
-                                                 try {
-                                                     const { requestPushPermission, unsubscribePush } = await import('../lib/nativePush');
-                                                     if (isChecked) {
-                                                         console.log('[Settings] Requesting push permission...');
-                                                         const subscription = await requestPushPermission();
-                                                         
-                                                         if (subscription) {
-                                                             console.log('[Settings] Got subscription:', subscription.endpoint);
-                                                             
-                                                             // Save subscription to database
-                                                             const { error } = await supabase.from('profiles').update({
-                                                                 push_subscription: subscription.toJSON(),
-                                                                 preferences: { 
-                                                                     ...user.preferences, 
-                                                                     notifications: { ...notifications, push: true } 
-                                                                 }
-                                                             }).eq('id', user.id);
-                                                             
-                                                             if (error) {
-                                                                 console.error('[Settings] Failed to save subscription:', error);
-                                                                 alert('Failed to save push subscription. Please try again.');
-                                                                 setNotifications(prev => ({ ...prev, push: false }));
-                                                                 return;
-                                                             }
-                                                             
-                                                             console.log('[Settings] Successfully enabled push notifications');
-                                                             setNotifications(prev => ({ ...prev, push: true }));
-                                                             await forceRefresh();
-                                                         } else {
-                                                             console.error('[Settings] Failed to get subscription');
-                                                             alert('Could not enable notifications. Please check:\n\n1. You clicked "Allow" on the permission prompt\n2. Ad-blockers are disabled\n3. Browser supports notifications');
-                                                             setNotifications(prev => ({ ...prev, push: false }));
-                                                         }
-                                                     } else {
-                                                         console.log('[Settings] Disabling push notifications...');
-                                                         await unsubscribePush();
-                                                         
-                                                         const { error } = await supabase.from('profiles').update({
-                                                             push_subscription: null,
-                                                             preferences: { 
-                                                                 ...user.preferences, 
-                                                                 notifications: { ...notifications, push: false } 
-                                                             }
-                                                         }).eq('id', user.id);
-                                                         
-                                                         if (error) {
-                                                             console.error('[Settings] Failed to update database:', error);
-                                                         }
-                                                         
-                                                         console.log('[Settings] Successfully disabled push notifications');
-                                                         setNotifications(prev => ({ ...prev, push: false }));
-                                                         await forceRefresh();
-                                                     }
-                                                 } catch (err) {
-                                                     console.error("[Settings] Push toggle error:", err);
-                                                     alert(`Error: ${err.message}`);
-                                                     setNotifications(prev => ({ ...prev, push: false }));
-                                                 }
-                                            } else {
-                                                handleNotificationChange(item.key, isChecked);
-                                            }
+                                             const isChecked = e.target.checked;
+                                             
+                                             if (item.key === 'push') {
+                                                  // Immediately update UI state to avoid double-clicks and toggle freezes
+                                                  setNotifications(prev => ({ ...prev, push: isChecked }));
+                                                  
+                                                  try {
+                                                      const { requestPushPermission, unsubscribePush } = await import('../lib/nativePush');
+                                                      if (isChecked) {
+                                                          console.log('[Settings] Requesting push permission...');
+                                                          const subscription = await requestPushPermission();
+                                                          
+                                                          if (subscription) {
+                                                              console.log('[Settings] Got subscription:', subscription.endpoint);
+                                                              
+                                                              // Save subscription to database
+                                                              const { error } = await supabase.from('profiles').update({
+                                                                  push_subscription: subscription.toJSON(),
+                                                                  preferences: { 
+                                                                      ...user.preferences, 
+                                                                      notifications: { ...notifications, push: true } 
+                                                                  }
+                                                              }).eq('id', user.id);
+                                                              
+                                                              if (error) {
+                                                                  console.error('[Settings] Failed to save subscription:', error);
+                                                                  alert('Failed to save push subscription. Please try again.');
+                                                                  setNotifications(prev => ({ ...prev, push: false }));
+                                                                  return;
+                                                              }
+                                                              
+                                                              console.log('[Settings] Successfully enabled push notifications');
+                                                              await forceRefresh();
+                                                          } else {
+                                                              console.error('[Settings] Failed to get subscription');
+                                                              alert('Could not enable notifications. Please check:\n\n1. You clicked "Allow" on the permission prompt\n2. Ad-blockers are disabled\n3. Browser supports notifications');
+                                                              setNotifications(prev => ({ ...prev, push: false }));
+                                                          }
+                                                      } else {
+                                                          console.log('[Settings] Disabling push notifications...');
+                                                          await unsubscribePush();
+                                                          
+                                                          const { error } = await supabase.from('profiles').update({
+                                                              push_subscription: null,
+                                                              preferences: { 
+                                                                  ...user.preferences, 
+                                                                  notifications: { ...notifications, push: false } 
+                                                              }
+                                                          }).eq('id', user.id);
+                                                          
+                                                          if (error) {
+                                                              console.error('[Settings] Failed to update database:', error);
+                                                              setNotifications(prev => ({ ...prev, push: true }));
+                                                              return;
+                                                          }
+                                                          
+                                                          console.log('[Settings] Successfully disabled push notifications');
+                                                          await forceRefresh();
+                                                      }
+                                                  } catch (err) {
+                                                      console.error("[Settings] Push toggle error:", err);
+                                                      alert(`Error: ${err.message}`);
+                                                      setNotifications(prev => ({ ...prev, push: !isChecked }));
+                                                  }
+                                             } else {
+                                                 handleNotificationChange(item.key, isChecked);
+                                             }
                                         }}
                                         style={{ opacity: 0, width: 0, height: 0 }}
                                     />

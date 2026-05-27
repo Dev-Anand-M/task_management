@@ -52,11 +52,14 @@ export const requestPushPermission = async () => {
   }
   
   try {
-    console.log('[Push] Requesting notification permission...');
+    let permission = Notification.permission;
+    console.log('[Push] Current permission state:', permission);
     
-    // Request permission
-    const permission = await Notification.requestPermission();
-    console.log('[Push] Permission:', permission);
+    if (permission === 'default') {
+      console.log('[Push] Prompting user for notification permission...');
+      permission = await Notification.requestPermission();
+      console.log('[Push] User prompt response:', permission);
+    }
     
     if (permission !== 'granted') {
       throw new Error('Notification permission denied');
@@ -80,7 +83,6 @@ export const requestPushPermission = async () => {
     // Explicitly register sw.js if not already present
     if (!swRegistration) {
       swRegistration = await registerServiceWorker();
-      await navigator.serviceWorker.ready;
     }
     
     let registration = swRegistration;
