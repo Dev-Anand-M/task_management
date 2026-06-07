@@ -31,13 +31,40 @@ export const AuthProvider = ({ children }) => {
 
         lastFetchRef.current = now;
         try {
-            const { data: userProfile, error } = await supabase
+            let { data: userProfile, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
                 .single();
 
-            if (error) {
+            // Auto-provision profile if it doesn't exist
+            if (error && (error.code === 'PGRST116' || error.details?.includes('0 rows'))) {
+                const { data: { user: authUser } } = await supabase.auth.getUser();
+                if (authUser) {
+                    const meta = authUser.user_metadata || {};
+                    const newProfile = {
+                        id: userId,
+                        email: authUser.email,
+                        name: meta.name || authUser.email?.split('@')[0] || 'User',
+                        role: meta.role || 'member',
+                        classroom_id: meta.classroom_id || null,
+                        preferences: {},
+                    };
+                    const { data: created, error: insertErr } = await supabase
+                        .from('profiles')
+                        .upsert(newProfile, { onConflict: 'id' })
+                        .select('*')
+                        .single();
+                    if (!insertErr && created) {
+                        userProfile = created;
+                        error = null;
+                        console.log('[AuthContext] Auto-provisioned profile for', userId);
+                    } else {
+                        console.warn('[AuthContext] Failed to auto-provision profile:', insertErr);
+                        return;
+                    }
+                }
+            } else if (error) {
                 console.warn('[AuthContext] Profile fetch error:', error);
                 return;
             }
