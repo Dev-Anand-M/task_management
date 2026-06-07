@@ -45,28 +45,46 @@ self.addEventListener('fetch', (event) => {
 });
 
 // ── Push ────────────────────────────────────────────────────────────────────────
+// CRITICAL: This handler runs even when the app is closed/backgrounded.
+// The browser wakes the service worker specifically to handle this event.
+// showNotification MUST be called inside event.waitUntil() — if it's not,
+// Android will kill the SW before the notification is shown.
 self.addEventListener('push', (event) => {
   let data = { title: 'Zenith', body: 'You have a new notification', url: '/' };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch (e) { /* fallback to defaults */ }
 
-  event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: '/zenith.png',
-      badge: '/zenith.png',
-      data: { url: data.url || '/' },
-      tag: data.tag || 'zenith-' + Date.now(),
-      vibrate: [200, 100, 200],
-      requireInteraction: false,
-    })
-  );
+  // Show the notification immediately — no async work before this!
+  const promiseChain = self.registration.showNotification(data.title, {
+    body: data.body,
+    icon: '/zenith.png',
+    badge: '/zenith.png',
+    image: undefined,
+    data: { url: data.url || '/' },
+    tag: data.tag || 'zenith-' + Date.now(),
+    timestamp: data.timestamp || Date.now(),
+    vibrate: [200, 100, 200, 100, 200],
+    renotify: true,        // Always alert even if same tag exists
+    requireInteraction: true, // DON'T auto-dismiss on Android — user must tap/swipe
+    actions: [
+      { action: 'open', title: 'Open' },
+      { action: 'dismiss', title: 'Dismiss' }
+    ],
+    // Android notification channel hint (Chrome 115+)
+    silent: false,
+  });
+
+  event.waitUntil(promiseChain);
 });
 
 // ── Notification Click ─────────────────────────────────────────────────────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  
+  // Handle action buttons
+  if (event.action === 'dismiss') return;
+  
   const url = event.notification.data?.url || '/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {

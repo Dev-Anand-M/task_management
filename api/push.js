@@ -1,6 +1,15 @@
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 
+// ── Push delivery options ─────────────────────────────────────────────────────
+// TTL: how long (seconds) the push service queues the message if device is offline.
+//      Default is 0 (discard immediately) — this is why background push was failing!
+// urgency: 'high' tells Android/Chrome to wake the device and deliver immediately.
+const PUSH_OPTIONS = {
+  TTL: 86400,         // 24 hours — keeps message queued until device comes online
+  urgency: 'high',    // Triggers immediate delivery, wakes device from Doze mode
+};
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -42,9 +51,29 @@ export default async function handler(req, res) {
   // ── Request body ────────────────────────────────────────────────────────────
   const { subscription, user_ids, title, body, url } = req.body;
 
+  const payload = JSON.stringify({
+    title: title || 'Zenith',
+    body: body || 'You have a new notification',
+    url: url || '/',
+    tag: 'zenith-' + Date.now(),
+    timestamp: Date.now(),
+  });
+
   // Mode 1: Direct subscription push (for test push / single target)
   if (subscription?.endpoint) {
-    return await sendToOne(res, subscription, { title, body, url });
+    try {
+      await webpush.sendNotification(
+        { endpoint: subscription.endpoint, keys: subscription.keys },
+        payload,
+        PUSH_OPTIONS
+      );
+      return res.status(200).json({ success: true, sent: 1 });
+    } catch (err) {
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        return res.status(410).json({ success: false, error: 'Subscription expired', expired: true });
+      }
+      return res.status(500).json({ success: false, error: err.message });
+    }
   }
 
   // Mode 2: Multi-user push (look up subscriptions from DB)
@@ -64,18 +93,12 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, sent: 0, message: 'No active push subscriptions' });
     }
 
-    const payload = JSON.stringify({
-      title: title || 'Zenith',
-      body: body || 'You have a new notification',
-      url: url || '/',
-      tag: 'zenith-' + Date.now(),
-    });
-
     const results = await Promise.allSettled(
       subs.map((p) =>
         webpush.sendNotification(
           { endpoint: p.push_subscription.endpoint, keys: p.push_subscription.keys },
-          payload
+          payload,
+          PUSH_OPTIONS
         ).catch(async (err) => {
           // Auto-clear expired subscriptions
           if (err.statusCode === 404 || err.statusCode === 410) {
@@ -94,27 +117,4 @@ export default async function handler(req, res) {
   }
 
   return res.status(400).json({ error: 'Provide either subscription or user_ids' });
-}
-
-// ── Helper ────────────────────────────────────────────────────────────────────
-async function sendToOne(res, subscription, { title, body, url }) {
-  const payload = JSON.stringify({
-    title: title || 'Zenith',
-    body: body || 'You have a new notification',
-    url: url || '/',
-    tag: 'zenith-' + Date.now(),
-  });
-
-  try {
-    await webpush.sendNotification(
-      { endpoint: subscription.endpoint, keys: subscription.keys },
-      payload
-    );
-    return res.status(200).json({ success: true, sent: 1 });
-  } catch (err) {
-    if (err.statusCode === 410 || err.statusCode === 404) {
-      return res.status(410).json({ success: false, error: 'Subscription expired', expired: true });
-    }
-    return res.status(500).json({ success: false, error: err.message });
-  }
 }
