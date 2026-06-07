@@ -1012,6 +1012,13 @@ export const evaluateTaskSubmission = async (taskData, submissionData, model = n
 
 // AI Quiz Evaluator (For Admins)
 export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null, signal = null, options = {}) => {
+    if (!quizData) {
+        throw new Error('Quiz data is missing or the quiz has been deleted.');
+    }
+    if (!quizData.questions || !Array.isArray(quizData.questions)) {
+        throw new Error('Quiz questions are missing or malformed.');
+    }
+
     // 1. Fetch relevant knowledge (RAG)
     let relevantContext = "";
     try {

@@ -106,29 +106,26 @@ const KnowledgeBase = () => {
             try {
                 const { data: profiles } = await supabase
                     .from('profiles')
-                    .select('id, preferences')
+                    .select('id')
                     .eq('classroom_id', newSnippet.classroom_id)
                     .eq('role', 'member');
 
                 if (profiles && profiles.length > 0) {
                     const userIds = profiles.map(p => p.id).filter(Boolean);
-                    const oneSignalIds = profiles.map(p => p.preferences?.onesignal_id).filter(Boolean);
 
-                    if (userIds.length > 0 || oneSignalIds.length > 0) {
+                    if (userIds.length > 0) {
+                        const { data: { session } } = await supabase.auth.getSession();
                         await fetch(`${window.location.origin}/api/push`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${session?.access_token}`
+                            },
                             body: JSON.stringify({
                                 user_ids: userIds,
-                                onesignal_ids: oneSignalIds,
                                 title: 'New Learning Resource! 📚',
                                 body: `"${newSnippet.title}" has been shared in ${newSnippet.subject || 'your classroom'}.`,
-                                data: {
-                                    type: 'knowledge_snippet',
-                                    id: material.id,
-                                    classroom_id: newSnippet.classroom_id,
-                                    url: '/knowledge-base'
-                                }
+                                url: '/knowledge-base'
                             })
                         });
                     }

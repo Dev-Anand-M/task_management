@@ -186,7 +186,6 @@ export const AuthProvider = ({ children }) => {
     // logout with timeout — can NEVER hang
     const logout = useCallback(async () => {
         try {
-            // Firebase logic removed - migrating to native push
 
             await Promise.race([
                 supabase.auth.signOut(),

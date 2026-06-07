@@ -1,132 +1,82 @@
-// Zenith Service Worker - Simple Push Notifications
-const CACHE_NAME = 'zenith-v1';
+// Zenith Service Worker
+const CACHE_NAME = 'zenith-v2';
 const OFFLINE_URL = '/offline.html';
 
-// Install event
+// ── Install ────────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker...');
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Caching offline page');
-      return cache.addAll([
-        OFFLINE_URL,
-        '/manifest.json',
-        '/zenith.png'
-      ]).catch(err => console.warn('[SW] Failed to cache:', err));
-    })
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll([OFFLINE_URL, '/manifest.json', '/zenith.png'])
+        .catch(() => {/* non-critical */})
+    )
   );
   self.skipWaiting();
 });
 
-// Activate event
+// ── Activate ───────────────────────────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker...');
   event.waitUntil(
-    Promise.all([
-      // Clean up old caches
-      caches.keys().then(names =>
-        Promise.all(
-          names.map(name => name !== CACHE_NAME ? caches.delete(name) : null)
-        )
-      ),
-      self.clients.claim()
-    ])
+    caches.keys().then((names) =>
+      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
+    ).then(() => self.clients.claim())
   );
 });
 
-// Fetch event - basic offline support
+// ── Fetch (network-first, offline fallback) ────────────────────────────────────
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  
-  // Network first, fall back to cache
   event.respondWith(
     fetch(event.request)
-      .then(response => {
-        // Cache successful responses
+      .then((response) => {
         if (response && response.ok) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseClone);
-          });
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return response;
       })
-      .catch(() => {
-        // Try cache
-        return caches.match(event.request).then(cached => {
+      .catch(() =>
+        caches.match(event.request).then((cached) => {
           if (cached) return cached;
-          
-          // Return offline page for navigation requests
-          if (event.request.mode === 'navigate') {
-            return caches.match(OFFLINE_URL);
-          }
-          
+          if (event.request.mode === 'navigate') return caches.match(OFFLINE_URL);
           return new Response('Offline', { status: 503 });
-        });
-      })
+        })
+      )
   );
 });
 
-// ── Push Notification Handlers ────────────────────────────────────────────────
+// ── Push ────────────────────────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push notification received');
-  
-  let data = {
-    title: 'Zenith',
-    body: 'You have a new notification',
-    icon: '/zenith.png',
-    badge: '/zenith.png',
-    url: '/'
-  };
-  
+  let data = { title: 'Zenith', body: 'You have a new notification', url: '/' };
   try {
-    if (event.data) {
-      const payload = event.data.json();
-      data = { ...data, ...payload };
-    }
-  } catch (e) {
-    console.error('[SW] Error parsing push data:', e);
-  }
-  
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch (e) { /* fallback to defaults */ }
+
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: data.icon,
-      badge: data.badge,
-      data: { url: data.url },
-      tag: data.tag || 'zenith-notification',
+      icon: '/zenith.png',
+      badge: '/zenith.png',
+      data: { url: data.url || '/' },
+      tag: data.tag || 'zenith-' + Date.now(),
+      vibrate: [200, 100, 200],
       requireInteraction: false,
-      vibrate: [200, 100, 200]
     })
   );
 });
 
-// Handle notification clicks
+// ── Notification Click ─────────────────────────────────────────────────────────
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked');
   event.notification.close();
-  
   const url = event.notification.data?.url || '/';
-  
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then(clientList => {
-        // Check if there's already a window open
-        for (const client of clientList) {
-          if (client.url.includes(self.location.origin) && 'focus' in client) {
-            client.navigate(url);
-            return client.focus();
-          }
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(url);
+          return client.focus();
         }
-        // Open new window if none exists
-        return clients.openWindow(url);
-      })
+      }
+      return clients.openWindow(url);
+    })
   );
 });
-
-// Handle notification close
-self.addEventListener('notificationclose', (event) => {
-  console.log('[SW] Notification closed');
-});
-
-console.log('[SW] Service worker loaded');

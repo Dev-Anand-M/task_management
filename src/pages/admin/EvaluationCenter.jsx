@@ -169,6 +169,10 @@ const EvaluationCenter = () => {
                                         
                                         for (const att of flagged) {
                                             const quiz = await db.getQuizById(att.quiz_id);
+                                            if (!quiz) {
+                                                console.warn(`Skipping missing quiz ID: ${att.quiz_id}`);
+                                                continue;
+                                            }
                                             const report = await evaluateQuizAttempt(quiz, att.answers, model);
                                             
                                             // Simple auto-update for bulk
@@ -966,6 +970,22 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
     }
 
     if (!attempt) return <div>Attempt not found</div>;
+    if (!attempt.quiz) {
+        return (
+            <Card style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
+                <div className="empty-state">
+                    <div className="empty-state-icon" style={{ color: 'var(--error-500)', fontSize: '2rem', marginBottom: 'var(--space-md)' }}>⚠️</div>
+                    <h3>Associated quiz not found</h3>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-md)' }}>
+                        The quiz associated with this attempt has been deleted or is no longer available.
+                    </p>
+                    <Button onClick={onBack} style={{ display: 'inline-flex', margin: '0 auto' }}>
+                        Back to Evaluations
+                    </Button>
+                </div>
+            </Card>
+        );
+    }
 
     return (
         <div className="animate-fade-in">

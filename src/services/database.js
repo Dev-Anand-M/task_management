@@ -204,18 +204,12 @@ export const createTask = async (task) => {
 
             // Trigger push notifications for assigned users
             const userIds = task.assigned_to.filter(Boolean);
-
             if (userIds.length > 0) {
-                console.log(`[Push] Sending task assignment notification to ${userIds.length} users`);
-                fetch(`${window.location.origin}/api/push`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        user_ids: userIds,
-                        title: '📋 New Task Assigned',
-                        body: `You have been assigned: "${task.title}"`,
-                        link: `/tasks/${data.id}`
-                    })
+                _sendPush({
+                    user_ids: userIds,
+                    title: '📋 New Task Assigned',
+                    body: `You have been assigned: "${task.title}"`,
+                    url: `/tasks/${data.id}`
                 }).catch(e => console.warn('[Push] Error:', e));
             }
         } else if (task.is_global) {
@@ -411,16 +405,11 @@ export const createQuiz = async (quiz) => {
             
             const userIds = quiz.assigned_to.filter(Boolean);
             if (userIds.length > 0) {
-                fetch(`${window.location.origin}/api/push`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        user_ids: userIds,
-                        title: 'New Quiz Assigned',
-                        body: `You have been specifically assigned the quiz: "${quiz.title}"`,
-                        link: '/quizzes',
-                        data: { type: 'warning' }
-                    })
+                _sendPush({
+                    user_ids: userIds,
+                    title: 'New Quiz Assigned',
+                    body: `You have been specifically assigned the quiz: "${quiz.title}"`,
+                    url: '/quizzes'
                 }).catch(e => console.warn('[Push] Error:', e));
             }
         } else if (classroomId) {
@@ -607,16 +596,17 @@ export const markAllNotificationsRead = async (userId) => {
     return true;
 };
 
-// Internal helper: send push notification with auth
-const _sendPush = async (body) => {
+// Internal helper: send push notification via /api/push with auth
+const _sendPush = async (payload) => {
     const { data: { session } } = await supabase.auth.getSession();
-    return fetch(`${window.location.origin}/api/native-push`, {
+    if (!session?.access_token) return;
+    return fetch(`${window.location.origin}/api/push`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+            'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(payload)
     });
 };
 

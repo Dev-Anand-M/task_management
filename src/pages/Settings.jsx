@@ -192,13 +192,13 @@ const Settings = () => {
         if (user) {
             setNotifications(prev => {
                 const dbNotifications = user.preferences?.notifications || {};
-                const hasToken = !!user.preferences?.onesignal_id || !!user.preferences?.fcm_token;
+                const hasSubscription = !!user.push_subscription;
                 return {
                     ...prev,
                     ...dbNotifications,
                     // Only use db state for push if we haven't manually toggled it yet
                     // or if the user object just loaded for the first time
-                    push: dbNotifications.push !== undefined ? dbNotifications.push : hasToken
+                    push: dbNotifications.push !== undefined ? dbNotifications.push : hasSubscription
                 };
             });
         }
@@ -572,21 +572,16 @@ const Settings = () => {
                                              const isChecked = e.target.checked;
                                              
                                              if (item.key === 'push') {
-                                                  // Immediately update UI state to avoid double-clicks and toggle freezes
                                                   setNotifications(prev => ({ ...prev, push: isChecked }));
                                                   
                                                   try {
-                                                      const { requestPushPermission, unsubscribePush } = await import('../lib/nativePush');
+                                                      const push = await import('../lib/pushNotifications');
                                                       if (isChecked) {
-                                                          console.log('[Settings] Requesting push permission...');
-                                                          const subscription = await requestPushPermission();
+                                                          const subscription = await push.subscribe();
                                                           
                                                           if (subscription) {
-                                                              console.log('[Settings] Got subscription:', subscription.endpoint);
-                                                              
-                                                              // Save subscription to database
                                                               const { error } = await supabase.from('profiles').update({
-                                                                  push_subscription: subscription.toJSON(),
+                                                                  push_subscription: subscription,
                                                                   preferences: { 
                                                                       ...user.preferences, 
                                                                       notifications: { ...notifications, push: true } 
@@ -594,42 +589,26 @@ const Settings = () => {
                                                               }).eq('id', user.id);
                                                               
                                                               if (error) {
-                                                                  console.error('[Settings] Failed to save subscription:', error);
-                                                                  alert('Failed to save push subscription. Please try again.');
+                                                                  alert('Failed to save push subscription.');
                                                                   setNotifications(prev => ({ ...prev, push: false }));
                                                                   return;
                                                               }
-                                                              
-                                                              console.log('[Settings] Successfully enabled push notifications');
                                                               await forceRefresh();
-                                                          } else {
-                                                              console.error('[Settings] Failed to get subscription');
-                                                              alert('Could not enable notifications. Please check:\n\n1. You clicked "Allow" on the permission prompt\n2. Ad-blockers are disabled\n3. Browser supports notifications');
-                                                              setNotifications(prev => ({ ...prev, push: false }));
                                                           }
                                                       } else {
-                                                          console.log('[Settings] Disabling push notifications...');
-                                                          await unsubscribePush();
+                                                          await push.unsubscribe();
                                                           
-                                                          const { error } = await supabase.from('profiles').update({
+                                                          await supabase.from('profiles').update({
                                                               push_subscription: null,
                                                               preferences: { 
                                                                   ...user.preferences, 
                                                                   notifications: { ...notifications, push: false } 
                                                               }
                                                           }).eq('id', user.id);
-                                                          
-                                                          if (error) {
-                                                              console.error('[Settings] Failed to update database:', error);
-                                                              setNotifications(prev => ({ ...prev, push: true }));
-                                                              return;
-                                                          }
-                                                          
-                                                          console.log('[Settings] Successfully disabled push notifications');
                                                           await forceRefresh();
                                                       }
                                                   } catch (err) {
-                                                      console.error("[Settings] Push toggle error:", err);
+                                                      console.error('[Settings] Push toggle error:', err);
                                                       alert(`Error: ${err.message}`);
                                                       setNotifications(prev => ({ ...prev, push: !isChecked }));
                                                   }
@@ -760,11 +739,9 @@ const Settings = () => {
                                     }
                                     
                                     try {
-                                        // 1. Unsubscribe from browser
-                                        const { unsubscribePush } = await import('../lib/nativePush');
-                                        await unsubscribePush();
+                                        const push = await import('../lib/pushNotifications');
+                                        await push.unsubscribe();
                                         
-                                        // 2. Clear database subscription
                                         await supabase.from('profiles').update({
                                             push_subscription: null,
                                             preferences: { 
@@ -773,16 +750,13 @@ const Settings = () => {
                                             }
                                         }).eq('id', user.id);
                                         
-                                        // 3. Wait a moment
-                                        await new Promise(resolve => setTimeout(resolve, 1000));
+                                        await new Promise(resolve => setTimeout(resolve, 500));
                                         
-                                        // 4. Create new subscription
-                                        const { requestPushPermission } = await import('../lib/nativePush');
-                                        const subscription = await requestPushPermission();
+                                        const subscription = await push.subscribe();
                                         
                                         if (subscription) {
                                             await supabase.from('profiles').update({
-                                                push_subscription: subscription.toJSON(),
+                                                push_subscription: subscription,
                                                 preferences: { 
                                                     ...user.preferences, 
                                                     notifications: { ...notifications, push: true } 
@@ -791,12 +765,9 @@ const Settings = () => {
                                             
                                             setNotifications(prev => ({ ...prev, push: true }));
                                             await forceRefresh();
-                                            alert('✅ Push subscription recreated successfully!\n\nTry the Test Alert button now.');
-                                        } else {
-                                            alert('❌ Failed to create new subscription');
+                                            alert('✅ Push subscription recreated!');
                                         }
                                     } catch (error) {
-                                        console.error('[ForceRecreate] Error:', error);
                                         alert('Error: ' + error.message);
                                     }
                                 }}
@@ -846,13 +817,17 @@ const Settings = () => {
                                             
                                             console.log("[TestPush] Sending to subscription:", profile.push_subscription.endpoint);
                                             
-                                            const res = await fetch(`${window.location.origin}/api/native-push`, {
+                                            const { data: { session } } = await supabase.auth.getSession();
+                                            const res = await fetch(`${window.location.origin}/api/push`, {
                                                 method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
+                                                headers: { 
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': `Bearer ${session?.access_token}`
+                                                },
                                                 body: JSON.stringify({
                                                     subscription: profile.push_subscription,
-                                                    title: 'Native Push Test 🔔',
-                                                    body: 'If you see this, background notifications are working perfectly!',
+                                                    title: 'Push Test 🔔',
+                                                    body: 'If you see this, push notifications are working!',
                                                     url: '/settings'
                                                 })
                                             });
