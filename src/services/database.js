@@ -29,20 +29,20 @@ export const withTimeout = async (promise, ms = 30000) => {
 
 export const getMembers = async () => {
     try {
-        // Filter by current classroom
         const user = await getActiveUser();
 
         const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
 
         let query = supabase.from('profiles').select('*').order('created_at', { ascending: false });
 
-        if (profile?.classroom_id) {
-            query = query.eq('classroom_id', profile.classroom_id);
-        } else if (profile?.role !== 'admin') {
-            // If not admin and no classroom, return nothing or handle appropriately
-            return [];
+        // If not admin, restrict to their own classroom
+        if (profile?.role !== 'admin') {
+            if (profile?.classroom_id) {
+                query = query.eq('classroom_id', profile.classroom_id);
+            } else {
+                return [];
+            }
         }
-        // If admin and no classroom, returns all (Global)
 
         const { data, error: queryError } = await query;
         if (queryError) throw queryError;
@@ -369,9 +369,38 @@ export const getQuizzes = async () => {
 };
 
 export const getQuizById = async (id) => {
-    const { data, error } = await supabase.from('quizzes').select('*').eq('id', id).single();
-    if (error) return null;
-    return data;
+    try {
+        // Don't use .single() - it throws error if 0 or 2+ rows
+        const { data, error } = await supabase
+            .from('quizzes')
+            .select('*')
+            .eq('id', id);
+        
+        if (error) {
+            console.error('[getQuizById] Query error:', error.message);
+            return null;
+        }
+        
+        if (!data || data.length === 0) {
+            console.warn('[getQuizById] Quiz not found:', id);
+            return null;
+        }
+        
+        if (data.length > 1) {
+            console.error('[getQuizById] DUPLICATE QUIZ IDs FOUND:', {
+                id,
+                count: data.length,
+                titles: data.map(q => q.title)
+            });
+            // Return the first one, but log the issue
+            return data[0];
+        }
+        
+        return data[0];
+    } catch (err) {
+        console.error('[getQuizById] Unexpected error:', err);
+        return null;
+    }
 };
 
 export const createQuiz = async (quiz) => {
@@ -447,12 +476,49 @@ export const getQuizAttempts = async () => {
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
         const isAdmin = profile?.role === 'admin';
 
-        let query = supabase.from('quiz_attempts').select('*, profiles!left(name, avatar_url, email, classroom_id, xp), quizzes!left(title, points)');
-        if (!isAdmin) query = query.eq('user_id', user.id);
+        // Fetch attempts and related data separately to avoid join issues
+        let attemptsQuery = supabase.from('quiz_attempts').select('*');
+        if (!isAdmin) attemptsQuery = attemptsQuery.eq('user_id', user.id);
 
-        const { data, error } = await withTimeout(query.order('completed_at', { ascending: false }));
-        if (error) throw error;
-        return data || [];
+        const { data: attempts, error } = await withTimeout(attemptsQuery.order('completed_at', { ascending: false }));
+        if (error) {
+            console.error('[getQuizAttempts] Error fetching attempts:', error);
+            throw error;
+        }
+
+        if (!attempts || attempts.length === 0) {
+            return [];
+        }
+
+        // Manually fetch related profiles and quizzes
+        const userIds = [...new Set(attempts.map(a => a.user_id))];
+        const quizIds = [...new Set(attempts.map(a => a.quiz_id))];
+
+        const [profilesData, quizzesData] = await Promise.all([
+            supabase.from('profiles').select('id, name, avatar_url, email, classroom_id, xp').in('id', userIds),
+            supabase.from('quizzes').select('id, title, points').in('id', quizIds)
+        ]);
+
+        const profilesMap = {};
+        (profilesData.data || []).forEach(p => { profilesMap[p.id] = p; });
+
+        const quizzesMap = {};
+        (quizzesData.data || []).forEach(q => { quizzesMap[q.id] = q; });
+
+        // Combine data manually
+        const enrichedAttempts = attempts.map(attempt => ({
+            ...attempt,
+            profiles: profilesMap[attempt.user_id] || null,
+            quizzes: quizzesMap[attempt.quiz_id] || null
+        }));
+
+        console.log('[getQuizAttempts] Fetched attempts:', {
+            total: enrichedAttempts.length,
+            withQuiz: enrichedAttempts.filter(a => a.quizzes).length,
+            withoutQuiz: enrichedAttempts.filter(a => !a.quizzes).length
+        });
+
+        return enrichedAttempts;
     } catch (err) {
         console.error('Error in getQuizAttempts:', err);
         return [];

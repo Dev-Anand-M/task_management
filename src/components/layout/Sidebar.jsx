@@ -53,6 +53,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                 setClassrooms(updatedClassrooms);
             }
             setShowClassroomMenu(false);
+            // Trigger micro-reload so all pages re-fetch data for the new classroom
+            window.dispatchEvent(new CustomEvent('zenith-refresh'));
         } catch (error) {
             console.error('Failed to switch classroom:', error);
             alert('Failed to switch classroom. Please try again.');

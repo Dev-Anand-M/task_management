@@ -16,7 +16,8 @@ import {
     Key
 } from 'lucide-react';
 import * as db from '../../services/database';
-import { formatDate, calculateLevel, calculateLevelProgress, BADGES } from '../../utils/constants';
+import { formatDate, BADGES } from '../../utils/constants';
+import { useMiniReload } from '../../hooks/useMiniReload';
 
 const TeamManagement = () => {
     const navigate = useNavigate();
@@ -53,6 +54,8 @@ const TeamManagement = () => {
             supabase.removeChannel(channel);
         };
     }, []);
+
+    useMiniReload(() => loadMembers());
 
     const handleResetPassword = async (email) => {
         if (!window.confirm(`Are you sure you want to send a password reset email to ${email}?`)) {

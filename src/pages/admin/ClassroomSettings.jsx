@@ -4,6 +4,7 @@ import { School, Save, Users, BookOpen, Key, Plus, Check, MoreVertical, LayoutGr
 import * as db from '../../services/database';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import { useMiniReload } from '../../hooks/useMiniReload';
 
 const ClassroomSettings = () => {
     const { user, forceRefresh } = useAuth();
@@ -32,6 +33,8 @@ const ClassroomSettings = () => {
     useEffect(() => {
         loadData();
     }, []);
+
+    useMiniReload(() => loadData());
 
     const loadData = async () => {
         try {

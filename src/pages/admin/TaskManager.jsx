@@ -25,6 +25,7 @@ import {
     EVALUATION_CRITERIA,
     getDifficultyColor
 } from '../../utils/constants';
+import { useMiniReload } from '../../hooks/useMiniReload';
 
 const TaskManager = () => {
     const { user } = useAuth();
@@ -64,6 +65,8 @@ const TaskManager = () => {
     useEffect(() => {
         loadData();
     }, []);
+
+    useMiniReload(() => loadData());
 
     // Effect to handle URL-based modal opening
     useEffect(() => {

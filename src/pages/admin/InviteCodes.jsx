@@ -15,6 +15,7 @@ import {
 import * as inviteCodes from '../../services/inviteCodes';
 import * as db from '../../services/database';
 import { useAuth } from '../../context/AuthContext';
+import { useMiniReload } from '../../hooks/useMiniReload';
 
 const InviteCodes = () => {
     const { user } = useAuth();
@@ -33,6 +34,8 @@ const InviteCodes = () => {
     useEffect(() => {
         loadData();
     }, []);
+
+    useMiniReload(() => loadData());
 
     // Update selected classroom when user context changes or modal opens
     useEffect(() => {

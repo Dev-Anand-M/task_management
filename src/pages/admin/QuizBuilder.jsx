@@ -21,6 +21,7 @@ import {
     QUESTION_TYPES,
     getDifficultyColor
 } from '../../utils/constants';
+import { useMiniReload } from '../../hooks/useMiniReload';
 
 const QuizBuilder = () => {
     const { user } = useAuth();
@@ -52,6 +53,8 @@ const QuizBuilder = () => {
     useEffect(() => {
         loadData();
     }, []);
+
+    useMiniReload(() => loadData());
 
     const loadData = async () => {
         try {
@@ -215,7 +218,18 @@ const QuizBuilder = () => {
             newFormData.title = metadata[0] || formData.title;
             newFormData.description = metadata[1] || formData.description;
             if (metadata[2]) newFormData.category = metadata[2];
-            if (metadata[3]) newFormData.difficulty = metadata[3].toLowerCase();
+            
+            // Validate difficulty - must be 'easy', 'medium', or 'hard'
+            if (metadata[3]) {
+                const difficulty = metadata[3].toLowerCase().trim();
+                if (['easy', 'medium', 'hard'].includes(difficulty)) {
+                    newFormData.difficulty = difficulty;
+                } else {
+                    console.warn(`Invalid difficulty "${metadata[3]}" - defaulting to "easy"`);
+                    newFormData.difficulty = 'easy';
+                }
+            }
+            
             if (metadata[4]) newFormData.time_limit = parseInt(metadata[4]) || 10;
         }
 
@@ -224,21 +238,29 @@ const QuizBuilder = () => {
         const dataLines = lines.slice(startIndex);
 
         const newQuestions = [];
+        const errors = [];
+        
         dataLines.forEach((row, index) => {
             if (row.length < 2) return;
             
-            const type = row[0].toLowerCase();
+            const type = row[0].toLowerCase().trim();
             const questionText = row[1];
             
             if (type.includes('mcq') || type.includes('multiple')) {
                 const options = [row[2], row[3], row[4], row[5]];
                 let correctIdx = parseInt(row[6]);
                 
-                // Human-friendly indexing: If user puts 1, it should be the 1st option (index 0)
-                // If they put 0, we still keep it as 0.
-                if (!isNaN(correctIdx) && correctIdx > 0 && correctIdx <= 4) {
-                    correctIdx = correctIdx - 1;
-                } else if (isNaN(correctIdx)) {
+                // Standardize to 0-based indexing (0, 1, 2, 3)
+                // Platform uses 0-based ONLY - no auto-conversion
+                if (!isNaN(correctIdx)) {
+                    if (correctIdx >= 0 && correctIdx <= 3) {
+                        // Valid 0-based index (0, 1, 2, 3) - use as is
+                    } else {
+                        errors.push(`Question ${index + 1}: Invalid correct answer index "${row[6]}" - must be 0-3 (0=first option, 1=second, 2=third, 3=fourth)`);
+                        correctIdx = 0; // default to first option
+                    }
+                } else {
+                    errors.push(`Question ${index + 1}: Missing or invalid correct answer - defaulting to option 1`);
                     correctIdx = 0;
                 }
                 
@@ -247,16 +269,35 @@ const QuizBuilder = () => {
                     type: 'multiple',
                     question: questionText,
                     options: options,
-                    correctAnswer: correctIdx
+                    correctAnswer: correctIdx  // 0-based: 0, 1, 2, 3
                 });
             } else if (type.includes('bool') || type.includes('true')) {
-                const answer = row[2].toLowerCase() === 'true';
+                // Boolean questions: ONLY simple format supported
+                // Format: "boolean","Question","True" or "False"
+                
+                let answer;
+                
+                // Try to parse from column 2 (simple format)
+                const answerStr = (row[2] || '').toLowerCase().trim();
+                
+                if (answerStr === 'true' || answerStr === '1' || answerStr === 'yes') {
+                    answer = true;
+                } else if (answerStr === 'false' || answerStr === '0' || answerStr === 'no') {
+                    answer = false;
+                } else {
+                    errors.push(`Question ${index + 1}: Invalid boolean answer "${row[2]}" - must be True or False`);
+                    answer = false; // default to false
+                }
+                
+                console.log(`[Boolean CSV Parse] Question: "${questionText}"`);
+                console.log(`  Raw answer: "${row[2]}" → Boolean: ${answer}`);
+                
                 newQuestions.push({
                     id: `q-${Date.now()}-${index}`,
                     type: 'boolean',
                     question: questionText,
                     options: [],
-                    correctAnswer: answer
+                    correctAnswer: answer  // Boolean: true or false
                 });
             } else if (type.includes('short')) {
                 newQuestions.push({
@@ -264,17 +305,24 @@ const QuizBuilder = () => {
                     type: 'short',
                     question: questionText,
                     options: [],
-                    correctAnswer: row[2]
+                    correctAnswer: row[2] || ''
                 });
+            } else {
+                errors.push(`Question ${index + 1}: Unknown question type "${row[0]}"`);
             }
         });
+
+        if (errors.length > 0) {
+            alert('Import completed with warnings:\n\n' + errors.join('\n'));
+        }
 
         if (newQuestions.length > 0) {
             setFormData({
                 ...newFormData,
                 questions: newQuestions
             });
-            alert(`Successfully imported Quiz: "${newFormData.title}" with ${newQuestions.length} questions!`);
+            alert(`Successfully imported Quiz: "${newFormData.title}" with ${newQuestions.length} questions!` + 
+                  (errors.length > 0 ? '\n\nPlease review the warnings above.' : ''));
         } else {
             alert('Could not find valid questions. Ensure the Type (mcq/boolean/short) is in the first column.');
         }
@@ -685,30 +733,35 @@ const QuizBuilder = () => {
                                     flexWrap: 'wrap',
                                     gap: 'var(--space-sm)'
                                 }}>
-                                    {members.map(member => (
-                                        <div
-                                            key={member.id}
-                                            onClick={() => toggleAssignment(member.id)}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 'var(--space-sm)',
-                                                padding: 'var(--space-xs) var(--space-md)',
-                                                background: formData.assigned_to.includes(member.id)
-                                                    ? 'rgba(99, 102, 241, 0.1)'
-                                                    : 'var(--card)',
-                                                border: `2px solid ${formData.assigned_to.includes(member.id) ? 'var(--primary-500)' : 'var(--border)'}`,
-                                                borderRadius: 'var(--radius-full)',
-                                                cursor: 'pointer',
-                                                transition: 'all var(--transition-fast)'
-                                            }}
-                                        >
-                                            <Avatar name={member.name} image={member.avatar_url} size="sm" />
-                                            <span style={{ fontSize: 'var(--text-sm)' }}>{member.name}</span>
-                                        </div>
-                                    ))}
+                                    {members
+                                        .filter(member => {
+                                            if (formData.is_global) return true;
+                                            return member.classroom_id === formData.classroom_id;
+                                        })
+                                        .map(member => (
+                                            <div
+                                                key={member.id}
+                                                onClick={() => toggleAssignment(member.id)}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 'var(--space-sm)',
+                                                    padding: 'var(--space-xs) var(--space-md)',
+                                                    background: formData.assigned_to.includes(member.id)
+                                                        ? 'rgba(99, 102, 241, 0.1)'
+                                                        : 'var(--card)',
+                                                    border: `2px solid ${formData.assigned_to.includes(member.id) ? 'var(--primary-500)' : 'var(--border)'}`,
+                                                    borderRadius: 'var(--radius-full)',
+                                                    cursor: 'pointer',
+                                                    transition: 'all var(--transition-fast)'
+                                                }}
+                                            >
+                                                <Avatar name={member.name} image={member.avatar_url} size="sm" />
+                                                <span style={{ fontSize: 'var(--text-sm)' }}>{member.name}</span>
+                                            </div>
+                                        ))}
                                 </div>
-                                {members.length === 0 && (
+                                {members.filter(member => formData.is_global || member.classroom_id === formData.classroom_id).length === 0 && (
                                     <p className="text-xs text-muted italic">No members found in this classroom.</p>
                                 )}
                             </div>
@@ -743,15 +796,24 @@ const QuizBuilder = () => {
                                     <h4 className="text-xs font-black uppercase tracking-widest mb-sm" style={{ color: 'var(--primary-500)' }}>CSV Import Format Guide</h4>
                                     <p className="mb-sm">To import a quiz, upload a CSV with the following structure:</p>
                                     <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <li>• <strong>Row 1:</strong> Title, Description, Category, Difficulty, TimeLimit</li>
-                                        <li>• <strong>Row 2:</strong> Headers (Type, Question, Opt1, Opt2, Opt3, Opt4, Correct)</li>
-                                        <li>• <strong>MCQ:</strong> mcq, Question, Opt 1, Opt 2, Opt 3, Opt 4, Correct Index (0-3)</li>
-                                        <li>• <strong>Boolean:</strong> boolean, Question, True/False</li>
-                                        <li>• <strong>Short Answer:</strong> short, Question, Expected Answer</li>
+                                        <li>• <strong>Row 1:</strong> Title, Description, Category, Difficulty (easy/medium/hard), TimeLimit</li>
+                                        <li>• <strong>Row 2:</strong> Headers (optional - Type, Question, Options...)</li>
+                                        <li>• <strong>MCQ:</strong> "mcq", "Question?", "Option 1", "Option 2", "Option 3", "Option 4", AnswerIndex</li>
+                                        <li>• <strong>Boolean:</strong> "boolean", "Question?", "True" or "False"</li>
+                                        <li>• <strong>Short Answer:</strong> "short", "Question?", "Expected Answer"</li>
                                     </ul>
-                                    <div className="mt-sm p-xs bg-card rounded border border-border/50 font-mono" style={{ fontSize: '10px' }}>
+                                    <p className="mt-sm mb-xs" style={{ fontSize: '11px', fontStyle: 'italic', color: 'var(--warning-400)' }}>
+                                        ⚠️ MCQ: Use 0-based indexing (0=first, 1=second, 2=third, 3=fourth)
+                                        <br/>
+                                        ⚠️ Boolean: Use "True" or "False" directly (NOT 0/1 indices)
+                                    </p>
+                                    <div className="mt-xs p-xs bg-card rounded border border-border/50 font-mono" style={{ fontSize: '10px', lineHeight: '1.6' }}>
+                                        <strong>Example CSV:</strong><br/>
                                         "HTML Basics","Intro to HTML","Frontend","easy",15<br/>
-                                        "mcq","What is HTML?","Language","Bird","Car","Plane",0
+                                        "Type","Question","Opt1","Opt2","Opt3","Opt4","Answer"<br/>
+                                        "mcq","What is HTML?","Markup Language","Bird","Car","Plane",0<br/>
+                                        "boolean","Is HTML a programming language?","False"<br/>
+                                        "short","Explain HTML","Provides structure to web pages"
                                     </div>
                                 </div>
                             )}

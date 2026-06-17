@@ -17,12 +17,15 @@ import {
     Check,
     X,
     Brain,
-    ChevronRight
+    ChevronRight,
+    Download
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import * as db from '../../services/database';
 import { evaluateQuizAttempt, evaluateTaskSubmission } from '../../services/aiService';
 import { formatDate, formatRelativeTime, getStatusColor, EVALUATION_CRITERIA } from '../../utils/constants';
+import { exportAllQuizAttemptsToXLSX, exportQuizToCSV } from '../../utils/exportQuiz';
+import { useMiniReload } from '../../hooks/useMiniReload';
 
 const EvaluationCenter = () => {
     const { type, submissionId } = useParams();
@@ -94,6 +97,8 @@ const EvaluationCenter = () => {
         };
     }, [loadData]);
 
+    useMiniReload(() => loadData());
+
     const filteredSubmissions = submissions
         .filter(sub => {
             const matchesStatus = filterStatus === 'all' || sub.status === filterStatus;
@@ -106,6 +111,12 @@ const EvaluationCenter = () => {
 
     const filteredQuizzes = quizAttempts
         .filter(att => {
+            // Filter out orphaned attempts (quiz doesn't exist)
+            if (!att.quizzes && !att.quiz_id) {
+                console.warn('[Evaluation] Skipping attempt with no quiz reference:', att.id);
+                return false;
+            }
+            
             const userName = att.profiles?.name || '';
             const quizTitle = att.quizzes?.title || '';
             const matchesSearch = searchQuery === '' ||
@@ -153,6 +164,23 @@ const EvaluationCenter = () => {
                     </p>
                 </div>
                 <div className="flex gap-sm">
+                    {mode === 'quizzes' && filteredQuizzes.length > 0 && (
+                        <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            icon={Download} 
+                            onClick={async () => {
+                                const profiles = await db.getProfiles();
+                                const quizzes = await Promise.all(
+                                    [...new Set(filteredQuizzes.map(a => a.quiz_id))]
+                                        .map(id => db.getQuizById(id))
+                                );
+                                exportAllQuizAttemptsToXLSX(filteredQuizzes, quizzes.filter(Boolean), profiles);
+                            }}
+                        >
+                            Export All
+                        </Button>
+                    )}
                     {mode === 'quizzes' && quizAttempts.some(a => a.metadata?.has_key_error) && (
                         <Button 
                             variant="danger" 
@@ -392,6 +420,28 @@ const EvaluationCenter = () => {
                                         </div>
                                     </div>
 
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        title="Download CSV"
+                                        onClick={async (e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            try {
+                                                const quiz = await db.getQuizById(att.quiz_id);
+                                                if (!quiz) {
+                                                    alert('Quiz data not available for export.');
+                                                    return;
+                                                }
+                                                exportQuizToCSV(att, quiz, att.profiles?.name || 'Unknown');
+                                            } catch (err) {
+                                                console.error('CSV export error:', err);
+                                                alert('Failed to export CSV.');
+                                            }
+                                        }}
+                                    >
+                                        <Download size={16} />
+                                    </Button>
                                     <ExternalLink size={20} style={{ color: 'var(--text-muted)' }} />
                                 </Card>
                             </Link>
@@ -825,7 +875,15 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
             if (att) {
                 // Fetch the actual quiz questions for reference
                 const quiz = await db.getQuizById(att.quiz_id);
-                setAttempt({ ...att, quiz });
+                if (!quiz) {
+                    console.error('Quiz not found for attempt:', att.quiz_id);
+                    setAttempt({ ...att, quiz: null, quizDeleted: true });
+                } else {
+                    setAttempt({ ...att, quiz });
+                }
+            } else {
+                console.error('Attempt not found:', attemptId);
+                setAttempt(null);
             }
         } catch (error) {
             console.error('Error loading quiz attempt:', error);
@@ -972,18 +1030,73 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
     if (!attempt) return <div>Attempt not found</div>;
     if (!attempt.quiz) {
         return (
-            <Card style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
-                <div className="empty-state">
-                    <div className="empty-state-icon" style={{ color: 'var(--error-500)', fontSize: '2rem', marginBottom: 'var(--space-md)' }}>⚠️</div>
-                    <h3>Associated quiz not found</h3>
-                    <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-md)' }}>
-                        The quiz associated with this attempt has been deleted or is no longer available.
-                    </p>
-                    <Button onClick={onBack} style={{ display: 'inline-flex', margin: '0 auto' }}>
-                        Back to Evaluations
+            <div className="animate-fade-in">
+                <div className="flex items-center gap-md mb-lg">
+                    <Button variant="ghost" size="icon" onClick={onBack}>
+                        <ArrowLeft size={20} />
                     </Button>
+                    <div>
+                        <h2 style={{ margin: 0 }}>Quiz Deleted</h2>
+                        <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+                            Original quiz: {attempt.quizzes?.title || 'Unknown'}
+                        </p>
+                    </div>
                 </div>
-            </Card>
+
+                <Card style={{ padding: 'var(--space-xl)' }}>
+                    <div className="empty-state">
+                        <div className="empty-state-icon" style={{ color: 'var(--warning-500)', fontSize: '2rem', marginBottom: 'var(--space-md)' }}>⚠️</div>
+                        <h3>Quiz has been deleted</h3>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-lg)' }}>
+                            The quiz associated with this attempt has been deleted. The questions and correct answers are no longer available for review.
+                        </p>
+
+                        {/* Show basic attempt info */}
+                        <Card variant="secondary" style={{ marginBottom: 'var(--space-lg)', textAlign: 'left' }}>
+                            <h4 style={{ marginBottom: 'var(--space-md)' }}>Attempt Information</h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+                                <div>
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: '0 0 4px' }}>Student</p>
+                                    <p style={{ fontWeight: 600, margin: 0 }}>{attempt.profiles?.name || 'Unknown'}</p>
+                                </div>
+                                <div>
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: '0 0 4px' }}>Score</p>
+                                    <p style={{ fontWeight: 600, margin: 0 }}>{attempt.score}%</p>
+                                </div>
+                                <div>
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: '0 0 4px' }}>Status</p>
+                                    <Badge variant={attempt.passed ? 'success' : 'error'}>
+                                        {attempt.passed ? 'Passed' : 'Failed'}
+                                    </Badge>
+                                </div>
+                                <div>
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: '0 0 4px' }}>Completed</p>
+                                    <p style={{ fontWeight: 600, margin: 0 }}>{formatDate(attempt.completed_at)}</p>
+                                </div>
+                            </div>
+                        </Card>
+
+                        <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'center' }}>
+                            <Button variant="secondary" onClick={onBack}>
+                                Back to Evaluations
+                            </Button>
+                            {attempt.metadata?.finalized && (
+                                <Button 
+                                    variant="ghost" 
+                                    icon={Download}
+                                    onClick={() => {
+                                        // Even without quiz questions, we can export what we have
+                                        alert('Cannot export: Quiz questions are no longer available. Only basic attempt data exists.');
+                                    }}
+                                    disabled
+                                >
+                                    Export Unavailable
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </Card>
+            </div>
         );
     }
 
@@ -1002,8 +1115,18 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                     </div>
                 </div>
                 
-                {/* Quick Model Selector */}
+                {/* Quick Model Selector & Export */}
                 <div className="flex items-center gap-sm">
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        icon={Download}
+                        onClick={() => {
+                            exportQuizToCSV(attempt, attempt.quiz, attempt.profiles?.name || 'Unknown');
+                        }}
+                    >
+                        CSV
+                    </Button>
                     <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 600 }}>Model:</span>
                     <select 
                         value={selectedModel}
