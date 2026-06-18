@@ -1018,3 +1018,68 @@ export const deleteKnowledgeSnippet = async (id) => {
     if (error) throw error;
     return true;
 };
+
+// ============================================
+// REMOVE MEMBER FROM CLASSROOM
+// ============================================
+/**
+ * Removes a student from a classroom, permanently deletes their associated classroom data
+ * (submissions, quiz attempts, and notifications), and resets their classroom progress (XP to 0, badges to empty).
+ */
+export const removeMemberFromClassroom = async (classroomId, userId) => {
+    // 1. Delete notifications related to this classroom for this user
+    const { error: notifError } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', userId)
+        .eq('classroom_id', classroomId);
+    if (notifError) console.error('Error deleting member notifications:', notifError);
+
+    // 2. Delete quiz attempts by this user for quizzes in this classroom
+    const { data: quizzes, error: quizzesError } = await supabase
+        .from('quizzes')
+        .select('id')
+        .eq('classroom_id', classroomId);
+        
+    if (quizzesError) {
+        console.error('Error fetching classroom quizzes:', quizzesError);
+    } else if (quizzes && quizzes.length > 0) {
+        const quizIds = quizzes.map(q => q.id);
+        const { error: attemptsError } = await supabase
+            .from('quiz_attempts')
+            .delete()
+            .eq('user_id', userId)
+            .in('quiz_id', quizIds);
+        if (attemptsError) console.error('Error deleting member quiz attempts:', attemptsError);
+    }
+
+    // 3. Delete submissions by this user for tasks in this classroom
+    const { data: tasks, error: tasksError } = await supabase
+        .from('tasks')
+        .select('id')
+        .eq('classroom_id', classroomId);
+        
+    if (tasksError) {
+        console.error('Error fetching classroom tasks:', tasksError);
+    } else if (tasks && tasks.length > 0) {
+        const taskIds = tasks.map(t => t.id);
+        const { error: subsError } = await supabase
+            .from('submissions')
+            .delete()
+            .eq('user_id', userId)
+            .in('task_id', taskIds);
+        if (subsError) console.error('Error deleting member submissions:', subsError);
+    }
+
+    // 4. Update the user profile's classroom_id to null, reset their XP to 0 and badges to {}
+    const { data, error } = await supabase
+        .from('profiles')
+        .update({ classroom_id: null, xp: 0, badges: [] })
+        .eq('id', userId)
+        .select()
+        .single();
+        
+    if (error) throw error;
+    return data;
+};
+

@@ -61,6 +61,7 @@ const ClassroomDetail = () => {
     // Selected Student for detailed view
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [error, setError] = useState(null);
+    const [removingMemberId, setRemovingMemberId] = useState(null);
 
     const loadData = async (isRefresh = false) => {
         if (!isRefresh) setLoading(true);
@@ -105,6 +106,23 @@ const ClassroomDetail = () => {
             clearTimeout(safetyTimeout);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleRemoveMember = async (member) => {
+        const confirmMessage = `Are you sure you want to remove ${member.name} from this classroom?\n\nThis will permanently delete all of their task submissions, quiz attempts, and notifications for this classroom, and reset their classroom progress. This action cannot be undone.`;
+        if (!window.confirm(confirmMessage)) return;
+
+        try {
+            setRemovingMemberId(member.id);
+            await db.removeMemberFromClassroom(classroomId, member.id);
+            alert(`${member.name} has been successfully removed from the classroom.`);
+            await loadData(true);
+        } catch (error) {
+            console.error('Error removing member:', error);
+            alert(`Failed to remove member: ${error.message || error}`);
+        } finally {
+            setRemovingMemberId(null);
         }
     };
 
@@ -467,7 +485,20 @@ const ClassroomDetail = () => {
                                                 <span className="text-[10px] font-black text-primary-500 uppercase tracking-widest">Level {calculateLevel(member.xp || 0)}</span>
                                                 <span className="text-xs font-bold text-muted">{member.xp || 0} XP</span>
                                             </div>
-                                            <Button variant="ghost" size="sm" className="hidden group-hover:flex" icon={TrendingUp} onClick={() => setSelectedStudent(member)}>Stats</Button>
+                                            <div className="flex items-center gap-sm">
+                                                <Button variant="ghost" size="sm" className="hidden group-hover:flex" icon={TrendingUp} onClick={() => setSelectedStudent(member)}>Stats</Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="hidden group-hover:flex text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                                                    icon={XCircle}
+                                                    loading={removingMemberId === member.id}
+                                                    disabled={removingMemberId !== null}
+                                                    onClick={() => handleRemoveMember(member)}
+                                                >
+                                                    Remove
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
