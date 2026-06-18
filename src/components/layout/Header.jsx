@@ -35,30 +35,6 @@ const Header = ({ onMenuClick, title }) => {
 
   const [tickerItems, setTickerItems] = useState([]);
 
-  useEffect(() => {
-    if (user) {
-      loadNotificationData();
-      if (!isAdmin) loadTickerData();
-      
-      const channel = supabase
-          .channel(`header-updates-${user.id}`)
-          .on('postgres_changes', { 
-              event: '*', 
-              schema: 'public', 
-              table: 'notifications', 
-              filter: `user_id=eq.${user.id}` 
-          }, () => {
-              console.log('Realtime: Notification update detected');
-              loadNotificationData();
-          })
-          .subscribe();
-
-      return () => {
-          supabase.removeChannel(channel);
-      };
-    }
-  }, [user, isAdmin]);
-
   const loadTickerData = async () => {
     try {
       const [tasks, submissions, quizzes, attempts] = await Promise.all([
@@ -95,6 +71,30 @@ const Header = ({ onMenuClick, title }) => {
       console.error("Ticker load error", e);
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      loadNotificationData();
+      if (!isAdmin) loadTickerData();
+      
+      const channel = supabase
+          .channel(`header-updates-${user.id}`)
+          .on('postgres_changes', { 
+              event: '*', 
+              schema: 'public', 
+              table: 'notifications', 
+              filter: `user_id=eq.${user.id}` 
+          }, () => {
+              console.log('Realtime: Notification update detected');
+              loadNotificationData();
+          })
+          .subscribe();
+
+      return () => {
+          supabase.removeChannel(channel);
+      };
+    }
+  }, [user, isAdmin]);
 
   const handleThemeToggle = () => {
     toggleTheme();

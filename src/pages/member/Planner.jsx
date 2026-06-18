@@ -153,7 +153,6 @@ const Planner = () => {
     // Categorize todos
     const today = new Date();
     const todayStr = today.toDateString();
-    const tomorrowStr = new Date(Date.now() + 86400000).toDateString();
 
     const activeTodos = data.todos.filter(t => !t.completed);
     const completedTodos = data.todos.filter(t => t.completed);

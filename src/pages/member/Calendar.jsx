@@ -25,6 +25,13 @@ import { routineService } from '../../services/routineService';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const toLocalISO = (date) => {
+    const d = new Date(date);
+    const offset = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - (offset * 60 * 1000));
+    return local.toISOString().split('T')[0];
+};
+
 const Calendar = () => {
     const { user } = useAuth();
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -50,74 +57,41 @@ const Calendar = () => {
             ]);
 
             const allEvents = [];
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
 
-            // Tasks as events (due date)
-            (tasks || []).forEach(t => {
-                const dueDate = t.due_date || t.deadline;
-                if (dueDate) {
-                    const sub = (submissions || []).find(s => s.task_id === t.id);
-                    allEvents.push({
-                        id: `task-${t.id}`,
-                        title: t.title,
-                        date: new Date(dueDate),
-                        type: 'task',
-                        status: sub ? sub.status : 'pending',
-                        difficulty: t.difficulty,
-                        points: t.points,
-                        link: `/tasks/${t.id}`
-                    });
-                }
-                // Also show creation date
-                if (t.created_at) {
-                    allEvents.push({
-                        id: `task-created-${t.id}`,
-                        title: `📋 ${t.title} assigned`,
-                        date: new Date(t.created_at),
-                        type: 'task-created',
-                        status: 'info',
-                        link: `/tasks/${t.id}`
-                    });
-                }
-            });
-
-            // Quizzes as events
-            (quizzes || []).forEach(q => {
-                if (q.created_at) {
-                    const attempt = (quizAttempts || []).find(a => a.quiz_id === q.id);
-                    allEvents.push({
-                        id: `quiz-${q.id}`,
-                        title: `📝 ${q.title}`,
-                        date: new Date(q.created_at),
-                        type: 'quiz',
-                        status: attempt ? (attempt.passed ? 'passed' : 'failed') : 'available',
-                        points: q.points,
-                        link: `/quizzes/${q.id}`
-                    });
-                }
-            });
-
-            // Quiz attempts as events
-            (quizAttempts || []).forEach(a => {
-                allEvents.push({
-                    id: `attempt-${a.id}`,
-                    title: `${a.passed ? '✅' : '❌'} ${a.quizzes?.title || 'Quiz'} ${a.passed ? 'Passed' : 'Failed'}`,
-                    date: new Date(a.created_at),
-                    type: 'quiz-result',
-                    status: a.passed ? 'passed' : 'failed',
-                    score: a.score
-                });
-            });
-
-            // Submissions as events
+            // Format submissions & tasks as events
             (submissions || []).forEach(s => {
-                allEvents.push({
-                    id: `sub-${s.id}`,
-                    title: `${s.status === 'approved' ? '🎉' : s.status === 'rejected' ? '🔄' : '📤'} ${s.tasks?.title || 'Task'} ${s.status}`,
-                    date: new Date(s.submitted_at || s.created_at),
-                    type: 'submission',
-                    status: s.status,
-                    score: s.score
-                });
+                const task = (tasks || []).find(t => t.id === s.task_id);
+                if (task && s.evaluated_at) {
+                    allEvents.push({
+                        id: `task-${s.id}`,
+                        title: `📝 Sub: ${task.title}`,
+                        date: new Date(s.evaluated_at),
+                        type: 'task',
+                        status: s.status,
+                        score: s.score,
+                        points: task.points,
+                        link: `/tasks`
+                    });
+                }
+            });
+
+            // Format quiz attempts as events
+            (quizAttempts || []).forEach(att => {
+                const quiz = (quizzes || []).find(q => q.id === att.quiz_id);
+                if (quiz && att.completed_at) {
+                    allEvents.push({
+                        id: `quiz-${att.id}`,
+                        title: `🏆 Quiz: ${quiz.title}`,
+                        date: new Date(att.completed_at),
+                        type: 'quiz',
+                        status: att.passed ? 'passed' : 'failed',
+                        score: att.score,
+                        points: quiz.points,
+                        link: `/quizzes`
+                    });
+                }
             });
 
             // Routines (Virtual events based on recurrence)
@@ -130,13 +104,6 @@ const Calendar = () => {
                 while (iter <= calendarEnd) {
                     const dayNum = iter.getDay() === 0 ? 7 : iter.getDay(); // 1=Mon, 7=Sun
                     if (r.days_of_week.includes(dayNum)) {
-                        const toLocalISO = (date) => {
-                            const d = new Date(date);
-                            const offset = d.getTimezoneOffset();
-                            const local = new Date(d.getTime() - (offset * 60 * 1000));
-                            return local.toISOString().split('T')[0];
-                        };
-
                         const dateStr = toLocalISO(iter);
                         const createdDate = toLocalISO(r.created_at);
                         

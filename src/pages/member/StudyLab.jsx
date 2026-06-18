@@ -144,13 +144,13 @@ const StudyLab = () => {
         if (printMatch) {
             const type = printMatch[1];
             const pageNum = printMatch[2];
-            handlePrint(type, pageNum);
+            handlePrint(type, pageNum, text);
             return true;
         }
         return false;
     };
 
-    const handlePrint = (type, pageNum) => {
+    const handlePrint = (type, pageNum, originalText = '') => {
         const printWindow = window.open('', '_blank');
         const content = material?.content || 'No content available';
         
@@ -188,7 +188,8 @@ const StudyLab = () => {
         `);
         printWindow.document.close();
 
-        setMessages(prev => [...prev, { role: 'user', content: text }, { role: 'assistant', content: `🖨️ Preparation complete. Sent ${type === 'all' ? 'the full document' : `page ${pageNum}`} to the printer.` }]);
+        const messageContent = originalText || `Print ${type === 'all' ? 'all pages' : `page ${pageNum}`}`;
+        setMessages(prev => [...prev, { role: 'user', content: messageContent }, { role: 'assistant', content: `🖨️ Preparation complete. Sent ${type === 'all' ? 'the full document' : `page ${pageNum}`} to the printer.` }]);
     };
 
     const handleSendMessage = async (e, systemMessage = null) => {

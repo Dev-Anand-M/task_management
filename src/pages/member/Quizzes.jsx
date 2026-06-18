@@ -631,7 +631,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
     const renderContent = () => {
         // Result screen
         if (isComplete && results) {
-            const isFinalized = results.manually_evaluated === true || results.finalized === true;
+            const isFinalized = results.finalized === true;
 
             return (
                 <div className="quiz-container animate-fade-in" style={{ width: '100%' }}>

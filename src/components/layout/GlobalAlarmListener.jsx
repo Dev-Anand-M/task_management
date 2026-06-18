@@ -12,25 +12,6 @@ const GlobalAlarmListener = () => {
     const audioRef = useRef(null);
     const intervalRef = useRef(null);
 
-    useEffect(() => {
-        const handleToggle = (e) => setEnabled(e.detail);
-        const handleTest = () => testAlarm();
-        window.addEventListener('toggle-alarms', handleToggle);
-        window.addEventListener('test-alarm', handleTest);
-        
-        if (user?.role === 'member' && enabled) {
-            startListener();
-        } else {
-            stopListener();
-        }
-        
-        return () => {
-            stopListener();
-            window.removeEventListener('toggle-alarms', handleToggle);
-            window.removeEventListener('test-alarm', handleTest);
-        };
-    }, [user?.id, enabled]);
-
     const startListener = () => {
         if (intervalRef.current) return;
         console.log('[Alarm] Starting global listener...');
@@ -100,52 +81,49 @@ const GlobalAlarmListener = () => {
                 }
             }
         } catch (err) {
-            console.warn('[Notif] Check failed:', err);
+            console.error('[Alarm] Notification check failed:', err);
         }
     };
 
     const calculateNextAlarm = (routines, now, currentDay) => {
-        let minDiff = Infinity;
-        let soonest = null;
+        const active = routines.filter(r => r.is_active && !r.is_anonymous);
+        if (active.length === 0) {
+            setNextAlarm(null);
+            return;
+        }
 
-        routines.filter(r => r.is_active).forEach(r => {
+        let minDiff = Infinity;
+        let next = null;
+
+        active.forEach(r => {
             r.days_of_week.forEach(day => {
                 let dayDiff = day - currentDay;
                 if (dayDiff < 0) dayDiff += 7;
 
-                const [hours, mins] = r.start_time.split(':').map(Number);
+                const [hours, minutes] = r.start_time.split(':').map(Number);
                 const alarmDate = new Date(now);
                 alarmDate.setDate(now.getDate() + dayDiff);
-                alarmDate.setHours(hours, mins, 0, 0);
+                alarmDate.setHours(hours, minutes, 0, 0);
 
                 if (alarmDate <= now) {
                     alarmDate.setDate(alarmDate.getDate() + 7);
                 }
 
-                const diff = (alarmDate - now) / 60000;
+                const diff = alarmDate - now;
                 if (diff < minDiff) {
                     minDiff = diff;
-                    soonest = { title: r.title, minutes: Math.round(diff) };
+                    next = { routine: r, time: alarmDate };
                 }
             });
         });
-        setNextAlarm(soonest);
-    };
 
-    const stopShouting = () => {
-        setShowStopModal(false);
-        setActiveAlarm(null);
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
-        }
+        setNextAlarm(next);
     };
 
     const triggerAlarm = (routine) => {
-        if (activeAlarm === routine.id) return;
-        setActiveAlarm(routine.id);
+        setActiveAlarm(routine);
         setShowStopModal(true);
-
+        
         if (Notification.permission === 'granted') {
             new Notification(`⏰ Alarm: ${routine.title}`, {
                 body: `It's time for your scheduled routine! Respond within 15 minutes.`,
@@ -181,6 +159,43 @@ const GlobalAlarmListener = () => {
         triggerAlarm({ title: 'Test Alarm', id: 'test' });
         alert('Test triggered! If you didn\'t hear a sound or see a popup, check your phone\'s Notification & Sound settings.');
     };
+
+    const stopShouting = async () => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+        setShowStopModal(false);
+        if (activeAlarm) {
+            if (activeAlarm.id !== 'test') {
+                try {
+                    await routineService.logRoutine(activeAlarm.id);
+                } catch (e) {
+                    console.error('[Alarm] Logging failed:', e);
+                }
+            }
+            setActiveAlarm(null);
+        }
+    };
+
+    useEffect(() => {
+        const handleToggle = (e) => setEnabled(e.detail);
+        const handleTest = () => testAlarm();
+        window.addEventListener('toggle-alarms', handleToggle);
+        window.addEventListener('test-alarm', handleTest);
+        
+        if (user?.role === 'member' && enabled) {
+            startListener();
+        } else {
+            stopListener();
+        }
+        
+        return () => {
+            stopListener();
+            window.removeEventListener('toggle-alarms', handleToggle);
+            window.removeEventListener('test-alarm', handleTest);
+        };
+    }, [user?.id, enabled]);
 
     return (
         <>

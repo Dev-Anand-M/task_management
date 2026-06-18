@@ -1199,6 +1199,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                     icon={RefreshCw}
                                     onClick={handleAiEvaluation}
                                     className={attempt.metadata?.has_key_error ? "animate-pulse" : ""}
+                                    disabled={attempt.metadata?.finalized}
                                 >
                                     {attempt.metadata?.has_key_error ? "🚨 Intercept & Resolve Flagged" : "Intercept & Re-evaluate All"}
                                 </Button>
@@ -1240,7 +1241,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                             </div>
                         </div>
 
-                        {Object.keys(overrides).length > 0 && (
+                        {!attempt.metadata?.finalized ? (
                             <>
                                 <Button 
                                     variant="success" 
@@ -1273,25 +1274,9 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                                     manually_evaluated: true,
                                                     overrides,
                                                     manual_feedback: manualFeedback,
-                                                    finalized: true,
+                                                    finalized: false,
                                                     xp_earned: xpToAward
                                                 }
-                                            });
-
-                                            // Update the user's profile XP
-                                            await db.updateProfile(attempt.user_id, {
-                                                xp: (attempt.profiles?.xp || 0) + xpToAward
-                                            });
-
-                                            // --- NOTIFY STUDENT ---
-                                            await db.createNotification({
-                                                user_id: attempt.user_id,
-                                                title: 'Quiz Evaluated! 🧠',
-                                                message: `Your attempt on "${attempt.quizzes?.title}" has been reviewed. Final Score: ${finalScore}% (+${xpToAward} XP)`,
-                                                type: 'success',
-                                                link: `/quizzes`,
-                                                is_read: false,
-                                                created_at: new Date().toISOString()
                                             });
 
                                             setSuccess(true);
@@ -1309,104 +1294,100 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                     {success ? '✓ Saved Successfully!' : '💾 Save Changes (Draft)'}
                                 </Button>
                                 
-                                {!attempt.metadata?.finalized && (
-                                    <Button 
-                                        variant="primary" 
-                                        style={{ width: '100%' }} 
-                                        loading={saving}
-                                        onClick={async () => {
-                                            if (!window.confirm('Finalize this evaluation? The student will be able to see their final score and this cannot be undone.')) {
-                                                return;
-                                            }
-                                            
-                                            setSaving(true);
-                                            try {
-                                                const finalCorrect = attempt.quiz.questions.reduce((acc, q, idx) => {
-                                                    const userAnswer = attempt.answers[idx];
-                                                    const override = overrides[idx];
-                                                    
-                                                    if (q.type === 'short') {
-                                                        const isCorrect = override !== undefined ? override : false;
-                                                        return acc + (isCorrect ? 1 : 0);
-                                                    }
-                                                    
-                                                    // Standardize for boolean and multiple choice
-                                                    const isCorrect = override !== undefined 
-                                                        ? override 
-                                                        : (q.type === 'boolean' 
-                                                            ? String(userAnswer) === String(q.correctAnswer)
-                                                            : userAnswer === q.correctAnswer);
-                                                            
-                                                    return acc + (isCorrect ? 1 : 0);
-                                                }, 0);
-                                                const finalScore = Math.round((finalCorrect / attempt.total) * 100);
-                                                const xpToAward = Math.round((finalCorrect / attempt.total) * (attempt.quizzes?.points || 100));
+                                <Button 
+                                    variant="primary" 
+                                    style={{ width: '100%' }} 
+                                    loading={saving}
+                                    onClick={async () => {
+                                        if (!window.confirm('Finalize this evaluation? The student will be able to see their final score and this cannot be undone.')) {
+                                            return;
+                                        }
+                                        
+                                        setSaving(true);
+                                        try {
+                                            const finalCorrect = attempt.quiz.questions.reduce((acc, q, idx) => {
+                                                const userAnswer = attempt.answers[idx];
+                                                const override = overrides[idx];
                                                 
-                                                // Update the saved attempt with Manual results AND finalize
-                                                await db.updateQuizAttempt(attempt.id, {
-                                                    correct: finalCorrect,
-                                                    score: finalScore,
-                                                    passed: finalScore >= 70,
-                                                    metadata: { 
-                                                        ...attempt.metadata, 
-                                                        manually_evaluated: true, 
-                                                        overrides, 
-                                                        manual_feedback: manualFeedback,
-                                                        finalized: true,
-                                                        xp_earned: xpToAward
-                                                    }
-                                                });
+                                                if (q.type === 'short') {
+                                                    const isCorrect = override !== undefined ? override : false;
+                                                    return acc + (isCorrect ? 1 : 0);
+                                                }
+                                                
+                                                // Standardize for boolean and multiple choice
+                                                const isCorrect = override !== undefined 
+                                                    ? override 
+                                                    : (q.type === 'boolean' 
+                                                        ? String(userAnswer) === String(q.correctAnswer)
+                                                        : userAnswer === q.correctAnswer);
+                                                        
+                                                return acc + (isCorrect ? 1 : 0);
+                                            }, 0);
+                                            const finalScore = Math.round((finalCorrect / attempt.total) * 100);
+                                            const xpToAward = Math.round((finalCorrect / attempt.total) * (attempt.quizzes?.points || 100));
+                                            
+                                            // Update the saved attempt with Manual results AND finalize
+                                            await db.updateQuizAttempt(attempt.id, {
+                                                correct: finalCorrect,
+                                                score: finalScore,
+                                                passed: finalScore >= 70,
+                                                metadata: { 
+                                                    ...attempt.metadata, 
+                                                    manually_evaluated: true, 
+                                                    overrides, 
+                                                    manual_feedback: manualFeedback,
+                                                    finalized: true,
+                                                    xp_earned: xpToAward
+                                                }
+                                            });
 
-                                                // Update the user's profile XP
-                                                await db.updateProfile(attempt.user_id, {
-                                                    xp: (attempt.profiles?.xp || 0) + xpToAward
-                                                });
+                                            // Update the user's profile XP
+                                            await db.updateProfile(attempt.user_id, {
+                                                xp: (attempt.profiles?.xp || 0) + xpToAward
+                                            });
 
-                                                // --- NOTIFY STUDENT ---
-                                                await db.createNotification({
-                                                    user_id: attempt.user_id,
-                                                    title: '✅ Quiz Finalized!',
-                                                    message: `Your quiz "${attempt.quizzes?.title}" has been finalized! Final Score: ${finalScore}% (+${xpToAward} XP). You can now view your detailed results.`,
-                                                    type: 'success',
-                                                    link: `/quizzes/${attempt.quiz_id}`,
-                                                    is_read: false,
-                                                    created_at: new Date().toISOString()
-                                                });
+                                            // --- NOTIFY STUDENT ---
+                                            await db.createNotification({
+                                                user_id: attempt.user_id,
+                                                title: '✅ Quiz Finalized!',
+                                                message: `Your quiz "${attempt.quizzes?.title}" has been finalized! Final Score: ${finalScore}% (+${xpToAward} XP). You can now view your detailed results.`,
+                                                type: 'success',
+                                                link: `/quizzes/${attempt.quiz_id}`,
+                                                is_read: false,
+                                                created_at: new Date().toISOString()
+                                            });
 
-                                                setSuccess(true);
-                                                if (onUpdate) onUpdate(); // Real-time update parent list
-                                                setTimeout(() => {
-                                                    setSuccess(false);
-                                                    onBack(); // Return to list after finalization
-                                                }, 2000);
-                                                loadAttempt();
-                                            } catch (e) {
-                                                console.error('Finalize Error:', e);
-                                                alert('Failed to finalize evaluation');
-                                            } finally {
-                                                setSaving(false);
-                                            }
-                                        }}
-                                    >
-                                        {success ? '✓ Finalized!' : '🎯 Finalize & Release to Student'}
-                                    </Button>
-                                )}
-                                
-                                {attempt.metadata?.finalized && (
-                                    <div style={{ 
-                                        padding: 'var(--space-md)', 
-                                        background: 'rgba(34, 197, 94, 0.1)', 
-                                        borderRadius: 'var(--radius-md)',
-                                        border: '1px solid rgba(34, 197, 94, 0.3)',
-                                        textAlign: 'center',
-                                        fontSize: 'var(--text-sm)',
-                                        color: 'var(--success-600)',
-                                        fontWeight: 600
-                                    }}>
-                                        ✓ This evaluation has been finalized. Student can view their results.
-                                    </div>
-                                )}
+                                            setSuccess(true);
+                                            if (onUpdate) onUpdate(); // Real-time update parent list
+                                            setTimeout(() => {
+                                                setSuccess(false);
+                                                onBack(); // Return to list after finalization
+                                            }, 2000);
+                                            loadAttempt();
+                                        } catch (e) {
+                                            console.error('Finalize Error:', e);
+                                            alert('Failed to finalize evaluation');
+                                        } finally {
+                                            setSaving(false);
+                                        }
+                                    }}
+                                >
+                                    {success ? '✓ Finalized!' : '🎯 Finalize & Release to Student'}
+                                </Button>
                             </>
+                        ) : (
+                            <div style={{ 
+                                padding: 'var(--space-md)', 
+                                background: 'rgba(34, 197, 94, 0.1)', 
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid rgba(34, 197, 94, 0.3)',
+                                textAlign: 'center',
+                                fontSize: 'var(--text-sm)',
+                                color: 'var(--success-600)',
+                                fontWeight: 600
+                            }}>
+                                ✓ This evaluation has been finalized. Student can view their results.
+                            </div>
                         )}
 
 
@@ -1440,6 +1421,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                             value={manualFeedback}
                             onChange={(e) => setManualFeedback(e.target.value)}
                             style={{ minHeight: '120px' }}
+                            disabled={attempt.metadata?.finalized}
                         />
                     </Card>
                 </div>
@@ -1544,6 +1526,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                                         [index]: newValue 
                                                     }));
                                                 }}
+                                                disabled={attempt.metadata?.finalized}
                                             >
                                                 {aiSuggestion.isCorrect ? "Apply AI Fix & Award Point" : "Apply AI Fix"}
                                             </Button>
@@ -1625,6 +1608,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                                     variant={overrides[index] === true ? "success" : "ghost"}
                                                     onClick={() => setOverrides(prev => ({ ...prev, [index]: true }))}
                                                     title="Manually Award Point"
+                                                    disabled={attempt.metadata?.finalized}
                                                 >
                                                     <Check size={14} />
                                                 </Button>
@@ -1633,6 +1617,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                                     variant={overrides[index] === false ? "danger" : "ghost"}
                                                     onClick={() => setOverrides(prev => ({ ...prev, [index]: false }))}
                                                     title="Manually Deduct Point"
+                                                    disabled={attempt.metadata?.finalized}
                                                 >
                                                     <X size={14} />
                                                 </Button>
@@ -1646,6 +1631,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                                             setOverrides(newOverrides);
                                                         }}
                                                         title="Reset to Original"
+                                                        disabled={attempt.metadata?.finalized}
                                                     >
                                                         <RefreshCw size={12} />
                                                     </Button>
