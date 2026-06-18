@@ -17,20 +17,10 @@ import {
 import * as db from '../services/database';
 import { calculateLevel, calculateLevelProgress, BADGES } from '../utils/constants';
 
-const RANK_TIERS = [
-    { min: 0, label: 'Bronze', color: '#CD7F32', bg: 'linear-gradient(135deg, #CD7F32, #8B4513)', emoji: '🥉' },
-    { min: 500, label: 'Silver', color: '#C0C0C0', bg: 'linear-gradient(135deg, #C0C0C0, #808080)', emoji: '🥈' },
-    { min: 1500, label: 'Gold', color: '#FFD700', bg: 'linear-gradient(135deg, #FFD700, #FFA500)', emoji: '🥇' },
-    { min: 3000, label: 'Platinum', color: '#00CED1', bg: 'linear-gradient(135deg, #00CED1, #008B8B)', emoji: '💎' },
-    { min: 5000, label: 'Diamond', color: '#B9F2FF', bg: 'linear-gradient(135deg, #B9F2FF, #7DF9FF)', emoji: '👑' },
-    { min: 10000, label: 'Legend', color: '#FF6B6B', bg: 'linear-gradient(135deg, #FF6B6B, #ee5a24)', emoji: '🔥' },
-];
-
-const getTier = (xp) => {
-    for (let i = RANK_TIERS.length - 1; i >= 0; i--) {
-        if (xp >= RANK_TIERS[i].min) return RANK_TIERS[i];
-    }
-    return RANK_TIERS[0];
+const RANK_TIERS = {
+    1: { label: 'Gold', color: '#FFD700', bg: 'linear-gradient(135deg, #FFD700, #FFA500)', emoji: '🥇' },
+    2: { label: 'Silver', color: '#C0C0C0', bg: 'linear-gradient(135deg, #C0C0C0, #808080)', emoji: '🥈' },
+    3: { label: 'Bronze', color: '#CD7F32', bg: 'linear-gradient(135deg, #CD7F32, #8B4513)', emoji: '🥉' }
 };
 
 const Leaderboard = () => {
@@ -59,7 +49,6 @@ const Leaderboard = () => {
                 .map(u => {
                     const userSubs = submissions.filter(s => s.user_id === u.id && s.status === 'approved');
                     const userQuizzes = quizAttempts.filter(q => q.user_id === u.id && q.passed);
-                    const tier = getTier(u.xp || 0);
                     const level = calculateLevel(u.xp || 0);
                     const levelProgress = calculateLevelProgress(u.xp || 0);
                     
@@ -74,7 +63,6 @@ const Leaderboard = () => {
                         ...u,
                         tasksCompleted: userSubs.length,
                         quizzesPassed: userQuizzes.length,
-                        tier,
                         level,
                         levelProgress,
                         earnedBadges: earnedBadges.filter(Boolean)
@@ -198,7 +186,7 @@ const Leaderboard = () => {
                 }}>
                     <div style={{
                         position: 'absolute', top: 0, left: 0, right: 0, height: '4px',
-                        background: currentUserData.tier.bg
+                        background: RANK_TIERS[currentUserRank]?.bg || 'transparent'
                     }} />
                     <div className="flex flex-mobile-col items-center gap-lg" style={{ padding: 'var(--space-sm)' }}>
                         <Avatar name={currentUserData.name} image={currentUserData.avatar_url} size="xl" />
@@ -206,11 +194,13 @@ const Leaderboard = () => {
                             <div className="flex items-center gap-sm" style={{ flexWrap: 'wrap' }}>
                                 <h3 style={{ margin: 0 }}>{currentUserData.name}</h3>
                                 <Badge variant="primary">#{currentUserRank}</Badge>
-                                <span style={{
-                                    fontSize: '11px', fontWeight: 800, padding: '2px 10px',
-                                    borderRadius: 'var(--radius-full)',
-                                    background: currentUserData.tier.bg, color: 'white'
-                                }}>{currentUserData.tier.emoji} {currentUserData.tier.label}</span>
+                                {RANK_TIERS[currentUserRank] && (
+                                    <span style={{
+                                        fontSize: '11px', fontWeight: 800, padding: '2px 10px',
+                                        borderRadius: 'var(--radius-full)',
+                                        background: RANK_TIERS[currentUserRank].bg, color: 'white'
+                                    }}>{RANK_TIERS[currentUserRank].emoji} {RANK_TIERS[currentUserRank].label}</span>
+                                )}
                             </div>
                             <div className="flex items-center gap-md" style={{ marginTop: '8px', flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
@@ -250,8 +240,8 @@ const Leaderboard = () => {
                             <Avatar name={topThree[1].name} image={topThree[1].avatar_url} size="lg" />
                         </div>
                         <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)' }}>{topThree[1].name}</h4>
-                        <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: topThree[1].tier.bg, color: 'white' }}>
-                            {topThree[1].tier.emoji} {topThree[1].tier.label}
+                        <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[2].bg, color: 'white' }}>
+                            {RANK_TIERS[2].emoji} {RANK_TIERS[2].label}
                         </span>
                         <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
                             {topThree[1].xp?.toLocaleString() || 0} XP
@@ -268,8 +258,8 @@ const Leaderboard = () => {
                             <Avatar name={topThree[0].name} image={topThree[0].avatar_url} size="xl" />
                         </div>
                         <h4 style={{ margin: '0 0 4px' }}>{topThree[0].name}</h4>
-                        <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: topThree[0].tier.bg, color: 'white' }}>
-                            {topThree[0].tier.emoji} {topThree[0].tier.label}
+                        <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[1].bg, color: 'white' }}>
+                            {RANK_TIERS[1].emoji} {RANK_TIERS[1].label}
                         </span>
                         <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--primary-400)', fontWeight: 600 }}>
                             {topThree[0].xp?.toLocaleString() || 0} XP
@@ -285,8 +275,8 @@ const Leaderboard = () => {
                             <Avatar name={topThree[2].name} image={topThree[2].avatar_url} size="lg" />
                         </div>
                         <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)' }}>{topThree[2].name}</h4>
-                        <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: topThree[2].tier.bg, color: 'white' }}>
-                            {topThree[2].tier.emoji} {topThree[2].tier.label}
+                        <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[3].bg, color: 'white' }}>
+                            {RANK_TIERS[3].emoji} {RANK_TIERS[3].label}
                         </span>
                         <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
                             {topThree[2].xp?.toLocaleString() || 0} XP
@@ -348,11 +338,13 @@ const Leaderboard = () => {
                                                 {member.name}
                                             </p>
                                             {isCurrentUser && <Badge variant="primary" style={{ fontSize: '9px' }}>You</Badge>}
-                                            <span style={{
-                                                fontSize: '9px', fontWeight: 800, padding: '1px 6px',
-                                                borderRadius: 'var(--radius-full)',
-                                                background: member.tier.bg, color: 'white'
-                                            }}>{member.tier.emoji}</span>
+                                            {RANK_TIERS[rank] && (
+                                                <span style={{
+                                                    fontSize: '9px', fontWeight: 800, padding: '1px 6px',
+                                                    borderRadius: 'var(--radius-full)',
+                                                    background: RANK_TIERS[rank].bg, color: 'white'
+                                                }}>{RANK_TIERS[rank].emoji} {RANK_TIERS[rank].label}</span>
+                                            )}
                                         </div>
                                         <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                                             Lv.{member.level} • {member.tasksCompleted} tasks • {member.quizzesPassed} quizzes
