@@ -3,7 +3,23 @@
  * No Firebase. No OneSignal. Just the Web Push API.
  */
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+let cachedVapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
+async function getVAPIDPublicKey() {
+  if (cachedVapidKey) return cachedVapidKey;
+  try {
+    const res = await fetch('/api/push');
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const data = await res.json();
+    if (data.publicKey) {
+      cachedVapidKey = data.publicKey;
+      return cachedVapidKey;
+    }
+  } catch (err) {
+    console.error('[Push] Failed to fetch VAPID key from server:', err);
+  }
+  throw new Error('VAPID public key is not configured.');
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -50,9 +66,7 @@ export async function subscribe() {
     throw new Error('Push notifications are not supported in this browser.');
   }
 
-  if (!VAPID_PUBLIC_KEY) {
-    throw new Error('VAPID public key is not configured.');
-  }
+  const vapidKey = await getVAPIDPublicKey();
 
   // 1. Request permission
   let permission = Notification.permission;
@@ -87,7 +101,7 @@ export async function subscribe() {
   if (!subscription) {
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      applicationServerKey: urlBase64ToUint8Array(vapidKey),
     });
   }
 

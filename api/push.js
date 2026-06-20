@@ -13,9 +13,18 @@ const PUSH_OPTIONS = {
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  if (req.method === 'GET') {
+    const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
+    if (!VAPID_PUBLIC) {
+      return res.status(500).json({ error: 'VAPID public key not configured on server' });
+    }
+    return res.status(200).json({ publicKey: VAPID_PUBLIC });
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   // ── Auth ────────────────────────────────────────────────────────────────────
