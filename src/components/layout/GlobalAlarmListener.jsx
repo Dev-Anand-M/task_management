@@ -197,6 +197,37 @@ const GlobalAlarmListener = () => {
         };
     }, [user?.id, enabled]);
 
+    // Auto-sync push subscription when user logs in/changes device
+    useEffect(() => {
+        const syncPushSubscription = async () => {
+            if (!user?.id) return;
+            if (typeof window === 'undefined' || !('Notification' in window)) return;
+            if (Notification.permission !== 'granted') return;
+
+            try {
+                const push = await import('../../lib/pushNotifications');
+                if (push.isSupported()) {
+                    const activeSub = await push.subscribe();
+                    if (activeSub) {
+                        const hasSubChanged = !user.push_subscription || 
+                            user.push_subscription.endpoint !== activeSub.endpoint ||
+                            JSON.stringify(user.push_subscription.keys) !== JSON.stringify(activeSub.keys);
+                        
+                        if (hasSubChanged) {
+                            console.log('[Push] Auto-syncing push subscription for current device...');
+                            await routineService.supabase.from('profiles').update({
+                                push_subscription: activeSub
+                            }).eq('id', user.id);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('[Push] Auto-sync failed:', err);
+            }
+        };
+        syncPushSubscription();
+    }, [user?.id]);
+
     return (
         <>
             <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto" loop />

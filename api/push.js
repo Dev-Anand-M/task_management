@@ -70,6 +70,14 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, sent: 1 });
     } catch (err) {
       if (err.statusCode === 410 || err.statusCode === 404) {
+        try {
+          const adminClient = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey);
+          await adminClient.from('profiles')
+            .update({ push_subscription: null })
+            .eq('push_subscription->>endpoint', subscription.endpoint);
+        } catch (dbErr) {
+          console.warn('[Push] Auto-clear failed:', dbErr.message);
+        }
         return res.status(410).json({ success: false, error: 'Subscription expired', expired: true });
       }
       return res.status(500).json({ success: false, error: err.message });
