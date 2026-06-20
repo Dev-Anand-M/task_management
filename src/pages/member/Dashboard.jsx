@@ -96,7 +96,7 @@ const MemberDashboard = () => {
                     title: a.quizzes?.title || 'Quiz Attempt',
                     status: a.passed ? 'approved' : 'rejected',
                     score: a.score,
-                    date: a.created_at
+                    date: a.completed_at || a.created_at
                 }))
             ]
             .sort((a, b) => new Date(b.date) - new Date(a.date))

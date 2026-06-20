@@ -55,23 +55,24 @@ self.addEventListener('push', (event) => {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch (e) { /* fallback to defaults */ }
 
+  // Resolve absolute URL for the icon (required for background notifications on mobile)
+  const iconUrl = new URL('/zenith.png', self.location.origin).href;
+
   // Show the notification immediately — no async work before this!
   const promiseChain = self.registration.showNotification(data.title, {
     body: data.body,
-    icon: '/zenith.png',
-    badge: '/zenith.png',
+    icon: iconUrl,
     image: undefined,
     data: { url: data.url || '/' },
     tag: data.tag || 'zenith-' + Date.now(),
     timestamp: data.timestamp || Date.now(),
     vibrate: [200, 100, 200, 100, 200],
     renotify: true,        // Always alert even if same tag exists
-    requireInteraction: true, // DON'T auto-dismiss on Android — user must tap/swipe
+    requireInteraction: false, // Don't block mobile UI thread
     actions: [
       { action: 'open', title: 'Open' },
       { action: 'dismiss', title: 'Dismiss' }
     ],
-    // Android notification channel hint (Chrome 115+)
     silent: false,
   });
 

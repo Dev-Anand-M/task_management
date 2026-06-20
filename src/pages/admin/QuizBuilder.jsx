@@ -520,7 +520,7 @@ const QuizBuilder = () => {
                                             }}
                                             style={{ padding: '8px' }}
                                         >
-                                            <Trash2 size={16} color="var(--error-400)" />
+                                            <Trash2 size={16} color="var(--error-500)" />
                                         </Button>
                                     </div>
                                 </div>

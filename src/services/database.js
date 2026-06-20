@@ -478,7 +478,6 @@ export const getQuizAttempts = async () => {
 
         // Fetch attempts and related data separately to avoid join issues
         let attemptsQuery = supabase.from('quiz_attempts').select('*');
-        if (!isAdmin) attemptsQuery = attemptsQuery.eq('user_id', user.id);
 
         const { data: attempts, error } = await withTimeout(attemptsQuery.order('completed_at', { ascending: false }));
         if (error) {
@@ -1000,13 +999,24 @@ export const adminResetPassword = async (userId, newPassword) => {
 };
 
 // ============================================
-// KNOWLEDGE BASE CRUD (Add / Delete)
+// KNOWLEDGE BASE CRUD (Add / Edit / Delete)
 // ============================================
 export const addKnowledgeSnippet = async (snippet) => {
     const user = await getActiveUser();
     const { data, error } = await supabase
         .from('knowledge_base')
         .insert({ ...snippet, created_by: user.id })
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+};
+
+export const updateKnowledgeSnippet = async (id, updates) => {
+    const { data, error } = await supabase
+        .from('knowledge_base')
+        .update(updates)
+        .eq('id', id)
         .select()
         .single();
     if (error) throw error;

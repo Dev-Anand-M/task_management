@@ -27,7 +27,7 @@ const Leaderboard = () => {
     const { user } = useAuth();
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('all'); // 'all', 'classroom'
+    const [filter, setFilter] = useState(user?.role === 'admin' ? 'all' : (user?.classroom_id ? 'classroom' : 'all')); // 'all', 'classroom'
 
     useEffect(() => {
         loadLeaderboard();
@@ -134,26 +134,28 @@ const Leaderboard = () => {
                             Compete, climb ranks, and unlock badges
                         </p>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', marginTop: 'var(--space-md)' }}>
-                        <button
-                            onClick={() => setFilter('all')}
-                            style={{
-                                padding: '8px 16px', borderRadius: 'var(--radius-full)', border: 'none', cursor: 'pointer',
-                                fontWeight: 700, fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em',
-                                background: filter === 'all' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
-                                color: 'white', transition: 'all 0.2s'
-                            }}
-                        >All</button>
-                        <button
-                            onClick={() => setFilter('classroom')}
-                            style={{
-                                padding: '8px 16px', borderRadius: 'var(--radius-full)', border: 'none', cursor: 'pointer',
-                                fontWeight: 700, fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em',
-                                background: filter === 'classroom' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
-                                color: 'white', transition: 'all 0.2s'
-                            }}
-                        >My Classroom</button>
-                    </div>
+                    {user?.role === 'admin' && (
+                        <div style={{ display: 'flex', gap: '8px', marginTop: 'var(--space-md)' }}>
+                            <button
+                                onClick={() => setFilter('all')}
+                                style={{
+                                    padding: '8px 16px', borderRadius: 'var(--radius-full)', border: 'none', cursor: 'pointer',
+                                    fontWeight: 700, fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em',
+                                    background: filter === 'all' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
+                                    color: 'white', transition: 'all 0.2s'
+                                }}
+                            >All</button>
+                            <button
+                                onClick={() => setFilter('classroom')}
+                                style={{
+                                    padding: '8px 16px', borderRadius: 'var(--radius-full)', border: 'none', cursor: 'pointer',
+                                    fontWeight: 700, fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em',
+                                    background: filter === 'classroom' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
+                                    color: 'white', transition: 'all 0.2s'
+                                }}
+                            >My Classroom</button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Quick Stats Row */}

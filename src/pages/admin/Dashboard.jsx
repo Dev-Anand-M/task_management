@@ -50,7 +50,7 @@ const AdminDashboard = () => {
 
             // Calculate stats
             const pendingSubmissions = (submissions || []).filter(s => s.status === 'pending').length;
-            const pendingQuizzes = (quizAttempts || []).filter(q => q.status === 'pending').length;
+            const pendingQuizzes = (quizAttempts || []).filter(q => !q.metadata?.finalized).length;
             const pendingReviews = pendingSubmissions + pendingQuizzes;
 
             const approvedSubmissions = (submissions || []).filter(s => s.status === 'approved').length;

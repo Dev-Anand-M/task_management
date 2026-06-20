@@ -31,6 +31,22 @@ export const AVAILABLE_MODELS = [
     { id: 'llama-3.1-sonar-large-128k-online', provider: 'perplexity', name: 'Sonar Large 3.1', description: 'Auto-calibrated for Perplexity', inputTokenLimit: '128k', outputTokenLimit: '4k' }
 ];
 
+// Helper to get active user ID from Supabase local storage session synchronously
+const getActiveUserId = () => {
+    try {
+        const sessionData = JSON.parse(localStorage.getItem('zenith-auth-v3'));
+        return sessionData?.user?.id || '';
+    } catch {
+        return '';
+    }
+};
+
+// Helper to get prefixed key name for localStorage
+const getStorageKeyName = (keyName) => {
+    const userId = getActiveUserId();
+    return userId ? `${userId}_${keyName}` : `anon_${keyName}`;
+};
+
 // Simple encryption for API key (XOR with user ID for obfuscation)
 const encryptKey = (key, salt) => {
     if (!key) return '';
@@ -59,23 +75,19 @@ const decryptKey = (encryptedKey, salt) => {
 // Check if API key is configured for a specific provider
 export const isAPIKeyConfigured = (providerId = 'sambanova') => {
     const provider = Object.values(PROVIDERS).find(p => p.id === providerId);
-    return provider ? !!localStorage.getItem(provider.keyName) : false;
+    return provider ? !!localStorage.getItem(getStorageKeyName(provider.keyName)) : false;
 };
 
 // Check if ANY API key is configured
 export const isAnyAPIKeyConfigured = () => {
-    return Object.values(PROVIDERS).some(p => !!localStorage.getItem(p.keyName));
+    return Object.values(PROVIDERS).some(p => !!localStorage.getItem(getStorageKeyName(p.keyName)));
 };
 
 // Fetch available models (Legacy wrapper or generic fetcher)
 export const fetchAvailableModels = async (apiKey) => {
-    // If we have a key, we try to guess the provider or just use the current selected one
-    // This is a bit tricky for legacy calls that pass a key directly.
-    // For now, let's just return all models if we can't validate, or try to validate with Gemini as default
-    // effectively mimicking old behavior but safer
     try {
         // If generic key is passed and it matches a stored key, use that provider
-        const provider = Object.values(PROVIDERS).find(p => localStorage.getItem(p.keyName) === apiKey);
+        const provider = Object.values(PROVIDERS).find(p => localStorage.getItem(getStorageKeyName(p.keyName)) === apiKey);
         if (provider) {
             const validation = await validateAPIKey(provider.id, apiKey);
             return validation.models || [];
@@ -89,16 +101,14 @@ export const fetchAvailableModels = async (apiKey) => {
 };
 
 // Get API key for provider
-
-// Get API key for provider
 export const getAPIKey = (providerId) => {
     const provider = Object.values(PROVIDERS).find(p => p.id === providerId);
-    return provider ? localStorage.getItem(provider.keyName) || '' : '';
+    return provider ? localStorage.getItem(getStorageKeyName(provider.keyName)) || '' : '';
 };
 
 // Get usage stats
 export const getUsageStats = () => {
-    const stats = localStorage.getItem('ai_usage_stats');
+    const stats = localStorage.getItem(getStorageKeyName('ai_usage_stats'));
     const today = new Date().toISOString().split('T')[0];
 
     if (stats) {
@@ -112,7 +122,7 @@ export const getUsageStats = () => {
                 });
             }
             parsed.lastDate = today;
-            localStorage.setItem('ai_usage_stats', JSON.stringify(parsed));
+            localStorage.setItem(getStorageKeyName('ai_usage_stats'), JSON.stringify(parsed));
         }
         return parsed;
     }
@@ -128,14 +138,14 @@ export const syncToDatabase = async () => {
         // Collect all keys
         const keys = {};
         Object.values(PROVIDERS).forEach(p => {
-            const key = localStorage.getItem(p.keyName);
+            const key = localStorage.getItem(getStorageKeyName(p.keyName));
             if (key) keys[p.keyName] = encryptKey(key, user.id);
         });
 
-        const model = localStorage.getItem('selected_ai_model');
+        const model = localStorage.getItem(getStorageKeyName('selected_ai_model'));
         const usage = getUsageStats();
         const priority = getProviderPriority();
-        const defaultProvider = localStorage.getItem('ai_default_provider');
+        const defaultProvider = localStorage.getItem(getStorageKeyName('ai_default_provider'));
 
         const aiSettings = {
             keys: keys,
@@ -158,7 +168,7 @@ export const syncToDatabase = async () => {
 export const saveAPIKey = async (providerId, key) => {
     const provider = Object.values(PROVIDERS).find(p => p.id === providerId);
     if (provider) {
-        localStorage.setItem(provider.keyName, key);
+        localStorage.setItem(getStorageKeyName(provider.keyName), key);
         await syncToDatabase();
     }
 };
@@ -167,7 +177,7 @@ export const saveAPIKey = async (providerId, key) => {
 export const removeAPIKey = async (providerId) => {
     const provider = Object.values(PROVIDERS).find(p => p.id === providerId);
     if (provider) {
-        localStorage.removeItem(provider.keyName);
+        localStorage.removeItem(getStorageKeyName(provider.keyName));
         await syncToDatabase();
     }
 };
@@ -175,7 +185,7 @@ export const removeAPIKey = async (providerId) => {
 // Get selected model with smart fallback
 export const getSelectedModel = () => {
     // 1. Check for manual selection first
-    const manualSelection = localStorage.getItem('selected_ai_model');
+    const manualSelection = localStorage.getItem(getStorageKeyName('selected_ai_model'));
     if (manualSelection) {
         const manualModel = AVAILABLE_MODELS.find(m => m.id === manualSelection);
         
@@ -191,19 +201,19 @@ export const getSelectedModel = () => {
         if (getAPIKey(providerId)) {
             const model = AVAILABLE_MODELS.find(m => m.provider === providerId);
             if (model) {
-                localStorage.setItem('selected_ai_model', model.id);
+                localStorage.setItem(getStorageKeyName('selected_ai_model'), model.id);
                 return model.id;
             }
         }
     }
 
     // 3. Fallback to any configured provider
-    if (localStorage.getItem('sambanova_api_key')) return 'Meta-Llama-3.3-70B-Instruct';
-    if (localStorage.getItem('groq_api_key')) return 'llama-3.3-70b-versatile';
-    if (localStorage.getItem('gemini_api_key')) return 'gemini-1.5-flash';
-    if (localStorage.getItem('openai_api_key')) return 'gpt-4o';
-    if (localStorage.getItem('anthropic_api_key')) return 'claude-3-5-sonnet-20240620';
-    if (localStorage.getItem('perplexity_api_key')) return 'llama-3.1-sonar-large-128k-online';
+    if (localStorage.getItem(getStorageKeyName('sambanova_api_key'))) return 'Meta-Llama-3.3-70B-Instruct';
+    if (localStorage.getItem(getStorageKeyName('groq_api_key'))) return 'llama-3.3-70b-versatile';
+    if (localStorage.getItem(getStorageKeyName('gemini_api_key'))) return 'gemini-1.5-flash';
+    if (localStorage.getItem(getStorageKeyName('openai_api_key'))) return 'gpt-4o';
+    if (localStorage.getItem(getStorageKeyName('anthropic_api_key'))) return 'claude-3-5-sonnet-20240620';
+    if (localStorage.getItem(getStorageKeyName('perplexity_api_key'))) return 'llama-3.1-sonar-large-128k-online';
 
     // Default Fallback
     return 'Meta-Llama-3.3-70B-Instruct';
@@ -211,7 +221,7 @@ export const getSelectedModel = () => {
 
 // Get provider priority order
 export const getProviderPriority = () => {
-    const saved = localStorage.getItem('ai_provider_priority');
+    const saved = localStorage.getItem(getStorageKeyName('ai_provider_priority'));
     if (saved) {
         try {
             return JSON.parse(saved);
@@ -225,13 +235,13 @@ export const getProviderPriority = () => {
 
 // Set provider priority order
 export const setProviderPriority = async (priorityArray) => {
-    localStorage.setItem('ai_provider_priority', JSON.stringify(priorityArray));
+    localStorage.setItem(getStorageKeyName('ai_provider_priority'), JSON.stringify(priorityArray));
     await syncToDatabase();
 };
 
 // Get default provider
 export const getDefaultProvider = () => {
-    const saved = localStorage.getItem('ai_default_provider');
+    const saved = localStorage.getItem(getStorageKeyName('ai_default_provider'));
     if (saved && getAPIKey(saved)) {
         return saved;
     }
@@ -247,7 +257,7 @@ export const getDefaultProvider = () => {
 
 // Set default provider
 export const setDefaultProvider = async (providerId) => {
-    localStorage.setItem('ai_default_provider', providerId);
+    localStorage.setItem(getStorageKeyName('ai_default_provider'), providerId);
     // Also update selected model to match default provider
     const model = AVAILABLE_MODELS.find(m => m.provider === providerId);
     if (model) {
@@ -258,7 +268,7 @@ export const setDefaultProvider = async (providerId) => {
 
 // Set selected model
 export const setSelectedModel = async (modelId) => {
-    localStorage.setItem('selected_ai_model', modelId);
+    localStorage.setItem(getStorageKeyName('selected_ai_model'), modelId);
     await syncToDatabase();
 };
 
@@ -285,7 +295,7 @@ export const incrementUsage = async (providerId = 'sambanova') => {
     stats.providers[providerId].requestsToday += 1;
     stats.providers[providerId].totalRequests += 1;
 
-    localStorage.setItem('ai_usage_stats', JSON.stringify(stats));
+    localStorage.setItem(getStorageKeyName('ai_usage_stats'), JSON.stringify(stats));
     await syncToDatabase();
 };
 
@@ -310,27 +320,27 @@ export const loadFromDatabase = async () => {
                     const encrypted = settings.keys[p.keyName];
                     if (encrypted) {
                         const decrypted = decryptKey(encrypted, user.id);
-                        if (decrypted) localStorage.setItem(p.keyName, decrypted);
+                        if (decrypted) localStorage.setItem(getStorageKeyName(p.keyName), decrypted);
                     }
                 });
             }
             // Handle legacy structure
             else if (settings.encrypted_api_key) {
                 const decrypted = decryptKey(settings.encrypted_api_key, user.id);
-                if (decrypted) localStorage.setItem('gemini_api_key', decrypted);
+                if (decrypted) localStorage.setItem(getStorageKeyName('gemini_api_key'), decrypted);
             }
 
             if (settings.selected_model) {
-                localStorage.setItem('selected_ai_model', settings.selected_model);
+                localStorage.setItem(getStorageKeyName('selected_ai_model'), settings.selected_model);
             }
             if (settings.usage) {
-                localStorage.setItem('ai_usage_stats', JSON.stringify(settings.usage));
+                localStorage.setItem(getStorageKeyName('ai_usage_stats'), JSON.stringify(settings.usage));
             }
             if (settings.provider_priority) {
-                localStorage.setItem('ai_provider_priority', JSON.stringify(settings.provider_priority));
+                localStorage.setItem(getStorageKeyName('ai_provider_priority'), JSON.stringify(settings.provider_priority));
             }
             if (settings.default_provider) {
-                localStorage.setItem('ai_default_provider', settings.default_provider);
+                localStorage.setItem(getStorageKeyName('ai_default_provider'), settings.default_provider);
             }
             return true;
         }
