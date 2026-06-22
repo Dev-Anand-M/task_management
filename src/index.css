@@ -172,10 +172,10 @@ html[data-theme="light"][data-color-scheme="glass"] {
   --text-muted: #71717a;
 }
 
-/* Hardware-accelerated background image containing glossy 3D liquid elements (Teal & Coral, no Purple) */
+/* Hardware-accelerated background image containing user-provided Zenith 3D liquid elements */
 :root[data-color-scheme="glass"] body {
   background-color: #0c0d12 !important;
-  background-image: url('/liquid_glass_bg_dark.png') !important;
+  background-image: url('/Zenith_bg_LGM.png') !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
@@ -184,7 +184,7 @@ html[data-theme="light"][data-color-scheme="glass"] {
 
 html[data-theme="light"][data-color-scheme="glass"] body {
   background-color: #f5f5f7 !important;
-  background-image: url('/liquid_glass_bg_light.png') !important;
+  background-image: url('/Zenith_bg_LGM.png') !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
