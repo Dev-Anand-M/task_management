@@ -136,7 +136,7 @@ body {
   --sidebar-light-bg: linear-gradient(180deg, #ea580c 0%, #f97316 50%, #fb923c 100%);
 }
 
-/* Liquid Glassmorphism Scheme */
+/* Liquid Glassmorphism Scheme (Apple-inspired) */
 :root[data-color-scheme="glass"] {
   --primary-50: #eef2ff;
   --primary-100: #e0e7ff;
@@ -149,65 +149,195 @@ body {
   --primary-800: #312e81;
   --primary-900: #1e1b4b;
 
-  --sidebar-dark-bg: linear-gradient(135deg, rgba(30, 27, 75, 0.45) 0%, rgba(15, 23, 42, 0.45) 100%);
-  --sidebar-light-bg: linear-gradient(135deg, rgba(238, 242, 255, 0.45) 0%, rgba(255, 255, 255, 0.45) 100%);
-  
-  --bg-liquid-dark: radial-gradient(at 0% 0%, #1e1b4b 0px, transparent 50%),
-                    radial-gradient(at 50% 0%, #311042 0px, transparent 50%),
-                    radial-gradient(at 100% 0%, #0f172a 0px, transparent 50%),
-                    radial-gradient(at 0% 100%, #030712 0px, transparent 50%),
-                    radial-gradient(at 100% 100%, #111827 0px, transparent 50%);
-                    
-  --bg-liquid-light: radial-gradient(at 0% 0%, #e0e7ff 0px, transparent 50%),
-                     radial-gradient(at 50% 0%, #fae8ff 0px, transparent 50%),
-                     radial-gradient(at 100% 0%, #f0fdf4 0px, transparent 50%),
-                     radial-gradient(at 0% 100%, #f9fafb 0px, transparent 50%),
-                     radial-gradient(at 100% 100%, #fff1f2 0px, transparent 50%);
+  --sidebar-dark-bg: rgba(15, 15, 20, 0.4) !important;
+  --sidebar-light-bg: rgba(255, 255, 255, 0.45) !important;
 }
 
+/* Base theme variable overrides for glassmorphism */
 html[data-theme="dark"][data-color-scheme="glass"] {
-  --bg: #09090b;
+  --bg: #060608;
   --surface: rgba(24, 24, 27, 0.35);
-  --card: rgba(39, 39, 42, 0.35);
-  --border: rgba(255, 255, 255, 0.08);
+  --card: rgba(20, 20, 25, 0.45);
+  --border: rgba(255, 255, 255, 0.09);
   --text: #ffffff;
   --text-muted: #a1a1aa;
-  
-  --glass-bg: rgba(9, 9, 11, 0.45);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-blur: blur(20px);
 }
 
 html[data-theme="light"][data-color-scheme="glass"] {
-  --bg: #fafafa;
-  --surface: rgba(255, 255, 255, 0.35);
-  --card: rgba(255, 255, 255, 0.45);
-  --border: rgba(0, 0, 0, 0.06);
+  --bg: #f5f5f7;
+  --surface: rgba(255, 255, 255, 0.45);
+  --card: rgba(255, 255, 255, 0.55);
+  --border: rgba(0, 0, 0, 0.05);
   --text: #09090b;
   --text-muted: #71717a;
-  
-  --glass-bg: rgba(255, 255, 255, 0.45);
-  --glass-border: rgba(0, 0, 0, 0.06);
-  --glass-blur: blur(20px);
 }
 
+/* Body and main layout transparent to see the animated mesh blobs */
 :root[data-color-scheme="glass"] body {
-  background-image: var(--bg-liquid-dark) !important;
-  background-attachment: fixed !important;
+  background-color: #060608 !important;
+  background-image: none !important;
 }
 
 html[data-theme="light"][data-color-scheme="glass"] body {
-  background-image: var(--bg-liquid-light) !important;
-  background-attachment: fixed !important;
+  background-color: #f5f5f7 !important;
+  background-image: none !important;
 }
 
+:root[data-color-scheme="glass"] .app-layout,
+:root[data-color-scheme="glass"] .main-content,
+:root[data-color-scheme="glass"] .page-content {
+  background: transparent !important;
+}
+
+/* Premium Apple-like Glass Container Effects */
 :root[data-color-scheme="glass"] .card,
 :root[data-color-scheme="glass"] .header,
 :root[data-color-scheme="glass"] .sidebar {
-  backdrop-filter: blur(16px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  backdrop-filter: blur(28px) saturate(210%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(210%) !important;
   border: 1px solid var(--border) !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 10px 30px 0 rgba(0, 0, 0, 0.15), 
+              inset 0 1px 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+html[data-theme="light"][data-color-scheme="glass"] .card,
+html[data-theme="light"][data-color-scheme="glass"] .header,
+html[data-theme="light"][data-color-scheme="glass"] .sidebar {
+  box-shadow: 0 10px 30px 0 rgba(0, 0, 0, 0.06), 
+              inset 0 1px 1px 0 rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Form controls & inputs glass style */
+:root[data-color-scheme="glass"] input,
+:root[data-color-scheme="glass"] select,
+:root[data-color-scheme="glass"] textarea,
+:root[data-color-scheme="glass"] .input-field {
+  background: rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.2) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="light"][data-color-scheme="glass"] input,
+html[data-theme="light"][data-color-scheme="glass"] select,
+html[data-theme="light"][data-color-scheme="glass"] textarea,
+html[data-theme="light"][data-color-scheme="glass"] .input-field {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.03) !important;
+  color: var(--text) !important;
+}
+
+/* Button overrides for glass style */
+:root[data-color-scheme="glass"] .btn-primary {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.8) 0%, rgba(79, 70, 229, 0.8) 100%) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+:root[data-color-scheme="glass"] .btn-primary:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.95) 0%, rgba(79, 70, 229, 0.95) 100%) !important;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45) !important;
+  transform: translateY(-1px);
+}
+
+/* Liquid glass background container and blobs */
+.glass-bg-blobs {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  z-index: -10;
+  pointer-events: none;
+}
+
+:root[data-color-scheme="glass"] .glass-bg-blobs {
+  display: block;
+}
+
+.glass-bg-blobs .blob {
+  position: absolute;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  opacity: 0.45;
+  filter: blur(100px);
+  will-change: transform;
+}
+
+/* Light mode adjustments */
+html[data-theme="light"][data-color-scheme="glass"] .glass-bg-blobs .blob {
+  mix-blend-mode: multiply;
+  opacity: 0.18;
+  filter: blur(110px);
+}
+
+.glass-bg-blobs .blob-1 {
+  top: -15%;
+  left: -15%;
+  width: 70vw;
+  height: 70vw;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.85) 0%, rgba(79, 70, 229, 0.4) 100%);
+  animation: float-1 25s infinite alternate ease-in-out;
+}
+
+.glass-bg-blobs .blob-2 {
+  top: 35%;
+  right: -15%;
+  width: 65vw;
+  height: 65vw;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.8) 0%, rgba(217, 70, 239, 0.4) 100%);
+  animation: float-2 30s infinite alternate ease-in-out;
+}
+
+.glass-bg-blobs .blob-3 {
+  bottom: -20%;
+  left: 15%;
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.8) 0%, rgba(59, 130, 246, 0.4) 100%);
+  animation: float-3 28s infinite alternate ease-in-out;
+}
+
+.glass-bg-blobs .blob-4 {
+  top: 15%;
+  left: 25%;
+  width: 55vw;
+  height: 55vw;
+  background: radial-gradient(circle, rgba(234, 179, 8, 0.6) 0%, rgba(249, 115, 22, 0.3) 100%);
+  animation: float-4 35s infinite alternate ease-in-out;
+}
+
+@keyframes float-1 {
+  0% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
+  50% { transform: translate(15vw, 10vh) scale(1.15) rotate(120deg); }
+  100% { transform: translate(-5vw, 20vh) scale(0.95) rotate(240deg); }
+}
+
+@keyframes float-2 {
+  0% { transform: translate(0px, 0px) scale(1.1) rotate(0deg); }
+  50% { transform: translate(-10vw, -15vh) scale(0.85) rotate(-180deg); }
+  100% { transform: translate(15vw, -5vh) scale(1.2) rotate(-360deg); }
+}
+
+@keyframes float-3 {
+  0% { transform: translate(0px, 0px) scale(0.95) rotate(0deg); }
+  50% { transform: translate(-15vw, 15vh) scale(1.1) rotate(90deg); }
+  100% { transform: translate(10vw, -10vh) scale(1) rotate(180deg); }
+}
+
+@keyframes float-4 {
+  0% { transform: translate(0px, 0px) scale(1.15) rotate(0deg); }
+  50% { transform: translate(8vw, -20vh) scale(0.9) rotate(-120deg); }
+  100% { transform: translate(-12vw, 8vh) scale(1.1) rotate(-240deg); }
 }
 
 
