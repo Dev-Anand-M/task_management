@@ -205,7 +205,7 @@ const ClassroomSettings = () => {
                         return (
                             <Card
                                 key={room.id}
-                                className={`p-lg cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg ${isActive ? 'ring-2 ring-primary-500' : ''}`}
+                                className={`classroom-card p-lg cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg ${isActive ? 'ring-2 ring-primary-500' : ''}`}
                                 onClick={() => !isActive && handleSwitch(room.id)}
                             >
                                 <div className="flex justify-between items-start mb-md">
@@ -213,7 +213,7 @@ const ClassroomSettings = () => {
                                     {isActive && <Badge variant="primary">Active</Badge>}
                                 </div>
                                 <h3 className="mb-xs text-lg">{room.name}</h3>
-                                <p className="text-sm text-muted line-clamp-2 mb-lg h-10">
+                                <p className="classroom-description text-sm text-muted mb-lg">
                                     {room.description || "No description"}
                                 </p>
                                 <div className="mt-auto flex gap-sm">

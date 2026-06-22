@@ -265,7 +265,7 @@ const KnowledgeBase = () => {
                     marginBottom: 'var(--space-md)', 
                     padding: 'var(--space-md)', 
                     border: previewAsStudent ? '1px solid var(--primary-500)' : '1px solid var(--border)',
-                    background: previewAsStudent ? 'var(--primary-50)' : 'var(--card)',
+                    background: previewAsStudent ? 'color-mix(in srgb, var(--primary-500), var(--card) 90%)' : 'var(--card)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
