@@ -126,6 +126,15 @@ export const ThemeProvider = ({ children }) => {
             (event, session) => {
                 if (session?.user) {
                     fetchAndApplyPrefs(session.user.id);
+                } else {
+                    // Reset to default theme on sign out to prevent previous user theme leakage on login screen
+                    setThemeState('dark');
+                    storage.setTheme('dark');
+                    document.documentElement.setAttribute('data-theme', 'dark');
+
+                    setColorSchemeState('gold');
+                    localStorage.setItem('skillquest_color_scheme', 'gold');
+                    document.documentElement.setAttribute('data-color-scheme', 'gold');
                 }
             }
         );

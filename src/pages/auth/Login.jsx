@@ -252,7 +252,6 @@ const Login = () => {
                     width: 80px;
                     height: 80px;
                     background: rgba(255,255,255,0.2);
-                    backdrop-filter: blur(10px);
                     border: 2px solid rgba(255,255,255,0.3);
                     border-radius: 20px;
                     display: flex;
