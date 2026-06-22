@@ -19,6 +19,7 @@ import {
 import * as db from '../../services/database';
 import {
     formatDate,
+    formatDeadline,
     formatRelativeTime,
     getDifficultyColor,
     getStatusColor
@@ -349,7 +350,7 @@ const MemberDashboard = () => {
                                         <div className="flex items-center gap-md" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                                             <span><Award size={12} /> {task.points} pts</span>
                                             {task.deadline && (
-                                                <span><Clock size={12} /> Due {formatDate(task.deadline)}</span>
+                                                <span><Clock size={12} /> Due {formatDeadline(task.deadline)}</span>
                                             )}
                                         </div>
                                     </div>

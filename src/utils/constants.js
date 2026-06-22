@@ -17,6 +17,43 @@ export const formatDate = (date) => {
     });
 };
 
+// Format deadline (shows due date, time, and remaining hours/minutes)
+export const formatDeadline = (date) => {
+    if (!date) return 'N/A';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return 'N/A';
+    
+    const dateTimeStr = d.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+    
+    const now = new Date();
+    const diffMs = d.getTime() - now.getTime();
+    
+    if (diffMs < 0) {
+        return `${dateTimeStr} (Overdue)`;
+    }
+    
+    const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (totalHours === 0) {
+        return `${dateTimeStr} (${mins}m left)`;
+    } else if (totalHours < 48) {
+        return `${dateTimeStr} (${totalHours}h ${mins}m left)`;
+    } else {
+        const days = Math.floor(totalHours / 24);
+        const remainingHours = totalHours % 24;
+        return `${dateTimeStr} (${days}d ${remainingHours}h left)`;
+    }
+};
+
+
 // Format relative time
 export const formatRelativeTime = (date) => {
     if (!date) return 'Just now';

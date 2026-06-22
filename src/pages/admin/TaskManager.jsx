@@ -20,6 +20,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import {
     formatDate,
+    formatDeadline,
     TASK_CATEGORIES,
     DIFFICULTY_LEVELS,
     EVALUATION_CRITERIA,
@@ -482,7 +483,7 @@ const TaskManager = () => {
                                     {task.deadline && (
                                         <div className="flex items-center gap-xs" style={{ color: 'var(--text-muted)' }}>
                                             <Calendar size={16} />
-                                            Due: {formatDate(task.deadline)}
+                                            Due: {formatDeadline(task.deadline)}
                                         </div>
                                     )}
                                 </div>

@@ -17,7 +17,7 @@ import {
     Zap
 } from 'lucide-react';
 import * as db from '../../services/database';
-import { formatDate, getDifficultyColor } from '../../utils/constants';
+import { formatDate, formatDeadline, getDifficultyColor } from '../../utils/constants';
 import { format12h } from '../../utils/timeFormat';
 import { useMiniReload } from '../../hooks/useMiniReload';
 import { routineService } from '../../services/routineService';
@@ -73,6 +73,24 @@ const Calendar = () => {
                         score: s.score,
                         points: task.points,
                         link: `/tasks`
+                    });
+                }
+            });
+
+            // Format task deadlines as events
+            const myTasks = (tasks || []).filter(t => !t.assigned_to || t.assigned_to.length === 0 || t.assigned_to.includes(user.id));
+            myTasks.forEach(task => {
+                if (task.deadline) {
+                    const sub = (submissions || []).find(s => s.task_id === task.id);
+                    const status = sub ? sub.status : 'not-started';
+                    allEvents.push({
+                        id: `task-deadline-${task.id}`,
+                        title: `🚨 Deadline: ${task.title}`,
+                        date: new Date(task.deadline),
+                        type: 'task-deadline',
+                        status: status,
+                        points: task.points,
+                        link: `/tasks/${task.id}`
                     });
                 }
             });
@@ -200,6 +218,10 @@ const Calendar = () => {
         if (type === 'routine' && status === 'missed') return 'var(--error-500)';
         if (type === 'routine' && status === 'scheduled') return 'var(--primary-400)';
         if (type === 'routine') return 'var(--primary-500)';
+        if (type === 'task-deadline' && status === 'approved') return 'var(--success-500)';
+        if (type === 'task-deadline' && status === 'pending') return 'var(--warning-500)';
+        if (type === 'task-deadline' && status === 'rejected') return 'var(--error-500)';
+        if (type === 'task-deadline') return 'var(--primary-500)';
         return 'var(--text-muted)';
     };
 
@@ -352,7 +374,7 @@ const Calendar = () => {
                                         transition: 'all 0.15s'
                                     }}>
                                         <div className="flex items-center gap-sm">
-                                            {e.type === 'routine' ? <Zap size={14} className={e.status === 'done' ? "text-success-500" : "text-primary-500"} /> : (e.type === 'task' || e.type === 'task-created' ? <ListTodo size={14} /> : <HelpCircle size={14} />)}
+                                            {e.type === 'routine' ? <Zap size={14} className={e.status === 'done' ? "text-success-500" : "text-primary-500"} /> : (e.type.startsWith('task') ? <ListTodo size={14} /> : <HelpCircle size={14} />)}
                                             <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, flex: 1 }}>{e.title}</span>
                                             {e.type === 'routine' && e.startTime && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{format12h(e.startTime)}</span>}
                                             {e.type === 'routine' && e.status === 'done' && (
@@ -371,9 +393,14 @@ const Calendar = () => {
                                                 </Button>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-sm" style={{ marginTop: '4px' }}>
+                                        <div className="flex items-center gap-sm" style={{ marginTop: '4px', flexWrap: 'wrap' }}>
                                             {e.points && <Badge variant="accent" size="xs">{e.points} XP</Badge>}
                                             {e.score !== undefined && <Badge variant="primary" size="xs">{e.score}%</Badge>}
+                                            {e.type === 'task-deadline' && (
+                                                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                                                    {formatDeadline(e.date)}
+                                                </span>
+                                            )}
                                             {e.link && (
                                                 <Link to={e.link} style={{ fontSize: '10px', color: 'var(--primary-500)', fontWeight: 700 }}>View →</Link>
                                             )}
@@ -416,9 +443,10 @@ const Calendar = () => {
                                     </div>
                                     <div style={{ flex: 1 }}>
                                         <p style={{ margin: 0, fontWeight: 600, fontSize: 'var(--text-sm)' }}>{e.title}</p>
-                                        <div className="flex items-center gap-sm" style={{ marginTop: '4px' }}>
+                                        <div className="flex items-center gap-sm" style={{ marginTop: '4px', flexWrap: 'wrap' }}>
                                             <Badge variant={e.type === 'routine' ? 'success' : e.type.includes('quiz') ? 'accent' : 'primary'} size="xs">{e.type.replace('-', ' ')}</Badge>
                                             {e.type === 'routine' && e.startTime && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{format12h(e.startTime)}</span>}
+                                            {e.type === 'task-deadline' && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatDeadline(e.date)}</span>}
                                             {e.points && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{e.points} XP</span>}
                                         </div>
                                     </div>

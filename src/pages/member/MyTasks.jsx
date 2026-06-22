@@ -22,6 +22,7 @@ import {
 import * as db from '../../services/database';
 import {
     formatDate,
+    formatDeadline,
     getDifficultyColor,
     getStatusColor,
     TASK_CATEGORIES,
@@ -212,7 +213,7 @@ const MyTasks = () => {
                                             </span>
                                             {task.deadline && (
                                                 <span className="flex items-center gap-xs">
-                                                    <Clock size={14} /> {formatDate(task.deadline)}
+                                                    <Clock size={14} /> {formatDeadline(task.deadline)}
                                                 </span>
                                             )}
                                         </div>
@@ -541,7 +542,7 @@ const TaskDetail = ({ taskId, onBack, onUpdate }) => {
                                         <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
                                             Deadline
                                         </p>
-                                        <p style={{ margin: 0, fontWeight: 600 }}>{formatDate(task.deadline)}</p>
+                                        <p style={{ margin: 0, fontWeight: 600 }}>{formatDeadline(task.deadline)}</p>
                                     </div>
                                 </div>
                             )}
@@ -553,7 +554,7 @@ const TaskDetail = ({ taskId, onBack, onUpdate }) => {
                                             Revision Due
                                         </p>
                                         <p style={{ margin: 0, fontWeight: 600, color: 'var(--error-500)' }}>
-                                            {formatDate(submission.revision_deadline)}
+                                            {formatDeadline(submission.revision_deadline)}
                                         </p>
                                     </div>
                                 </div>
