@@ -129,7 +129,7 @@ export const AuthProvider = ({ children }) => {
 
         // 2. Auth state listener — single source of truth
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (event, session) => {
+            async (event, session) => {
                 if (!mounted) return;
 
                 if (event === 'SIGNED_OUT') {
@@ -149,11 +149,11 @@ export const AuthProvider = ({ children }) => {
                             role: session.user.user_metadata?.role || 'member',
                             classroom_id: session.user.user_metadata?.classroom_id
                         });
-                        fetchProfileRef.current(session.user.id, true);
+                        await fetchProfileRef.current(session.user.id, true);
                     }
                 }
 
-                setLoading(false);
+                if (mounted) setLoading(false);
             }
         );
 
