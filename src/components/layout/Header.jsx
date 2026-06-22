@@ -141,7 +141,7 @@ const Header = ({ onMenuClick, title }) => {
   };
 
   return (
-    <header style={{ 
+    <header className="header" style={{ 
       height: '72px', 
       minHeight: '72px', 
       background: 'var(--card)', 

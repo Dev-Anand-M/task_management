@@ -1,0 +1,6 @@
+"Indexing Test Quiz","Proves how the platform indexes answers","Testing","easy",5
+"Type","Question","Option1","Option2","Option3","Option4","CorrectIndex"
+"mcq","FIRST OPTION IS CORRECT - Index should be 0","CORRECT: First Option","Wrong: Second Option","Wrong: Third Option","Wrong: Fourth Option",0
+"mcq","SECOND OPTION IS CORRECT - Index should be 1","Wrong: First Option","CORRECT: Second Option","Wrong: Third Option","Wrong: Fourth Option",1
+"mcq","THIRD OPTION IS CORRECT - Index should be 2","Wrong: First Option","Wrong: Second Option","CORRECT: Third Option","Wrong: Fourth Option",2
+"mcq","FOURTH OPTION IS CORRECT - Index should be 3","Wrong: First Option","Wrong: Second Option","Wrong: Third Option","CORRECT: Fourth Option",3

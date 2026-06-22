@@ -1,0 +1,61 @@
+===============================================
+SIMPLE ANSWER FOR THE AGENT
+===============================================
+
+Q: What index makes the FIRST option correct?
+A: 0 (zero) - ONLY THIS VALUE!
+
+Q: What index makes the SECOND option correct?
+A: 1 (one) - ONLY THIS VALUE!
+
+Q: What index makes the THIRD option correct?
+A: 2 (two) - ONLY THIS VALUE!
+
+Q: What index makes the FOURTH option correct?
+A: 3 (three) - ONLY THIS VALUE!
+
+===============================================
+CRITICAL: 0-BASED INDEXING ONLY!
+===============================================
+
+The platform uses 0-based indexing ONLY.
+Do NOT use 1, 2, 3, 4 - use 0, 1, 2, 3 ONLY!
+
+===============================================
+YOUR SPECIFIC QUESTION
+===============================================
+
+Question: "What database does this platform use?"
+Options:
+  - MySQL
+  - MongoDB  
+  - Supabase PostgreSQL  ← CORRECT ANSWER
+  - Oracle
+
+CORRECT INDEX: 2 (and ONLY 2)
+
+Because:
+  MySQL               = index 0 (first)
+  MongoDB             = index 1 (second)
+  Supabase PostgreSQL = index 2 (third) ← THIS ONE
+  Oracle              = index 3 (fourth)
+
+===============================================
+CSV FORMAT (CORRECT)
+===============================================
+
+"mcq","What database does this platform use?","MySQL","MongoDB","Supabase PostgreSQL","Oracle",2
+                                                                                              ^
+                                                                                              |
+                                                        This MUST be 2 (for the third option)
+
+DO NOT use 3 - that would select the fourth option (Oracle)!
+
+===============================================
+THE PLATFORM ONLY ACCEPTS 0-BASED!
+===============================================
+
+Valid indices: 0, 1, 2, 3
+Invalid indices: 1, 2, 3, 4 (will be treated as errors or wrong selections)
+
+===============================================

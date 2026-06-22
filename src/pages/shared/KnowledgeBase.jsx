@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, Input, Modal } from '../../components/common';
 import { 
     BookOpen, 
@@ -19,17 +20,20 @@ import {
     Upload,
     File,
     ExternalLink,
-    Download
+    Download,
+    X
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { formatDate } from '../../utils/constants';
+import { formatDate, formatRelativeTime } from '../../utils/constants';
 
 const KnowledgeBase = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [knowledge, setKnowledge] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [viewingItem, setViewingItem] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
         const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -300,15 +304,20 @@ const KnowledgeBase = () => {
                 </Card>
             )}
 
-            <Card style={{ marginBottom: 'var(--space-lg)', padding: 'var(--space-md)' }}>
-                <div className="flex items-center gap-md">
-                    <Search className="text-muted" size={20} />
-                    <Input 
+            <Card style={{ marginBottom: 'var(--space-lg)', padding: 'var(--space-sm) var(--space-md)' }}>
+                <div className="flex items-center gap-sm">
+                    <Search className="text-muted" size={18} />
+                    <input 
                         placeholder="Search knowledge by title, content or tags..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{ border: 'none', background: 'transparent', padding: 0 }}
+                        style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: 'var(--text)', fontSize: 'var(--text-sm)' }}
                     />
+                    {searchQuery && (
+                        <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}>
+                            <X size={14} />
+                        </button>
+                    )}
                 </div>
             </Card>
 
@@ -340,7 +349,12 @@ const KnowledgeBase = () => {
                     gap: 'var(--space-md)' 
                 }}>
                     {filteredKnowledge.map(item => (
-                        <Card key={item.id} className="h-full flex flex-col" style={{ position: 'relative', overflow: 'hidden', cursor: 'default' }}>
+                        <Card 
+                            key={item.id} 
+                            className="h-full flex flex-col" 
+                            style={{ position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
+                            onClick={() => setViewingItem(item)}
+                        >
                             <div className="flex justify-between items-start mb-md">
                                 <div style={{ minWidth: 0 }}>
                                     <Badge variant="accent" size="xs" style={{ marginBottom: '4px' }}>
@@ -409,6 +423,7 @@ const KnowledgeBase = () => {
                                             fontSize: 'var(--text-sm)'
                                         }}
                                         className="hover:bg-primary-100 transition-colors"
+                                        onClick={(e) => e.stopPropagation()}
                                     >
                                         {item.material_type === 'file' ? <><Download size={14} /> Download File</> : <><ExternalLink size={14} /> Open Link</>}
                                     </a>
@@ -679,6 +694,67 @@ const KnowledgeBase = () => {
                         <Button variant="primary" type="submit" loading={saving}>Save Changes</Button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* View Item Modal */}
+            <Modal isOpen={!!viewingItem} onClose={() => setViewingItem(null)} title={viewingItem?.title || ''} size="full">
+                {viewingItem && (
+                    <div>
+                        <div className="flex flex-wrap justify-between items-center gap-sm mb-md">
+                            <div className="flex gap-sm">
+                                <Badge variant="accent">{viewingItem.subject || viewingItem.category || 'General'}</Badge>
+                                {viewingItem.color && <div style={{ width: 12, height: 12, borderRadius: '50%', background: viewingItem.color }} />}
+                            </div>
+                            <Button size="sm" variant="primary" onClick={() => { navigate(`/study-lab/${viewingItem.id}`); setViewingItem(null); }}>
+                                <Sparkles size={16} className="mr-sm" /> Enter Study Lab
+                            </Button>
+                        </div>
+                        {viewingItem.file_url && viewingItem.material_type === 'file' ? (
+                            <div style={{ marginTop: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: 'var(--space-xl)', textAlign: 'center', border: '1px solid var(--border)' }}>
+                                {viewingItem.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                    <img src={viewingItem.file_url} alt="Attached Material" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', display: 'block', borderRadius: 'var(--radius-md)' }} />
+                                ) : (
+                                        <div style={{ position: 'relative', height: '80vh', background: 'var(--surface)' }}>
+                                            <iframe 
+                                                src={`https://docs.google.com/gview?url=${encodeURIComponent(viewingItem.file_url)}&embedded=true`}
+                                                width="100%" 
+                                                height="100%" 
+                                                style={{ border: 'none', display: 'block' }} 
+                                                title="Document Preview"
+                                            />
+                                            {/* Fallback buttons in case the viewer fails */}
+                                            <div style={{ position: 'absolute', bottom: '20px', right: '20px', display: 'flex', gap: '8px' }}>
+                                                <a href={viewingItem.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-outline" style={{ background: 'rgba(30, 41, 59, 0.8)', backdropFilter: 'blur(4px)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}>
+                                                    <ExternalLink size={14} /> Open Original
+                                                </a>
+                                            </div>
+                                        </div>
+                                )}
+                            </div>
+                        ) : viewingItem.file_url && viewingItem.material_type === 'link' ? (
+                            <div style={{ marginTop: 'var(--space-md)' }}>
+                                <a href={viewingItem.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+                                    <ExternalLink size={16} /> Open External Link
+                                </a>
+                            </div>
+                        ) : null}
+
+                        {viewingItem.content && viewingItem.content !== 'Attached Material' && viewingItem.content !== 'Attached Note' && (
+                            <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, color: 'var(--text)', fontSize: 'var(--text-sm)', maxHeight: '60vh', overflowY: 'auto', padding: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', marginTop: 'var(--space-md)' }}>
+                                {viewingItem.content}
+                            </div>
+                        )}
+                        {viewingItem.tags?.length > 0 && (
+                            <div className="flex flex-wrap gap-xs mt-md">
+                                {viewingItem.tags.map((tag, i) => <Badge key={i} variant="outline" size="xs">#{tag}</Badge>)}
+                            </div>
+                        )}
+                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 'var(--space-md)' }}>
+                            {viewingItem.created_at && `Created ${formatDate(viewingItem.created_at)}`}
+                            {viewingItem.updated_at && ` · Updated ${formatRelativeTime(viewingItem.updated_at)}`}
+                        </p>
+                    </div>
+                )}
             </Modal>
         </div>
     );

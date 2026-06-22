@@ -1,0 +1,12 @@
+"Web Development Basics","Test quiz with all question types","Frontend","easy",15
+"Type","Question","Option1","Option2","Option3","Option4","Answer"
+"mcq","What does HTML stand for?","Hypertext Markup Language","High Tech Modern Language","Home Tool Markup Language","Hyperlinks and Text Markup Language",1
+"mcq","What does CSS stand for?","Cascading Style Sheets","Creative Style Sheets","Computer Style Sheets","Colorful Style Sheets",0
+"mcq","Which is a JavaScript framework?","React","Python","MySQL","HTML",0
+"boolean","Is JavaScript the same as Java?",False
+"boolean","Can CSS be used to style HTML elements?",True
+"boolean","Is HTML a programming language?",False
+"short","What is the purpose of the <head> tag in HTML?",Contains metadata and links to external resources
+"short","Explain what CSS is used for",CSS is used to style and layout web pages
+"mcq","Which HTML tag is used for creating hyperlinks?","<a>","<link>","<href>","<url>",0
+"mcq","What is the correct syntax for an HTML comment?","<!-- comment -->","// comment","/* comment */","# comment",0

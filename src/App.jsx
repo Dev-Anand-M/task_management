@@ -93,8 +93,13 @@ const RoleGuard = ({ role }) => {
   if (!user) return <Navigate to="/login" replace />;
 
   if (user?.role !== role) {
-    console.log('[RoleGuard] Role mismatch! User role:', user?.role, 'Required:', role, 'Redirecting...');
-    return <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+    if (role === 'member' && user?.role === 'admin') {
+      // Allow admins to access member routes (e.g. for student view testing/previews)
+      console.log('[RoleGuard] Admin accessing member route.');
+    } else {
+      console.log('[RoleGuard] Role mismatch! User role:', user?.role, 'Required:', role, 'Redirecting...');
+      return <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+    }
   }
 
   console.log('[RoleGuard] Role check passed. User role:', user?.role);

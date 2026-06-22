@@ -1,0 +1,8 @@
+"Boolean Test","Testing boolean parsing","Testing","easy",5
+"Type","Question","Answer"
+"boolean","This should be TRUE",True
+"boolean","This should be FALSE",False
+"boolean","This should also be FALSE",false
+"boolean","Another TRUE test",true
+"boolean","Test with 1 (should be TRUE)",1
+"boolean","Test with 0 (should be FALSE)",0

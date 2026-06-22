@@ -1,0 +1,9 @@
+"Sample Quiz","Complete example with all question types","Testing","easy",10
+"Type","Question","Opt1/Answer","Opt2","Opt3","Opt4","AnswerIndex"
+"mcq","What is the first option?","CORRECT: First","Wrong: Second","Wrong: Third","Wrong: Fourth",0
+"mcq","What is the third option?","Wrong: First","Wrong: Second","CORRECT: Third","Wrong: Fourth",2
+"boolean","This should be TRUE","True"
+"boolean","This should be FALSE","False"
+"boolean","Another TRUE (using lowercase)","true"
+"boolean","Another FALSE (using lowercase)","false"
+"short","What is the purpose of this quiz?","To demonstrate correct CSV format"

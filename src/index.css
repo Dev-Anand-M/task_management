@@ -207,6 +207,25 @@ html[data-theme="light"][data-color-scheme="glass"] body {
   background-attachment: fixed !important;
 }
 
+html[data-theme="light"][data-color-scheme="glass"] body::before {
+  content: '' !important;
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+  animation: none !important;
+}
+
+html[data-theme="light"][data-color-scheme="glass"] body::after {
+  display: none !important;
+}
+
+html[data-theme="light"][data-color-scheme="glass"] #root::before,
+html[data-theme="light"][data-color-scheme="glass"] #root::after {
+  display: none !important;
+}
+
 :root[data-color-scheme="glass"] .app-layout,
 :root[data-color-scheme="glass"] .main-content,
 :root[data-color-scheme="glass"] .page-content {
@@ -243,59 +262,7 @@ html[data-theme="light"][data-color-scheme="glass"] .sidebar {
   border: 1px solid rgba(255, 255, 255, 0.4) !important;
 }
 
-/* Text Visibility Adjustments (for text rendered directly on the dark user background) */
-:root[data-color-scheme="glass"] {
-  color: rgba(255, 255, 255, 0.95);
-}
 
-:root[data-color-scheme="glass"] h1,
-:root[data-color-scheme="glass"] h2,
-:root[data-color-scheme="glass"] h3,
-:root[data-color-scheme="glass"] h4,
-:root[data-color-scheme="glass"] p,
-:root[data-color-scheme="glass"] span,
-:root[data-color-scheme="glass"] .text-muted:not(.card *):not(.sidebar *):not(.header *) {
-  color: rgba(255, 255, 255, 0.95) !important;
-}
-
-/* Explicitly restore theme-based colors inside glass panels (Cards, Sidebar, Header) */
-:root[data-color-scheme="glass"] .card,
-:root[data-color-scheme="glass"] .header,
-:root[data-color-scheme="glass"] .sidebar {
-  color: var(--text) !important;
-}
-
-:root[data-color-scheme="glass"] .card h1,
-:root[data-color-scheme="glass"] .card h2,
-:root[data-color-scheme="glass"] .card h3,
-:root[data-color-scheme="glass"] .card h4,
-:root[data-color-scheme="glass"] .card p,
-:root[data-color-scheme="glass"] .card span,
-:root[data-color-scheme="glass"] .card div,
-:root[data-color-scheme="glass"] .card a,
-:root[data-color-scheme="glass"] .card li,
-:root[data-color-scheme="glass"] .card th,
-:root[data-color-scheme="glass"] .card td,
-:root[data-color-scheme="glass"] .header h1,
-:root[data-color-scheme="glass"] .header h2,
-:root[data-color-scheme="glass"] .header h3,
-:root[data-color-scheme="glass"] .header p,
-:root[data-color-scheme="glass"] .header span,
-:root[data-color-scheme="glass"] .sidebar h2,
-:root[data-color-scheme="glass"] .sidebar span,
-:root[data-color-scheme="glass"] .sidebar p,
-:root[data-color-scheme="glass"] .sidebar a {
-  color: var(--text) !important;
-}
-
-:root[data-color-scheme="glass"] .card .text-muted,
-:root[data-color-scheme="glass"] .header .text-muted,
-:root[data-color-scheme="glass"] .sidebar .text-muted,
-:root[data-color-scheme="glass"] .card p.text-muted,
-:root[data-color-scheme="glass"] .card span.text-muted,
-:root[data-color-scheme="glass"] .card div.text-muted {
-  color: var(--text-muted) !important;
-}
 
 /* Form controls & inputs glass style */
 :root[data-color-scheme="glass"] input,
