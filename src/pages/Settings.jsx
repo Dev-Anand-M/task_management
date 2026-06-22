@@ -73,10 +73,10 @@ const colorSchemes = [
     {
         id: 'glass',
         name: 'Liquid Glass',
-        description: 'Vibrant mesh gradient and glassmorphism',
-        primary: '#6366f1',
-        gradient: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
-        colors: ['#6366f1', '#a855f7', '#ec4899']
+        description: 'Teal & Coral 3D liquid glass theme',
+        primary: '#14b8a6',
+        gradient: 'linear-gradient(135deg, #14b8a6 0%, #0ea5e9 50%, #f43f5e 100%)',
+        colors: ['#14b8a6', '#0ea5e9', '#f43f5e']
     }
 ];
 
