@@ -563,7 +563,6 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
             const fallbackModel = AVAILABLE_MODELS.find(m => m.provider === fallbackProviderId);
             
             if (fallbackModel) {
-                console.log(`[AI] Falling back to ${fallbackProviderId}...`);
                 try {
                     return await attemptProviderGeneration(fallbackProviderId, fallbackModel.id, prompt, systemPrompt, signal, options);
                 } catch (fallbackError) {
@@ -1045,7 +1044,6 @@ export const evaluateQuizAttempt = async (quizData, studentAnswers, model = null
             relevantContext = "\n--- GROUND TRUTH CONTEXT ---\n" + 
                 contextSnippets.map(k => `[Source: ${k.title}]\n${k.content}`).join("\n\n") + 
                 "\n--- END CONTEXT ---\n";
-            console.log(`[RAG] Injected ${contextSnippets.length} knowledge snippets into prompt.`);
         }
     } catch (err) {
         console.warn('RAG Context fetch failed:', err);
@@ -1150,7 +1148,6 @@ Remember:
 
     try {
         // Log the raw response for debugging
-        console.log('AI Evaluation Raw Response:', response);
         
         // Clean the response: remove markdown code blocks if they exist
         let cleanedResponse = response.trim();

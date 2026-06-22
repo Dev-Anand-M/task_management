@@ -467,6 +467,7 @@ const ClassroomDetail = () => {
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         placeholder="Search students..."
                                         className="h-10"
+                                        showRecommendations={false}
                                     />
                                 </div>
                             </h2>

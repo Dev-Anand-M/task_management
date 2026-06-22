@@ -289,8 +289,6 @@ const QuizBuilder = () => {
                     answer = false; // default to false
                 }
                 
-                console.log(`[Boolean CSV Parse] Question: "${questionText}"`);
-                console.log(`  Raw answer: "${row[2]}" → Boolean: ${answer}`);
                 
                 newQuestions.push({
                     id: `q-${Date.now()}-${index}`,

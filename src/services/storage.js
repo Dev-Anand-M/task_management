@@ -198,7 +198,6 @@ export const setTheme = (theme) => setItem(STORAGE_KEYS.THEME, theme);
 // Initialize with demo data (disabled for production)
 export const initializeDemoData = () => {
     // Demo data removed - starting with clean slate
-    console.log('Demo data initialization disabled');
 };
 
 export { STORAGE_KEYS };

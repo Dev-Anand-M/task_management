@@ -67,7 +67,6 @@ const Register = () => {
             // Mark invite code as used
             await inviteCodes.useInviteCode(inviteCode.toUpperCase(), result.user.id);
             // Manual navigation as a fallback
-            console.log('Registration success, manual redirect to dashboard');
             navigate('/dashboard', { replace: true });
         } else {
             setError(result.error || 'Registration failed');

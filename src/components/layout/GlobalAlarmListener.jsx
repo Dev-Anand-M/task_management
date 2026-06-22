@@ -14,7 +14,6 @@ const GlobalAlarmListener = () => {
 
     const startListener = () => {
         if (intervalRef.current) return;
-        console.log('[Alarm] Starting global listener...');
         intervalRef.current = setInterval(checkAlarms, 30000); 
         checkAlarms(); 
     };
@@ -214,7 +213,6 @@ const GlobalAlarmListener = () => {
                             JSON.stringify(user.push_subscription.keys) !== JSON.stringify(activeSub.keys);
                         
                         if (hasSubChanged) {
-                            console.log('[Push] Auto-syncing push subscription for current device...');
                             await routineService.supabase.from('profiles').update({
                                 push_subscription: activeSub
                             }).eq('id', user.id);

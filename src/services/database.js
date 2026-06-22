@@ -351,8 +351,8 @@ export const getQuizzes = async () => {
 
     const allQuizzes = data || [];
 
-    // Students only see quizzes for their classroom, global ones, or ones specifically assigned to them
-    if (profile?.role === 'member') {
+    // Filter by classroom for both members and admins
+    if (profile?.classroom_id) {
         const filtered = allQuizzes.filter(quiz => {
             const isGlobal = quiz.is_global === true;
             const isInClassroom = quiz.classroom_id === profile.classroom_id;
@@ -365,6 +365,7 @@ export const getQuizzes = async () => {
         return filtered;
     }
 
+    // Fallback: no classroom set, return all (super-admin or unassigned)
     return allQuizzes;
 };
 
@@ -511,11 +512,6 @@ export const getQuizAttempts = async () => {
             quizzes: quizzesMap[attempt.quiz_id] || null
         }));
 
-        console.log('[getQuizAttempts] Fetched attempts:', {
-            total: enrichedAttempts.length,
-            withQuiz: enrichedAttempts.filter(a => a.quizzes).length,
-            withoutQuiz: enrichedAttempts.filter(a => !a.quizzes).length
-        });
 
         return enrichedAttempts;
     } catch (err) {

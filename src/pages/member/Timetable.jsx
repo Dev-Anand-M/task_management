@@ -137,7 +137,6 @@ const Timetable = () => {
                     }
 
                     const metadata = JSON.parse(cleanedMetadata);
-                    console.log('Processed AI Metadata:', metadata);
                     
                     // 1. Sync Timetable (Routines)
                     if (metadata.routines) {

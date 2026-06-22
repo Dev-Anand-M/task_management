@@ -823,7 +823,6 @@ const Settings = () => {
                                                 return;
                                             }
                                             
-                                            console.log("[TestPush] Sending to subscription:", profile.push_subscription.endpoint);
                                             
                                             const { data: { session } } = await supabase.auth.getSession();
                                             const res = await fetch(`${window.location.origin}/api/push`, {
@@ -841,7 +840,6 @@ const Settings = () => {
                                             });
                                             
                                             const data = await res.json();
-                                            console.log("[TestPush] Response:", data);
                                             
                                             if (data.success) {
                                                 alert(`✅ Test notification sent!\n\nCheck your device for the notification.\n\nNote: Close the app to test background notifications.`);

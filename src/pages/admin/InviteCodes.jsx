@@ -55,7 +55,6 @@ const InviteCodes = () => {
 
     const handleCreateCode = async () => {
         setLoading(true);
-        console.log('InviteCodes: Starting creation process...', { useCustom, quantity, selectedClassroom, userClassroom: user?.classroom_id });
         
         try {
             const targetClassroomId = selectedClassroom || user?.classroom_id;
@@ -68,11 +67,9 @@ const InviteCodes = () => {
             if (useCustom) {
                 if (!customCode) throw new Error('Please enter a custom code.');
                 const code = customCode.toUpperCase();
-                console.log('InviteCodes: Creating custom code:', code);
                 await inviteCodes.createInviteCode(code, targetClassroomId);
             } else {
                 // Bulk or Single Random
-                console.log(`InviteCodes: Creating ${quantity} random codes for classroom ${targetClassroomId}`);
                 const promises = [];
                 for (let i = 0; i < quantity; i++) {
                     const code = (i === 0 && newCode) ? newCode : Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -81,7 +78,6 @@ const InviteCodes = () => {
                 await Promise.all(promises);
             }
 
-            console.log('InviteCodes: Success! Reloading data...');
             await loadData();
             setShowCreateModal(false);
             setNewCode('');

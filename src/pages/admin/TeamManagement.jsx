@@ -37,15 +37,12 @@ const TeamManagement = () => {
         const channel = supabase
             .channel('team-updates')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-                console.log('Realtime: Profile update detected');
                 loadMembers();
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => {
-                console.log('Realtime: Submission update detected');
                 loadMembers();
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_attempts' }, () => {
-                console.log('Realtime: Quiz attempt update detected');
                 loadMembers();
             })
             .subscribe();

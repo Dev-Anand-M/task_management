@@ -22,11 +22,11 @@ export const AuthProvider = ({ children }) => {
 
     // fetchProfile as useCallback — stored in ref so closures never go stale
     const fetchProfile = useCallback(async (userId, force = false) => {
-        if (!userId) return;
+        if (!userId) return null;
 
         const now = Date.now();
         if (!force && lastFetchRef.current > 0 && (now - lastFetchRef.current < 30000)) {
-            return;
+            return profile;
         }
 
         lastFetchRef.current = now;
@@ -58,15 +58,14 @@ export const AuthProvider = ({ children }) => {
                     if (!insertErr && created) {
                         userProfile = created;
                         error = null;
-                        console.log('[AuthContext] Auto-provisioned profile for', userId);
                     } else {
                         console.warn('[AuthContext] Failed to auto-provision profile:', insertErr);
-                        return;
+                        return null;
                     }
                 }
             } else if (error) {
                 console.warn('[AuthContext] Profile fetch error:', error);
-                return;
+                return null;
             }
 
             if (userProfile) {
@@ -80,17 +79,21 @@ export const AuthProvider = ({ children }) => {
                     if (classroom) classroom_name = classroom.name;
                 }
 
-                setProfile({ ...userProfile, classroom_name });
+                const fullProfile = { ...userProfile, classroom_name };
+                setProfile(fullProfile);
 
                 // Load AI settings in background
                 import('../services/aiService')
                     .then(({ loadFromDatabase }) => loadFromDatabase())
                     .catch(() => {});
+                
+                return fullProfile;
             }
         } catch (err) {
             console.error('[AuthContext] Profile fetch error:', err);
         }
-    }, []);
+        return null;
+    }, [profile]);
 
     // Always keep ref pointing to latest
     fetchProfileRef.current = fetchProfile;
@@ -112,7 +115,8 @@ export const AuthProvider = ({ children }) => {
                         role: session.user.user_metadata?.role || 'member',
                         classroom_id: session.user.user_metadata?.classroom_id
                     });
-                    fetchProfileRef.current(session.user.id, true);
+                    // Await the profile fetch so that the correct role is loaded before loading is set to false
+                    await fetchProfileRef.current(session.user.id, true);
                 }
             } catch (error) {
                 console.error('[AuthContext] Init error:', error);
@@ -188,14 +192,15 @@ export const AuthProvider = ({ children }) => {
             if (error) return { success: false, error: error.message };
             if (data.user) {
                 setUser(data.user);
-                fetchProfileRef.current(data.user.id, true);
-                return { success: true, user: data.user };
+                // Await real profile to ensure we navigate with correct role
+                const prof = await fetchProfile(data.user.id, true);
+                return { success: true, user: data.user, profile: prof };
             }
             return { success: false, error: 'No user data returned' };
         } catch (err) {
             return { success: false, error: err.message || 'Login failed.' };
         }
-    }, []);
+    }, [fetchProfile]);
 
     const register = useCallback(async (name, email, password, classroomId) => {
         try {

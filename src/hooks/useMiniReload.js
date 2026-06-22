@@ -7,7 +7,6 @@ import { useEffect } from 'react';
 export const useMiniReload = (reloadFn) => {
     useEffect(() => {
         const handleRefresh = () => {
-            console.log('Mini Reload triggered');
             if (reloadFn) reloadFn();
         };
 

@@ -85,7 +85,6 @@ const Header = ({ onMenuClick, title }) => {
               table: 'notifications', 
               filter: `user_id=eq.${user.id}` 
           }, () => {
-              console.log('Realtime: Notification update detected');
               loadNotificationData();
           })
           .subscribe();

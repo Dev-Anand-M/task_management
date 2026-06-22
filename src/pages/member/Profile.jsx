@@ -37,12 +37,10 @@ const Profile = ({ userId = null, readonly = false }) => {
 
     const loadProfileData = useCallback(async (isRefresh = false) => {
         if (!targetUserId) {
-            console.log('[Profile] No targetUserId, stopping load');
             setLoading(false);
             return;
         }
 
-        console.log('[Profile] Starting load for ID:', targetUserId, 'isRefresh:', isRefresh);
         
         try {
             if (!isRefresh) setLoading(true);
@@ -109,7 +107,6 @@ const Profile = ({ userId = null, readonly = false }) => {
                 new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 8000))
             ]);
 
-            console.log('[Profile] Load complete');
         } catch (error) {
             console.error('[Profile] Error loading profile:', error);
         } finally {

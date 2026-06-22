@@ -23,9 +23,8 @@ const Login = () => {
 
         if (result.success) {
             // Manual navigation as a fallback to AuthRoute redirect
-            const userRole = result.user?.user_metadata?.role || 'member';
+            const userRole = result.profile?.role || result.user?.user_metadata?.role || 'member';
             const redirectPath = userRole === 'admin' ? '/admin' : '/dashboard';
-            console.log('Login success, manual redirect to:', redirectPath);
             navigate(redirectPath, { replace: true });
         } else {
             setError(result.error || 'Invalid credentials');

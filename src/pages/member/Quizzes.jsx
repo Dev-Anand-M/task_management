@@ -326,7 +326,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
             if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
                 const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
                 if (exit) {
-                    exit.call(document).catch(err => console.log('Cleanup fullscreen error:', err));
+                    exit.call(document).catch(err => {});
                 }
             }
         };
@@ -464,12 +464,9 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
 
             // 3. RUN AI EVALUATION IN THE BACKGROUND
             const runBackgroundAi = async (id) => {
-                console.log('--- STARTING BACKGROUND AI EVALUATION ---');
-                console.log('Attempt ID:', id);
                 
                 const hasAI = isAPIKeyConfigured('sambanova') || isAPIKeyConfigured('google') || isAPIKeyConfigured('openai');
                 if (!hasAI) {
-                    console.log('AI NOT CONFIGURED. Skipping background evaluation.');
                     return;
                 }
 
@@ -477,10 +474,8 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                     let modelToUse = getSelectedModel();
                     if (isAPIKeyConfigured('sambanova')) modelToUse = 'Meta-Llama-3.3-70B-Instruct';
                     
-                    console.log('Using Model:', modelToUse);
 
                     const report = await evaluateQuizAttempt(quiz, answers, modelToUse);
-                    console.log('AI Evaluation Report received:', report ? 'YES' : 'NO');
                     
                     if (report) {
                         let finalCorrect = 0;
@@ -509,11 +504,9 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                         });
 
                         const aiScore = Math.round((finalCorrect / quiz.questions.length) * 100);
-                        console.log('Calculated AI Score (SHORT ANSWER only):', aiScore);
                         
                         // Check for Key Errors to flag for Admin
                         const hasKeyError = report.suggestions.some(s => s.isKeyError === true);
-                        if (hasKeyError) console.log('⚠️ AI DETECTED POTENTIAL QUIZ KEY ERROR!');
 
                         const { error: updateError } = await db.supabase
                             .from('quiz_attempts')
@@ -534,12 +527,10 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                             .eq('id', id);
 
                         if (updateError) throw updateError;
-                        console.log('Database updated with AI results successfully.');
                     }
                 } catch (e) {
                     console.error('CRITICAL: Background AI Eval Failed:', e);
                 } finally {
-                    console.log('--- BACKGROUND AI EVALUATION FINISHED ---');
                 }
             };
 

@@ -131,21 +131,17 @@ const MemberDashboard = () => {
             const channel = supabase
                 .channel(`dashboard-${user.id}`)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-                    console.log('Realtime: Task update detected');
                     loadDashboardData(true);
                 })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions', filter: `user_id=eq.${user.id}` }, () => {
-                    console.log('Realtime: My submission update detected');
                     loadDashboardData(true);
                     refreshUser(); // Update XP if approved
                 })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_attempts', filter: `user_id=eq.${user.id}` }, () => {
-                    console.log('Realtime: My quiz update detected');
                     loadDashboardData(true);
                     refreshUser(); // Update XP if passed
                 })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, () => {
-                    console.log('Realtime: My profile update detected');
                     refreshUser();
                 })
                 .subscribe();

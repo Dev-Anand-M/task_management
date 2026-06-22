@@ -40,7 +40,6 @@ const EvaluationCenter = () => {
 
     const loadData = useCallback(async () => {
         try {
-            console.log('[EvaluationCenter] loadData: Starting fetch...');
             setLoading(true);
 
             // Safety timeout to prevent infinite loading
@@ -55,44 +54,32 @@ const EvaluationCenter = () => {
                 db.getQuizAttempts().catch(e => { console.error('Quiz Attempts Fetch Error:', e); return []; })
             ]);
             
-            console.log('[EvaluationCenter] loadData: Data received', {
-                subsCount: subs?.length,
-                attsCount: atts?.length
-            });
             
             setSubmissions(subs || []);
             setQuizAttempts(atts || []);
-            console.log('[EvaluationCenter] loadData: State updated');
         } catch (error) {
             console.error('[EvaluationCenter] CRITICAL: Evaluation Data Load Failed:', error);
         } finally {
-            console.log('[EvaluationCenter] loadData: Setting loading to false');
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        console.log('[EvaluationCenter] useEffect: Mounting and starting loadData');
         loadData();
         
         // GOD COMMAND: REALTIME UPDATES
-        console.log('[EvaluationCenter] useEffect: Setting up Realtime channel');
         const channel = supabase
             .channel(`evaluation-updates-${Math.random().toString(36).substring(7)}`) // Unique channel name per mount
             .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_attempts' }, (payload) => {
-                console.log('[EvaluationCenter] Realtime: Quiz attempt update detected', payload.eventType);
                 loadData();
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, (payload) => {
-                console.log('[EvaluationCenter] Realtime: Task submission update detected', payload.eventType);
                 loadData();
             })
             .subscribe((status) => {
-                console.log('[EvaluationCenter] Realtime Subscription Status:', status);
             });
 
         return () => {
-            console.log('[EvaluationCenter] useEffect Cleanup: Removing Realtime channel');
             supabase.removeChannel(channel);
         };
     }, [loadData]);
@@ -127,7 +114,6 @@ const EvaluationCenter = () => {
         })
         .sort((a, b) => new Date(b.created_at || b.completed_at) - new Date(a.created_at || a.completed_at));
 
-    console.log('Evaluation Data:', { mode, submissions: submissions.length, quizAttempts: quizAttempts.length });
 
     if (mode === 'tasks' && submissionId) {
         return <EvaluationDetail submissionId={submissionId} onBack={() => navigate('/admin/evaluations')} onUpdate={loadData} />;
@@ -998,7 +984,6 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
         } catch (error) {
             // SILENCE AbortError: Don't show alert if user cancelled
             if (error.name === 'AbortError' || error.message?.includes('cancelled') || error.message?.includes('AbortError')) {
-                console.log('AI Evaluation cancelled by user.');
                 return;
             }
             console.error('AI Eval Error:', error);

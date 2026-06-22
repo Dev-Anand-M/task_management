@@ -215,31 +215,33 @@ const SearchBar = ({
                                 <TrendingUp size={12} />
                                 Quick Access
                             </div>
-                            {defaultRecommendations.map((rec, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => handleSelect(rec.path)}
-                                    style={{
-                                        width: '100%',
-                                        padding: 'var(--space-sm) var(--space-md)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 'var(--space-sm)',
-                                        border: 'none',
-                                        background: 'none',
-                                        color: 'var(--text)',
-                                        borderRadius: 'var(--radius-md)',
-                                        cursor: 'pointer',
-                                        fontSize: 'var(--text-sm)',
-                                        textAlign: 'left',
-                                        transition: 'all 0.2s'
-                                    }}
-                                    className="hover:bg-primary-500/10"
-                                >
-                                    <rec.icon size={16} style={{ color: 'var(--primary-500)', opacity: 0.7 }} />
-                                    <span>{rec.label}</span>
-                                </button>
-                            ))}
+                            {defaultRecommendations
+                                .filter(rec => !rec.adminOnly || isAdmin)
+                                .map((rec, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => handleSelect(rec.path)}
+                                        style={{
+                                            width: '100%',
+                                            padding: 'var(--space-sm) var(--space-md)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 'var(--space-sm)',
+                                            border: 'none',
+                                            background: 'none',
+                                            color: 'var(--text)',
+                                            borderRadius: 'var(--radius-md)',
+                                            cursor: 'pointer',
+                                            fontSize: 'var(--text-sm)',
+                                            textAlign: 'left',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        className="hover:bg-primary-500/10"
+                                    >
+                                        <rec.icon size={16} style={{ color: 'var(--primary-500)', opacity: 0.7 }} />
+                                        <span>{rec.label}</span>
+                                    </button>
+                                ))}
                         </div>
                     )}
                 </div>

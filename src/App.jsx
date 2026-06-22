@@ -72,11 +72,9 @@ const ProtectedLayout = ({ requiredRole }) => {
   }
 
   if (requiredRole && user?.role !== requiredRole) {
-    console.log('[ProtectedLayout] Role mismatch. User role:', user?.role, 'Required:', requiredRole);
     return <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />;
   }
 
-  console.log('[ProtectedLayout] Rendering Layout and Outlet. Current User Role:', user?.role);
 
   return (
     <Layout>
@@ -95,14 +93,11 @@ const RoleGuard = ({ role }) => {
   if (user?.role !== role) {
     if (role === 'member' && user?.role === 'admin') {
       // Allow admins to access member routes (e.g. for student view testing/previews)
-      console.log('[RoleGuard] Admin accessing member route.');
     } else {
-      console.log('[RoleGuard] Role mismatch! User role:', user?.role, 'Required:', role, 'Redirecting...');
       return <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />;
     }
   }
 
-  console.log('[RoleGuard] Role check passed. User role:', user?.role);
 
   return <Outlet />;
 };
@@ -128,7 +123,6 @@ const AuthRoute = ({ children }) => {
   if (user) {
     // Safe navigation with fallback
     const redirectPath = user?.role === 'admin' ? '/admin' : '/dashboard';
-    console.log('AuthRoute: User logged in, redirecting to:', redirectPath);
     return <Navigate to={redirectPath} replace />;
   }
 
