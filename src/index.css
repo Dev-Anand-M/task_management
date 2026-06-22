@@ -149,8 +149,8 @@ body {
   --primary-800: #115e59;
   --primary-900: #134e4a;
 
-  --sidebar-dark-bg: rgba(18, 18, 22, 0.45) !important;
-  --sidebar-light-bg: rgba(255, 255, 255, 0.5) !important;
+  --sidebar-dark-bg: rgba(18, 18, 22, 0.6) !important;
+  --sidebar-light-bg: rgba(255, 255, 255, 0.7) !important;
 }
 
 /* Base theme variable overrides for glassmorphism */
@@ -161,15 +161,31 @@ html[data-theme="dark"][data-color-scheme="glass"] {
   --border: rgba(255, 255, 255, 0.12);
   --text: #ffffff;
   --text-muted: #d1d5db;
+
+  /* High contrast sidebar color scheme overrides for dark glass */
+  --sidebar-text: #ffffff !important;
+  --sidebar-text-muted: rgba(255, 255, 255, 0.7) !important;
+  --sidebar-hover: rgba(255, 255, 255, 0.08) !important;
+  --sidebar-active-bg: rgba(20, 184, 166, 0.15) !important;
+  --sidebar-active-text: #14b8a6 !important;
+  --sidebar-border: rgba(255, 255, 255, 0.1) !important;
 }
 
 html[data-theme="light"][data-color-scheme="glass"] {
   --bg: #f5f5f7;
   --surface: rgba(255, 255, 255, 0.75);
   --card: rgba(255, 255, 255, 0.82);
-  --border: rgba(255, 255, 255, 0.4);
+  --border: rgba(0, 0, 0, 0.08);
   --text: #09090b;
   --text-muted: #4b5563;
+
+  /* High contrast sidebar color scheme overrides for light glass */
+  --sidebar-text: #09090b !important;
+  --sidebar-text-muted: rgba(9, 9, 11, 0.65) !important;
+  --sidebar-hover: rgba(0, 0, 0, 0.05) !important;
+  --sidebar-active-bg: rgba(20, 184, 166, 0.15) !important;
+  --sidebar-active-text: #0d9488 !important;
+  --sidebar-border: rgba(0, 0, 0, 0.08) !important;
 }
 
 /* Hardware-accelerated background image containing user-provided Zenith 3D liquid elements */
@@ -206,8 +222,17 @@ html[data-theme="light"][data-color-scheme="glass"] body {
   border: 1px solid var(--border) !important;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25), 
               inset 0 1px 0 0 rgba(255, 255, 255, 0.15) !important;
-  transform: translate3d(0, 0, 0) !important;
   backface-visibility: hidden !important;
+}
+
+/* Apply 3D translate layer compositing selectively (avoiding sidebar to protect transform transitions) */
+:root[data-color-scheme="glass"] .card,
+:root[data-color-scheme="glass"] .header {
+  transform: translate3d(0, 0, 0) !important;
+}
+
+:root[data-color-scheme="glass"] .sidebar {
+  will-change: transform;
 }
 
 html[data-theme="light"][data-color-scheme="glass"] .card,

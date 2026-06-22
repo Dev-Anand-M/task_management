@@ -120,7 +120,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 {/* Logo */}
                 <div style={{
                     padding: 'var(--space-lg)',
-                    borderBottom: '1px solid rgba(255,255,255,0.2)',
+                    borderBottom: '1px solid var(--sidebar-border, rgba(255,255,255,0.2))',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -142,14 +142,14 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 fontSize: 'var(--text-base)',
                                 fontWeight: 700,
                                 margin: 0,
-                                color: 'white',
+                                color: 'var(--sidebar-text, white)',
                                 letterSpacing: '-0.02em'
                             }}>
                                 Zenith
                             </h2>
                             <span style={{
                                 fontSize: '10px',
-                                color: 'rgba(255,255,255,0.75)',
+                                color: 'var(--sidebar-text-muted, rgba(255,255,255,0.75))',
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.05em'
                             }}>
@@ -166,18 +166,18 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 onClick={() => setShowClassroomMenu(!showClassroomMenu)}
                                 style={{
                                     padding: 'var(--space-sm)',
-                                    background: 'rgba(255,255,255,0.1)',
+                                    background: 'var(--sidebar-hover, rgba(255,255,255,0.1))',
                                     borderRadius: 'var(--radius-md)',
-                                    border: '1px solid rgba(255,255,255,0.2)',
+                                    border: '1px solid var(--sidebar-border, rgba(255,255,255,0.2))',
                                     cursor: 'pointer',
                                     transition: 'background var(--transition-fast)'
                                 }}
                                 className="classroom-selector"
                             >
-                                <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                                <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))', letterSpacing: '0.05em', marginBottom: '4px' }}>
                                     Current Classroom
                                 </div>
-                                <div className="flex items-center justify-between text-white font-medium text-sm">
+                                <div className="flex items-center justify-between font-medium text-sm" style={{ color: 'var(--sidebar-text, white)' }}>
                                     <div className="flex items-center gap-xs truncate">
                                         <School size={14} className="text-yellow-400" />
                                         {user?.classroom_id ? classrooms.find(c => c.id === user.classroom_id)?.name : 'All Classrooms'}
@@ -193,8 +193,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                                     left: 0,
                                     right: 0,
                                     marginTop: '4px',
-                                    background: '#292524',
-                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    background: 'var(--card, #292524)',
+                                    backdropFilter: 'var(--glass-blur, blur(12px))',
+                                    border: '1px solid var(--sidebar-border, rgba(255,255,255,0.1))',
                                     borderRadius: 'var(--radius-md)',
                                     zIndex: 50,
                                     boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
@@ -205,9 +206,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                                         style={{
                                             padding: '8px 12px',
                                             fontSize: 'var(--text-sm)',
-                                            color: !user?.classroom_id ? '#fef3c7' : 'rgba(255,255,255,0.8)',
+                                            color: !user?.classroom_id ? 'var(--sidebar-active-text, #fef3c7)' : 'var(--sidebar-text-muted, rgba(255,255,255,0.8))',
                                             cursor: 'pointer',
-                                            borderBottom: '1px solid rgba(255,255,255,0.1)'
+                                            borderBottom: '1px solid var(--sidebar-border, rgba(255,255,255,0.1))'
                                         }}
                                         className="hover:bg-white/10"
                                     >
@@ -220,7 +221,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                             style={{
                                                 padding: '8px 12px',
                                                 fontSize: 'var(--text-sm)',
-                                                color: user?.classroom_id === c.id ? '#fef3c7' : 'rgba(255,255,255,0.8)',
+                                                color: user?.classroom_id === c.id ? 'var(--sidebar-active-text, #fef3c7)' : 'var(--sidebar-text-muted, rgba(255,255,255,0.8))',
                                                 cursor: 'pointer'
                                             }}
                                             className="hover:bg-white/10"
@@ -235,7 +236,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
                     <div style={{
                         fontSize: '10px',
-                        color: 'rgba(255,255,255,0.6)',
+                        color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))',
                         padding: '0 var(--space-sm) var(--space-xs)',
                         textTransform: 'uppercase',
                         letterSpacing: '0.1em',
@@ -257,13 +258,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                                         gap: 'var(--space-sm)',
                                         padding: '0.625rem var(--space-md)',
                                         borderRadius: 'var(--radius-md)',
-                                        color: isActive ? '#fef3c7' : 'rgba(255,255,255,0.8)',
-                                        background: isActive ? 'rgba(255,255,255,0.2)' : 'transparent',
+                                        color: isActive ? 'var(--sidebar-active-text, #fef3c7)' : 'var(--sidebar-text, rgba(255,255,255,0.8))',
+                                        background: isActive ? 'var(--sidebar-active-bg, rgba(255,255,255,0.2))' : 'transparent',
                                         textDecoration: 'none',
                                         fontSize: 'var(--text-sm)',
                                         fontWeight: isActive ? 600 : 500,
                                         transition: 'all var(--transition-fast)',
-                                        borderLeft: isActive ? '2px solid #fef3c7' : '2px solid transparent',
+                                        borderLeft: isActive ? '2px solid var(--sidebar-active-text, #fef3c7)' : '2px solid transparent',
                                         marginLeft: '0'
                                     })}
                                 >
@@ -278,7 +279,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                         <>
                             <div style={{
                                 fontSize: '10px',
-                                color: 'rgba(255,255,255,0.6)',
+                                color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))',
                                 padding: 'var(--space-md) var(--space-sm) var(--space-xs)',
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.1em',
@@ -299,13 +300,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                                                 gap: 'var(--space-sm)',
                                                 padding: '0.625rem var(--space-md)',
                                                 borderRadius: 'var(--radius-md)',
-                                                color: isActive ? '#fef3c7' : 'rgba(255,255,255,0.8)',
-                                                background: isActive ? 'rgba(255,255,255,0.2)' : 'transparent',
+                                                color: isActive ? 'var(--sidebar-active-text, #fef3c7)' : 'var(--sidebar-text, rgba(255,255,255,0.8))',
+                                                background: isActive ? 'var(--sidebar-active-bg, rgba(255,255,255,0.2))' : 'transparent',
                                                 textDecoration: 'none',
                                                 fontSize: 'var(--text-sm)',
                                                 fontWeight: isActive ? 600 : 500,
                                                 transition: 'all var(--transition-fast)',
-                                                borderLeft: isActive ? '2px solid #fef3c7' : '2px solid transparent',
+                                                borderLeft: isActive ? 'var(--sidebar-active-text, #fef3c7)' : '2px solid transparent',
                                                 marginLeft: '0'
                                             })}
                                         >
@@ -318,7 +319,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
                             <div style={{
                                 fontSize: '10px',
-                                color: 'rgba(255,255,255,0.6)',
+                                color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))',
                                 padding: 'var(--space-md) var(--space-sm) var(--space-xs)',
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.1em',
@@ -339,13 +340,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                                                 gap: 'var(--space-sm)',
                                                 padding: '0.625rem var(--space-md)',
                                                 borderRadius: 'var(--radius-md)',
-                                                color: isActive ? '#fef3c7' : 'rgba(255,255,255,0.8)',
-                                                background: isActive ? 'rgba(255,255,255,0.2)' : 'transparent',
+                                                color: isActive ? 'var(--sidebar-active-text, #fef3c7)' : 'var(--sidebar-text, rgba(255,255,255,0.8))',
+                                                background: isActive ? 'var(--sidebar-active-bg, rgba(255,255,255,0.2))' : 'transparent',
                                                 textDecoration: 'none',
                                                 fontSize: 'var(--text-sm)',
                                                 fontWeight: isActive ? 600 : 500,
                                                 transition: 'all var(--transition-fast)',
-                                                borderLeft: isActive ? '2px solid #fef3c7' : '2px solid transparent',
+                                                borderLeft: isActive ? 'var(--sidebar-active-text, #fef3c7)' : '2px solid transparent',
                                                 marginLeft: '0'
                                             })}
                                         >
@@ -365,7 +366,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 onClick={() => setShowAiTools(!showAiTools)}
                                 style={{
                                     fontSize: '10px',
-                                    color: 'rgba(255,255,255,0.6)',
+                                    color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))',
                                     padding: 'var(--space-md) var(--space-sm) var(--space-xs)',
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.1em',
@@ -410,9 +411,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                                     gap: '4px',
                                     padding: 'var(--space-xs) 0',
                                     margin: '0 var(--space-xs)',
-                                    background: 'rgba(167, 139, 250, 0.05)',
+                                    background: 'var(--sidebar-hover, rgba(167, 139, 250, 0.05))',
                                     borderRadius: 'var(--radius-lg)',
-                                    border: '1px solid rgba(167, 139, 250, 0.1)'
+                                    border: '1px solid var(--sidebar-border, rgba(167, 139, 250, 0.1))'
                                 }}>
                                     {aiLinks.map(link => (
                                         <li key={link.to}>
@@ -426,8 +427,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                                                     gap: 'var(--space-sm)',
                                                     padding: '0.75rem var(--space-md)',
                                                     borderRadius: 'var(--radius-md)',
-                                                    color: isActive ? 'white' : 'rgba(255,255,255,0.7)',
-                                                    background: isActive ? 'linear-gradient(135deg, #a78bfa, #8b5cf6)' : 'transparent',
+                                                    color: isActive ? 'var(--sidebar-active-text, white)' : 'var(--sidebar-text-muted, rgba(255,255,255,0.7))',
+                                                    background: isActive ? 'var(--sidebar-active-bg, linear-gradient(135deg, #a78bfa, #8b5cf6))' : 'transparent',
                                                     textDecoration: 'none',
                                                     fontSize: 'var(--text-sm)',
                                                     fontWeight: isActive ? 600 : 500,
@@ -449,8 +450,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                 {/* User Profile Section */}
                 <div style={{
                     padding: 'var(--space-md)',
-                    borderTop: '1px solid rgba(255,255,255,0.2)',
-                    background: 'rgba(0,0,0,0.15)'
+                    borderTop: '1px solid var(--sidebar-border, rgba(255,255,255,0.2))',
+                    background: 'var(--sidebar-hover, rgba(0,0,0,0.15))'
                 }}>
                     <div className="flex items-center gap-sm">
                         <Avatar name={user?.name} image={user?.avatar_url} size="sm" />
@@ -462,7 +463,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                             <p style={{
                                 fontWeight: 600,
                                 fontSize: 'var(--text-sm)',
-                                color: 'white',
+                                color: 'var(--sidebar-text, white)',
                                 margin: 0,
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
@@ -472,7 +473,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                             </p>
                             <p style={{
                                 fontSize: '10px',
-                                color: 'rgba(255,255,255,0.75)',
+                                color: 'var(--sidebar-text-muted, rgba(255,255,255,0.75))',
                                 margin: 0,
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
@@ -484,9 +485,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                         <button
                             onClick={() => setShowLogoutConfirm(true)}
                             style={{
-                                background: 'rgba(255,255,255,0.15)',
-                                border: '1px solid rgba(255,255,255,0.25)',
-                                color: 'white',
+                                background: 'var(--sidebar-hover, rgba(255,255,255,0.15))',
+                                border: '1px solid var(--sidebar-border, rgba(255,255,255,0.25))',
+                                color: 'var(--sidebar-text, white)',
                                 cursor: 'pointer',
                                 padding: 'var(--space-xs)',
                                 borderRadius: 'var(--radius-md)',
