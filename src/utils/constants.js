@@ -39,18 +39,22 @@ export const formatDeadline = (date) => {
         return `${dateTimeStr} (Overdue)`;
     }
     
-    const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const totalMinutes = Math.floor(diffMs / (1000 * 60));
+    const mins = totalMinutes % 60;
+    const totalHours = Math.floor(totalMinutes / 60);
+    const hours = totalHours % 24;
+    const days = Math.floor(totalHours / 24);
     
-    if (totalHours === 0) {
-        return `${dateTimeStr} (${mins}m left)`;
-    } else if (totalHours < 48) {
-        return `${dateTimeStr} (${totalHours}h ${mins}m left)`;
+    let remainingStr = '';
+    if (days > 0) {
+        remainingStr = `${days}d ${hours}h ${mins}m left`;
+    } else if (hours > 0) {
+        remainingStr = `${hours}h ${mins}m left`;
     } else {
-        const days = Math.floor(totalHours / 24);
-        const remainingHours = totalHours % 24;
-        return `${dateTimeStr} (${days}d ${remainingHours}h left)`;
+        remainingStr = `${mins}m left`;
     }
+    
+    return `${dateTimeStr} (${remainingStr})`;
 };
 
 
