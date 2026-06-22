@@ -138,6 +138,13 @@ export const AuthProvider = ({ children }) => {
                 if (session?.user) {
                     setUser(session.user);
                     if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                        setProfile(prev => prev || {
+                            id: session.user.id,
+                            email: session.user.email,
+                            name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
+                            role: session.user.user_metadata?.role || 'member',
+                            classroom_id: session.user.user_metadata?.classroom_id
+                        });
                         fetchProfileRef.current(session.user.id, true);
                     }
                 }

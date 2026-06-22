@@ -92,36 +92,28 @@ export const ThemeProvider = ({ children }) => {
         }
     };
 
-    // Apply theme attributes on mount — preferences come from localStorage (already persisted)
-    // No auth listener here to avoid competing with AuthContext for Supabase locks
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.setAttribute('data-color-scheme', colorScheme);
 
-
-        // One-time preference load from DB (fire-and-forget, no auth listener)
-        const loadPrefsFromDb = async () => {
+        const fetchAndApplyPrefs = async (userId) => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session?.user) {
-                    const { data: profileData } = await supabase
-                        .from('profiles')
-                        .select('preferences')
-                        .eq('id', session.user.id)
-                        .single();
+                const { data: profileData } = await supabase
+                    .from('profiles')
+                    .select('preferences')
+                    .eq('id', userId)
+                    .single();
 
-                    if (profileData?.preferences) {
-                        if (profileData.preferences.theme) {
-                            setThemeState(profileData.preferences.theme);
-                            storage.setTheme(profileData.preferences.theme);
-                            document.documentElement.setAttribute('data-theme', profileData.preferences.theme);
-                        }
-                        if (profileData.preferences.colorScheme) {
-                            setColorSchemeState(profileData.preferences.colorScheme);
-                            localStorage.setItem('skillquest_color_scheme', profileData.preferences.colorScheme);
-                            document.documentElement.setAttribute('data-color-scheme', profileData.preferences.colorScheme);
-                        }
-
+                if (profileData?.preferences) {
+                    if (profileData.preferences.theme) {
+                        setThemeState(profileData.preferences.theme);
+                        storage.setTheme(profileData.preferences.theme);
+                        document.documentElement.setAttribute('data-theme', profileData.preferences.theme);
+                    }
+                    if (profileData.preferences.colorScheme) {
+                        setColorSchemeState(profileData.preferences.colorScheme);
+                        localStorage.setItem('skillquest_color_scheme', profileData.preferences.colorScheme);
+                        document.documentElement.setAttribute('data-color-scheme', profileData.preferences.colorScheme);
                     }
                 }
             } catch (err) {
@@ -129,7 +121,18 @@ export const ThemeProvider = ({ children }) => {
             }
         };
 
-        loadPrefsFromDb();
+        // Listen for auth state changes (sign in, sign out, token refreshed)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, session) => {
+                if (session?.user) {
+                    fetchAndApplyPrefs(session.user.id);
+                }
+            }
+        );
+
+        return () => {
+            subscription?.unsubscribe();
+        };
     }, []);
 
     const toggleTheme = () => {

@@ -107,7 +107,7 @@ const Login = () => {
                     {/* Mobile Logo */}
                     <div className="mobile-logo">
                         <div className="mobile-logo-icon">
-                            <Zap size={24} />
+                            <img src="/zenith.png" alt="Zenith" style={{ width: '24px', height: '24px' }} />
                         </div>
                         <span>Zenith</span>
                     </div>

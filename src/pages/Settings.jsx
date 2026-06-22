@@ -69,6 +69,14 @@ const colorSchemes = [
         primary: '#f97316',
         gradient: 'linear-gradient(135deg, #fb923c 0%, #f97316 50%, #ea580c 100%)',
         colors: ['#fb923c', '#f97316', '#ea580c']
+    },
+    {
+        id: 'glass',
+        name: 'Liquid Glass',
+        description: 'Vibrant mesh gradient and glassmorphism',
+        primary: '#6366f1',
+        gradient: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
+        colors: ['#6366f1', '#a855f7', '#ec4899']
     }
 ];
 
