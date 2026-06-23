@@ -557,7 +557,7 @@ const QuizBuilder = () => {
                                     borderTop: '1px solid var(--border)'
                                 }}>
                                     <Users size={16} style={{ color: 'var(--text-muted)', marginRight: '8px' }} />
-                                    <div style={{ display: 'flex' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         {quiz.assignment_type === 'everyone' ? (
                                             <Badge variant="secondary">Everyone</Badge>
                                         ) : (
@@ -583,6 +583,17 @@ const QuizBuilder = () => {
                                         }}>
                                             {assignedMembers.length} assigned
                                         </span>
+                                    )}
+                                    {quiz.is_global ? (
+                                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 500, marginLeft: '8px' }}>
+                                            (Global)
+                                        </span>
+                                    ) : (
+                                        quiz.classroom_id && (
+                                            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 500, marginLeft: '8px' }}>
+                                                ({classrooms.find(c => c.id === quiz.classroom_id)?.name || 'Unknown Class'})
+                                            </span>
+                                        )
                                     )}
                                 </div>
                             </Card>
