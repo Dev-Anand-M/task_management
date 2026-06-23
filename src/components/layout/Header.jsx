@@ -111,6 +111,10 @@ const Header = ({ onMenuClick, title }) => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Don't close if clicking inside the dropdown (especially important for portaled mobile dropdowns)
+      if (event.target.closest('.header-dropdown')) {
+        return;
+      }
       if (notifRef.current && !notifRef.current.contains(event.target)) {
         setShowNotifications(false);
       }
