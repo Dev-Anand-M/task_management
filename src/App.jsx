@@ -93,6 +93,10 @@ const RoleGuard = ({ role }) => {
   if (user?.role !== role) {
     if (role === 'member' && user?.role === 'admin') {
       // Allow admins to access member routes (e.g. for student view testing/previews)
+      // EXCEPT the main student dashboard which must redirect to the admin dashboard
+      if (window.location.pathname === '/dashboard' || window.location.pathname === '/dashboard/') {
+        return <Navigate to="/admin" replace />;
+      }
     } else {
       return <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />;
     }

@@ -129,7 +129,7 @@ export const AuthProvider = ({ children }) => {
 
         // 2. Auth state listener — single source of truth
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
+            (event, session) => {
                 if (!mounted) return;
 
                 if (event === 'SIGNED_OUT') {
@@ -149,7 +149,15 @@ export const AuthProvider = ({ children }) => {
                             role: session.user.user_metadata?.role || 'member',
                             classroom_id: session.user.user_metadata?.classroom_id
                         });
-                        await fetchProfileRef.current(session.user.id, true);
+                        setLoading(true);
+                        // Fetch the real profile in background but set loading false only when resolved
+                        fetchProfileRef.current(session.user.id, true).then(() => {
+                            if (mounted) setLoading(false);
+                        });
+                        return;
+                    } else if (event === 'TOKEN_REFRESHED') {
+                        // Also refresh profile on token refresh to ensure correct role
+                        fetchProfileRef.current(session.user.id, true);
                     }
                 }
 
