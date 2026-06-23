@@ -161,11 +161,11 @@ const Sidebar = ({ isOpen, onClose }) => {
 
                 <nav style={{ flex: 1, padding: 'var(--space-sm)', overflowY: 'auto' }}>
                     {isAdmin && (
-                        <div style={{ position: 'relative', margin: '0 var(--space-sm) var(--space-md)' }}>
+                        <div style={{ position: 'relative', margin: '0 var(--space-sm) var(--space-sm)' }}>
                             <div
                                 onClick={() => setShowClassroomMenu(!showClassroomMenu)}
                                 style={{
-                                    padding: 'var(--space-sm)',
+                                    padding: '8px 12px',
                                     background: 'var(--sidebar-hover, rgba(255,255,255,0.1))',
                                     borderRadius: 'var(--radius-md)',
                                     border: '1px solid var(--sidebar-border, rgba(255,255,255,0.2))',
@@ -177,12 +177,14 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))', letterSpacing: '0.05em', marginBottom: '4px' }}>
                                     Current Classroom
                                 </div>
-                                <div className="flex items-center justify-between font-medium text-sm" style={{ color: 'var(--sidebar-text, white)' }}>
-                                    <div className="flex items-center gap-xs truncate">
-                                        <School size={14} className="text-yellow-400" />
-                                        {user?.classroom_id ? classrooms.find(c => c.id === user.classroom_id)?.name : 'All Classrooms'}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 500, fontSize: '14px', color: 'var(--sidebar-text, white)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                        <School size={14} style={{ color: '#fbbf24', flexShrink: 0 }} />
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {user?.classroom_id ? classrooms.find(c => c.id === user.classroom_id)?.name : 'All Classrooms'}
+                                        </span>
                                     </div>
-                                    <ChevronRight size={14} style={{ transform: showClassroomMenu ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+                                    <ChevronRight size={14} style={{ flexShrink: 0, transform: showClassroomMenu ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
                                 </div>
                             </div>
 
