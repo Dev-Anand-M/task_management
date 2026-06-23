@@ -30,18 +30,16 @@ export const withTimeout = async (promise, ms = 30000) => {
 export const getMembers = async () => {
     try {
         const user = await getActiveUser();
+        if (!user) return [];
 
         const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
 
         let query = supabase.from('profiles').select('*').order('created_at', { ascending: false });
 
-        // If not admin, restrict to their own classroom
-        if (profile?.role !== 'admin') {
-            if (profile?.classroom_id) {
-                query = query.eq('classroom_id', profile.classroom_id);
-            } else {
-                return [];
-            }
+        if (profile?.classroom_id) {
+            query = query.eq('classroom_id', profile.classroom_id);
+        } else if (profile?.role !== 'admin') {
+            return [];
         }
 
         const { data, error: queryError } = await query;
@@ -474,8 +472,7 @@ export const getQuizAttempts = async () => {
         const user = await getActiveUser();
         if (!user) return [];
 
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-        const isAdmin = profile?.role === 'admin';
+        const { data: profile } = await supabase.from('profiles').select('classroom_id, role').eq('id', user.id).single();
 
         // Fetch attempts and related data separately to avoid join issues
         let attemptsQuery = supabase.from('quiz_attempts').select('*');
@@ -512,6 +509,9 @@ export const getQuizAttempts = async () => {
             quizzes: quizzesMap[attempt.quiz_id] || null
         }));
 
+        if (profile?.classroom_id) {
+            return enrichedAttempts.filter(a => a.profiles?.classroom_id === profile.classroom_id);
+        }
 
         return enrichedAttempts;
     } catch (err) {

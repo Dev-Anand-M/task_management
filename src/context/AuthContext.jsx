@@ -81,6 +81,11 @@ export const AuthProvider = ({ children }) => {
 
                 const fullProfile = { ...userProfile, classroom_name };
                 setProfile(fullProfile);
+                try {
+                    localStorage.setItem(`zenith_role_${userId}`, userProfile.role);
+                } catch (e) {
+                    console.warn('[AuthContext] Failed to save role to localStorage:', e);
+                }
 
                 // Load AI settings in background
                 import('../services/aiService')
@@ -108,11 +113,15 @@ export const AuthProvider = ({ children }) => {
                 if (session?.user && mounted) {
                     setUser(session.user);
                     // Optimistic profile so UI is never blank
+                    let storedRole = 'member';
+                    try {
+                        storedRole = localStorage.getItem(`zenith_role_${session.user.id}`) || session.user.user_metadata?.role || 'member';
+                    } catch (e) {}
                     setProfile({
                         id: session.user.id,
                         email: session.user.email,
                         name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
-                        role: session.user.user_metadata?.role || 'member',
+                        role: storedRole,
                         classroom_id: session.user.user_metadata?.classroom_id
                     });
                     // Await the profile fetch so that the correct role is loaded before loading is set to false
@@ -142,11 +151,15 @@ export const AuthProvider = ({ children }) => {
                 if (session?.user) {
                     setUser(session.user);
                     if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                        let storedRole = 'member';
+                        try {
+                            storedRole = localStorage.getItem(`zenith_role_${session.user.id}`) || session.user.user_metadata?.role || 'member';
+                        } catch (e) {}
                         setProfile(prev => prev || {
                             id: session.user.id,
                             email: session.user.email,
                             name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
-                            role: session.user.user_metadata?.role || 'member',
+                            role: storedRole,
                             classroom_id: session.user.user_metadata?.classroom_id
                         });
                         setLoading(true);
