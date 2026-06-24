@@ -25,6 +25,57 @@ self.addEventListener('activate', (event) => {
 // ── Fetch (network-first, offline fallback) ────────────────────────────────────
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+  if (url.pathname === '/sw-diagnostic-report') {
+    event.respondWith(
+      caches.open('sw-diagnostics').then(async (cache) => {
+        const keys = await cache.keys();
+        const logs = [];
+        for (const key of keys) {
+          try {
+            const res = await cache.match(key);
+            if (res) {
+              const logEntry = await res.json();
+              logs.push(logEntry);
+            }
+          } catch (e) {
+            logs.push({ timestamp: new Date().toISOString(), message: `Error reading log entry: ${e.message}` });
+          }
+        }
+        logs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        return new Response(JSON.stringify(logs, null, 2), {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
+          }
+        });
+      }).catch((err) => {
+        return new Response(JSON.stringify({ error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
+    return;
+  }
+
+  if (url.pathname === '/sw-diagnostic-clear') {
+    event.respondWith(
+      caches.delete('sw-diagnostics').then((deleted) => {
+        return new Response(JSON.stringify({ success: deleted }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }).catch((err) => {
+        return new Response(JSON.stringify({ error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
