@@ -151,21 +151,16 @@ self.addEventListener('push', (event) => {
     try {
       await logToCache('Attempting self.registration.showNotification...');
       
+      // Simplified notification options - Android Chrome compatible
       const notificationOptions = {
         body: data.body,
         icon: iconUrl,
-        image: undefined,
+        badge: iconUrl, // Small icon for notification shade
         data: { url: data.url || '/' },
         tag: data.tag || 'zenith-' + Date.now(),
-        timestamp: data.timestamp || Date.now(),
-        vibrate: [200, 100, 200, 100, 200],
-        renotify: true,        // Always alert even if same tag exists
-        requireInteraction: true, // CHANGED: Force user interaction (prevents auto-dismiss)
-        actions: [
-          { action: 'open', title: 'Open' },
-          { action: 'dismiss', title: 'Dismiss' }
-        ],
+        requireInteraction: false, // Let Android decide
         silent: false,
+        // Removed: actions, vibrate, renotify, image - cause issues on Android
       };
       
       await logToCache(`Notification options: ${JSON.stringify(notificationOptions)}`);
