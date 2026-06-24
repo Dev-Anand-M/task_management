@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notification Test - Zenith</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #0c0a09;
+      color: #fff;
+    }
+    button {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      margin: 10px 0;
+      font-size: 16px;
+      cursor: pointer;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 8px;
+    }
+    button:hover {
+      background: #4f46e5;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      background: #1c1917;
+    }
+    .error { background: #991b1b; }
+    .success { background: #166534; }
+    pre {
+      background: #1c1917;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔔 Notification Comparison Test</h1>
+  <p>This page tests notifications to find the difference between manual and push-triggered notifications.</p>
+  
+  <div id="status"></div>
+  
+  <button onclick="testManualNotification()">1️⃣ Manual Notification (Known to work)</button>
+  <button onclick="testServiceWorkerNotification()">2️⃣ Via Service Worker Registration (Same method as push)</button>
+  <button onclick="viewLogs()">📋 View Service Worker Logs</button>
+  <button onclick="clearLogs()">🗑️ Clear Logs</button>
+  
+  <div id="logs"></div>
+
+  <script>
+    const log = (msg, type = 'status') => {
+      const div = document.getElementById('status');
+      const el = document.createElement('div');
+      el.className = `status ${type}`;
+      el.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      div.prepend(el);
+    };
+
+    // Test 1: Manual notification (this works when app is closed)
+    async function testManualNotification() {
+      try {
+        if (Notification.permission !== 'granted') {
+          await Notification.requestPermission();
+        }
+        
+        const options = {
+          body: 'MANUAL: This notification was triggered manually from window.Notification',
+          icon: '/zenith.png',
+          badge: '/zenith.png',
+          tag: 'zenith-manual-' + Date.now(),
+          timestamp: Date.now(),
+          silent: false,
+          vibrate: [200, 100, 200],
+          requireInteraction: true,
+        };
+        
+        log('Creating manual notification...', 'status');
+        new Notification('✅ Manual Test', options);
+        log('Manual notification created!', 'success');
+        
+      } catch (err) {
+        log('Manual notification error: ' + err.message, 'error');
+      }
+    }
+
+    // Test 2: Via Service Worker (same method as push event)
+    async function testServiceWorkerNotification() {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        
+        const options = {
+          body: 'SW REG: This notification was triggered via service worker registration (same as push)',
+          icon: '/zenith.png',
+          badge: '/zenith.png',
+          tag: 'zenith-swreg-' + Date.now(),
+          timestamp: Date.now(),
+          silent: false,
+          vibrate: [200, 100, 200],
+          requireInteraction: true,
+        };
+        
+        log('Creating SW registration notification...', 'status');
+        await reg.showNotification('🔧 Service Worker Test', options);
+        log('SW registration notification created!', 'success');
+        
+        // Check active notifications
+        const notifications = await reg.getNotifications();
+        log(`Active notifications: ${notifications.length}`, 'status');
+        
+      } catch (err) {
+        log('SW registration notification error: ' + err.message, 'error');
+      }
+    }
+
+    async function viewLogs() {
+      try {
+        const response = await fetch('/sw-diagnostic-report');
+        const logs = await response.json();
+        const logsDiv = document.getElementById('logs');
+        logsDiv.innerHTML = '<h3>Service Worker Logs:</h3><pre>' + 
+          JSON.stringify(logs.slice(-20), null, 2) + '</pre>';
+      } catch (err) {
+        log('Error fetching logs: ' + err.message, 'error');
+      }
+    }
+
+    async function clearLogs() {
+      try {
+        await fetch('/sw-diagnostic-clear');
+        log('Logs cleared!', 'success');
+        document.getElementById('logs').innerHTML = '';
+      } catch (err) {
+        log('Error clearing logs: ' + err.message, 'error');
+      }
+    }
+
+    // Auto-check permission on load
+    window.addEventListener('load', () => {
+      log(`Notification permission: ${Notification.permission}`, 'status');
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(() => {
+          log('Service Worker is ready', 'success');
+        });
+      }
+    });
+  </script>
+</body>
+</html>

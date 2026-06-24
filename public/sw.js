@@ -115,47 +115,61 @@ const logToCache = async (msg) => {
 };
 
 // ── Push ────────────────────────────────────────────────────────────────────────
-// CRITICAL: This handler runs even when the app is closed/backgrounded.
-// The browser wakes the service worker specifically to handle this event.
-// showNotification MUST be called inside event.waitUntil() — if it's not,
-// Android will kill the SW before the notification is shown.
 self.addEventListener('push', (event) => {
-  // Parse data SYNCHRONOUSLY before any async operations
+  console.log('[SW Push] Event received at:', new Date().toISOString());
+  
+  // Parse data SYNCHRONOUSLY
   let data = { title: 'Zenith', body: 'You have a new notification', url: '/' };
   try {
     if (event.data) {
       data = { ...data, ...event.data.json() };
     }
   } catch (e) {
-    console.error('[SW] JSON parse error:', e);
+    console.error('[SW Push] Parse error:', e);
   }
 
   const iconUrl = new URL('/zenith.png', self.location.origin).href;
-
-  // Minimal notification options - Android compatible
-  // CRITICAL: No 'silent' flag, ensure notification is alerting
   const notificationOptions = {
     body: data.body,
     icon: iconUrl,
     badge: iconUrl,
     data: { url: data.url || '/' },
     tag: data.tag || 'zenith-' + Date.now(),
-    requireInteraction: false,
-    // Explicitly NOT silent - this should trigger "Web Apps" channel, not "Web Apps (Quiet)"
+    timestamp: Date.now(),
+    silent: false,
+    vibrate: [200, 100, 200],
+    requireInteraction: true,
   };
 
-  // IMMEDIATELY show notification - don't wait for logging
+  console.log('[SW Push] Calling showNotification with:', notificationOptions);
+
+  // Show notification and verify
   const showPromise = self.registration.showNotification(data.title, notificationOptions)
     .then(() => {
-      // Log AFTER showing (non-blocking)
-      logToCache(`[Push] Notification shown: ${data.title}`);
+      console.log('[SW Push] ✅ showNotification completed');
+      logToCache(`[Push] ✅ Notification shown: ${data.title}`);
       return self.registration.getNotifications();
     })
     .then(notifications => {
+      console.log('[SW Push] Active notifications count:', notifications.length);
+      console.log('[SW Push] Notification objects:', notifications);
       logToCache(`[Push] Active notifications: ${notifications.length}`);
+      
+      // Log each notification's properties
+      notifications.forEach((n, i) => {
+        console.log(`[SW Push] Notification ${i}:`, {
+          title: n.title,
+          body: n.body,
+          tag: n.tag,
+          timestamp: n.timestamp,
+          requireInteraction: n.requireInteraction,
+          silent: n.silent
+        });
+      });
     })
     .catch(err => {
-      logToCache(`[Push] Error: ${err.message}`);
+      console.error('[SW Push] ❌ Error:', err);
+      logToCache(`[Push] ❌ Error: ${err.message}`);
     });
 
   event.waitUntil(showPromise);
