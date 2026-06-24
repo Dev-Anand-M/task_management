@@ -263,6 +263,10 @@ const GlobalAlarmListener = () => {
                         alert('ServiceWorker not supported');
                         return;
                     }
+                    let perm = Notification.permission;
+                    if (perm !== 'granted') {
+                        perm = await Notification.requestPermission();
+                    }
                     const reg = await navigator.serviceWorker.getRegistration('/');
                     if (reg && reg.active) {
                         reg.active.postMessage({
