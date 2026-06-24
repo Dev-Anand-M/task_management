@@ -120,70 +120,44 @@ const logToCache = async (msg) => {
 // showNotification MUST be called inside event.waitUntil() — if it's not,
 // Android will kill the SW before the notification is shown.
 self.addEventListener('push', (event) => {
-  const promiseChain = (async () => {
-    await logToCache('=== Service Worker Push Event Fired ===');
-    
-    let rawData = null;
+  // Parse data SYNCHRONOUSLY before any async operations
+  let data = { title: 'Zenith', body: 'You have a new notification', url: '/' };
+  try {
     if (event.data) {
-      try {
-        rawData = event.data.text();
-        await logToCache(`Raw push payload text: ${rawData}`);
-      } catch (e) {
-        await logToCache(`Failed to read event.data as text: ${e.message}`);
-      }
-    } else {
-      await logToCache('event.data is empty or undefined');
+      data = { ...data, ...event.data.json() };
     }
+  } catch (e) {
+    console.error('[SW] JSON parse error:', e);
+  }
 
-    let data = { title: 'Zenith', body: 'You have a new notification', url: '/' };
-    try {
-      if (event.data) {
-        data = { ...data, ...event.data.json() };
-        await logToCache('Parsed JSON payload successfully.');
-      }
-    } catch (e) {
-      await logToCache(`JSON parsing failed (falling back to defaults): ${e.message}`);
-    }
+  const iconUrl = new URL('/zenith.png', self.location.origin).href;
 
-    // Resolve absolute URL for the icon (required for background notifications on mobile)
-    const iconUrl = new URL('/zenith.png', self.location.origin).href;
+  // Minimal notification options - Android compatible
+  const notificationOptions = {
+    body: data.body,
+    icon: iconUrl,
+    badge: iconUrl,
+    data: { url: data.url || '/' },
+    tag: data.tag || 'zenith-' + Date.now(),
+    requireInteraction: false,
+    silent: false,
+  };
 
-    try {
-      await logToCache('Attempting self.registration.showNotification...');
-      
-      // Simplified notification options - Android Chrome compatible
-      const notificationOptions = {
-        body: data.body,
-        icon: iconUrl,
-        badge: iconUrl, // Small icon for notification shade
-        data: { url: data.url || '/' },
-        tag: data.tag || 'zenith-' + Date.now(),
-        requireInteraction: false, // Let Android decide
-        silent: false,
-        // Removed: actions, vibrate, renotify, image - cause issues on Android
-      };
-      
-      await logToCache(`Notification options: ${JSON.stringify(notificationOptions)}`);
-      
-      await self.registration.showNotification(data.title, notificationOptions);
-      
-      await logToCache('self.registration.showNotification executed successfully!');
-      
-      // Check if notification actually exists
-      const notifications = await self.registration.getNotifications();
-      await logToCache(`Active notifications after show: ${notifications.length}`);
-      
-      if (notifications.length > 0) {
-        await logToCache(`Notification details: tag=${notifications[0].tag}, title=${notifications[0].title}`);
-      } else {
-        await logToCache('WARNING: showNotification succeeded but notification not found in getNotifications()');
-      }
-    } catch (err) {
-      await logToCache(`self.registration.showNotification THREW EXCEPTION: ${err.message}\nStack: ${err.stack}`);
-    }
-  })();
+  // IMMEDIATELY show notification - don't wait for logging
+  const showPromise = self.registration.showNotification(data.title, notificationOptions)
+    .then(() => {
+      // Log AFTER showing (non-blocking)
+      logToCache(`[Push] Notification shown: ${data.title}`);
+      return self.registration.getNotifications();
+    })
+    .then(notifications => {
+      logToCache(`[Push] Active notifications: ${notifications.length}`);
+    })
+    .catch(err => {
+      logToCache(`[Push] Error: ${err.message}`);
+    });
 
-  event.waitUntil(promiseChain);
+  event.waitUntil(showPromise);
 });
 
 // ── Notification Click ─────────────────────────────────────────────────────────
