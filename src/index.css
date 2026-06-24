@@ -2448,23 +2448,16 @@ input.bg-surface\/80 {
   animation: spin 0.8s linear infinite;
 }
 
-/* ---- Scrollbar ---- */
+/* ---- Scrollbar (Invisible but scrollable) ---- */
+* {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: var(--radius-sm);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* ---- Selection ---- */
