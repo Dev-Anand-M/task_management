@@ -44,37 +44,82 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// ── Diagnostics Logger ────────────────────────────────────────────────────────
+const logToCache = async (msg) => {
+  try {
+    const cache = await caches.open('sw-diagnostics');
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      message: msg,
+    };
+    await cache.put(
+      new Request(`/log-${Date.now()}-${Math.random()}`),
+      new Response(JSON.stringify(logEntry), {
+        headers: { 'Content-Type': 'application/json' }
+      })
+    );
+  } catch (e) {
+    // Ignore
+  }
+};
+
 // ── Push ────────────────────────────────────────────────────────────────────────
 // CRITICAL: This handler runs even when the app is closed/backgrounded.
 // The browser wakes the service worker specifically to handle this event.
 // showNotification MUST be called inside event.waitUntil() — if it's not,
 // Android will kill the SW before the notification is shown.
 self.addEventListener('push', (event) => {
-  let data = { title: 'Zenith', body: 'You have a new notification', url: '/' };
-  try {
-    if (event.data) data = { ...data, ...event.data.json() };
-  } catch (e) { /* fallback to defaults */ }
+  const promiseChain = (async () => {
+    await logToCache('=== Service Worker Push Event Fired ===');
+    
+    let rawData = null;
+    if (event.data) {
+      try {
+        rawData = event.data.text();
+        await logToCache(`Raw push payload text: ${rawData}`);
+      } catch (e) {
+        await logToCache(`Failed to read event.data as text: ${e.message}`);
+      }
+    } else {
+      await logToCache('event.data is empty or undefined');
+    }
 
-  // Resolve absolute URL for the icon (required for background notifications on mobile)
-  const iconUrl = new URL('/zenith.png', self.location.origin).href;
+    let data = { title: 'Zenith', body: 'You have a new notification', url: '/' };
+    try {
+      if (event.data) {
+        data = { ...data, ...event.data.json() };
+        await logToCache('Parsed JSON payload successfully.');
+      }
+    } catch (e) {
+      await logToCache(`JSON parsing failed (falling back to defaults): ${e.message}`);
+    }
 
-  // Show the notification immediately — no async work before this!
-  const promiseChain = self.registration.showNotification(data.title, {
-    body: data.body,
-    icon: iconUrl,
-    image: undefined,
-    data: { url: data.url || '/' },
-    tag: data.tag || 'zenith-' + Date.now(),
-    timestamp: data.timestamp || Date.now(),
-    vibrate: [200, 100, 200, 100, 200],
-    renotify: true,        // Always alert even if same tag exists
-    requireInteraction: false, // Don't block mobile UI thread
-    actions: [
-      { action: 'open', title: 'Open' },
-      { action: 'dismiss', title: 'Dismiss' }
-    ],
-    silent: false,
-  });
+    // Resolve absolute URL for the icon (required for background notifications on mobile)
+    const iconUrl = new URL('/zenith.png', self.location.origin).href;
+
+    try {
+      await logToCache('Attempting self.registration.showNotification...');
+      await self.registration.showNotification(data.title, {
+        body: data.body,
+        icon: iconUrl,
+        image: undefined,
+        data: { url: data.url || '/' },
+        tag: data.tag || 'zenith-' + Date.now(),
+        timestamp: data.timestamp || Date.now(),
+        vibrate: [200, 100, 200, 100, 200],
+        renotify: true,        // Always alert even if same tag exists
+        requireInteraction: false, // Don't block mobile UI thread
+        actions: [
+          { action: 'open', title: 'Open' },
+          { action: 'dismiss', title: 'Dismiss' }
+        ],
+        silent: false,
+      });
+      await logToCache('self.registration.showNotification executed successfully!');
+    } catch (err) {
+      await logToCache(`self.registration.showNotification THREW EXCEPTION: ${err.message}\nStack: ${err.stack}`);
+    }
+  })();
 
   event.waitUntil(promiseChain);
 });
