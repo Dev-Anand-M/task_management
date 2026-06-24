@@ -190,7 +190,6 @@ export const EVALUATION_CRITERIA = [
     { id: 'clean_code', label: 'Clean code', auto: false },
     { id: 'readme', label: 'Has README', auto: true },
     { id: 'comments', label: 'Code comments', auto: false },
-    { id: 'comments', label: 'Code comments', auto: false },
     { id: 'error_handling', label: 'Error handling', auto: false }
 ];
 

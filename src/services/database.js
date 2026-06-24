@@ -208,7 +208,7 @@ export const createTask = async (task) => {
                     title: '📋 New Task Assigned',
                     body: `You have been assigned: "${task.title}"`,
                     url: `/tasks/${data.id}`
-                }).catch(e => console.warn('[Push] Error:', e));
+                }).catch(() => {});
             }
         } else if (task.is_global) {
             // Notify current classroom for global tasks
@@ -438,7 +438,7 @@ export const createQuiz = async (quiz) => {
                     title: 'New Quiz Assigned',
                     body: `You have been specifically assigned the quiz: "${quiz.title}"`,
                     url: '/quizzes'
-                }).catch(e => console.warn('[Push] Error:', e));
+                }).catch(() => {});
             }
         } else if (classroomId) {
             // Notify entire classroom
@@ -688,7 +688,7 @@ export const createNotification = async (notification) => {
                 body: notification.message,
                 url: notification.link || '/',
                 data: { type: notification.type }
-            }).catch(e => console.warn('[Push] Error:', e));
+            }).catch(() => {});
         }
     }
 };
@@ -719,7 +719,7 @@ export const notifyClassroom = async (classroomId, notification) => {
                 body: notification.message,
                 url: notification.link || '/',
                 data: { type: notification.type }
-            }).catch(e => console.warn('[Push] Error:', e))
+            }).catch(() => {})
         );
     
     await Promise.allSettled(pushPromises);
@@ -751,7 +751,7 @@ export const notifyAdmins = async (classroomId, notification) => {
                 body: notification.message,
                 url: notification.link || '/',
                 data: { type: notification.type }
-            }).catch(e => console.warn('[Push] Error:', e))
+            }).catch(() => {})
         );
     
     await Promise.allSettled(pushPromises);
