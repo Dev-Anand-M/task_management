@@ -195,3 +195,59 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+// ── Message listener for debugging/instrumentation ───────────────────────────
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'TEST_MOCK_PUSH') {
+    const payload = event.data.payload || {
+      title: 'Mock Push Notification 🔔',
+      body: 'This is a mock push triggered via postMessage!',
+      url: '/settings',
+      tag: 'zenith-mock-' + Date.now(),
+      timestamp: Date.now()
+    };
+    
+    logToCache('=== Mock Push Received in Message Listener ===');
+    
+    try {
+      const pushEvent = new PushEvent('push', {
+        data: typeof payload === 'string' ? payload : JSON.stringify(payload)
+      });
+      self.dispatchEvent(pushEvent);
+      logToCache('Dispatched PushEvent successfully.');
+    } catch (e) {
+      logToCache(`Failed to dispatch standard PushEvent: ${e.message}. Running fallback...`);
+      // Fallback: manually invoke the push logic
+      const promiseChain = (async () => {
+        await logToCache('=== Service Worker Fallback Push Event Fired ===');
+        let data = { title: 'Zenith', body: 'You have a new notification', url: '/' };
+        if (typeof payload === 'object') {
+          data = { ...data, ...payload };
+        } else {
+          try { data = { ...data, ...JSON.parse(payload) }; } catch(err) {}
+        }
+        const iconUrl = new URL('/zenith.png', self.location.origin).href;
+        try {
+          await logToCache('Attempting self.registration.showNotification (fallback)...');
+          await self.registration.showNotification(data.title, {
+            body: data.body,
+            icon: iconUrl,
+            data: { url: data.url || '/' },
+            tag: data.tag || 'zenith-' + Date.now(),
+            timestamp: data.timestamp || Date.now(),
+            actions: [
+              { action: 'open', title: 'Open' },
+              { action: 'dismiss', title: 'Dismiss' }
+            ],
+          });
+          await logToCache('self.registration.showNotification (fallback) executed successfully!');
+        } catch (err) {
+          await logToCache(`self.registration.showNotification (fallback) THREW EXCEPTION: ${err.message}\nStack: ${err.stack}`);
+        }
+      })();
+      if (event.waitUntil) {
+        event.waitUntil(promiseChain);
+      }
+    }
+  }
+});

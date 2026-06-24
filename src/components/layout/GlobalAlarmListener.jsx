@@ -255,6 +255,48 @@ const GlobalAlarmListener = () => {
                     </div>
                 </div>
             )}
+
+            <button
+                id="debug-mock-push-btn"
+                onClick={async () => {
+                    if (!('serviceWorker' in navigator)) {
+                        alert('ServiceWorker not supported');
+                        return;
+                    }
+                    const reg = await navigator.serviceWorker.getRegistration('/');
+                    if (reg && reg.active) {
+                        reg.active.postMessage({
+                            type: 'TEST_MOCK_PUSH',
+                            payload: {
+                                title: 'Mock Push Alert 🔔',
+                                body: 'Simulating background service worker push display.',
+                                url: '/settings',
+                                tag: 'zenith-mock-' + Date.now(),
+                                timestamp: Date.now()
+                            }
+                        });
+                    } else {
+                        alert('No active ServiceWorker registration found');
+                    }
+                }}
+                style={{
+                    position: 'fixed',
+                    bottom: '10px',
+                    left: '10px',
+                    zIndex: 999999,
+                    background: 'rgba(239, 68, 68, 0.8)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '6px 12px',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
+                }}
+            >
+                DEBUG: Send SW Mock Push
+            </button>
         </>
     );
 };
