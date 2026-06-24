@@ -133,6 +133,7 @@ self.addEventListener('push', (event) => {
   const iconUrl = new URL('/zenith.png', self.location.origin).href;
 
   // Minimal notification options - Android compatible
+  // CRITICAL: No 'silent' flag, ensure notification is alerting
   const notificationOptions = {
     body: data.body,
     icon: iconUrl,
@@ -140,7 +141,7 @@ self.addEventListener('push', (event) => {
     data: { url: data.url || '/' },
     tag: data.tag || 'zenith-' + Date.now(),
     requireInteraction: false,
-    silent: false,
+    // Explicitly NOT silent - this should trigger "Web Apps" channel, not "Web Apps (Quiet)"
   };
 
   // IMMEDIATELY show notification - don't wait for logging
