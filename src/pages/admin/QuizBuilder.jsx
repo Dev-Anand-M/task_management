@@ -337,7 +337,7 @@ const QuizBuilder = () => {
             difficulty: formData.difficulty,
             time_limit: formData.time_limit,
             passing_score: formData.passing_score,
-            points: DIFFICULTY_LEVELS.find(d => d.value === formData.difficulty)?.points || 30,
+            points: DIFFICULTY_LEVELS.find(d => d.value === formData.difficulty)?.points ?? 30,
             questions: formData.questions,
             assigned_to: formData.assignment_type === 'specific' ? formData.assigned_to : [],
             status: 'active',

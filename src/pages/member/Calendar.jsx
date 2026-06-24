@@ -394,7 +394,7 @@ const Calendar = () => {
                                             )}
                                         </div>
                                         <div className="flex items-center gap-sm" style={{ marginTop: '4px', flexWrap: 'wrap' }}>
-                                            {e.points && <Badge variant="accent" size="xs">{e.points} XP</Badge>}
+                                            {e.points !== undefined && e.points !== null && <Badge variant="accent" size="xs">{e.points} XP</Badge>}
                                             {e.score !== undefined && <Badge variant="primary" size="xs">{e.score}%</Badge>}
                                             {e.type === 'task-deadline' && (
                                                 <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
@@ -447,7 +447,7 @@ const Calendar = () => {
                                             <Badge variant={e.type === 'routine' ? 'success' : e.type.includes('quiz') ? 'accent' : 'primary'} size="xs">{e.type.replace('-', ' ')}</Badge>
                                             {e.type === 'routine' && e.startTime && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{format12h(e.startTime)}</span>}
                                             {e.type === 'task-deadline' && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatDeadline(e.date)}</span>}
-                                            {e.points && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{e.points} XP</span>}
+                                            {e.points !== undefined && e.points !== null && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{e.points} XP</span>}
                                         </div>
                                     </div>
                                     {e.link && (

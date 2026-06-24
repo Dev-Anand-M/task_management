@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Card, Button, Badge, Modal, Input } from '../../components/common';
@@ -79,10 +79,24 @@ const MyTasks = () => {
         return sub.status;
     };
 
+    const uniqueCategories = useMemo(() => {
+        const cats = new Set(TASK_CATEGORIES);
+        tasks.forEach(task => {
+            const taskCats = task.categories && task.categories.length > 0
+                ? task.categories
+                : (Array.isArray(task.category) ? task.category : [task.category]);
+            taskCats.forEach(cat => {
+                if (cat) cats.add(cat);
+            });
+        });
+        return [...cats];
+    }, [tasks]);
+
     const filteredTasks = tasks.filter(task => {
         const status = getTaskStatus(task.id);
         const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesCategory = filterCategory === 'all' || task.category === filterCategory;
+        const matchesCategory = filterCategory === 'all' || 
+            (task.categories ? task.categories.includes(filterCategory) : task.category === filterCategory);
         const matchesStatus = filterStatus === 'all' ||
             (filterStatus === 'pending' && (status === 'not-started' || status === 'pending')) ||
             (filterStatus === 'completed' && status === 'approved') ||
@@ -122,7 +136,7 @@ const MyTasks = () => {
                         style={{ width: 'auto' }}
                     >
                         <option value="all">All Categories</option>
-                        {TASK_CATEGORIES.map(cat => (
+                        {uniqueCategories.map(cat => (
                             <option key={cat} value={cat}>{cat}</option>
                         ))}
                     </select>

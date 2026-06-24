@@ -116,15 +116,21 @@ const logToCache = async (msg) => {
 
 // ── Push ────────────────────────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
-  console.log('[SW Push] Event received at:', new Date().toISOString());
+  // IMMEDIATE log to cache - before ANY processing
+  const timestamp = new Date().toISOString();
+  logToCache(`[Push] 🔔 Push event fired at ${timestamp}`);
+  console.log('[SW Push] Event received at:', timestamp);
   
   // Parse data SYNCHRONOUSLY
   let data = { title: 'Zenith', body: 'You have a new notification', url: '/' };
   try {
     if (event.data) {
-      data = { ...data, ...event.data.json() };
+      const parsed = event.data.json();
+      logToCache(`[Push] Raw payload: ${JSON.stringify(parsed)}`);
+      data = { ...data, ...parsed };
     }
   } catch (e) {
+    logToCache(`[Push] ❌ Parse error: ${e.message}`);
     console.error('[SW Push] Parse error:', e);
   }
 
@@ -141,35 +147,38 @@ self.addEventListener('push', (event) => {
     requireInteraction: true,
   };
 
+  logToCache(`[Push] Notification options: ${JSON.stringify(notificationOptions)}`);
   console.log('[SW Push] Calling showNotification with:', notificationOptions);
 
   // Show notification and verify
   const showPromise = self.registration.showNotification(data.title, notificationOptions)
     .then(() => {
       console.log('[SW Push] ✅ showNotification completed');
-      logToCache(`[Push] ✅ Notification shown: ${data.title}`);
+      logToCache(`[Push] ✅ showNotification() succeeded for: ${data.title}`);
       return self.registration.getNotifications();
     })
     .then(notifications => {
       console.log('[SW Push] Active notifications count:', notifications.length);
       console.log('[SW Push] Notification objects:', notifications);
-      logToCache(`[Push] Active notifications: ${notifications.length}`);
+      logToCache(`[Push] ✅ Active notifications after show: ${notifications.length}`);
       
       // Log each notification's properties
       notifications.forEach((n, i) => {
-        console.log(`[SW Push] Notification ${i}:`, {
+        const details = {
           title: n.title,
           body: n.body,
           tag: n.tag,
           timestamp: n.timestamp,
           requireInteraction: n.requireInteraction,
           silent: n.silent
-        });
+        };
+        console.log(`[SW Push] Notification ${i}:`, details);
+        logToCache(`[Push] Notification ${i}: ${JSON.stringify(details)}`);
       });
     })
     .catch(err => {
       console.error('[SW Push] ❌ Error:', err);
-      logToCache(`[Push] ❌ Error: ${err.message}`);
+      logToCache(`[Push] ❌ EXCEPTION: ${err.message} | Stack: ${err.stack}`);
     });
 
   event.waitUntil(showPromise);

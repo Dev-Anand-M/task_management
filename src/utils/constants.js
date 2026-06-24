@@ -119,7 +119,8 @@ export const getDifficultyColor = (difficulty) => {
         easy: 'success',
         medium: 'warning',
         hard: 'error',
-        expert: 'primary'
+        expert: 'primary',
+        none: 'secondary'
     };
     return colors[difficulty] || 'primary';
 };
@@ -152,6 +153,7 @@ export const TASK_CATEGORIES = [
 
 // Difficulty levels
 export const DIFFICULTY_LEVELS = [
+    { value: 'none', label: 'None (0 XP)', points: 0 },
     { value: 'easy', label: 'Easy', points: 50 },
     { value: 'medium', label: 'Medium', points: 100 },
     { value: 'hard', label: 'Hard', points: 200 },

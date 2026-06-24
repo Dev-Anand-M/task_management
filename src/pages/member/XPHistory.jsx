@@ -40,7 +40,7 @@ const XPHistory = () => {
             const taskHistory = submissions
                 .filter(s => s.status === 'approved' && s.score !== null)
                 .map(s => {
-                    const points = s.tasks?.points || 100;
+                    const points = s.tasks?.points ?? 100;
                     const xpEarned = Math.round((s.score / 100) * points);
                     return {
                         id: `task-${s.id}`,

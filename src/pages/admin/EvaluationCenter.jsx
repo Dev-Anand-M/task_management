@@ -494,7 +494,7 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
 
                 // award XP to user
                 if (submission.profiles?.id) {
-                    const xpEarned = Math.round((scoreNum / 100) * (submission.tasks?.points || 100));
+                    const xpEarned = Math.round((scoreNum / 100) * (submission.tasks?.points ?? 100));
                     const currentXP = submission.profiles.xp || 0;
                     await db.updateProfile(submission.profiles.id, { xp: currentXP + xpEarned });
 
@@ -783,7 +783,7 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
                             onChange={(e) => setScore(e.target.value)}
                         />
 
-                        {score && submission.tasks?.points && (
+                        {score && submission.tasks?.points !== undefined && submission.tasks?.points !== null && (
                             <div style={{
                                 marginTop: 'var(--space-md)',
                                 padding: 'var(--space-sm) var(--space-md)',
@@ -1247,7 +1247,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                                 return acc + (isCorrect ? 1 : 0);
                                             }, 0);
                                             const finalScore = Math.round((finalCorrect / attempt.total) * 100);
-                                            const xpToAward = Math.round((finalCorrect / attempt.total) * (attempt.quizzes?.points || 100));
+                                            const xpToAward = Math.round((finalCorrect / attempt.total) * (attempt.quizzes?.points ?? 100));
 
                                             // Update the saved attempt with Manual results
                                             await db.updateQuizAttempt(attempt.id, {
@@ -1309,7 +1309,7 @@ const QuizReviewDetail = ({ attemptId, onBack, onUpdate }) => {
                                                 return acc + (isCorrect ? 1 : 0);
                                             }, 0);
                                             const finalScore = Math.round((finalCorrect / attempt.total) * 100);
-                                            const xpToAward = Math.round((finalCorrect / attempt.total) * (attempt.quizzes?.points || 100));
+                                            const xpToAward = Math.round((finalCorrect / attempt.total) * (attempt.quizzes?.points ?? 100));
                                             
                                             // Update the saved attempt with Manual results AND finalize
                                             await db.updateQuizAttempt(attempt.id, {

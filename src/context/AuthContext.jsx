@@ -178,18 +178,6 @@ export const AuthProvider = ({ children }) => {
             }
         );
 
-        // 3. Visibility change — DO NOT call supabase.auth here!
-        //    Just tell components to re-fetch their own data.
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('zenith-refresh'));
-                }, 300);
-            }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
         // Emergency timeout
         const emergencyTimeout = setTimeout(() => {
             if (mounted) setLoading(false);
@@ -198,7 +186,6 @@ export const AuthProvider = ({ children }) => {
         return () => {
             mounted = false;
             subscription?.unsubscribe();
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
             clearTimeout(emergencyTimeout);
         };
     }, []);

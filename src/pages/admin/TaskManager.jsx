@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, Modal, Input, Avatar } from '../../components/common';
 import {
@@ -62,6 +62,29 @@ const TaskManager = () => {
     });
 
     const [currentUserProfile, setCurrentUserProfile] = useState(null);
+    const [customCategories, setCustomCategories] = useState([]);
+    const [newCategoryInput, setNewCategoryInput] = useState('');
+
+    const handleAddCustomCategory = (e) => {
+        e.preventDefault();
+        const trimmed = newCategoryInput.trim();
+        if (!trimmed) return;
+        
+        // Add to custom categories state
+        if (!TASK_CATEGORIES.includes(trimmed) && !customCategories.includes(trimmed)) {
+            setCustomCategories(prev => [...prev, trimmed]);
+        }
+        
+        // Automatically check/select it
+        if (!formData.categories.includes(trimmed)) {
+            setFormData(prev => ({
+                ...prev,
+                categories: [...prev.categories, trimmed]
+            }));
+        }
+        
+        setNewCategoryInput('');
+    };
 
     useEffect(() => {
         loadData();
@@ -189,7 +212,7 @@ const TaskManager = () => {
             categories: formData.categories,
             category: formData.categories[0] || 'General',
             difficulty: formData.difficulty,
-            points: DIFFICULTY_LEVELS.find(d => d.value === formData.difficulty)?.points || 100,
+            points: DIFFICULTY_LEVELS.find(d => d.value === formData.difficulty)?.points ?? 100,
             start_date: formData.start_date ? new Date(formData.start_date).toISOString() : new Date().toISOString(),
             deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
             assigned_to: formData.assignment_type === 'specific' ? formData.assigned_to : [],
@@ -325,6 +348,19 @@ const TaskManager = () => {
         }));
     };
 
+    const uniqueCategories = useMemo(() => {
+        const cats = new Set(TASK_CATEGORIES);
+        tasks.forEach(task => {
+            const taskCats = task.categories && task.categories.length > 0
+                ? task.categories
+                : (Array.isArray(task.category) ? task.category : [task.category]);
+            taskCats.forEach(cat => {
+                if (cat) cats.add(cat);
+            });
+        });
+        return [...cats];
+    }, [tasks]);
+
     const filteredTasks = tasks.filter(task => {
         const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesCategory = filterCategory === 'all' ||
@@ -374,7 +410,7 @@ const TaskManager = () => {
                             style={{ width: 'auto' }}
                         >
                             <option value="all">All Categories</option>
-                            {TASK_CATEGORIES.map(cat => (
+                            {uniqueCategories.map(cat => (
                                 <option key={cat} value={cat}>{cat}</option>
                             ))}
                         </select>
@@ -589,14 +625,11 @@ const TaskManager = () => {
                                 gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
                                 gap: 'var(--space-sm)'
                             }}>
-                                {TASK_CATEGORIES.map(category => (
+                                {[...new Set([...TASK_CATEGORIES, ...customCategories, ...formData.categories])].map(category => (
                                     <div
                                         key={category}
                                         onClick={() => toggleCategory(category)}
                                         style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 'var(--space-sm)',
                                             padding: 'var(--space-sm)',
                                             background: formData.categories.includes(category)
                                                 ? 'rgba(99, 102, 241, 0.1)'
@@ -617,6 +650,26 @@ const TaskManager = () => {
                                         <span style={{ fontSize: 'var(--text-sm)' }}>{category}</span>
                                     </div>
                                 ))}
+                            </div>
+
+                            {/* Add Custom Category */}
+                            <div className="flex gap-sm items-end" style={{ marginTop: 'var(--space-sm)' }}>
+                                <div style={{ flex: 1 }}>
+                                    <Input
+                                        placeholder="Add custom category..."
+                                        value={newCategoryInput}
+                                        onChange={(e) => setNewCategoryInput(e.target.value)}
+                                        style={{ marginBottom: 0 }}
+                                    />
+                                </div>
+                                <Button 
+                                    type="button" 
+                                    variant="secondary"
+                                    onClick={handleAddCustomCategory}
+                                    style={{ height: '42px', padding: '0 var(--space-md)' }}
+                                >
+                                    Add
+                                </Button>
                             </div>
                         </div>
 
