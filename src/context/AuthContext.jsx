@@ -19,6 +19,10 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const lastFetchRef = useRef(0);
     const fetchProfileRef = useRef(null);
+    const profileRef = useRef(null);
+    const forceRefreshRef = useRef(null);
+
+    profileRef.current = profile;
 
     // fetchProfile as useCallback — stored in ref so closures never go stale
     const fetchProfile = useCallback(async (userId, force = false) => {
@@ -162,7 +166,9 @@ export const AuthProvider = ({ children }) => {
                             role: storedRole,
                             classroom_id: session.user.user_metadata?.classroom_id
                         });
-                        setLoading(true);
+                        if (!profileRef.current) {
+                            setLoading(true);
+                        }
                         // Fetch the real profile in background but set loading false only when resolved
                         fetchProfileRef.current(session.user.id, true).then(() => {
                             if (mounted) setLoading(false);
@@ -178,6 +184,17 @@ export const AuthProvider = ({ children }) => {
             }
         );
 
+        // Visibility Change listener to fix "stuck session" on tab/app switching
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                console.log('[AuthContext] App became visible, refreshing session...');
+                if (forceRefreshRef.current) {
+                    forceRefreshRef.current();
+                }
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         // Emergency timeout
         const emergencyTimeout = setTimeout(() => {
             if (mounted) setLoading(false);
@@ -186,6 +203,7 @@ export const AuthProvider = ({ children }) => {
         return () => {
             mounted = false;
             subscription?.unsubscribe();
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             clearTimeout(emergencyTimeout);
         };
     }, []);
@@ -280,6 +298,8 @@ export const AuthProvider = ({ children }) => {
             await updateProfile({ badges: [...currentBadges, badgeId] });
         }
     }, [profile, updateProfile]);
+
+    forceRefreshRef.current = forceRefresh;
 
     const value = useMemo(() => ({
         user: profile,

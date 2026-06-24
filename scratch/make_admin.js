@@ -10,7 +10,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SU
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function makeAdmin() {
-    console.log('=== Promoting dev.klinux@dev.com to Admin ===');
+    console.log('=== Making dev.klinux@dev.com an Admin ===');
     const { data, error } = await supabase
         .from('profiles')
         .update({ role: 'admin' })
@@ -18,9 +18,9 @@ async function makeAdmin() {
         .select();
     
     if (error) {
-        console.error('Error promoting user:', error.message);
+        console.error('Error updating role:', error.message);
     } else {
-        console.log('User promoted successfully:', JSON.stringify(data, null, 2));
+        console.log('Successfully updated profile:', JSON.stringify(data, null, 2));
     }
 }
 

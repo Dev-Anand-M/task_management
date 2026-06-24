@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, Modal, Input, Avatar } from '../../components/common';
 import {
@@ -92,19 +92,29 @@ const TaskManager = () => {
 
     useMiniReload(() => loadData());
 
+    const initializedUrlRef = useRef('');
+
     // Effect to handle URL-based modal opening
     useEffect(() => {
+        const currentUrl = location.pathname;
+        if (currentUrl === initializedUrlRef.current) {
+            return;
+        }
+
         if (!loading && tasks.length > 0) {
             if (location.pathname.endsWith('/new')) {
+                initializedUrlRef.current = currentUrl;
                 openCreateModal();
             } else if (taskId) {
                 const taskToEdit = tasks.find(t => t.id == taskId);
                 if (taskToEdit) {
+                    initializedUrlRef.current = currentUrl;
                     openEditModal(taskToEdit);
                 }
             }
         } else if (!loading && location.pathname.endsWith('/new')) {
             // Even if no tasks exist, we should allow creating new one
+            initializedUrlRef.current = currentUrl;
             openCreateModal();
         }
     }, [location.pathname, taskId, loading, tasks]);
