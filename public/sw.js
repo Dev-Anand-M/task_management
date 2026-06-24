@@ -150,7 +150,8 @@ self.addEventListener('push', (event) => {
 
     try {
       await logToCache('Attempting self.registration.showNotification...');
-      await self.registration.showNotification(data.title, {
+      
+      const notificationOptions = {
         body: data.body,
         icon: iconUrl,
         image: undefined,
@@ -159,14 +160,29 @@ self.addEventListener('push', (event) => {
         timestamp: data.timestamp || Date.now(),
         vibrate: [200, 100, 200, 100, 200],
         renotify: true,        // Always alert even if same tag exists
-        requireInteraction: false, // Don't block mobile UI thread
+        requireInteraction: true, // CHANGED: Force user interaction (prevents auto-dismiss)
         actions: [
           { action: 'open', title: 'Open' },
           { action: 'dismiss', title: 'Dismiss' }
         ],
         silent: false,
-      });
+      };
+      
+      await logToCache(`Notification options: ${JSON.stringify(notificationOptions)}`);
+      
+      await self.registration.showNotification(data.title, notificationOptions);
+      
       await logToCache('self.registration.showNotification executed successfully!');
+      
+      // Check if notification actually exists
+      const notifications = await self.registration.getNotifications();
+      await logToCache(`Active notifications after show: ${notifications.length}`);
+      
+      if (notifications.length > 0) {
+        await logToCache(`Notification details: tag=${notifications[0].tag}, title=${notifications[0].title}`);
+      } else {
+        await logToCache('WARNING: showNotification succeeded but notification not found in getNotifications()');
+      }
     } catch (err) {
       await logToCache(`self.registration.showNotification THREW EXCEPTION: ${err.message}\nStack: ${err.stack}`);
     }
