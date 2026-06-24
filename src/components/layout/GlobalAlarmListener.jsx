@@ -195,97 +195,42 @@ const GlobalAlarmListener = () => {
             window.removeEventListener('test-alarm', handleTest);
         };
     }, [user?.id, enabled]);
-
     // Auto-sync push subscription when user logs in/changes device
     useEffect(() => {
         const syncPushSubscription = async () => {
-            console.log('[Push Sync] START - useEffect triggered');
-            console.log('[Push Sync] user?.id:', user?.id);
-            
             if (!user?.id) {
-                console.log('[Push Sync] ABORT - No user ID');
                 return;
             }
             
             if (typeof window === 'undefined' || !('Notification' in window)) {
-                console.log('[Push Sync] ABORT - No Notification support');
                 return;
             }
             
-            console.log('[Push Sync] Notification permission:', Notification.permission);
             if (Notification.permission !== 'granted') {
-                console.log('[Push Sync] ABORT - Permission not granted');
                 return;
             }
 
             try {
-                console.log('[Push Sync] Importing pushNotifications...');
                 const push = await import('../../lib/pushNotifications');
                 
-                console.log('[Push Sync] Checking if supported...');
                 if (push.isSupported()) {
-                    console.log('[Push Sync] Calling push.subscribe()...');
                     const activeSub = await push.subscribe();
                     
-                    console.log('[Push Sync] Got subscription:', {
-                        endpoint: activeSub?.endpoint,
-                        hasKeys: !!activeSub?.keys
-                    });
-                    
                     if (activeSub) {
-                        console.log('[Push Sync] Comparing subscriptions:');
-                        console.log('  - Database endpoint:', user.push_subscription?.endpoint || 'NULL');
-                        console.log('  - Browser endpoint:', activeSub.endpoint);
-                        
                         const hasSubChanged = !user.push_subscription || 
                             user.push_subscription.endpoint !== activeSub.endpoint ||
                             JSON.stringify(user.push_subscription.keys) !== JSON.stringify(activeSub.keys);
                         
-                        console.log('[Push Sync] hasSubChanged:', hasSubChanged);
-                        
                         if (hasSubChanged) {
-                            console.log('[Push Sync] Subscription changed! Updating database...');
-                            console.log('[Push Sync] Update params:', {
-                                userId: user.id,
-                                newEndpoint: activeSub.endpoint
-                            });
-                            
-                            const { data, error } = await routineService.supabase.from('profiles').update({
+                            await routineService.supabase.from('profiles').update({
                                 push_subscription: activeSub
                             }).eq('id', user.id);
-                            
-                            console.log('[Push Sync] Update response:', {
-                                data,
-                                error,
-                                errorCode: error?.code,
-                                errorMessage: error?.message,
-                                errorDetails: error?.details,
-                                errorHint: error?.hint
-                            });
-                            
-                            if (error) {
-                                console.error('[Push Sync] UPDATE FAILED:', error);
-                            } else {
-                                console.log('[Push Sync] ✅ UPDATE SUCCESS');
-                            }
-                        } else {
-                            console.log('[Push Sync] Subscription unchanged, skipping update');
                         }
-                    } else {
-                        console.log('[Push Sync] No active subscription returned');
                     }
-                } else {
-                    console.log('[Push Sync] Push not supported on this device');
                 }
             } catch (err) {
-                console.error('[Push Sync] EXCEPTION:', {
-                    message: err.message,
-                    stack: err.stack,
-                    error: err
-                });
+                // Silenced errors to prevent developer console clutter during push notifications pause
             }
-            
-            console.log('[Push Sync] END');
         };
         syncPushSubscription();
     }, [user?.id]);
