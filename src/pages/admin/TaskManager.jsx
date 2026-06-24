@@ -101,21 +101,28 @@ const TaskManager = () => {
             return;
         }
 
+        let handled = false;
         if (!loading && tasks.length > 0) {
             if (location.pathname.endsWith('/new')) {
-                initializedUrlRef.current = currentUrl;
                 openCreateModal();
+                handled = true;
             } else if (taskId) {
                 const taskToEdit = tasks.find(t => t.id == taskId);
                 if (taskToEdit) {
-                    initializedUrlRef.current = currentUrl;
                     openEditModal(taskToEdit);
+                    handled = true;
                 }
             }
         } else if (!loading && location.pathname.endsWith('/new')) {
             // Even if no tasks exist, we should allow creating new one
-            initializedUrlRef.current = currentUrl;
             openCreateModal();
+            handled = true;
+        }
+
+        if (!loading) {
+            if (handled || (!location.pathname.endsWith('/new') && !taskId)) {
+                initializedUrlRef.current = currentUrl;
+            }
         }
     }, [location.pathname, taskId, loading, tasks]);
 
