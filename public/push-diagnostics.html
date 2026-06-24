@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Push Notification Diagnostics</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+      background: #0f0f0f;
+      color: #e0e0e0;
+    }
+    h1 { margin-bottom: 20px; color: #60a5fa; }
+    h2 { margin: 30px 0 15px; color: #a78bfa; font-size: 18px; }
+    .section {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      margin: 5px;
+      transition: all 0.2s;
+    }
+    button:hover { background: #2563eb; transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button.danger { background: #ef4444; }
+    button.danger:hover { background: #dc2626; }
+    button.success { background: #10b981; }
+    button.success:hover { background: #059669; }
+    pre {
+      background: #0a0a0a;
+      border: 1px solid #333;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 10px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin: 5px;
+    }
+    .status.ok { background: #065f46; color: #6ee7b7; }
+    .status.error { background: #7f1d1d; color: #fca5a5; }
+    .status.warning { background: #78350f; color: #fcd34d; }
+    .result { margin-top: 10px; }
+    .key { color: #60a5fa; }
+    .value { color: #a78bfa; }
+    input {
+      width: 100%;
+      padding: 10px;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-size: 14px;
+      margin: 10px 0;
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+    .copy-btn {
+      background: #6b7280;
+      padding: 6px 12px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    .copy-btn:hover { background: #4b5563; }
+  </style>
+</head>
+<body>
+  <h1>🔔 Push Notification Diagnostics</h1>
+  <p style="color: #9ca3af; margin-bottom: 30px;">
+    Run these tests to identify why mobile background push notifications aren't working.
+  </p>
+
+  <!-- STEP 1: Environment Check -->
+  <div class="section">
+    <h2>Step 1: Environment Check</h2>
+    <button onclick="checkEnvironment()">Run Environment Check</button>
+    <div id="env-result" class="result"></div>
+  </div>
+
+  <!-- STEP 2: Service Worker Status -->
+  <div class="section">
+    <h2>Step 2: Service Worker Status</h2>
+    <button onclick="checkServiceWorker()">Check Service Worker</button>
+    <button onclick="viewSwLogs()" class="success">View SW Logs</button>
+    <button onclick="clearSwLogs()" class="danger">Clear SW Logs</button>
+    <div id="sw-result" class="result"></div>
+  </div>
+
+  <!-- STEP 3: Current Subscription -->
+  <div class="section">
+    <h2>Step 3: Current Browser Subscription</h2>
+    <button onclick="getCurrentSubscription()">Get Current Subscription</button>
+    <button onclick="copySubscription()" class="copy-btn">Copy to Clipboard</button>
+    <div id="sub-result" class="result"></div>
+  </div>
+
+  <!-- STEP 4: Database Subscription -->
+  <div class="section">
+    <h2>Step 4: Database Subscription</h2>
+    <p style="color: #9ca3af; margin-bottom: 10px; font-size: 14px;">
+      Enter your Supabase URL and Anon Key to check what's stored in the database.
+    </p>
+    <input type="text" id="supabase-url" placeholder="Supabase URL (https://xxx.supabase.co)">
+    <input type="password" id="supabase-key" placeholder="Supabase Anon Key">
+    <button onclick="checkDatabaseSubscription()">Check Database</button>
+    <div id="db-result" class="result"></div>
+  </div>
+
+  <!-- STEP 5: Endpoint Comparison -->
+  <div class="section">
+    <h2>Step 5: Endpoint Comparison</h2>
+    <button onclick="compareEndpoints()">Compare Browser vs Database</button>
+    <div id="compare-result" class="result"></div>
+  </div>
+
+  <!-- STEP 6: Test Push -->
+  <div class="section">
+    <h2>Step 6: Test Push Notification</h2>
+    <div class="grid">
+      <button onclick="testMockPush()">Mock Push (SW Only)</button>
+      <button onclick="testDirectPush()">Direct Push (Current Sub)</button>
+    </div>
+    <div id="push-result" class="result"></div>
+  </div>
+
+  <!-- STEP 7: Battery & Permissions -->
+  <div class="section">
+    <h2>Step 7: Battery & Permissions Check</h2>
+    <button onclick="checkPermissions()">Check All Permissions</button>
+    <div id="perm-result" class="result"></div>
+  </div>
+
+  <script>
+    let currentSubscription = null;
+    let databaseSubscription = null;
+
+    // Utility functions
+    const output = (id, html) => document.getElementById(id).innerHTML = html;
+    const status = (text, type) => `<span class="status ${type}">${text}</span>`;
+
+    // Step 1: Environment Check
+    async function checkEnvironment() {
+      const results = [];
+      
+      results.push(`<span class="key">Secure Context:</span> ${window.isSecureContext ? status('✓ YES', 'ok') : status('✗ NO', 'error')}`);
+      results.push(`<span class="key">Service Worker Support:</span> ${'serviceWorker' in navigator ? status('✓ YES', 'ok') : status('✗ NO', 'error')}`);
+      results.push(`<span class="key">Push Manager:</span> ${'PushManager' in window ? status('✓ YES', 'ok') : status('✗ NO', 'error')}`);
+      results.push(`<span class="key">Notifications:</span> ${'Notification' in window ? status('✓ YES', 'ok') : status('✗ NO', 'error')}`);
+      results.push(`<span class="key">User Agent:</span> <span class="value">${navigator.userAgent}</span>`);
+      results.push(`<span class="key">Platform:</span> <span class="value">${navigator.platform}</span>`);
+      results.push(`<span class="key">Online:</span> ${navigator.onLine ? status('✓ YES', 'ok') : status('✗ NO', 'error')}`);
+
+      output('env-result', results.join('<br>'));
+    }
+
+    // Step 2: Service Worker Check
+    async function checkServiceWorker() {
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        const results = [];
+        
+        results.push(`<span class="key">Registrations Found:</span> <span class="value">${regs.length}</span>`);
+        
+        for (const reg of regs) {
+          results.push(`<br><span class="key">Scope:</span> <span class="value">${reg.scope}</span>`);
+          results.push(`<span class="key">Active:</span> ${reg.active ? status(`✓ ${reg.active.state}`, 'ok') : status('✗ None', 'error')}`);
+          results.push(`<span class="key">Waiting:</span> ${reg.waiting ? status(`⏳ ${reg.waiting.state}`, 'warning') : status('None', 'ok')}`);
+          results.push(`<span class="key">Installing:</span> ${reg.installing ? status(`🔄 ${reg.installing.state}`, 'warning') : status('None', 'ok')}`);
+          
+          // Check push subscription
+          const sub = await reg.pushManager.getSubscription();
+          results.push(`<span class="key">Push Subscription:</span> ${sub ? status('✓ Active', 'ok') : status('✗ None', 'error')}`);
+        }
+
+        output('sw-result', results.join('<br>'));
+      } catch (err) {
+        output('sw-result', `${status('ERROR', 'error')}<br>${err.message}`);
+      }
+    }
+
+    async function viewSwLogs() {
+      try {
+        const response = await fetch('/sw-diagnostic-report');
+        const logs = await response.json();
+        
+        if (!logs || logs.length === 0) {
+          output('sw-result', status('No logs found', 'warning'));
+          return;
+        }
+
+        const formatted = logs.map(log => 
+          `[${log.timestamp}] ${log.message}`
+        ).join('\n');
+
+        output('sw-result', `<pre>${formatted}</pre>`);
+      } catch (err) {
+        output('sw-result', `${status('ERROR', 'error')}<br>${err.message}`);
+      }
+    }
+
+    async function clearSwLogs() {
+      try {
+        const response = await fetch('/sw-diagnostic-clear');
+        const result = await response.json();
+        output('sw-result', result.success ? status('✓ Logs cleared', 'ok') : status('Failed to clear', 'error'));
+      } catch (err) {
+        output('sw-result', `${status('ERROR', 'error')}<br>${err.message}`);
+      }
+    }
+
+    // Step 3: Current Subscription
+    async function getCurrentSubscription() {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        
+        if (!sub) {
+          output('sub-result', status('✗ No subscription found', 'error'));
+          return;
+        }
+
+        currentSubscription = sub.toJSON();
+        
+        const results = [];
+        results.push(`<span class="key">Endpoint:</span> <span class="value">${currentSubscription.endpoint}</span>`);
+        results.push(`<span class="key">Expiration:</span> <span class="value">${currentSubscription.expirationTime || 'Never'}</span>`);
+        results.push(`<span class="key">Keys:</span> ${status('✓ Present', 'ok')}`);
+        results.push(`<pre>${JSON.stringify(currentSubscription, null, 2)}</pre>`);
+
+        output('sub-result', results.join('<br>'));
+      } catch (err) {
+        output('sub-result', `${status('ERROR', 'error')}<br>${err.message}`);
+      }
+    }
+
+    function copySubscription() {
+      if (!currentSubscription) {
+        alert('Run "Get Current Subscription" first');
+        return;
+      }
+      navigator.clipboard.writeText(JSON.stringify(currentSubscription, null, 2));
+      alert('Subscription copied to clipboard!');
+    }
+
+    // Step 4: Database Subscription
+    async function checkDatabaseSubscription() {
+      const url = document.getElementById('supabase-url').value;
+      const key = document.getElementById('supabase-key').value;
+
+      if (!url || !key) {
+        output('db-result', status('Please enter Supabase URL and Key', 'error'));
+        return;
+      }
+
+      try {
+        // Get current user session
+        const authResponse = await fetch(`${url}/auth/v1/user`, {
+          headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
+        });
+        
+        if (!authResponse.ok) {
+          output('db-result', status('Failed to authenticate', 'error'));
+          return;
+        }
+
+        const { id: userId } = await authResponse.json();
+
+        // Get profile
+        const profileResponse = await fetch(
+          `${url}/rest/v1/profiles?id=eq.${userId}&select=push_subscription`,
+          { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } }
+        );
+
+        const [profile] = await profileResponse.json();
+        databaseSubscription = profile?.push_subscription;
+
+        if (!databaseSubscription) {
+          output('db-result', status('✗ No subscription in database', 'error'));
+          return;
+        }
+
+        const results = [];
+        results.push(`<span class="key">Endpoint:</span> <span class="value">${databaseSubscription.endpoint}</span>`);
+        results.push(`<span class="key">Expiration:</span> <span class="value">${databaseSubscription.expirationTime || 'Never'}</span>`);
+        results.push(`<pre>${JSON.stringify(databaseSubscription, null, 2)}</pre>`);
+
+        output('db-result', results.join('<br>'));
+      } catch (err) {
+        output('db-result', `${status('ERROR', 'error')}<br>${err.message}`);
+      }
+    }
+
+    // Step 5: Compare Endpoints
+    function compareEndpoints() {
+      if (!currentSubscription) {
+        output('compare-result', status('Get current subscription first (Step 3)', 'error'));
+        return;
+      }
+
+      if (!databaseSubscription) {
+        output('compare-result', status('Check database subscription first (Step 4)', 'error'));
+        return;
+      }
+
+      const match = currentSubscription.endpoint === databaseSubscription.endpoint;
+      const results = [];
+
+      results.push(`<h3 style="color: ${match ? '#10b981' : '#ef4444'}; margin-bottom: 15px;">${match ? '✓ ENDPOINTS MATCH' : '✗ ENDPOINTS DO NOT MATCH'}</h3>`);
+      
+      results.push(`<span class="key">Browser Endpoint:</span><br><span class="value">${currentSubscription.endpoint}</span>`);
+      results.push(`<br><br><span class="key">Database Endpoint:</span><br><span class="value">${databaseSubscription.endpoint}</span>`);
+      
+      if (!match) {
+        results.push(`<br><br>${status('⚠️ ROOT CAUSE FOUND', 'error')}`);
+        results.push(`<p style="margin-top: 10px; color: #fca5a5;">
+          The subscription in your browser is different from what's stored in the database.
+          This means notifications are being sent to the wrong device.
+          <br><br>
+          <strong>Solution:</strong> Implement multi-device push_subscriptions table.
+        </p>`);
+      } else {
+        results.push(`<br><br><p style="margin-top: 10px; color: #6ee7b7;">
+          Endpoints match. The issue is NOT the single-subscription architecture.
+          Check Android battery settings, Service Worker logs, or push delivery path.
+        </p>`);
+      }
+
+      output('compare-result', results.join('<br>'));
+    }
+
+    // Step 6: Test Push
+    async function testMockPush() {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        if (!reg.active) {
+          output('push-result', status('✗ No active Service Worker', 'error'));
+          return;
+        }
+
+        reg.active.postMessage({
+          type: 'TEST_MOCK_PUSH',
+          payload: {
+            title: 'Mock Push Test 🔔',
+            body: 'This notification was triggered locally via Service Worker',
+            url: '/push-diagnostics.html',
+            tag: 'test-' + Date.now()
+          }
+        });
+
+        output('push-result', status('✓ Mock push sent to Service Worker. Check if notification appears.', 'ok'));
+      } catch (err) {
+        output('push-result', `${status('ERROR', 'error')}<br>${err.message}`);
+      }
+    }
+
+    async function testDirectPush() {
+      if (!currentSubscription) {
+        output('push-result', status('Get current subscription first (Step 3)', 'error'));
+        return;
+      }
+
+      output('push-result', status('⏳ Sending push...', 'warning'));
+
+      try {
+        // This requires your api/push endpoint to be accessible
+        const response = await fetch('/api/push', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+          },
+          body: JSON.stringify({
+            subscription: currentSubscription,
+            title: 'Direct Push Test 🚀',
+            body: 'This was sent directly to your browser subscription',
+            url: '/push-diagnostics.html'
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          output('push-result', status('✓ Push sent successfully. Check if notification appears.', 'ok'));
+        } else {
+          output('push-result', `${status('✗ Push failed', 'error')}<br>${result.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        output('push-result', `${status('ERROR', 'error')}<br>${err.message}`);
+      }
+    }
+
+    // Step 7: Permissions
+    async function checkPermissions() {
+      const results = [];
+      
+      // Notification permission
+      results.push(`<span class="key">Notification Permission:</span> ${
+        Notification.permission === 'granted' ? status('✓ GRANTED', 'ok') :
+        Notification.permission === 'denied' ? status('✗ DENIED', 'error') :
+        status('⚠ DEFAULT', 'warning')
+      }`);
+
+      // Battery (if supported)
+      if ('getBattery' in navigator) {
+        try {
+          const battery = await navigator.getBattery();
+          results.push(`<span class="key">Battery Level:</span> <span class="value">${(battery.level * 100).toFixed(0)}%</span>`);
+          results.push(`<span class="key">Charging:</span> ${battery.charging ? status('✓ YES', 'ok') : status('✗ NO', 'warning')}`);
+        } catch (e) {
+          results.push(`<span class="key">Battery API:</span> ${status('Not available', 'warning')}`);
+        }
+      }
+
+      // Storage
+      if ('storage' in navigator && 'estimate' in navigator.storage) {
+        try {
+          const estimate = await navigator.storage.estimate();
+          const used = (estimate.usage / (1024 * 1024)).toFixed(2);
+          const quota = (estimate.quota / (1024 * 1024)).toFixed(2);
+          results.push(`<span class="key">Storage:</span> <span class="value">${used} MB / ${quota} MB used</span>`);
+        } catch (e) {
+          results.push(`<span class="key">Storage API:</span> ${status('Not available', 'warning')}`);
+        }
+      }
+
+      // Network
+      if ('connection' in navigator) {
+        const conn = navigator.connection;
+        results.push(`<span class="key">Network Type:</span> <span class="value">${conn.effectiveType || 'Unknown'}</span>`);
+        results.push(`<span class="key">Data Saver:</span> ${conn.saveData ? status('⚠ ON', 'warning') : status('✓ OFF', 'ok')}`);
+      }
+
+      output('perm-result', results.join('<br>'));
+    }
+
+    // Auto-run environment check on load
+    window.addEventListener('load', () => {
+      checkEnvironment();
+      checkServiceWorker();
+    });
+  </script>
+</body>
+</html>
