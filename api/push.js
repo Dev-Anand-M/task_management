@@ -134,10 +134,21 @@ export default async function handler(req, res) {
       });
     }
 
+    // Deduplicate target devices to avoid sending duplicate push notifications to the same device
+    const uniqueDevices = [];
+    const seenTargets = new Set();
+    for (const device of devices) {
+      const target = device.transport === 'fcm' ? device.token : device.endpoint;
+      if (target && !seenTargets.has(target)) {
+        seenTargets.add(target);
+        uniqueDevices.push(device);
+      }
+    }
+
     let sent = 0;
     let failed = 0;
 
-    const dispatches = devices.map(async (device) => {
+    const dispatches = uniqueDevices.map(async (device) => {
       const strategy = strategies.find(s => s.canHandle(device.transport));
       if (!strategy) {
         console.warn(`[Push Router] No strategy found for transport: ${device.transport}`);
