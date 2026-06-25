@@ -80,12 +80,12 @@ const AboutSettings = () => {
                                 </div>
                                 <div style={{ textAlign: 'left' }}>
                                     <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Zenith Mobile (Android)</p>
-                                    <p style={{ margin: '2px 0 0', fontSize: 'var(--text-sm)', fontWeight: 600 }}>v1.0.0 APK</p>
+                                    <p style={{ margin: '2px 0 0', fontSize: 'var(--text-sm)', fontWeight: 600 }}>v1.0.1 APK</p>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
                                 <a 
-                                    href="/zenith-v1.0.0.apk" 
+                                    href="/zenith-v1.0.1.apk" 
                                     download 
                                     style={{
                                         display: 'inline-flex',

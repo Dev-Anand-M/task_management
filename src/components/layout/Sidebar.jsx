@@ -185,7 +185,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 </div>
                             </div>
                             <a
-                                href="/zenith-v1.0.0.apk"
+                                href="/zenith-v1.0.1.apk"
                                 download
                                 style={{
                                     padding: '4px 10px',
