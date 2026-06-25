@@ -359,35 +359,37 @@ const QuizBuilder = () => {
             const result = await Promise.race([saveAction, timeoutPromise]);
 
             // --- SEND NOTIFICATIONS TO ASSIGNED MEMBERS ---
-            try {
-                // Determine who to notify
-                let targetMemberIds = [];
-                if (quizData.assignment_type === 'everyone') {
-                    targetMemberIds = members
-                        .filter(m => quizData.is_global || m.classroom_id === quizData.classroom_id)
-                        .filter(m => m.id !== user?.id) // Exclude admin who created the quiz
-                        .map(m => m.id);
-                } else {
-                    targetMemberIds = (quizData.assigned_to || []).filter(id => id !== user?.id); // Exclude admin
-                }
+            if (editingQuiz) {
+                try {
+                    // Determine who to notify
+                    let targetMemberIds = [];
+                    if (quizData.assignment_type === 'everyone') {
+                        targetMemberIds = members
+                            .filter(m => quizData.is_global || m.classroom_id === quizData.classroom_id)
+                            .filter(m => m.id !== user?.id) // Exclude admin who created the quiz
+                            .map(m => m.id);
+                    } else {
+                        targetMemberIds = (quizData.assigned_to || []).filter(id => id !== user?.id); // Exclude admin
+                    }
 
-                // Send notifications to each assigned member (excluding the admin who assigned it)
-                const notifyPromises = targetMemberIds.map(async (memberId) => {
-                    // 1. Create in-app notification
-                    await db.createNotification({
-                        user_id: memberId,
-                        classroom_id: quizData.classroom_id,
-                        title: editingQuiz ? 'Quiz Updated 📝' : 'New Quiz Assigned 🧠',
-                        message: `${quizData.title} has been ${editingQuiz ? 'updated' : 'assigned to you'}.`,
-                        type: 'quiz',
-                        link: `/quizzes`
+                    // Send notifications to each assigned member (excluding the admin who assigned it)
+                    const notifyPromises = targetMemberIds.map(async (memberId) => {
+                        // 1. Create in-app notification
+                        await db.createNotification({
+                            user_id: memberId,
+                            classroom_id: quizData.classroom_id,
+                            title: 'Quiz Updated 📝',
+                            message: `${quizData.title} has been updated.`,
+                            type: 'quiz',
+                            link: `/quizzes`
+                        });
                     });
-                });
 
-                await Promise.allSettled(notifyPromises);
-            } catch (notifyError) {
-                console.error('Failed to send notifications:', notifyError);
-                // Don't block the main flow if notifications fail
+                    await Promise.allSettled(notifyPromises);
+                } catch (notifyError) {
+                    console.error('Failed to send notifications:', notifyError);
+                    // Don't block the main flow if notifications fail
+                }
             }
             // -------------------------------
 

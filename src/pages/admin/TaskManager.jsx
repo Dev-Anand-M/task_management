@@ -251,35 +251,37 @@ const TaskManager = () => {
             }
 
             // --- ONE SIGNAL NOTIFICATION + IN-APP NOTIFICATION ---
-            try {
-                // Determine who to notify
-                let targetMemberIds = [];
-                if (taskData.assignment_type === 'everyone') {
-                    targetMemberIds = members
-                        .filter(m => taskData.is_global || m.classroom_id === taskData.classroom_id)
-                        .filter(m => m.id !== user?.id) // Exclude admin who created the task
-                        .map(m => m.id);
-                } else {
-                    targetMemberIds = (taskData.assigned_to || []).filter(id => id !== user?.id); // Exclude admin
-                }
+            if (editingTask) {
+                try {
+                    // Determine who to notify
+                    let targetMemberIds = [];
+                    if (taskData.assignment_type === 'everyone') {
+                        targetMemberIds = members
+                            .filter(m => taskData.is_global || m.classroom_id === taskData.classroom_id)
+                            .filter(m => m.id !== user?.id) // Exclude admin who created the task
+                            .map(m => m.id);
+                    } else {
+                        targetMemberIds = (taskData.assigned_to || []).filter(id => id !== user?.id); // Exclude admin
+                    }
 
-                // Send notifications to each assigned member (excluding the admin who assigned it)
-                const notifyPromises = targetMemberIds.map(async (memberId) => {
-                    // 1. Create in-app notification
-                    await db.createNotification({
-                        user_id: memberId,
-                        classroom_id: taskData.classroom_id,
-                        title: editingTask ? 'Task Updated 📝' : 'New Task Assigned 🚀',
-                        message: `${taskData.title} has been ${editingTask ? 'updated' : 'assigned to you'}.`,
-                        type: 'task',
-                        link: `/tasks/${editingTask ? editingTask.id : (result?.[0]?.id || '')}`
+                    // Send notifications to each assigned member (excluding the admin who assigned it)
+                    const notifyPromises = targetMemberIds.map(async (memberId) => {
+                        // 1. Create in-app notification
+                        await db.createNotification({
+                            user_id: memberId,
+                            classroom_id: taskData.classroom_id,
+                            title: 'Task Updated 📝',
+                            message: `${taskData.title} has been updated.`,
+                            type: 'task',
+                            link: `/tasks/${editingTask.id}`
+                        });
                     });
-                });
 
-                await Promise.allSettled(notifyPromises);
-            } catch (notifyError) {
-                console.error('Failed to send notifications:', notifyError);
-                // Don't block the main flow if notifications fail
+                    await Promise.allSettled(notifyPromises);
+                } catch (notifyError) {
+                    console.error('Failed to send notifications:', notifyError);
+                    // Don't block the main flow if notifications fail
+                }
             }
             // -------------------------------
             await loadData();
