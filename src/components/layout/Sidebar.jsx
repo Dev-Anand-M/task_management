@@ -489,6 +489,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                                         </li>
                                     ))}
                                 </ul>
+                            )}
+                        </>
+                    )}
                 </nav>
 
                 {/* User Profile Section */}
