@@ -152,7 +152,11 @@ const Login = () => {
                                     <div style={{ textAlign: 'right', marginTop: '-8px' }}>
                                         <button 
                                             type="button"
-                                            onClick={() => setIsResetMode(true)}
+                                            onClick={() => {
+                                                const subject = encodeURIComponent("Zenith Password Reset Request");
+                                                const body = encodeURIComponent(`Hi Dev,\n\nI need to reset my password for the Zenith App. My account email is: ${email || '[Enter your email here]'}\n\nThank you.`);
+                                                window.location.href = `mailto:dev.klinux@proton.me?subject=${subject}&body=${body}`;
+                                            }}
                                             style={{ 
                                                 background: 'none', 
                                                 border: 'none', 
