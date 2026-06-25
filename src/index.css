@@ -1450,10 +1450,16 @@ html[data-theme="dark"] .sidebar {
   flex-direction: column;
   align-items: center;
   text-align: center;
+  width: 130px;
+  transition: transform 0.2s ease;
+}
+
+.podium-item:hover {
+  transform: translateY(-4px);
 }
 
 .podium-rank {
-  width: 100px;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1487,6 +1493,9 @@ html[data-theme="dark"] .sidebar {
   position: relative;
   margin-top: -24px;
   margin-bottom: var(--space-sm);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .podium-crown {
@@ -3044,6 +3053,10 @@ input.bg-surface\/80 {
     gap: var(--space-sm) !important;
     padding: var(--space-lg) 0 !important;
     flex-wrap: wrap !important;
+  }
+
+  .podium-item {
+    width: auto !important;
   }
 
   .podium-item:nth-child(2) {

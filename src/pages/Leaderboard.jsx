@@ -149,26 +149,28 @@ const Leaderboard = () => {
                             Compete, climb ranks, and unlock badges
                         </p>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', marginTop: 'var(--space-md)' }}>
-                        <button
-                            onClick={() => setFilter('all')}
-                            style={{
-                                padding: '8px 16px', borderRadius: 'var(--radius-full)', border: 'none', cursor: 'pointer',
-                                fontWeight: 700, fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em',
-                                background: filter === 'all' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
-                                color: 'white', transition: 'all 0.2s'
-                            }}
-                        >All</button>
-                        <button
-                            onClick={() => setFilter('classroom')}
-                            style={{
-                                padding: '8px 16px', borderRadius: 'var(--radius-full)', border: 'none', cursor: 'pointer',
-                                fontWeight: 700, fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em',
-                                background: filter === 'classroom' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
-                                color: 'white', transition: 'all 0.2s'
-                            }}
-                        >My Classroom</button>
-                    </div>
+                    {user?.role === 'admin' && (
+                        <div style={{ display: 'flex', gap: '8px', marginTop: 'var(--space-md)' }}>
+                            <button
+                                onClick={() => setFilter('all')}
+                                style={{
+                                    padding: '8px 16px', borderRadius: 'var(--radius-full)', border: 'none', cursor: 'pointer',
+                                    fontWeight: 700, fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em',
+                                    background: filter === 'all' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
+                                    color: 'white', transition: 'all 0.2s'
+                                }}
+                            >All</button>
+                            <button
+                                onClick={() => setFilter('classroom')}
+                                style={{
+                                    padding: '8px 16px', borderRadius: 'var(--radius-full)', border: 'none', cursor: 'pointer',
+                                    fontWeight: 700, fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em',
+                                    background: filter === 'classroom' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
+                                    color: 'white', transition: 'all 0.2s'
+                                }}
+                            >My Classroom</button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Quick Stats Row */}
@@ -255,7 +257,7 @@ const Leaderboard = () => {
                             <div className="podium-avatar">
                                 <Avatar name={topThree[1].name} image={topThree[1].avatar_url} size="lg" />
                             </div>
-                            <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)' }}>{topThree[1].name}</h4>
+                            <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px' }}>{topThree[1].name}</h4>
                             <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[2].bg, color: 'white' }}>
                                 {RANK_TIERS[2].emoji} {RANK_TIERS[2].label}
                             </span>
@@ -275,7 +277,7 @@ const Leaderboard = () => {
                                 <div className="podium-crown">👑</div>
                                 <Avatar name={topThree[0].name} image={topThree[0].avatar_url} size="xl" />
                             </div>
-                            <h4 style={{ margin: '0 0 4px' }}>{topThree[0].name}</h4>
+                            <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-base)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px', fontWeight: 700 }}>{topThree[0].name}</h4>
                             <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[1].bg, color: 'white' }}>
                                 {RANK_TIERS[1].emoji} {RANK_TIERS[1].label}
                             </span>
@@ -294,7 +296,7 @@ const Leaderboard = () => {
                             <div className="podium-avatar">
                                 <Avatar name={topThree[2].name} image={topThree[2].avatar_url} size="lg" />
                             </div>
-                            <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)' }}>{topThree[2].name}</h4>
+                            <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px' }}>{topThree[2].name}</h4>
                             <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[3].bg, color: 'white' }}>
                                 {RANK_TIERS[3].emoji} {RANK_TIERS[3].label}
                             </span>
