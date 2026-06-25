@@ -25,7 +25,7 @@ export class FCMStrategy extends DeliveryStrategy {
         android: {
           priority: 'high',
           notification: {
-            icon: 'ic_launcher_round',
+            icon: 'ic_launcher',
             channelId: payload.channelId || 'tasks'
           }
         },
