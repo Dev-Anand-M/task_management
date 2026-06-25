@@ -100,15 +100,38 @@ async function main() {
         return;
     }
 
-    // Path to zenith.apk
-    // Check root and public directory
-    let apkPath = path.join(__dirname, '..', 'zenith.apk');
-    if (!fs.existsSync(apkPath)) {
-        apkPath = path.join(__dirname, '..', 'public', 'zenith.apk');
+    // Candidate APK filenames
+    const cleanTagName = tagName.replace(/^v/, '');
+    const possibleNames = [
+        `zenith-${tagName}.apk`,
+        `zenith-v${cleanTagName}.apk`,
+        `zenith-${cleanTagName}.apk`,
+        'zenith.apk'
+    ];
+
+    let apkPath = null;
+    let fileName = null;
+
+    for (const name of possibleNames) {
+        // check root
+        const rootPath = path.join(__dirname, '..', name);
+        if (fs.existsSync(rootPath)) {
+            apkPath = rootPath;
+            fileName = name;
+            break;
+        }
+        // check public
+        const publicPath = path.join(__dirname, '..', 'public', name);
+        if (fs.existsSync(publicPath)) {
+            apkPath = publicPath;
+            fileName = name;
+            break;
+        }
     }
 
-    if (!fs.existsSync(apkPath)) {
-        console.error(`\nError: APK file not found. Checked both root and public/ directories.`);
+    if (!apkPath) {
+        console.error(`\nError: APK file not found. Checked both root and public/ directories for these names:`);
+        possibleNames.forEach(name => console.error(`  - ${name}`));
         rl.close();
         return;
     }
@@ -155,10 +178,9 @@ async function main() {
         const uploadUrlTemplate = release.upload_url; // Format: https://uploads.github.com/repos/owner/repo/releases/id/assets{?name,label}
         const uploadBaseUrl = uploadUrlTemplate.split('{')[0];
 
-        // 6. Upload zenith.apk asset
-        console.log(`\nUploading zenith.apk to release...`);
+        // 6. Upload asset
+        console.log(`\nUploading ${fileName} to release...`);
         const fileBuffer = fs.readFileSync(apkPath);
-        const fileName = 'zenith.apk';
         
         // Extract host and path from upload url
         // e.g. https://uploads.github.com/repos/Dev-Anand-M/task_management/releases/12345/assets
@@ -177,7 +199,7 @@ async function main() {
             body: fileBuffer
         });
 
-        console.log(`\n🎉 Success! zenith.apk uploaded and release is published.`);
+        console.log(`\n🎉 Success! ${fileName} uploaded and release is published.`);
         console.log(`View it here: ${release.html_url}`);
 
     } catch (error) {

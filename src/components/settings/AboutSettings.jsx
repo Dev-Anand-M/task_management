@@ -1,5 +1,6 @@
 import { Card } from '../common';
 import { Shield, Download, Github, Smartphone } from 'lucide-react';
+import { PlatformService } from '../../services/infrastructure/PlatformService';
 
 const AboutSettings = () => {
     return (
@@ -40,96 +41,98 @@ const AboutSettings = () => {
                 </div>
             </div>
 
-            <div style={{
-                marginTop: 'var(--space-lg)',
-                paddingTop: 'var(--space-lg)',
-                borderTop: '1px solid var(--border)'
-            }}>
-                <h4 style={{ margin: '0 0 var(--space-md) 0', fontSize: 'var(--text-md)', fontWeight: 600 }}>Mobile App</h4>
-                
+            {!PlatformService.isNative() && (
                 <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 'var(--space-sm)'
+                    marginTop: 'var(--space-lg)',
+                    paddingTop: 'var(--space-lg)',
+                    borderTop: '1px solid var(--border)'
                 }}>
+                    <h4 style={{ margin: '0 0 var(--space-md) 0', fontSize: 'var(--text-md)', fontWeight: 600 }}>Mobile App</h4>
+                    
                     <div style={{
-                        padding: 'var(--space-md)',
-                        background: 'color-mix(in srgb, var(--primary-500), transparent 95%)',
-                        border: '1px dashed color-mix(in srgb, var(--primary-500), transparent 70%)',
-                        borderRadius: 'var(--radius-md)',
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        flexWrap: 'wrap',
-                        gap: 'var(--space-md)'
+                        flexDirection: 'column',
+                        gap: 'var(--space-sm)'
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flex: 1, minWidth: '200px' }}>
-                            <div style={{
-                                width: '36px',
-                                height: '36px',
-                                background: '#10b981',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'white'
-                            }}>
-                                <Smartphone size={18} />
-                            </div>
-                            <div style={{ textAlign: 'left' }}>
-                                <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Zenith Mobile (Android)</p>
-                                <p style={{ margin: '2px 0 0', fontSize: 'var(--text-sm)', fontWeight: 600 }}>v1.0.0 APK</p>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
-                            <a 
-                                href="/zenith.apk" 
-                                download 
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    padding: '8px 16px',
+                        <div style={{
+                            padding: 'var(--space-md)',
+                            background: 'color-mix(in srgb, var(--primary-500), transparent 95%)',
+                            border: '1px dashed color-mix(in srgb, var(--primary-500), transparent 70%)',
+                            borderRadius: 'var(--radius-md)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: 'var(--space-md)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flex: 1, minWidth: '200px' }}>
+                                <div style={{
+                                    width: '36px',
+                                    height: '36px',
                                     background: '#10b981',
-                                    color: 'white',
-                                    borderRadius: 'var(--radius-md)',
-                                    fontSize: 'var(--text-sm)',
-                                    fontWeight: 600,
-                                    textDecoration: 'none',
-                                    transition: 'opacity 0.2s',
-                                    cursor: 'pointer'
-                                }}
-                                className="hover:opacity-90 active:scale-95"
-                            >
-                                <Download size={14} /> Download APK
-                            </a>
-                            <a 
-                                href="https://github.com/Dev-Anand-M/task_management/releases" 
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                    display: 'inline-flex',
+                                    borderRadius: '50%',
+                                    display: 'flex',
                                     alignItems: 'center',
-                                    gap: '6px',
-                                    padding: '8px 16px',
-                                    background: 'var(--surface-hover)',
-                                    color: 'var(--text)',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: 'var(--radius-md)',
-                                    fontSize: 'var(--text-sm)',
-                                    fontWeight: 600,
-                                    textDecoration: 'none',
-                                    transition: 'background-color 0.2s, color 0.2s',
-                                    cursor: 'pointer'
-                                }}
-                                className="hover:bg-var(--border) active:scale-95"
-                            >
-                                <Github size={14} /> GitHub Releases
-                            </a>
+                                    justifyContent: 'center',
+                                    color: 'white'
+                                }}>
+                                    <Smartphone size={18} />
+                                </div>
+                                <div style={{ textAlign: 'left' }}>
+                                    <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Zenith Mobile (Android)</p>
+                                    <p style={{ margin: '2px 0 0', fontSize: 'var(--text-sm)', fontWeight: 600 }}>v1.0.0 APK</p>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
+                                <a 
+                                    href="/zenith-v1.0.0.apk" 
+                                    download 
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '8px 16px',
+                                        background: '#10b981',
+                                        color: 'white',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontSize: 'var(--text-sm)',
+                                        fontWeight: 600,
+                                        textDecoration: 'none',
+                                        transition: 'opacity 0.2s',
+                                        cursor: 'pointer'
+                                    }}
+                                    className="hover:opacity-90 active:scale-95"
+                                >
+                                    <Download size={14} /> Download APK
+                                </a>
+                                <a 
+                                    href="https://github.com/Dev-Anand-M/task_management/releases" 
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '8px 16px',
+                                        background: 'var(--surface-hover)',
+                                        color: 'var(--text)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontSize: 'var(--text-sm)',
+                                        fontWeight: 600,
+                                        textDecoration: 'none',
+                                        transition: 'background-color 0.2s, color 0.2s',
+                                        cursor: 'pointer'
+                                    }}
+                                    className="hover:bg-var(--border) active:scale-95"
+                                >
+                                    <Github size={14} /> GitHub Releases
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
         </Card>
     );
 };
