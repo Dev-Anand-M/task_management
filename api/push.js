@@ -134,14 +134,28 @@ export default async function handler(req, res) {
       });
     }
 
+    // Sort devices to prioritize 'fcm' (native) over 'web' subscriptions
+    const sortedDevices = [...devices].sort((a, b) => {
+      if (a.transport === 'fcm' && b.transport !== 'fcm') return -1;
+      if (a.transport !== 'fcm' && b.transport === 'fcm') return 1;
+      return 0;
+    });
+
     // Deduplicate target devices to avoid sending duplicate push notifications to the same device
     const uniqueDevices = [];
     const seenTargets = new Set();
-    for (const device of devices) {
-      const target = device.transport === 'fcm' ? device.token : device.endpoint;
-      if (target && !seenTargets.has(target)) {
-        seenTargets.add(target);
-        uniqueDevices.push(device);
+    for (const device of sortedDevices) {
+      let target = device.transport === 'fcm' ? device.token : device.endpoint;
+      if (target) {
+        // If it's a Google FCM web push endpoint, extract the token part to prevent duplicate native + web push delivery
+        if (target.includes('fcm.googleapis.com/fcm/send/')) {
+          const parts = target.split('/');
+          target = parts[parts.length - 1];
+        }
+        if (!seenTargets.has(target)) {
+          seenTargets.add(target);
+          uniqueDevices.push(device);
+        }
       }
     }
 

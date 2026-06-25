@@ -376,17 +376,6 @@ const TaskDetail = ({ taskId, onBack, onUpdate }) => {
                 });
             }
 
-            // Notify Admins
-            const targetClassroom = user.classroom_id || task.classroom_id;
-            if (targetClassroom) {
-                await db.notifyAdmins(targetClassroom, {
-                    title: submission?.status === 'rejected' ? 'Task Resubmitted' : 'New Submission',
-                    message: `${user.name} submitted "${task.title}" for review.`,
-                    type: 'info',
-                    link: `/admin/evaluations/${savedSubmission.id}`
-                });
-            }
-
             setShowSubmitModal(false);
             onUpdate();
             await loadTask();
