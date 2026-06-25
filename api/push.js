@@ -1,13 +1,38 @@
 import webpush from 'web-push';
+import admin from 'firebase-admin';
 import { createClient } from '@supabase/supabase-js';
+import { WebPushStrategy } from './strategies/WebPushStrategy.js';
+import { FCMStrategy } from './strategies/FCMStrategy.js';
 
-// ── Push delivery options ─────────────────────────────────────────────────────
-// TTL: how long (seconds) the push service queues the message if device is offline.
-//      Default is 0 (discard immediately) — this is why background push was failing!
-// urgency: 'high' tells Android/Chrome to wake the device and deliver immediately.
-const PUSH_OPTIONS = {
-  TTL: 86400,         // 24 hours — keeps message queued until device comes online
-  urgency: 'high',    // Triggers immediate delivery, wakes device from Doze mode
+// Setup VAPID Web Push
+const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:dev.klinux@proton.me';
+if (VAPID_PUBLIC && VAPID_PRIVATE) {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
+}
+
+// Setup Firebase Admin SDK
+if (!admin.apps.length && process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+  } catch (err) {
+    console.warn('[FCM Admin] Initialization error:', err.message);
+  }
+}
+
+// Delivery strategies registry
+const strategies = [
+  new WebPushStrategy(),
+  new FCMStrategy()
+];
+
+const DEFAULT_OPTIONS = {
+  TTL: 86400,
+  urgency: 'high'
 };
 
 export default async function handler(req, res) {
@@ -18,7 +43,6 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method === 'GET') {
-    const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
     if (!VAPID_PUBLIC) {
       return res.status(500).json({ error: 'VAPID public key not configured on server' });
     }
@@ -27,7 +51,7 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // ── Auth ────────────────────────────────────────────────────────────────────
+  // Auth Header
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Authentication required' });
@@ -37,7 +61,7 @@ export default async function handler(req, res) {
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
-  // Verify the caller's session
+  // Verify Auth
   try {
     const authClient = createClient(supabaseUrl, supabaseAnonKey);
     const { data: { user }, error } = await authClient.auth.getUser(authHeader.split(' ')[1]);
@@ -46,92 +70,98 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Auth verification failed' });
   }
 
-  // ── VAPID ───────────────────────────────────────────────────────────────────
-  const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
-  const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
-  const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:dev.klinux@proton.me';
-
-  if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
-    return res.status(500).json({ error: 'VAPID keys not configured on server' });
-  }
-
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
-
-  // ── Request body ────────────────────────────────────────────────────────────
-  const { subscription, user_ids, title, body, url } = req.body;
-
-  const payload = JSON.stringify({
+  const { subscription, user_ids, title, body, url, channelId } = req.body;
+  const payload = {
     title: title || 'Zenith',
-    body: body || 'You have a new notification',
+    body: body || 'New Notification Alert',
     url: url || '/',
-    tag: 'zenith-' + Date.now(),
-    timestamp: Date.now(),
-  });
+    channelId: channelId || 'tasks'
+  };
 
-  // Mode 1: Direct subscription push (for test push / single target)
+  const supabase = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey);
+
+  // 1. Direct Web Push (testing)
   if (subscription?.endpoint) {
-    try {
-      await webpush.sendNotification(
-        { endpoint: subscription.endpoint, keys: subscription.keys },
-        payload,
-        PUSH_OPTIONS
-      );
-      return res.status(200).json({ success: true, sent: 1 });
-    } catch (err) {
-      if (err.statusCode === 410 || err.statusCode === 404) {
-        try {
-          const adminClient = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey);
-          await adminClient.from('profiles')
-            .update({ push_subscription: null })
-            .eq('push_subscription->>endpoint', subscription.endpoint);
-        } catch (dbErr) {
-          console.warn('[Push] Auto-clear failed:', dbErr.message);
-        }
-        return res.status(410).json({ success: false, error: 'Subscription expired', expired: true });
-      }
-      return res.status(500).json({ success: false, error: err.message });
-    }
+    const strategy = new WebPushStrategy();
+    const result = await strategy.send({ endpoint: subscription.endpoint, keys: subscription.keys }, payload, DEFAULT_OPTIONS);
+    return res.status(result.status === 'sent' ? 200 : 500).json(result);
   }
 
-  // Mode 2: Multi-user push (look up subscriptions from DB)
+  // 2. Dispatch Router
   if (Array.isArray(user_ids) && user_ids.length > 0) {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey);
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, push_subscription')
-      .in('id', user_ids);
+    const { data: devices, error: dbErr } = await supabase
+      .from('push_subscriptions')
+      .select('*')
+      .eq('is_active', true)
+      .eq('notifications_enabled', true)
+      .in('user_id', user_ids);
 
-    if (!profiles || profiles.length === 0) {
-      return res.status(200).json({ success: true, sent: 0, message: 'No profiles found' });
+    if (dbErr) {
+      console.error('[Push Router] DB fetch error:', dbErr);
+      return res.status(500).json({ error: 'Failed to fetch device subscriptions' });
     }
 
-    const subs = profiles.filter((p) => p.push_subscription?.endpoint);
-    if (subs.length === 0) {
-      return res.status(200).json({ success: true, sent: 0, message: 'No active push subscriptions' });
+    if (!devices || devices.length === 0) {
+      return res.status(200).json({ success: true, sent: 0, message: 'No active device subscriptions' });
     }
 
-    const results = await Promise.allSettled(
-      subs.map((p) =>
-        webpush.sendNotification(
-          { endpoint: p.push_subscription.endpoint, keys: p.push_subscription.keys },
-          payload,
-          PUSH_OPTIONS
-        ).catch(async (err) => {
-          // Auto-clear expired subscriptions
-          if (err.statusCode === 404 || err.statusCode === 410) {
-            const adminClient = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey);
-            await adminClient.from('profiles').update({ push_subscription: null }).eq('id', p.id);
+    let sent = 0;
+    let failed = 0;
+
+    const dispatches = devices.map(async (device) => {
+      const strategy = strategies.find(s => s.canHandle(device.transport));
+      if (!strategy) {
+        console.warn(`[Push Router] No strategy found for transport: ${device.transport}`);
+        return;
+      }
+
+      // Log queued event to notification_logs
+      let logEntry = null;
+      try {
+        const { data } = await supabase.from('notification_logs').insert({
+          device_id: device.device_id,
+          type: device.type,
+          status: 'queued'
+        }).select().single();
+        logEntry = data;
+      } catch (logErr) {
+        console.warn('[Push Router] Failed to create log entry:', logErr.message);
+      }
+
+      const result = await strategy.send(device, payload, DEFAULT_OPTIONS);
+
+      // Update log state
+      if (logEntry) {
+        try {
+          await supabase.from('notification_logs').update({
+            notification_id: result.messageId || null,
+            status: result.status,
+            failure_reason: result.reason || null
+          }).eq('id', logEntry.id);
+        } catch (logUpdateErr) {
+          console.warn('[Push Router] Failed to update log entry:', logUpdateErr.message);
+        }
+      }
+
+      if (result.status === 'sent') {
+        sent++;
+      } else {
+        failed++;
+        if (result.status === 'expired') {
+          try {
+            await supabase.from('push_subscriptions')
+              .update({ is_active: false })
+              .eq('id', device.id);
+          } catch (dbUpdateErr) {
+            console.warn('[Push Router] Failed to deactivate expired token:', dbUpdateErr.message);
           }
-          throw err;
-        })
-      )
-    );
+        }
+      }
+    });
 
-    const sent = results.filter((r) => r.status === 'fulfilled').length;
-    const failed = results.filter((r) => r.status === 'rejected').length;
-
+    await Promise.all(dispatches);
     return res.status(200).json({ success: true, sent, failed });
   }
 
-  return res.status(400).json({ error: 'Provide either subscription or user_ids' });
+  return res.status(400).json({ error: 'Missing destination targets' });
 }

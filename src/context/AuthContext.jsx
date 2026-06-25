@@ -24,6 +24,27 @@ export const AuthProvider = ({ children }) => {
 
     profileRef.current = profile;
 
+    // Unified client-side NotificationManager hook
+    useEffect(() => {
+        const syncNotifications = async () => {
+            if (user?.id) {
+                try {
+                    const { NotificationManager } = await import('../services/NotificationManager');
+                    await NotificationManager.initialize(user.id);
+                    await NotificationManager.register();
+                } catch (e) {
+                    console.warn('[AuthContext] Notification registration failed:', e);
+                }
+            } else {
+                try {
+                    const { NotificationManager } = await import('../services/NotificationManager');
+                    await NotificationManager.unregister();
+                } catch (e) {}
+            }
+        };
+        syncNotifications();
+    }, [user?.id]);
+
     // fetchProfile as useCallback — stored in ref so closures never go stale
     const fetchProfile = useCallback(async (userId, force = false) => {
         if (!userId) return null;

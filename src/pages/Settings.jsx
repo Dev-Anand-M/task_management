@@ -116,6 +116,7 @@ const Settings = () => {
     const [isInstalled, setIsInstalled] = useState(false);
     const [swStatus, setSwStatus] = useState('Checking...');
     const [subCount, setSubCount] = useState(0);
+    const [dbDevicesCount, setDbDevicesCount] = useState(0);
 
     // Check SW and Subscriptions status
     useEffect(() => {
@@ -129,9 +130,24 @@ const Settings = () => {
                     setSubCount(sub ? 1 : 0);
                 } catch (e) { setSwStatus('Error'); }
             } else { setSwStatus('Unsupported'); }
+
+            if (user?.id) {
+                try {
+                    const { count, error } = await supabase
+                        .from('push_subscriptions')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('user_id', user.id)
+                        .eq('is_active', true);
+                    if (!error) {
+                        setDbDevicesCount(count || 0);
+                    }
+                } catch (e) {
+                    console.warn('[Settings] Failed to fetch device count:', e);
+                }
+            }
         };
         checkStatus();
-    }, [notifications.push]);
+    }, [notifications.push, user?.id]);
 
     // Load AI settings when provider changes or on mount
     useEffect(() => {
@@ -200,7 +216,7 @@ const Settings = () => {
         if (user) {
             setNotifications(prev => {
                 const dbNotifications = user.preferences?.notifications || {};
-                const hasSubscription = !!user.push_subscription;
+                const hasSubscription = dbDevicesCount > 0 || (user.preferences?.notifications?.push === true);
                 return {
                     ...prev,
                     ...dbNotifications,
@@ -578,48 +594,36 @@ const Settings = () => {
                                         checked={notifications[item.key]}
                                         onChange={async (e) => {
                                              const isChecked = e.target.checked;
-                                             
                                              if (item.key === 'push') {
-                                                  setNotifications(prev => ({ ...prev, push: isChecked }));
-                                                  
-                                                  try {
-                                                      const push = await import('../lib/pushNotifications');
-                                                      if (isChecked) {
-                                                          const subscription = await push.subscribe();
-                                                          
-                                                          if (subscription) {
-                                                              const { error } = await supabase.from('profiles').update({
-                                                                  push_subscription: subscription,
-                                                                  preferences: { 
-                                                                      ...user.preferences, 
-                                                                      notifications: { ...notifications, push: true } 
-                                                                  }
-                                                              }).eq('id', user.id);
-                                                              
-                                                              if (error) {
-                                                                  alert('Failed to save push subscription.');
-                                                                  setNotifications(prev => ({ ...prev, push: false }));
-                                                                  return;
-                                                              }
-                                                              await forceRefresh();
-                                                          }
-                                                      } else {
-                                                          await push.unsubscribe();
-                                                          
-                                                          await supabase.from('profiles').update({
-                                                              push_subscription: null,
-                                                              preferences: { 
-                                                                  ...user.preferences, 
-                                                                  notifications: { ...notifications, push: false } 
-                                                              }
-                                                          }).eq('id', user.id);
-                                                          await forceRefresh();
-                                                      }
-                                                  } catch (err) {
-                                                      console.error('[Settings] Push toggle error:', err);
-                                                      alert(`Error: ${err.message}`);
-                                                      setNotifications(prev => ({ ...prev, push: !isChecked }));
-                                                  }
+                                                setNotifications(prev => ({ ...prev, push: isChecked }));
+                                                
+                                                try {
+                                                    const { NotificationManager } = await import('../services/NotificationManager');
+                                                    await NotificationManager.initialize(user.id);
+                                                    if (isChecked) {
+                                                        await NotificationManager.register();
+                                                        await NotificationManager.setEnabled(true);
+                                                    } else {
+                                                        await NotificationManager.setEnabled(false);
+                                                    }
+                                                    
+                                                    // Maintain profile preferences sync
+                                                    await supabase.from('profiles').update({
+                                                        preferences: { 
+                                                            ...user.preferences, 
+                                                            notifications: { 
+                                                                ...(user.preferences?.notifications || {}), 
+                                                                push: isChecked 
+                                                            } 
+                                                        }
+                                                    }).eq('id', user.id);
+                                                    
+                                                    await forceRefresh();
+                                                } catch (err) {
+                                                    console.error('[Settings] Push toggle error:', err);
+                                                    alert(`Error: ${err.message}`);
+                                                    setNotifications(prev => ({ ...prev, push: !isChecked }));
+                                                }
                                              } else {
                                                  handleNotificationChange(item.key, isChecked);
                                              }
@@ -732,49 +736,29 @@ const Settings = () => {
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <span>Cloud Database:</span>
-                                <span>{user.push_subscription ? 1 : (user.preferences?.push_subscriptions?.length || 0)} device(s)</span>
+                                <span>{dbDevicesCount} active device(s)</span>
                             </div>
                         </div>
 
                         <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
                             <Button 
-                                variant="ghost" 
+                                variant="outline" 
                                 size="sm" 
                                 style={{ flex: 1, color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.3)', fontSize: '11px' }}
                                 onClick={async () => {
-                                    if (!window.confirm("This will force recreate your push subscription with the latest VAPID keys. Continue?")) {
+                                    if (!window.confirm("This will force recreate your push subscription for this device. Continue?")) {
                                         return;
                                     }
                                     
                                     try {
-                                        const push = await import('../lib/pushNotifications');
-                                        await push.unsubscribe();
+                                        const { NotificationManager } = await import('../services/NotificationManager');
+                                        await NotificationManager.initialize(user.id);
+                                        await NotificationManager.unregister();
+                                        await NotificationManager.register();
                                         
-                                        await supabase.from('profiles').update({
-                                            push_subscription: null,
-                                            preferences: { 
-                                                ...user.preferences, 
-                                                notifications: { ...notifications, push: false } 
-                                            }
-                                        }).eq('id', user.id);
-                                        
-                                        await new Promise(resolve => setTimeout(resolve, 500));
-                                        
-                                        const subscription = await push.subscribe();
-                                        
-                                        if (subscription) {
-                                            await supabase.from('profiles').update({
-                                                push_subscription: subscription,
-                                                preferences: { 
-                                                    ...user.preferences, 
-                                                    notifications: { ...notifications, push: true } 
-                                                }
-                                            }).eq('id', user.id);
-                                            
-                                            setNotifications(prev => ({ ...prev, push: true }));
-                                            await forceRefresh();
-                                            alert('✅ Push subscription recreated!');
-                                        }
+                                        setNotifications(prev => ({ ...prev, push: true }));
+                                        await forceRefresh();
+                                        alert('✅ Device push subscription recreated!');
                                     } catch (error) {
                                         alert('Error: ' + error.message);
                                     }
@@ -811,19 +795,6 @@ const Settings = () => {
                                     style={{ flex: 1, fontSize: '11px' }}
                                     onClick={async () => {
                                         try {
-                                            // Get user's push subscription from database
-                                            const { data: profile } = await supabase
-                                                .from('profiles')
-                                                .select('push_subscription')
-                                                .eq('id', user.id)
-                                                .single();
-                                            
-                                            if (!profile?.push_subscription) {
-                                                alert("⚠️ No push subscription found.\n\nTry toggling Push Notifications OFF and ON again.");
-                                                return;
-                                            }
-                                            
-                                            
                                             const { data: { session } } = await supabase.auth.getSession();
                                             const res = await fetch(`${window.location.origin}/api/push`, {
                                                 method: 'POST',
@@ -832,7 +803,7 @@ const Settings = () => {
                                                     'Authorization': `Bearer ${session?.access_token}`
                                                 },
                                                 body: JSON.stringify({
-                                                    subscription: profile.push_subscription,
+                                                    user_ids: [user.id],
                                                     title: 'Push Test 🔔',
                                                     body: 'If you see this, push notifications are working!',
                                                     url: '/settings'
@@ -842,9 +813,7 @@ const Settings = () => {
                                             const data = await res.json();
                                             
                                             if (data.success) {
-                                                alert(`✅ Test notification sent!\n\nCheck your device for the notification.\n\nNote: Close the app to test background notifications.`);
-                                            } else if (data.expired) {
-                                                alert(`⚠️ Push subscription expired.\n\nPlease toggle Push Notifications OFF and ON again.`);
+                                                alert(`✅ Test notification dispatched!\n\nSent successfully to ${data.sent} device(s).\n\nNote: If using native emulator/backgrounding, keep the app closed to test native alert banners.`);
                                             } else {
                                                 alert("❌ Failed: " + (data.error || 'Unknown error'));
                                             }
