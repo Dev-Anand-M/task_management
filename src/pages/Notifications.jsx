@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Button, Badge, Modal } from '../components/common';
 import { useAuth } from '../context/AuthContext';
 import * as db from '../services/database';
+import { supabase } from '../lib/supabase';
 import {
     Bell,
     CheckCircle,
@@ -23,28 +24,42 @@ const Notifications = () => {
 
     useEffect(() => {
         if (user) {
-            loadNotifications();
+            loadNotifications(true);
+
+            // Subscribe to realtime notification updates
+            const channel = supabase
+                .channel(`notifications-page-${user.id}`)
+                .on('postgres_changes', { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'notifications', 
+                    filter: `user_id=eq.${user.id}` 
+                }, () => {
+                    loadNotifications(false);
+                })
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
         }
     }, [user]);
 
-    const loadNotifications = async () => {
-        setLoading(true);
+    const loadNotifications = async (showSpinner = true) => {
+        if (showSpinner) setLoading(true);
 
-        // Safety timeout to prevent infinite loading
         const safetyTimeout = setTimeout(() => {
-            if (loading) {
-                console.warn('Notifications load taking too long, forcing loading to false');
-                setLoading(false);
-            }
+            setLoading(false);
         }, 8000);
 
         try {
             const data = await db.getNotifications(user.id);
-            setNotifications(data);
+            setNotifications(data || []);
         } catch (error) {
             console.error('Error loading notifications:', error);
         } finally {
-            setLoading(false);
+            clearTimeout(safetyTimeout);
+            if (showSpinner) setLoading(false);
         }
     };
 

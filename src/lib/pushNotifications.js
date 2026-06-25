@@ -1,19 +1,20 @@
-/**
- * Push Notifications — Clean Web Push (VAPID) implementation.
- * No Firebase. No OneSignal. Just the Web Push API.
- */
+import { PlatformService } from '../services/infrastructure/PlatformService';
+
 
 let cachedVapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 async function getVAPIDPublicKey() {
   if (cachedVapidKey) return cachedVapidKey;
   try {
-    const res = await fetch('/api/push');
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-    const data = await res.json();
-    if (data.publicKey) {
-      cachedVapidKey = data.publicKey;
-      return cachedVapidKey;
+    const res = await fetch(`${PlatformService.getApiUrl()}/api/push`);
+    if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+      const data = await res.json();
+      if (data.publicKey) {
+        cachedVapidKey = data.publicKey;
+        return cachedVapidKey;
+      }
+    } else {
+      throw new Error(`HTTP error or invalid content-type: ${res.status}`);
     }
   } catch (err) {
     console.error('[Push] Failed to fetch VAPID key from server:', err);

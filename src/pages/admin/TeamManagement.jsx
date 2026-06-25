@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Button, Badge, Avatar, Modal, Input, ProgressBar } from '../../components/common';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
     Search,
     UserPlus,
@@ -18,9 +19,11 @@ import {
 import * as db from '../../services/database';
 import { formatDate, BADGES } from '../../utils/constants';
 import { useMiniReload } from '../../hooks/useMiniReload';
+import { PlatformService } from '../../services/infrastructure/PlatformService';
 
 const TeamManagement = () => {
     const navigate = useNavigate();
+    const { user, isAdmin } = useAuth();
     const [members, setMembers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedMember, setSelectedMember] = useState(null);
@@ -146,11 +149,13 @@ const TeamManagement = () => {
             {/* Header */}
             <div className="flex flex-mobile-col justify-between items-center mb-lg">
                 <p style={{ color: 'var(--text-muted)' }}>
-                    View and manage your team members
+                    {isAdmin ? 'View and manage your team members' : 'View the members in your classroom'}
                 </p>
-                <Button icon={UserPlus} onClick={() => navigate('/admin/invite-codes')}>
-                    Manage Invites
-                </Button>
+                {isAdmin && (
+                    <Button icon={UserPlus} onClick={() => navigate('/admin/invite-codes')}>
+                        Manage Invites
+                    </Button>
+                )}
             </div>
 
             {/* Search */}
@@ -264,22 +269,24 @@ const TeamManagement = () => {
                                             {formatDate(member.created_at)}
                                         </td>
                                         <td className="flex justify-end items-center gap-xs">
+                                            {isAdmin && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => {
+                                                        setSelectedMember(member);
+                                                        setShowPasswordModal(true);
+                                                    }}
+                                                    title="Directly Set New Password"
+                                                    style={{ color: 'var(--warning-500)' }}
+                                                >
+                                                    <Key size={16} />
+                                                </Button>
+                                            )}
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                onClick={() => {
-                                                    setSelectedMember(member);
-                                                    setShowPasswordModal(true);
-                                                }}
-                                                title="Directly Set New Password"
-                                                style={{ color: 'var(--warning-500)' }}
-                                            >
-                                                <Key size={16} />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => navigate(`/admin/member/${member.id}`)}
+                                                onClick={() => navigate(isAdmin ? `/admin/member/${member.id}` : `/profile/${member.id}`)}
                                                 title="View Details"
                                             >
                                                 <Eye size={16} />
@@ -341,21 +348,23 @@ const TeamManagement = () => {
                             <div className="flex justify-between items-center mt-md pt-md border-t">
                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Joined {formatDate(member.created_at)}</span>
                                 <div className="flex gap-sm">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                            setSelectedMember(member);
-                                            setShowPasswordModal(true);
-                                        }}
-                                        style={{ color: 'var(--warning-500)', padding: '0.5rem' }}
-                                    >
-                                        <Key size={16} />
-                                    </Button>
+                                    {isAdmin && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setSelectedMember(member);
+                                                setShowPasswordModal(true);
+                                            }}
+                                            style={{ color: 'var(--warning-500)', padding: '0.5rem' }}
+                                        >
+                                            <Key size={16} />
+                                        </Button>
+                                    )}
                                     <Button
                                         variant="primary"
                                         size="sm"
-                                        onClick={() => navigate(`/admin/member/${member.id}`)}
+                                        onClick={() => navigate(isAdmin ? `/admin/member/${member.id}` : `/profile/${member.id}`)}
                                         style={{ padding: '0.5rem 1rem' }}
                                     >
                                         View Profile
@@ -424,11 +433,11 @@ const TeamManagement = () => {
                         wordBreak: 'break-all',
                         fontSize: 'var(--text-sm)'
                     }}>
-                        {window.location.origin}/register
+                        {PlatformService.getApiUrl()}/register
                     </div>
                     <Button
                         onClick={() => {
-                            navigator.clipboard.writeText(`${window.location.origin}/register`);
+                            navigator.clipboard.writeText(`${PlatformService.getApiUrl()}/register`);
                             alert('Link copied to clipboard!');
                         }}
                     >

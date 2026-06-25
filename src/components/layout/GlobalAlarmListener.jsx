@@ -71,7 +71,7 @@ const GlobalAlarmListener = () => {
                 
                 if (latest.id !== lastNotifId) {
                     localStorage.setItem('last_notif_id', latest.id);
-                    if (Notification.permission === 'granted') {
+                    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                         new Notification(latest.title, {
                             body: latest.message,
                             icon: '/zenith.png'
@@ -123,7 +123,7 @@ const GlobalAlarmListener = () => {
         setActiveAlarm(routine);
         setShowStopModal(true);
         
-        if (Notification.permission === 'granted') {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
             new Notification(`⏰ Alarm: ${routine.title}`, {
                 body: `It's time for your scheduled routine! Respond within 15 minutes.`,
                 icon: '/zenith.png'
@@ -137,6 +137,10 @@ const GlobalAlarmListener = () => {
 
     const toggleEnabled = async () => {
         if (!enabled) {
+            if (typeof Notification === 'undefined') {
+                alert('Notifications are not supported on this device/browser.');
+                return;
+            }
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') {
                 alert('Please enable notifications to use alarms.');
@@ -201,33 +205,10 @@ const GlobalAlarmListener = () => {
             if (!user?.id) {
                 return;
             }
-            
-            if (typeof window === 'undefined' || !('Notification' in window)) {
-                return;
-            }
-            
-            if (Notification.permission !== 'granted') {
-                return;
-            }
-
             try {
-                const push = await import('../../lib/pushNotifications');
-                
-                if (push.isSupported()) {
-                    const activeSub = await push.subscribe();
-                    
-                    if (activeSub) {
-                        const hasSubChanged = !user.push_subscription || 
-                            user.push_subscription.endpoint !== activeSub.endpoint ||
-                            JSON.stringify(user.push_subscription.keys) !== JSON.stringify(activeSub.keys);
-                        
-                        if (hasSubChanged) {
-                            await routineService.supabase.from('profiles').update({
-                                push_subscription: activeSub
-                            }).eq('id', user.id);
-                        }
-                    }
-                }
+                const { NotificationManager } = await import('../../services/NotificationManager');
+                await NotificationManager.initialize(user.id);
+                await NotificationManager.register();
             } catch (err) {
                 // Silenced errors to prevent developer console clutter during push notifications pause
             }
@@ -265,51 +246,6 @@ const GlobalAlarmListener = () => {
                 </div>
             )}
 
-            <button
-                id="debug-mock-push-btn"
-                onClick={async () => {
-                    if (!('serviceWorker' in navigator)) {
-                        alert('ServiceWorker not supported');
-                        return;
-                    }
-                    let perm = Notification.permission;
-                    if (perm !== 'granted') {
-                        perm = await Notification.requestPermission();
-                    }
-                    const reg = await navigator.serviceWorker.getRegistration('/');
-                    if (reg && reg.active) {
-                        reg.active.postMessage({
-                            type: 'TEST_MOCK_PUSH',
-                            payload: {
-                                title: 'Mock Push Alert 🔔',
-                                body: 'Simulating background service worker push display.',
-                                url: '/settings',
-                                tag: 'zenith-mock-' + Date.now(),
-                                timestamp: Date.now()
-                            }
-                        });
-                    } else {
-                        alert('No active ServiceWorker registration found');
-                    }
-                }}
-                style={{
-                    position: 'fixed',
-                    bottom: '10px',
-                    left: '10px',
-                    zIndex: 999999,
-                    background: 'rgba(239, 68, 68, 0.8)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '6px 12px',
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
-                }}
-            >
-                DEBUG: Send SW Mock Push
-            </button>
         </>
     );
 };

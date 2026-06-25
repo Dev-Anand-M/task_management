@@ -1,4 +1,5 @@
 import { supabase as supabaseClient } from '../lib/supabase';
+import { PlatformService } from './infrastructure/PlatformService';
 export const supabase = supabaseClient;
 
 // ============================================
@@ -58,6 +59,51 @@ export const getProfiles = async () => {
         return data || [];
     } catch (err) {
         console.error('Error in getProfiles:', err);
+        return [];
+    }
+};
+
+export const getGlobalSubmissions = async () => {
+    try {
+        const query = supabase.from('submissions').select('*, tasks!inner(*), profiles(*)').order('submitted_at', { ascending: false });
+        const { data, error } = await withTimeout(query);
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error in getGlobalSubmissions:', err);
+        return [];
+    }
+};
+
+export const getGlobalQuizAttempts = async () => {
+    try {
+        const { data: attempts, error } = await withTimeout(
+            supabase.from('quiz_attempts').select('*').order('completed_at', { ascending: false })
+        );
+        if (error) throw error;
+        if (!attempts || attempts.length === 0) return [];
+
+        const userIds = [...new Set(attempts.map(a => a.user_id))];
+        const quizIds = [...new Set(attempts.map(a => a.quiz_id))];
+
+        const [profilesData, quizzesData] = await Promise.all([
+            supabase.from('profiles').select('id, name, avatar_url, email, classroom_id, xp').in('id', userIds),
+            supabase.from('quizzes').select('id, title, points').in('id', quizIds)
+        ]);
+
+        const profilesMap = {};
+        (profilesData.data || []).forEach(p => { profilesMap[p.id] = p; });
+
+        const quizzesMap = {};
+        (quizzesData.data || []).forEach(q => { quizzesMap[q.id] = q; });
+
+        return attempts.map(attempt => ({
+            ...attempt,
+            profiles: profilesMap[attempt.user_id] || null,
+            quizzes: quizzesMap[attempt.quiz_id] || null
+        }));
+    } catch (err) {
+        console.error('Error in getGlobalQuizAttempts:', err);
         return [];
     }
 };
@@ -661,11 +707,13 @@ export const markAllNotificationsRead = async (userId) => {
 const _sendPush = async (payload) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
-    return fetch(`${window.location.origin}/api/push`, {
+    return fetch(`${PlatformService.getApiUrl()}/api/push`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
+            'Authorization': `Bearer ${session.access_token}`,
+            'Bypass-Tunnel-Reminder': 'true',
+            'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify(payload)
     });
@@ -674,27 +722,18 @@ const _sendPush = async (payload) => {
 export const createNotification = async (notification) => {
     await supabase.from('notifications').insert(notification);
     if (notification.user_id) {
-        // Get user's push subscription
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('push_subscription')
-            .eq('id', notification.user_id)
-            .single();
-        
-        if (profile?.push_subscription) {
-            _sendPush({
-                subscription: profile.push_subscription,
-                title: notification.title,
-                body: notification.message,
-                url: notification.link || '/',
-                data: { type: notification.type }
-            }).catch(() => {});
-        }
+        _sendPush({
+            user_ids: [notification.user_id],
+            title: notification.title,
+            body: notification.message,
+            url: notification.link || '/',
+            channelId: 'tasks'
+        }).catch(() => {});
     }
 };
 
 export const notifyClassroom = async (classroomId, notification) => {
-    const { data: students } = await supabase.from('profiles').select('id, push_subscription').eq('classroom_id', classroomId).eq('role', 'member');
+    const { data: students } = await supabase.from('profiles').select('id').eq('classroom_id', classroomId).eq('role', 'member');
     if (!students || students.length === 0) return;
 
     const notifications = students.map(student => ({
@@ -709,24 +748,19 @@ export const notifyClassroom = async (classroomId, notification) => {
 
     await supabase.from('notifications').insert(notifications);
     
-    // Send push notifications to students who have subscriptions
-    const pushPromises = students
-        .filter(s => s.push_subscription)
-        .map(student => 
-            _sendPush({
-                subscription: student.push_subscription,
-                title: notification.title,
-                body: notification.message,
-                url: notification.link || '/',
-                data: { type: notification.type }
-            }).catch(() => {})
-        );
-    
-    await Promise.allSettled(pushPromises);
+    // Send push notifications to student devices using the multi-device router
+    const studentIds = students.map(s => s.id);
+    _sendPush({
+        user_ids: studentIds,
+        title: notification.title,
+        body: notification.message,
+        url: notification.link || '/',
+        channelId: 'classroom'
+    }).catch(() => {});
 };
 
 export const notifyAdmins = async (classroomId, notification) => {
-    const { data: admins } = await supabase.from('profiles').select('id, push_subscription').eq('classroom_id', classroomId).eq('role', 'admin');
+    const { data: admins } = await supabase.from('profiles').select('id').eq('classroom_id', classroomId).eq('role', 'admin');
     if (!admins || admins.length === 0) return;
 
     const notifications = admins.map(admin => ({
@@ -741,20 +775,15 @@ export const notifyAdmins = async (classroomId, notification) => {
 
     await supabase.from('notifications').insert(notifications);
     
-    // Send push notifications to admins who have subscriptions
-    const pushPromises = admins
-        .filter(a => a.push_subscription)
-        .map(admin => 
-            _sendPush({
-                subscription: admin.push_subscription,
-                title: notification.title,
-                body: notification.message,
-                url: notification.link || '/',
-                data: { type: notification.type }
-            }).catch(() => {})
-        );
-    
-    await Promise.allSettled(pushPromises);
+    // Send push notifications to admin devices using the multi-device router
+    const adminIds = admins.map(a => a.id);
+    _sendPush({
+        user_ids: adminIds,
+        title: notification.title,
+        body: notification.message,
+        url: notification.link || '/',
+        channelId: 'admin'
+    }).catch(() => {});
 };
 
 export const checkDeadlines = async (userId) => {
@@ -967,7 +996,7 @@ export const deleteStudyNote = async (id) => {
 export const sendPasswordResetEmail = async (email) => {
     try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/login`
+            redirectTo: `${PlatformService.getApiUrl()}/login`
         });
         if (error) return { success: false, error: error.message };
         return { success: true };

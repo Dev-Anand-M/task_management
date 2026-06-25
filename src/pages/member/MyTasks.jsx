@@ -98,7 +98,8 @@ const MyTasks = () => {
         const matchesCategory = filterCategory === 'all' || 
             (task.categories ? task.categories.includes(filterCategory) : task.category === filterCategory);
         const matchesStatus = filterStatus === 'all' ||
-            (filterStatus === 'pending' && (status === 'not-started' || status === 'pending')) ||
+            (filterStatus === 'todo' && status === 'not-started') ||
+            (filterStatus === 'pending' && status === 'pending') ||
             (filterStatus === 'completed' && status === 'approved') ||
             (filterStatus === 'rejected' && status === 'rejected');
         return matchesSearch && matchesCategory && matchesStatus;
@@ -143,7 +144,8 @@ const MyTasks = () => {
                     <div className="tabs" style={{ width: 'auto' }}>
                         {[
                             { value: 'all', label: 'All' },
-                            { value: 'pending', label: 'To Do' },
+                            { value: 'todo', label: 'To Do' },
+                            { value: 'pending', label: 'Pending' },
                             { value: 'completed', label: 'Completed' },
                             { value: 'rejected', label: 'Revise' }
                         ].map(status => (
@@ -199,7 +201,11 @@ const MyTasks = () => {
                                             </Badge>
                                         </div>
                                         <Badge variant={status === 'not-started' ? 'warning' : getStatusColor(status)}>
-                                            {status === 'not-started' ? 'To Do' : status}
+                                            {status === 'not-started' ? 'To Do' : 
+                                             status === 'pending' ? 'Pending Review' : 
+                                             status === 'approved' ? 'Approved' : 
+                                             status === 'rejected' ? 'Needs Revision' : 
+                                             status}
                                         </Badge>
                                     </div>
 
@@ -418,8 +424,10 @@ const TaskDetail = ({ taskId, onBack, onUpdate }) => {
                             <Badge variant="primary">{task.category}</Badge>
                             {submission && (
                                 <Badge variant={getStatusColor(submission.status)}>
-                                    {submission.status === 'pending' && submission.is_resubmission
-                                        ? 'Resubmitted'
+                                    {submission.status === 'pending'
+                                        ? (submission.is_resubmission ? 'Resubmitted' : 'Pending Review')
+                                        : submission.status === 'approved' ? 'Approved'
+                                        : submission.status === 'rejected' ? 'Needs Revision'
                                         : submission.status}
                                 </Badge>
                             )}

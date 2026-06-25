@@ -27,6 +27,7 @@ import * as db from '../../services/database';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { formatDate, formatRelativeTime } from '../../utils/constants';
+import { PlatformService } from '../../services/infrastructure/PlatformService';
 
 const KnowledgeBase = () => {
     const { user } = useAuth();
@@ -136,11 +137,13 @@ const KnowledgeBase = () => {
 
                     if (userIds.length > 0) {
                         const { data: { session } } = await supabase.auth.getSession();
-                        await fetch(`${window.location.origin}/api/push`, {
+                        await fetch(`${PlatformService.getApiUrl()}/api/push`, {
                             method: 'POST',
                             headers: { 
                                 'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${session?.access_token}`
+                                'Authorization': `Bearer ${session?.access_token}`,
+                                'Bypass-Tunnel-Reminder': 'true',
+                                'ngrok-skip-browser-warning': 'true'
                             },
                             body: JSON.stringify({
                                 user_ids: userIds,
@@ -308,10 +311,10 @@ const KnowledgeBase = () => {
                 <div className="flex items-center gap-sm">
                     <Search className="text-muted" size={18} />
                     <input 
+                        className="search-bar-input"
                         placeholder="Search knowledge by title, content or tags..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: 'var(--text)', fontSize: 'var(--text-sm)' }}
                     />
                     {searchQuery && (
                         <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}>

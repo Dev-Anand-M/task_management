@@ -27,11 +27,26 @@ const Leaderboard = () => {
     const { user } = useAuth();
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState(user?.role === 'admin' ? 'all' : (user?.classroom_id ? 'classroom' : 'all')); // 'all', 'classroom'
+    const [filter, setFilter] = useState('all');
+    const [initialized, setInitialized] = useState(false);
+    const [classrooms, setClassrooms] = useState([]);
+    const [selectedClassroomId, setSelectedClassroomId] = useState('');
+
+    useEffect(() => {
+        if (user && !initialized) {
+            setFilter(user.role === 'admin' ? 'all' : (user.classroom_id ? 'classroom' : 'all'));
+            setInitialized(true);
+        }
+    }, [user, initialized]);
 
     useEffect(() => {
         loadLeaderboard();
-    }, []);
+        if (user?.role === 'admin') {
+            db.getClassrooms()
+                .then(setClassrooms)
+                .catch(err => console.error('Failed to load classrooms:', err));
+        }
+    }, [user]);
 
     const loadLeaderboard = async () => {
         try {
@@ -39,9 +54,9 @@ const Leaderboard = () => {
             const safetyTimeout = setTimeout(() => setLoading(false), 8000);
 
             const [profiles, submissions, quizAttempts] = await Promise.all([
-                db.getMembers(),
-                db.getSubmissions(),
-                db.getQuizAttempts()
+                db.getProfiles(),
+                db.getGlobalSubmissions(),
+                db.getGlobalQuizAttempts()
             ]);
 
             const enriched = profiles
@@ -134,28 +149,26 @@ const Leaderboard = () => {
                             Compete, climb ranks, and unlock badges
                         </p>
                     </div>
-                    {user?.role === 'admin' && (
-                        <div style={{ display: 'flex', gap: '8px', marginTop: 'var(--space-md)' }}>
-                            <button
-                                onClick={() => setFilter('all')}
-                                style={{
-                                    padding: '8px 16px', borderRadius: 'var(--radius-full)', border: 'none', cursor: 'pointer',
-                                    fontWeight: 700, fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em',
-                                    background: filter === 'all' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
-                                    color: 'white', transition: 'all 0.2s'
-                                }}
-                            >All</button>
-                            <button
-                                onClick={() => setFilter('classroom')}
-                                style={{
-                                    padding: '8px 16px', borderRadius: 'var(--radius-full)', border: 'none', cursor: 'pointer',
-                                    fontWeight: 700, fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em',
-                                    background: filter === 'classroom' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
-                                    color: 'white', transition: 'all 0.2s'
-                                }}
-                            >My Classroom</button>
-                        </div>
-                    )}
+                    <div style={{ display: 'flex', gap: '8px', marginTop: 'var(--space-md)' }}>
+                        <button
+                            onClick={() => setFilter('all')}
+                            style={{
+                                padding: '8px 16px', borderRadius: 'var(--radius-full)', border: 'none', cursor: 'pointer',
+                                fontWeight: 700, fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em',
+                                background: filter === 'all' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
+                                color: 'white', transition: 'all 0.2s'
+                            }}
+                        >All</button>
+                        <button
+                            onClick={() => setFilter('classroom')}
+                            style={{
+                                padding: '8px 16px', borderRadius: 'var(--radius-full)', border: 'none', cursor: 'pointer',
+                                fontWeight: 700, fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em',
+                                background: filter === 'classroom' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
+                                color: 'white', transition: 'all 0.2s'
+                            }}
+                        >My Classroom</button>
+                    </div>
                 </div>
 
                 {/* Quick Stats Row */}
@@ -234,60 +247,66 @@ const Leaderboard = () => {
             )}
 
             {/* Podium */}
-            {topThree.length >= 3 && (
+            {topThree.length > 0 && (
                 <div className="leaderboard-podium">
                     {/* 2nd Place */}
-                    <div className="podium-item">
-                        <div className="podium-avatar">
-                            <Avatar name={topThree[1].name} image={topThree[1].avatar_url} size="lg" />
+                    {topThree.length >= 2 && (
+                        <div className="podium-item">
+                            <div className="podium-avatar">
+                                <Avatar name={topThree[1].name} image={topThree[1].avatar_url} size="lg" />
+                            </div>
+                            <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)' }}>{topThree[1].name}</h4>
+                            <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[2].bg, color: 'white' }}>
+                                {RANK_TIERS[2].emoji} {RANK_TIERS[2].label}
+                            </span>
+                            <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                                {topThree[1].xp?.toLocaleString() || 0} XP
+                            </p>
+                            <div className="podium-rank silver">
+                                <Medal size={32} style={{ color: '#C0C0C0' }} />
+                                <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 800 }}>2</span>
+                            </div>
                         </div>
-                        <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)' }}>{topThree[1].name}</h4>
-                        <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[2].bg, color: 'white' }}>
-                            {RANK_TIERS[2].emoji} {RANK_TIERS[2].label}
-                        </span>
-                        <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                            {topThree[1].xp?.toLocaleString() || 0} XP
-                        </p>
-                        <div className="podium-rank silver">
-                            <Medal size={32} style={{ color: '#C0C0C0' }} />
-                            <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 800 }}>2</span>
-                        </div>
-                    </div>
+                    )}
                     {/* 1st Place */}
-                    <div className="podium-item">
-                        <div className="podium-avatar">
-                            <div className="podium-crown">👑</div>
-                            <Avatar name={topThree[0].name} image={topThree[0].avatar_url} size="xl" />
+                    {topThree.length >= 1 && (
+                        <div className="podium-item">
+                            <div className="podium-avatar">
+                                <div className="podium-crown">👑</div>
+                                <Avatar name={topThree[0].name} image={topThree[0].avatar_url} size="xl" />
+                            </div>
+                            <h4 style={{ margin: '0 0 4px' }}>{topThree[0].name}</h4>
+                            <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[1].bg, color: 'white' }}>
+                                {RANK_TIERS[1].emoji} {RANK_TIERS[1].label}
+                            </span>
+                            <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--primary-400)', fontWeight: 600 }}>
+                                {topThree[0].xp?.toLocaleString() || 0} XP
+                            </p>
+                            <div className="podium-rank gold">
+                                <Trophy size={32} style={{ color: '#FFD700' }} />
+                                <span style={{ fontSize: 'var(--text-3xl)', fontWeight: 800, color: '#FFD700' }}>1</span>
+                            </div>
                         </div>
-                        <h4 style={{ margin: '0 0 4px' }}>{topThree[0].name}</h4>
-                        <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[1].bg, color: 'white' }}>
-                            {RANK_TIERS[1].emoji} {RANK_TIERS[1].label}
-                        </span>
-                        <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--primary-400)', fontWeight: 600 }}>
-                            {topThree[0].xp?.toLocaleString() || 0} XP
-                        </p>
-                        <div className="podium-rank gold">
-                            <Trophy size={32} style={{ color: '#FFD700' }} />
-                            <span style={{ fontSize: 'var(--text-3xl)', fontWeight: 800, color: '#FFD700' }}>1</span>
-                        </div>
-                    </div>
+                    )}
                     {/* 3rd Place */}
-                    <div className="podium-item">
-                        <div className="podium-avatar">
-                            <Avatar name={topThree[2].name} image={topThree[2].avatar_url} size="lg" />
+                    {topThree.length >= 3 && (
+                        <div className="podium-item">
+                            <div className="podium-avatar">
+                                <Avatar name={topThree[2].name} image={topThree[2].avatar_url} size="lg" />
+                            </div>
+                            <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)' }}>{topThree[2].name}</h4>
+                            <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[3].bg, color: 'white' }}>
+                                {RANK_TIERS[3].emoji} {RANK_TIERS[3].label}
+                            </span>
+                            <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                                {topThree[2].xp?.toLocaleString() || 0} XP
+                            </p>
+                            <div className="podium-rank bronze">
+                                <Medal size={32} style={{ color: '#CD7F32' }} />
+                                <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 800 }}>3</span>
+                            </div>
                         </div>
-                        <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)' }}>{topThree[2].name}</h4>
-                        <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[3].bg, color: 'white' }}>
-                            {RANK_TIERS[3].emoji} {RANK_TIERS[3].label}
-                        </span>
-                        <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                            {topThree[2].xp?.toLocaleString() || 0} XP
-                        </p>
-                        <div className="podium-rank bronze">
-                            <Medal size={32} style={{ color: '#CD7F32' }} />
-                            <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 800 }}>3</span>
-                        </div>
-                    </div>
+                    )}
                 </div>
             )}
 

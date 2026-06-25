@@ -13,12 +13,14 @@
     "cap:open-ios": "npx cap open ios"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.4.1",
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/push-notifications": "^8.1.1",
     "@supabase/supabase-js": "^2.43.0",
     "@tencentcloud/web-push": "^1.0.6",
     "dotenv": "^17.4.2",
+    "firebase-admin": "^14.1.0",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

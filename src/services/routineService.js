@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { PlatformService } from './infrastructure/PlatformService';
 
 /**
  * Service for managing routines and consistency logs (The Diary)
@@ -348,7 +349,7 @@ export const routineService = {
      * Get the permanent Calendar Subscription Link
      */
     getCalendarSyncLink(userId) {
-        const baseUrl = window.location.origin;
+        const baseUrl = PlatformService.getApiUrl();
         return `${baseUrl}/api/v1/calendar/sync?user_id=${userId}`;
     }
 };

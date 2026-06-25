@@ -294,6 +294,20 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
     const [quizStarted, setQuizStarted] = useState(false);
     const [submissionError, setSubmissionError] = useState(null);
 
+    useEffect(() => {
+        const headerTitleEl = document.querySelector('.header h1');
+        if (headerTitleEl) {
+            headerTitleEl.textContent = isComplete ? 'Review Quiz' : 'Take Quiz';
+        }
+        document.title = isComplete ? 'Zenith - Review Quiz' : 'Zenith - Take Quiz';
+        return () => {
+            if (headerTitleEl) {
+                headerTitleEl.textContent = 'Take Quiz';
+            }
+            document.title = 'Zenith - Skill Enhancement Platform';
+        };
+    }, [isComplete]);
+
     const exitFullscreen = () => {
         if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
             const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
@@ -368,7 +382,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                         aiReport: existingAttempt.metadata?.ai_report
                     });
                     setIsComplete(true);
-                    setShowReview(existingAttempt.metadata?.finalized === true);
+                    setShowReview(false);
                 }
                 // Load from localStorage if available
                 try {
@@ -692,8 +706,20 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', maxWidth: '300px', margin: '0 auto' }}>
                             {isFinalized && (
-                                <Button variant="secondary" icon={Search} onClick={() => setShowReview(true)}>
-                                    Review My Answers
+                                <Button 
+                                    variant="secondary" 
+                                    icon={Search} 
+                                    onClick={() => {
+                                        const nextState = !showReview;
+                                        setShowReview(nextState);
+                                        if (nextState) {
+                                            setTimeout(() => {
+                                                document.getElementById('detailed-review-section')?.scrollIntoView({ behavior: 'smooth' });
+                                            }, 100);
+                                        }
+                                    }}
+                                >
+                                    {showReview ? 'Hide Detailed Review' : 'Review My Answers'}
                                 </Button>
                             )}
                             <Button onClick={handleExitFullscreenAndBack}>
@@ -702,7 +728,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
                         </div>
 
                         {showReview && (
-                            <div style={{ marginTop: 'var(--space-2xl)', textAlign: 'left' }}>
+                            <div id="detailed-review-section" style={{ marginTop: 'var(--space-2xl)', textAlign: 'left' }}>
                                 <h3 style={{ marginBottom: 'var(--space-lg)', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--space-sm)' }}>
                                     Detailed Review
                                 </h3>

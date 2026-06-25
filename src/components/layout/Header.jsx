@@ -155,11 +155,11 @@ const Header = ({ onMenuClick, title }) => {
 
   return (
     <header className="header" style={{ 
-      height: '72px', 
-      minHeight: '72px', 
+      height: 'calc(72px + var(--safe-area-top))', 
+      minHeight: 'calc(72px + var(--safe-area-top))', 
       background: 'var(--card)', 
       borderBottom: '1px solid var(--border)',
-      padding: '0 var(--space-lg)',
+      padding: 'var(--safe-area-top) var(--space-lg) 0',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',

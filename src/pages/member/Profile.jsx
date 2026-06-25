@@ -12,10 +12,15 @@ import {
     Edit2,
     Camera,
     Save,
-    Shield
+    Shield,
+    Zap,
+    CheckCircle,
+    Flame,
+    TrendingUp
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { useMiniReload } from '../../hooks/useMiniReload';
+import { formatDate, formatRelativeTime } from '../../utils/constants';
 
 const Profile = ({ userId = null, readonly = false }) => {
     const { user: authUser, updateProfile, refreshUser } = useAuth();
@@ -24,6 +29,9 @@ const Profile = ({ userId = null, readonly = false }) => {
     const [name, setName] = useState('');
     const [loading, setLoading] = useState(true);
     const [isZoomed, setIsZoomed] = useState(false);
+    const [isXPHistoryOpen, setIsXPHistoryOpen] = useState(false);
+    const [xpTimeline, setXpTimeline] = useState([]);
+    const [xpStats, setXpStats] = useState({ quizXP: 0, taskXP: 0 });
     const [stats, setStats] = useState({
         tasksCompleted: 0,
         quizzesPassed: 0,
@@ -91,6 +99,43 @@ const Profile = ({ userId = null, readonly = false }) => {
                     .map(([name, count]) => ({ name, count }))
                     .sort((a, b) => b.count - a.count)
                     .slice(0, 5);
+
+                // Format Task XP for timeline
+                const taskHistory = submissions
+                    .filter(s => s.status === 'approved' && s.score !== null)
+                    .map(s => {
+                        const points = s.tasks?.points ?? 100;
+                        const xpEarned = Math.round((s.score / 100) * points);
+                        return {
+                            id: `task-${s.id}`,
+                            type: 'task',
+                            title: s.tasks?.title || 'Task Completion',
+                            date: s.submitted_at,
+                            xp: xpEarned,
+                            score: s.score,
+                            total: 100
+                        };
+                    });
+
+                // Format Quiz XP for timeline
+                const quizHistory = quizAttempts
+                    .filter(a => a.metadata?.finalized === true)
+                    .map(a => ({
+                        id: `quiz-${a.id}`,
+                        type: 'quiz',
+                        title: a.quizzes?.title || 'Quiz Completion',
+                        date: a.completed_at || a.created_at,
+                        xp: a.xp_earned || a.metadata?.xp_earned || 0,
+                        score: a.score,
+                        total: 100
+                    }));
+
+                const combinedTimeline = [...taskHistory, ...quizHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+                setXpTimeline(combinedTimeline);
+
+                const quizXP = quizHistory.reduce((sum, item) => sum + item.xp, 0);
+                const taskXP = taskHistory.reduce((sum, item) => sum + item.xp, 0);
+                setXpStats({ quizXP, taskXP });
 
                 setStats({
                     tasksCompleted: approved.length,
@@ -296,21 +341,66 @@ const Profile = ({ userId = null, readonly = false }) => {
                         )}
                         <p style={{ margin: 0, color: 'rgba(255,255,255,0.9)' }}>{profileData.email}</p>
                         <div className="flex gap-md mt-lg">
-                            <Link to="/xp-history" style={{ textDecoration: 'none' }}>
-                                <div style={{
-                                    background: 'rgba(0,0,0,0.3)',
-                                    color: '#ffffff',
-                                    fontWeight: 600,
-                                    border: '1px solid rgba(255,255,255,0.3)',
-                                    borderRadius: '9999px',
-                                    padding: '0.25rem 0.75rem',
-                                    fontSize: '0.75rem',
-                                    backdropFilter: 'blur(4px)',
-                                    cursor: 'pointer'
-                                }}>
-                                    {profileData.xp?.toLocaleString() || 0} XP →
-                                </div>
-                            </Link>
+                            {readonly ? (
+                                authUser?.role === 'admin' ? (
+                                    <div 
+                                        onClick={() => setIsXPHistoryOpen(true)}
+                                        style={{
+                                            background: 'rgba(0,0,0,0.3)',
+                                            color: '#ffffff',
+                                            fontWeight: 600,
+                                            border: '1px solid rgba(255,255,255,0.3)',
+                                            borderRadius: '9999px',
+                                            padding: '0.25rem 0.75rem',
+                                            fontSize: '0.75rem',
+                                            backdropFilter: 'blur(4px)',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}
+                                        title="Click to view detailed XP history"
+                                    >
+                                        <Award size={14} />
+                                        {profileData.xp?.toLocaleString() || 0} XP (View Details)
+                                    </div>
+                                ) : (
+                                    <div 
+                                        style={{
+                                            background: 'rgba(0,0,0,0.3)',
+                                            color: '#ffffff',
+                                            fontWeight: 600,
+                                            border: '1px solid rgba(255,255,255,0.3)',
+                                            borderRadius: '9999px',
+                                            padding: '0.25rem 0.75rem',
+                                            fontSize: '0.75rem',
+                                            backdropFilter: 'blur(4px)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}
+                                    >
+                                        <Award size={14} />
+                                        {profileData.xp?.toLocaleString() || 0} XP
+                                    </div>
+                                )
+                            ) : (
+                                <Link to="/xp-history" style={{ textDecoration: 'none' }}>
+                                    <div style={{
+                                        background: 'rgba(0,0,0,0.3)',
+                                        color: '#ffffff',
+                                        fontWeight: 600,
+                                        border: '1px solid rgba(255,255,255,0.3)',
+                                        borderRadius: '9999px',
+                                        padding: '0.25rem 0.75rem',
+                                        fontSize: '0.75rem',
+                                        backdropFilter: 'blur(4px)',
+                                        cursor: 'pointer'
+                                    }}>
+                                        {profileData.xp?.toLocaleString() || 0} XP →
+                                    </div>
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -441,10 +531,125 @@ const Profile = ({ userId = null, readonly = false }) => {
                 </div>
             </Modal>
 
+            {/* XP History Modal */}
+            <Modal 
+                isOpen={isXPHistoryOpen} 
+                onClose={() => setIsXPHistoryOpen(false)} 
+                title={`${profileData.name}'s XP History`}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', maxHeight: '70vh', overflowY: 'auto', paddingRight: 'var(--space-xs)' }}>
+                    {/* Stats Overview */}
+                    <div className="xp-history-grid" style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(4, 1fr)',
+                        gap: 'var(--space-sm)',
+                        marginBottom: 'var(--space-md)'
+                    }}>
+                        <div style={{ textAlign: 'center', background: 'var(--gradient-primary)', color: 'white', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)' }}>
+                            <TrendingUp size={20} style={{ marginBottom: '4px', display: 'inline-block' }} />
+                            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>{(profileData.xp || 0).toLocaleString()}</div>
+                            <div style={{ fontSize: '10px', opacity: 0.8 }}>Total XP</div>
+                        </div>
+                        <div style={{ textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--border)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)' }}>
+                            <HelpCircle size={20} style={{ color: 'var(--primary-500)', marginBottom: '4px', display: 'inline-block' }} />
+                            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>{xpStats.quizXP.toLocaleString()}</div>
+                            <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>From Quizzes</div>
+                        </div>
+                        <div style={{ textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--border)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)' }}>
+                            <CheckCircle size={20} style={{ color: 'var(--success-500)', marginBottom: '4px', display: 'inline-block' }} />
+                            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>{xpStats.taskXP.toLocaleString()}</div>
+                            <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>From Tasks</div>
+                        </div>
+                        <div style={{ textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--border)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)' }}>
+                            <Flame size={20} style={{ color: 'var(--warning-500)', marginBottom: '4px', display: 'inline-block' }} />
+                            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>{profileData.streak || 0}</div>
+                            <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Streak</div>
+                        </div>
+                    </div>
+
+                    {/* Timeline List */}
+                    <div>
+                        <h4 style={{ margin: '0 0 var(--space-md) 0', display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+                            <Zap size={18} style={{ color: 'var(--warning-500)' }} />
+                            Reward Timeline
+                        </h4>
+
+                        {xpTimeline.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: 'var(--space-xl)', color: 'var(--text-muted)' }}>
+                                <Award size={36} style={{ color: 'var(--border)', marginBottom: 'var(--space-sm)' }} />
+                                <p style={{ margin: 0 }}>No XP earned yet.</p>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                                {xpTimeline.map((item) => (
+                                    <div
+                                        key={item.id}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 'var(--space-md)',
+                                            padding: 'var(--space-md)',
+                                            background: 'var(--surface)',
+                                            borderRadius: 'var(--radius-md)',
+                                            border: '1px solid var(--border)'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '36px',
+                                            height: '36px',
+                                            borderRadius: 'var(--radius-md)',
+                                            background: item.type === 'quiz' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexShrink: 0
+                                        }}>
+                                            {item.type === 'quiz' ? (
+                                                <HelpCircle size={18} style={{ color: 'var(--primary-500)' }} />
+                                            ) : (
+                                                <CheckCircle size={18} style={{ color: 'var(--success-500)' }} />
+                                            )}
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                                                <h5 style={{ margin: 0, fontSize: 'var(--text-sm)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{item.title}</h5>
+                                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', flexShrink: 0 }}>
+                                                    {formatDate(item.date)}
+                                                </span>
+                                            </div>
+                                            <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>
+                                                {item.type === 'quiz' ? 'Quiz completed' : 'Task approved'} • Score: {item.score}%
+                                            </p>
+                                        </div>
+                                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                            <div style={{
+                                                fontSize: 'var(--text-md)',
+                                                fontWeight: 700,
+                                                color: 'var(--primary-500)'
+                                            }}>
+                                                +{item.xp} XP
+                                            </div>
+                                            <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>
+                                                {formatRelativeTime(item.date)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </Modal>
+
             <style>{`
         @media (max-width: 768px) {
           .grid-cols-3, .advanced-stats-grid {
             grid-template-columns: repeat(1, 1fr) !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .xp-history-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
           }
         }
       `}</style>

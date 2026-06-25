@@ -25,9 +25,12 @@ import {
     Database,
     Calendar,
     Target,
-    RefreshCw
+    RefreshCw,
+    Power
 } from 'lucide-react';
 import Avatar from '../common/Avatar';
+import { PlatformService } from '../../services/infrastructure/PlatformService';
+import { App as CapApp } from '@capacitor/app';
 
 const Sidebar = ({ isOpen, onClose }) => {
     const { user, isAdmin, logout, forceRefresh } = useAuth();
@@ -81,6 +84,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: '/quizzes', icon: HelpCircle, label: 'Quizzes' },
         { to: '/study-materials', icon: Brain, label: 'Study Materials' },
         { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+        { to: '/team', icon: Users, label: 'Team' },
         { to: '/calendar', icon: Calendar, label: 'Calendar' },
         { to: '/profile', icon: User, label: 'Profile' },
         { to: '/settings', icon: Settings, label: 'Settings' }
@@ -484,24 +488,45 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 {user?.email}
                             </p>
                         </Link>
-                        <button
-                            onClick={() => setShowLogoutConfirm(true)}
-                            style={{
-                                background: 'var(--sidebar-hover, rgba(255,255,255,0.15))',
-                                border: '1px solid var(--sidebar-border, rgba(255,255,255,0.25))',
-                                color: 'var(--sidebar-text, white)',
-                                cursor: 'pointer',
-                                padding: 'var(--space-xs)',
-                                borderRadius: 'var(--radius-md)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'all var(--transition-fast)'
-                            }}
-                            title="Logout"
-                        >
-                            <LogOut size={14} />
-                        </button>
+                        {PlatformService.isNative() ? (
+                            <button
+                                onClick={() => setShowLogoutConfirm(true)}
+                                style={{
+                                    background: 'var(--sidebar-hover, rgba(255,255,255,0.15))',
+                                    border: '1px solid var(--sidebar-border, rgba(255,255,255,0.25))',
+                                    color: '#ef4444',
+                                    cursor: 'pointer',
+                                    padding: 'var(--space-xs)',
+                                    borderRadius: 'var(--radius-md)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all var(--transition-fast)'
+                                }}
+                                title="Exit App"
+                            >
+                                <Power size={14} />
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => setShowLogoutConfirm(true)}
+                                style={{
+                                    background: 'var(--sidebar-hover, rgba(255,255,255,0.15))',
+                                    border: '1px solid var(--sidebar-border, rgba(255,255,255,0.25))',
+                                    color: 'var(--sidebar-text, white)',
+                                    cursor: 'pointer',
+                                    padding: 'var(--space-xs)',
+                                    borderRadius: 'var(--radius-md)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all var(--transition-fast)'
+                                }}
+                                title="Logout"
+                            >
+                                <LogOut size={14} />
+                            </button>
+                        )}
                     </div>
                 </div>
             </aside>
@@ -547,11 +572,16 @@ const Sidebar = ({ isOpen, onClose }) => {
                             color: '#ef4444',
                             marginBottom: '20px'
                         }}>
-                            <LogOut size={24} />
+                            {PlatformService.isNative() ? <Power size={24} /> : <LogOut size={24} />}
                         </div>
-                        <h3 style={{ color: 'white', marginTop: 0, marginBottom: '8px', fontSize: '20px', fontWeight: 700 }}>Sign Out?</h3>
+                        <h3 style={{ color: 'white', marginTop: 0, marginBottom: '8px', fontSize: '20px', fontWeight: 700 }}>
+                            {PlatformService.isNative() ? 'Exit Zenith?' : 'Sign Out?'}
+                        </h3>
                         <p style={{ color: 'var(--text-muted)', marginBottom: '28px', fontSize: '15px', lineHeight: '1.6' }}>
-                            Are you sure you want to end your session? You'll need to log back in to access your dashboard.
+                            {PlatformService.isNative() 
+                                ? 'Are you sure you want to close the app?' 
+                                : "Are you sure you want to end your session? You'll need to log back in to access your dashboard."
+                            }
                         </p>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <button
@@ -569,12 +599,16 @@ const Sidebar = ({ isOpen, onClose }) => {
                                     transition: 'all 0.2s'
                                 }}
                             >
-                                Stay
+                                {PlatformService.isNative() ? 'Cancel' : 'Stay'}
                             </button>
                             <button
                                 onClick={() => {
                                     setShowLogoutConfirm(false);
-                                    logout();
+                                    if (PlatformService.isNative()) {
+                                        CapApp.exitApp();
+                                    } else {
+                                        logout();
+                                    }
                                 }}
                                 style={{
                                     flex: 1,
@@ -590,7 +624,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                     transition: 'all 0.2s'
                                 }}
                             >
-                                Sign Out
+                                {PlatformService.isNative() ? 'Exit' : 'Sign Out'}
                             </button>
                         </div>
                     </div>

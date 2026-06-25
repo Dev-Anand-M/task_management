@@ -1,50 +1,114 @@
-import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useLocation, useNavigate, useNavigationType } from 'react-router-dom';
+import { PlatformService } from '../../services/infrastructure/PlatformService';
+import { App as CapApp } from '@capacitor/app';
 
 const BackHandler = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const navType = useNavigationType();
     const [showExitPrompt, setShowExitPrompt] = useState(false);
-    const [lastBackTime, setLastBackTime] = useState(0);
+    const lastBackTimeRef = useRef(0);
+
+    // Keep track of our own app navigation stack
+    const historyStackRef = useRef([location.pathname]);
+
+    // Keep history stack synchronized with react-router-dom navigation
+    useEffect(() => {
+        const currentPath = location.pathname;
+        const stack = historyStackRef.current;
+
+        if (navType === 'PUSH') {
+            stack.push(currentPath);
+        } else if (navType === 'REPLACE') {
+            stack[stack.length - 1] = currentPath;
+        } else if (navType === 'POP') {
+            // If the popped path matches the second-to-last item, it means we went back.
+            if (stack.length > 1 && stack[stack.length - 2] === currentPath) {
+                stack.pop();
+            } else {
+                stack.push(currentPath);
+            }
+        }
+    }, [location.pathname, navType]);
 
     useEffect(() => {
-        const handlePopState = (event) => {
-            const isRootPage = 
-                location.pathname === '/dashboard' || 
-                location.pathname === '/admin' || 
-                location.pathname === '/login';
+        if (PlatformService.isNative()) {
+            // NATIVE MOBILE HARDWARE BACK BUTTON HANDLING
+            const setupCapacitorBack = async () => {
+                const listener = await CapApp.addListener('backButton', () => {
+                    const isHardExitRoot = 
+                        location.pathname === '/dashboard' || 
+                        location.pathname === '/admin' || 
+                        location.pathname === '/login' ||
+                        location.pathname === '/';
 
-            if (isRootPage) {
-                const currentTime = Date.now();
-                if (currentTime - lastBackTime < 2000) {
-                    // Double back - let it happen (will exit app or go to browser home)
-                } else {
-                    // First back on root - block it and show toast/prompt
-                    event.preventDefault();
-                    window.history.pushState(null, null, window.location.pathname);
-                    setLastBackTime(currentTime);
-                    setShowExitPrompt(true);
-                    
-                    // Auto-hide prompt after 2 seconds
-                    setTimeout(() => setShowExitPrompt(false), 2000);
+                    const stack = historyStackRef.current;
+                    const canGoBack = stack.length > 1 && !isHardExitRoot;
+
+                    if (!canGoBack) {
+                        const currentTime = Date.now();
+                        if (currentTime - lastBackTimeRef.current < 2000) {
+                            CapApp.exitApp();
+                        } else {
+                            lastBackTimeRef.current = currentTime;
+                            setShowExitPrompt(true);
+                            // Auto-hide prompt after 2 seconds
+                            setTimeout(() => setShowExitPrompt(false), 2000);
+                        }
+                    } else {
+                        // Go back in navigation history
+                        navigate(-1);
+                    }
+                });
+                return listener;
+            };
+
+            const listenerPromise = setupCapacitorBack();
+            return () => {
+                listenerPromise.then(l => l.remove());
+            };
+        } else {
+            // WEB BROWSER/PWA BACK BUTTON HANDLING (popstate)
+            const handlePopState = (event) => {
+                const isHardExitRoot = 
+                    location.pathname === '/dashboard' || 
+                    location.pathname === '/admin' || 
+                    location.pathname === '/login' ||
+                    location.pathname === '/';
+
+                const stack = historyStackRef.current;
+                const canGoBack = stack.length > 1 && !isHardExitRoot;
+
+                if (!canGoBack) {
+                    const currentTime = Date.now();
+                    if (currentTime - lastBackTimeRef.current < 2000) {
+                        // Allow browser default action (exit/close tab/go to search history)
+                    } else {
+                        event.preventDefault();
+                        window.history.pushState(null, null, window.location.pathname);
+                        lastBackTimeRef.current = currentTime;
+                        setShowExitPrompt(true);
+                        setTimeout(() => setShowExitPrompt(false), 2000);
+                    }
                 }
-            }
-        };
+            };
 
-        window.history.pushState(null, null, window.location.pathname);
-        window.addEventListener('popstate', handlePopState);
+            window.history.pushState(null, null, window.location.pathname);
+            window.addEventListener('popstate', handlePopState);
 
-        return () => {
-            window.removeEventListener('popstate', handlePopState);
-        };
-    }, [location.pathname, lastBackTime]);
+            return () => {
+                window.removeEventListener('popstate', handlePopState);
+            };
+        }
+    }, [location.pathname, navigate]);
 
     if (!showExitPrompt) return null;
 
     return (
         <div style={{
             position: 'fixed',
-            bottom: '40px',
+            bottom: '80px',
             left: '50%',
             transform: 'translateX(-50%)',
             background: 'rgba(28, 25, 23, 0.95)',

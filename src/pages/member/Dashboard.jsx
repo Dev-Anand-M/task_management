@@ -52,7 +52,8 @@ const MemberDashboard = () => {
                 db.getSubmissionsByUser(user.id).catch(err => { console.error('Error loading submissions:', err); return []; }),
                 db.getQuizzes().catch(err => { console.error('Error loading quizzes:', err); return []; }),
                 db.getQuizAttemptsByUser(user.id).catch(err => { console.error('Error loading quiz attempts:', err); return []; }),
-                db.getAnnouncements().catch(err => { console.error('Error loading announcements:', err); return []; })
+                db.getAnnouncements().catch(err => { console.error('Error loading announcements:', err); return []; }),
+                refreshUser().catch(err => { console.error('Error refreshing user on load:', err); })
             ]);
 
             const [tasks, submissions, quizzes, quizAttempts, ann] = await Promise.race([
@@ -65,6 +66,31 @@ const MemberDashboard = () => {
             const completedTaskIds = (submissions || []).filter(s => s.status === 'approved').map(s => s.task_id);
             const pendingTaskIds = (submissions || []).map(s => s.task_id);
 
+            // Calculate actual XP from history
+            const taskXP = (submissions || [])
+                .filter(s => s.status === 'approved' && s.score !== null)
+                .reduce((sum, s) => {
+                    const points = s.tasks?.points ?? 100;
+                    return sum + Math.round((s.score / 100) * points);
+                }, 0);
+
+            const quizXP = (quizAttempts || [])
+                .filter(a => a.metadata?.finalized === true)
+                .reduce((sum, a) => sum + (a.xp_earned || a.metadata?.xp_earned || 0), 0);
+
+            const calculatedTotal = taskXP + quizXP;
+
+            // Automatically correct/sync database XP if there is a mismatch
+            if (user?.xp !== undefined && user.xp !== calculatedTotal) {
+                console.log(`[XP Sync] Correcting profile XP from ${user.xp} to match history total of ${calculatedTotal}`);
+                db.updateProfile(user.id, { xp: calculatedTotal }).catch(err => {
+                    console.error('[XP Sync] Database update failed:', err);
+                });
+                refreshUser().catch(err => {
+                    console.error('[XP Sync] Context refresh failed:', err);
+                });
+            }
+
             // Stats
             setStats({
                 assignedTasks: myTasks.length,
@@ -72,7 +98,7 @@ const MemberDashboard = () => {
                 pendingQuizzes: (quizzes || []).filter(q =>
                     !(quizAttempts || []).some(a => a.quiz_id === q.id)
                 ).length,
-                totalXP: user.xp || 0
+                totalXP: calculatedTotal
             });
 
             // Active tasks (not yet submitted)
@@ -242,30 +268,48 @@ const MemberDashboard = () => {
             </Link>
 
             {/* Quick Stats */}
-            <div className="grid-4-mobile-2 mb-xl" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-md)' }}>
+            <div className="stat-card-grid mb-xl">
                 {[
                     { label: 'Assigned Tasks', value: stats.assignedTasks, icon: ListTodo, color: 'var(--primary-500)' },
-                    { label: 'Completed', value: stats.completedTasks, icon: CheckCircle, color: 'var(--success-500)' },
+                    { label: 'Completed Tasks', value: stats.completedTasks, icon: CheckCircle, color: 'var(--success-500)' },
                     { label: 'Pending Quizzes', value: stats.pendingQuizzes, icon: HelpCircle, color: 'var(--warning-500)' },
                     { label: 'Total XP', value: (user?.xp || 0).toLocaleString(), icon: Award, color: 'var(--accent-500)' }
                 ].map((stat, index) => (
-                    <Card key={index} style={{ textAlign: 'center', padding: 'var(--space-md)' }}>
-                        <stat.icon
-                            size={20}
-                            style={{ color: stat.color, marginBottom: 'var(--space-xs)' }}
-                        />
-                        <h3 style={{
-                            fontSize: 'var(--text-xl)',
-                            margin: 0
-                        }}>
-                            {stat.value}
-                        </h3>
+                    <Card key={index} style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        textAlign: 'center', 
+                        padding: 'var(--space-md)',
+                        height: '100%',
+                        minHeight: '110px'
+                    }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', width: '100%' }}>
+                            <stat.icon
+                                size={20}
+                                style={{ color: stat.color }}
+                            />
+                            <h3 style={{
+                                fontSize: 'var(--text-xl)',
+                                margin: 0,
+                                lineHeight: 1.2
+                            }}>
+                                {stat.value}
+                            </h3>
+                        </div>
                         <p style={{
                             fontSize: '10px',
                             color: 'var(--text-muted)',
-                            margin: 0,
+                            margin: '8px 0 0',
                             textTransform: 'uppercase',
-                            fontWeight: 700
+                            fontWeight: 700,
+                            lineHeight: 1.2,
+                            minHeight: '24px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '100%'
                         }}>
                             {stat.label}
                         </p>

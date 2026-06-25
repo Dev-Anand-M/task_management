@@ -258,10 +258,10 @@ const StudyMaterials = () => {
                     <div className="flex items-center gap-sm">
                         <Search className="text-muted" size={18} />
                         <input
+                            className="search-bar-input"
                             placeholder={activeTab === 'shared' ? 'Search shared materials...' : 'Search your notes...'}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: 'var(--text)', fontSize: 'var(--text-sm)' }}
                         />
                         {searchQuery && (
                             <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}>

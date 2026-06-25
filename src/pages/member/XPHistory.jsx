@@ -16,7 +16,7 @@ import * as db from '../../services/database';
 import { formatDate, formatRelativeTime } from '../../utils/constants';
 
 const XPHistory = () => {
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const navigate = useNavigate();
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -74,9 +74,21 @@ const XPHistory = () => {
             // Calculate Stats
             const quizXP = quizHistory.reduce((sum, item) => sum + item.xp, 0);
             const taskXP = taskHistory.reduce((sum, item) => sum + item.xp, 0);
+            const calculatedTotal = quizXP + taskXP;
+
+            // Automatically correct/sync database XP if there is a mismatch
+            if (user.xp !== undefined && user.xp !== calculatedTotal) {
+                console.log(`[XP Sync] Correcting profile XP from ${user.xp} to match history total of ${calculatedTotal}`);
+                await db.updateProfile(user.id, { xp: calculatedTotal }).catch(err => {
+                    console.error('[XP Sync] Database update failed:', err);
+                });
+                await refreshUser().catch(err => {
+                    console.error('[XP Sync] Context refresh failed:', err);
+                });
+            }
             
             setStats({
-                totalXP: user.xp || (quizXP + taskXP),
+                totalXP: calculatedTotal,
                 quizXP,
                 taskXP,
                 streak: user.streak || 0
@@ -87,7 +99,7 @@ const XPHistory = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.id, user.xp, user.streak]);
+    }, [user?.id, user.xp, user.streak, refreshUser]);
 
     useEffect(() => {
         loadXPHistory();

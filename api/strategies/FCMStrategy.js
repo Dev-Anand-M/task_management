@@ -1,4 +1,5 @@
 import admin from 'firebase-admin';
+import { getMessaging } from 'firebase-admin/messaging';
 import { DeliveryStrategy } from './DeliveryStrategy.js';
 
 export class FCMStrategy extends DeliveryStrategy {
@@ -7,7 +8,7 @@ export class FCMStrategy extends DeliveryStrategy {
   }
 
   async send(device, payload, options) {
-    if (!admin.apps.length) {
+    if (!admin.getApps().length) {
       return { status: 'failed', reason: 'Firebase SDK not initialized' };
     }
 
@@ -36,7 +37,7 @@ export class FCMStrategy extends DeliveryStrategy {
         }
       };
 
-      const response = await admin.messaging().send(message);
+      const response = await getMessaging().send(message);
       return { status: 'sent', messageId: response };
     } catch (err) {
       const code = err.code;

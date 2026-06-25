@@ -492,22 +492,32 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
                 evaluated_at: new Date().toISOString()
             });
 
-                // award XP to user
-                if (submission.profiles?.id) {
-                    const xpEarned = Math.round((scoreNum / 100) * (submission.tasks?.points ?? 100));
-                    const currentXP = submission.profiles.xp || 0;
-                    await db.updateProfile(submission.profiles.id, { xp: currentXP + xpEarned });
+            // award XP to user
+            if (submission.profiles?.id) {
+                const xpEarned = Math.round((scoreNum / 100) * (submission.tasks?.points ?? 100));
+                
+                // Fetch fresh profile to avoid race conditions/stale context data
+                const freshProfile = await db.getProfileById(submission.profiles.id);
+                let currentXP = freshProfile?.xp || 0;
 
-                    // Notify User (In-app)
-                    await db.createNotification({
-                        user_id: submission.profiles.id,
-                        classroom_id: submission.tasks?.classroom_id,
-                        title: 'Task Approved! 🥳',
-                        message: `Your submission for "${submission.tasks?.title}" was approved with a score of ${scoreNum}/100. You earned ${xpEarned} XP!`,
-                        type: 'success',
-                        link: `/tasks/${submission.tasks?.id}`
-                    });
+                // If previously approved, deduct old XP first to prevent stacking
+                if (submission.status === 'approved' && submission.score != null) {
+                    const oldXP = Math.round((submission.score / 100) * (submission.tasks?.points ?? 100));
+                    currentXP = Math.max(0, currentXP - oldXP);
                 }
+
+                await db.updateProfile(submission.profiles.id, { xp: currentXP + xpEarned });
+
+                // Notify User (In-app)
+                await db.createNotification({
+                    user_id: submission.profiles.id,
+                    classroom_id: submission.tasks?.classroom_id,
+                    title: 'Task Approved! 🥳',
+                    message: `Your submission for "${submission.tasks?.title}" was approved with a score of ${scoreNum}/100. You earned ${xpEarned} XP!`,
+                    type: 'success',
+                    link: `/tasks/${submission.tasks?.id}`
+                });
+            }
 
             onUpdate();
             onBack();
@@ -523,10 +533,9 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
     const handleReject = async () => {
         setSaving(true);
         try {
-            const scoreNum = parseInt(score) || 0;
             const updateData = {
                 status: 'rejected',
-                score: scoreNum,
+                score: 0, // Force score to 0 on rejection
                 feedback,
                 evaluated_at: new Date().toISOString()
             };
@@ -537,22 +546,37 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
 
             await db.updateSubmission(submissionId, updateData);
 
-                // Notify User (In-app)
-                if (submission.profiles?.id) {
-                    let msg = `Reviewer requested a revision for "${submission.tasks?.title}". Check feedback for details.`;
-                    if (revisionDeadline) {
-                        msg += ` New deadline: ${new Date(revisionDeadline).toLocaleDateString()}`;
-                    }
+            // If previously approved, deduct the XP that was awarded
+            if (submission.status === 'approved' && submission.score != null && submission.profiles?.id) {
+                const oldXP = Math.round((submission.score / 100) * (submission.tasks?.points ?? 100));
+                const freshProfile = await db.getProfileById(submission.profiles.id);
+                const currentXP = freshProfile?.xp || 0;
+                const newXP = Math.max(0, currentXP - oldXP);
+                await db.updateProfile(submission.profiles.id, { xp: newXP });
+            }
 
-                    await db.createNotification({
-                        user_id: submission.profiles.id,
-                        classroom_id: submission.tasks?.classroom_id,
-                        title: 'Revision Requested 📝',
-                        message: msg,
-                        type: 'error',
-                        link: `/tasks/${submission.tasks?.id}`
-                    });
+            // Notify User (In-app)
+            if (submission.profiles?.id) {
+                let msg = `Reviewer requested a revision for "${submission.tasks?.title}". Check feedback for details.`;
+                if (revisionDeadline) {
+                    msg += ` New deadline: ${new Date(revisionDeadline).toLocaleDateString()}`;
                 }
+                
+                // Include XP deduction info if was previously approved
+                if (submission.status === 'approved' && submission.score != null) {
+                    const deducted = Math.round((submission.score / 100) * (submission.tasks?.points ?? 100));
+                    msg += ` (${deducted} XP was removed)`;
+                }
+
+                await db.createNotification({
+                    user_id: submission.profiles.id,
+                    classroom_id: submission.tasks?.classroom_id,
+                    title: 'Revision Requested 📝',
+                    message: msg,
+                    type: 'error',
+                    link: `/tasks/${submission.tasks?.id}`
+                });
+            }
 
             onUpdate();
             onBack();
@@ -792,7 +816,7 @@ const EvaluationDetail = ({ submissionId, onBack, onUpdate }) => {
                                 fontSize: 'var(--text-sm)',
                                 color: 'var(--text-muted)'
                             }}>
-                                XP to award: <strong style={{ color: 'var(--success-500)' }}>
+                                XP to award (on Approval): <strong style={{ color: 'var(--success-500)' }}>
                                     +{Math.round((parseInt(score) / 100) * submission.tasks.points)} XP
                                 </strong>
                             </div>

@@ -3,6 +3,8 @@ import admin from 'firebase-admin';
 import { createClient } from '@supabase/supabase-js';
 import { WebPushStrategy } from './strategies/WebPushStrategy.js';
 import { FCMStrategy } from './strategies/FCMStrategy.js';
+import fs from 'fs';
+import path from 'path';
 
 // Setup VAPID Web Push
 const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
@@ -13,12 +15,35 @@ if (VAPID_PUBLIC && VAPID_PRIVATE) {
 }
 
 // Setup Firebase Admin SDK
-if (!admin.apps.length && process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+if (!admin.getApps().length) {
   try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
+    let serviceAccount = null;
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+      try {
+        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+      } catch (err) {
+        console.warn('[FCM Admin] Env JSON parse error, trying file...', err.message);
+      }
+    }
+
+    if (!serviceAccount) {
+      const files = fs.readdirSync(process.cwd());
+      const serviceAccountFile = files.find(f => f.startsWith('idl-skillenhancement-firebase-adminsdk') && f.endsWith('.json'));
+      if (serviceAccountFile) {
+        const filePath = path.join(process.cwd(), serviceAccountFile);
+        serviceAccount = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        console.log('[FCM Admin] Loaded service account from local file:', serviceAccountFile);
+      }
+    }
+
+    if (serviceAccount) {
+      admin.initializeApp({
+        credential: admin.cert(serviceAccount)
+      });
+      console.log('[FCM Admin] Initialized successfully');
+    } else {
+      console.warn('[FCM Admin] No service account credentials found');
+    }
   } catch (err) {
     console.warn('[FCM Admin] Initialization error:', err.message);
   }
@@ -39,7 +64,7 @@ export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Bypass-Tunnel-Reminder, ngrok-skip-browser-warning');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method === 'GET') {
@@ -98,11 +123,15 @@ export default async function handler(req, res) {
 
     if (dbErr) {
       console.error('[Push Router] DB fetch error:', dbErr);
-      return res.status(500).json({ error: 'Failed to fetch device subscriptions' });
+      return res.status(500).json({ error: 'Failed to fetch device subscriptions', details: dbErr.message });
     }
 
     if (!devices || devices.length === 0) {
-      return res.status(200).json({ success: true, sent: 0, message: 'No active device subscriptions' });
+      return res.status(200).json({ 
+        success: true, 
+        sent: 0, 
+        message: 'No active device subscriptions'
+      });
     }
 
     let sent = 0;
@@ -120,7 +149,7 @@ export default async function handler(req, res) {
       try {
         const { data } = await supabase.from('notification_logs').insert({
           device_id: device.device_id,
-          type: device.type,
+          type: device.platform,
           status: 'queued'
         }).select().single();
         logEntry = data;

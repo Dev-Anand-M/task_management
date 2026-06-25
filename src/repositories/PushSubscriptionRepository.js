@@ -11,28 +11,28 @@ export class PushSubscriptionRepository {
     }
 
     const payload = {
-      ...subscriptionData,
+      user_id,
+      device_id,
+      transport: subscriptionData.transport,
+      platform: subscriptionData.platform,
+      endpoint: endpoint || null,
+      token: token || null,
+      keys: subscriptionData.keys || null,
+      browser: subscriptionData.browser || null,
+      user_agent: subscriptionData.user_agent || null,
+      app_version: subscriptionData.app_version || null,
+      os_version: subscriptionData.os_version || null,
       last_seen: new Date().toISOString(),
-      is_active: true
+      is_active: true,
+      notifications_enabled: true
     };
 
-    if (endpoint) {
-      // Web push mapping
-      const { data, error } = await supabase.from('push_subscriptions')
-        .upsert(payload, { onConflict: 'user_id,endpoint' })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    } else if (token) {
-      // Native FCM mapping
-      const { data, error } = await supabase.from('push_subscriptions')
-        .upsert(payload, { onConflict: 'user_id,token' })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    }
+    const { data, error } = await supabase.from('push_subscriptions')
+      .upsert(payload, { onConflict: 'user_id,device_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
     
     throw new Error('[PushSubscriptionRepository] Registration payload must contain either endpoint or token');
   }

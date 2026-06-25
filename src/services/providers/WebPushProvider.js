@@ -12,23 +12,31 @@ export class WebPushProvider {
 
     const registration = await navigator.serviceWorker.ready;
     
-    // Fetch VAPID public key from backend api/push endpoint
-    const sessionRes = await supabase.auth.getSession();
-    const token = sessionRes.data.session?.access_token;
-    
-    const res = await fetch('/api/push', {
-      headers: { 
-        Authorization: token ? `Bearer ${token}` : ''
-      }
-    });
-    
-    if (!res.ok) {
-      throw new Error(`Failed to fetch VAPID key: ${res.statusText}`);
-    }
-    
-    const { publicKey } = await res.json();
+    let publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
     if (!publicKey) {
-      throw new Error('VAPID public key not found in API response');
+      try {
+        // Fetch VAPID public key from backend api/push endpoint
+        const sessionRes = await supabase.auth.getSession();
+        const token = sessionRes.data.session?.access_token;
+        
+        const res = await fetch(`${PlatformService.getApiUrl()}/api/push`, {
+          headers: { 
+            Authorization: token ? `Bearer ${token}` : ''
+          }
+        });
+        
+        if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+          const data = await res.json();
+          publicKey = data.publicKey;
+        }
+      } catch (err) {
+        console.warn('[WebPushProvider] Failed to fetch VAPID key from API:', err);
+      }
+    }
+
+    if (!publicKey) {
+      throw new Error('VAPID public key not found or configured');
     }
 
     // Subscribe to push service

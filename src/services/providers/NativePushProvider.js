@@ -16,6 +16,8 @@ export class NativePushProvider {
         return;
       }
 
+      localStorage.setItem('fcm_token', token.value);
+
       const deviceData = {
         user_id: userId,
         device_id: deviceId,
@@ -44,11 +46,10 @@ export class NativePushProvider {
     });
 
     await PushNotifications.addListener('pushNotificationReceived', (notification) => {
-      console.log('[NativePushProvider] Push received in foreground:', notification);
+      // Handled by standard OS banners
     });
 
     await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      console.log('[NativePushProvider] Action performed:', action);
       if (action.notification.data?.url) {
         // Safe navigation via location hashing for single-page routing
         window.location.hash = action.notification.data.url;

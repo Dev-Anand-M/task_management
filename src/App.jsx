@@ -1,9 +1,11 @@
 
+import { useEffect } from 'react';
+import { PlatformService } from './services/infrastructure/PlatformService';
 import { Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/layout';
-import { ErrorBoundary, LoadingSpinner } from './components/common';
+import { ErrorBoundary, LoadingSpinner, SplashScreen } from './components/common';
 import BackHandler from './components/layout/BackHandler';
 import GlobalAlarmListener from './components/layout/GlobalAlarmListener';
 
@@ -54,17 +56,7 @@ const ProtectedLayout = ({ requiredRole }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--bg)'
-      }}>
-        <LoadingSpinner size="lg" />
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   if (!user) {
@@ -87,7 +79,7 @@ const ProtectedLayout = ({ requiredRole }) => {
 const RoleGuard = ({ role }) => {
   const { user, loading } = useAuth();
 
-  if (loading) return <LoadingSpinner />; // Should be handled by parent but safe to keep
+  if (loading) return <SplashScreen />; // Should be handled by parent but safe to keep
   if (!user) return <Navigate to="/login" replace />;
 
   if (user?.role !== role) {
@@ -102,17 +94,7 @@ const AuthRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--bg)'
-      }}>
-        <LoadingSpinner size="lg" />
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   if (user) {
@@ -125,6 +107,11 @@ const AuthRoute = ({ children }) => {
 };
 
 const AdminMemberProfile = () => {
+  const { userId } = useParams();
+  return <Profile userId={userId} readonly={true} />;
+};
+
+const MemberProfileView = () => {
   const { userId } = useParams();
   return <Profile userId={userId} readonly={true} />;
 };
@@ -204,6 +191,8 @@ function AppRoutes() {
           <Route path="/timetable" element={<Timetable />} />
           <Route path="/study-lab" element={<StudyLab />} />
           <Route path="/study-lab/:id" element={<StudyLab />} />
+          <Route path="/team" element={<TeamManagement />} />
+          <Route path="/profile/:userId" element={<MemberProfileView />} />
         </Route>
 
         {/* Shared Routes */}
@@ -233,12 +222,38 @@ function AppRoutes() {
 
 
 function App() {
+  useEffect(() => {
+    const isNative = PlatformService.isNative();
+    const isStandalone = isNative || (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches);
+    const os = PlatformService.getDeviceOS();
+
+    if (isNative) {
+      document.documentElement.classList.add('is-native');
+    } else {
+      document.documentElement.classList.add('is-web');
+    }
+
+    if (isStandalone) {
+      document.documentElement.classList.add('is-standalone');
+    } else {
+      document.documentElement.classList.add('is-browser');
+    }
+
+    // Add main platform class
+    document.documentElement.classList.add(`is-${PlatformService.getPlatformName()}`);
+
+    // If running in standalone mobile context (native or PWA), apply specific OS classes for safe-areas
+    if (isStandalone && (os === 'android' || os === 'ios')) {
+      document.documentElement.classList.add(`is-${os}`);
+    }
+  }, []);
+
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
           <GlobalAlarmListener />
-          {/* <BackHandler /> */}
+          <BackHandler />
           <AppRoutes />
         </AuthProvider>
       </ThemeProvider>
