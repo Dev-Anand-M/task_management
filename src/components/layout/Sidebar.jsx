@@ -451,6 +451,67 @@ const Sidebar = ({ isOpen, onClose }) => {
                             )}
                         </>
                     )}
+                    
+                    {/* Get Mobile App promo - Only on web */}
+                    {!PlatformService.isNative() && (
+                        <div style={{
+                            margin: 'var(--space-md) var(--space-xs) 0',
+                            padding: 'var(--space-md)',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px dashed rgba(255, 255, 255, 0.15)',
+                            borderRadius: 'var(--radius-lg)',
+                            textAlign: 'center'
+                        }}>
+                            <div style={{
+                                width: '32px',
+                                height: '32px',
+                                background: 'linear-gradient(135deg, #10b981, #059669)',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                margin: '0 auto var(--space-xs)',
+                                color: 'white',
+                                fontSize: '16px'
+                            }}>
+                                🤖
+                            </div>
+                            <h4 style={{
+                                margin: 0,
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: 'var(--sidebar-text, white)'
+                            }}>
+                                Zenith Mobile
+                            </h4>
+                            <p style={{
+                                margin: '2px 0 var(--space-sm)',
+                                fontSize: '10px',
+                                color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))'
+                            }}>
+                                Get the Android App
+                            </p>
+                            <a
+                                href="/zenith-v1.0.0.apk"
+                                download
+                                style={{
+                                    display: 'block',
+                                    padding: '6px 12px',
+                                    background: '#10b981',
+                                    color: 'white',
+                                    borderRadius: 'var(--radius-md)',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    textDecoration: 'none',
+                                    transition: 'opacity 0.2s',
+                                    cursor: 'pointer'
+                                }}
+                                className="hover:opacity-90 active:scale-95"
+                            >
+                                Download APK
+                            </a>
+                        </div>
+                    )}
                 </nav>
 
                 {/* User Profile Section */}
