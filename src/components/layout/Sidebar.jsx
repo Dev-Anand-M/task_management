@@ -164,6 +164,47 @@ const Sidebar = ({ isOpen, onClose }) => {
                 </div>
 
                 <nav style={{ flex: 1, padding: 'var(--space-sm)', overflowY: 'auto' }}>
+                    {/* Get Mobile App promo - Only on web */}
+                    {!PlatformService.isNative() && (
+                        <div style={{
+                            margin: '0 var(--space-xs) var(--space-md)',
+                            padding: 'var(--space-sm) var(--space-md)',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px dashed rgba(255, 255, 255, 0.15)',
+                            borderRadius: 'var(--radius-lg)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 'var(--space-sm)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '18px' }}>🤖</span>
+                                <div style={{ textAlign: 'left' }}>
+                                    <h4 style={{ margin: 0, fontSize: '11px', fontWeight: 600, color: 'var(--sidebar-text, white)', lineHeight: '1.2' }}>Zenith App</h4>
+                                    <p style={{ margin: 0, fontSize: '9px', color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))', lineHeight: '1.2' }}>Get Android APK</p>
+                                </div>
+                            </div>
+                            <a
+                                href="/zenith-v1.0.0.apk"
+                                download
+                                style={{
+                                    padding: '4px 10px',
+                                    background: '#10b981',
+                                    color: 'white',
+                                    borderRadius: 'var(--radius-md)',
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    textDecoration: 'none',
+                                    transition: 'opacity 0.2s',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
+                                }}
+                                className="hover:opacity-90 active:scale-95"
+                            >
+                                Download
+                            </a>
+                        </div>
+                    )}
                     {isAdmin && (
                         <div style={{ position: 'relative', margin: '0 var(--space-sm) var(--space-sm)' }}>
                             <div
@@ -448,70 +489,6 @@ const Sidebar = ({ isOpen, onClose }) => {
                                         </li>
                                     ))}
                                 </ul>
-                            )}
-                        </>
-                    )}
-                    
-                    {/* Get Mobile App promo - Only on web */}
-                    {!PlatformService.isNative() && (
-                        <div style={{
-                            margin: 'var(--space-md) var(--space-xs) 0',
-                            padding: 'var(--space-md)',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px dashed rgba(255, 255, 255, 0.15)',
-                            borderRadius: 'var(--radius-lg)',
-                            textAlign: 'center'
-                        }}>
-                            <div style={{
-                                width: '32px',
-                                height: '32px',
-                                background: 'linear-gradient(135deg, #10b981, #059669)',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                margin: '0 auto var(--space-xs)',
-                                color: 'white',
-                                fontSize: '16px'
-                            }}>
-                                🤖
-                            </div>
-                            <h4 style={{
-                                margin: 0,
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                color: 'var(--sidebar-text, white)'
-                            }}>
-                                Zenith Mobile
-                            </h4>
-                            <p style={{
-                                margin: '2px 0 var(--space-sm)',
-                                fontSize: '10px',
-                                color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))'
-                            }}>
-                                Get the Android App
-                            </p>
-                            <a
-                                href="/zenith-v1.0.0.apk"
-                                download
-                                style={{
-                                    display: 'block',
-                                    padding: '6px 12px',
-                                    background: '#10b981',
-                                    color: 'white',
-                                    borderRadius: 'var(--radius-md)',
-                                    fontSize: '11px',
-                                    fontWeight: 700,
-                                    textDecoration: 'none',
-                                    transition: 'opacity 0.2s',
-                                    cursor: 'pointer'
-                                }}
-                                className="hover:opacity-90 active:scale-95"
-                            >
-                                Download APK
-                            </a>
-                        </div>
-                    )}
                 </nav>
 
                 {/* User Profile Section */}
