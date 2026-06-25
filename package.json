@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npx cap copy",
+    "build": "vite build && node -e \"const fs=require('fs'); fs.readdirSync('dist').filter(f=>f.endsWith('.apk')).forEach(f=>fs.unlinkSync('dist/'+f))\" && npx cap copy",
     "lint": "eslint .",
     "preview": "vite preview",
     "cap:sync": "npx cap sync",
