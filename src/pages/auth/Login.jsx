@@ -189,6 +189,60 @@ const Login = () => {
                         </div>
                     </form>
 
+                    {/* APK Download Option */}
+                    <div style={{
+                        marginTop: 'var(--space-md)',
+                        padding: 'var(--space-sm) var(--space-md)',
+                        background: 'color-mix(in srgb, var(--primary-500), transparent 95%)',
+                        border: '1px dashed color-mix(in srgb, var(--primary-500), transparent 70%)',
+                        borderRadius: 'var(--radius-md)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 'var(--space-sm)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{
+                                width: '32px',
+                                height: '32px',
+                                background: '#10b981',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '16px'
+                            }}>
+                                🤖
+                            </div>
+                            <div style={{ textAlign: 'left' }}>
+                                <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)', lineHeight: '1.2' }}>Get the Android App</p>
+                                <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text)', lineHeight: '1.2' }}>Zenith Mobile</p>
+                            </div>
+                        </div>
+                        <a 
+                            href="/zenith.apk" 
+                            download 
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '6px 12px',
+                                background: '#10b981',
+                                color: 'white',
+                                borderRadius: 'var(--radius-md)',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                textDecoration: 'none',
+                                transition: 'opacity 0.2s',
+                                border: 'none',
+                                cursor: 'pointer'
+                            }}
+                            className="hover:opacity-90 active:scale-95"
+                        >
+                            Download
+                        </a>
+                    </div>
+
                     {/* Register Link */}
                     <div className="register-link">
                         <p>
