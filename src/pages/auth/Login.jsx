@@ -155,7 +155,12 @@ const Login = () => {
                                             onClick={() => {
                                                 const subject = encodeURIComponent("Zenith Password Reset Request");
                                                 const body = encodeURIComponent(`Hi Dev,\n\nI need to reset my password for the Zenith App. My account email is: ${email || '[Enter your email here]'}\n\nThank you.`);
-                                                window.location.href = `mailto:dev.klinux@proton.me?subject=${subject}&body=${body}`;
+                                                const mailtoUrl = `mailto:dev.klinux@proton.me?subject=${subject}&body=${body}`;
+                                                if (PlatformService.isNative()) {
+                                                    window.open(mailtoUrl, '_system');
+                                                } else {
+                                                    window.location.href = mailtoUrl;
+                                                }
                                             }}
                                             style={{ 
                                                 background: 'none', 
