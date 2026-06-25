@@ -114,6 +114,26 @@ export default async function handler(req, res) {
 
   // 2. Dispatch Router
   if (Array.isArray(user_ids) && user_ids.length > 0) {
+    // 2a. Insert in-app notifications for all users using service_role key to bypass client RLS limits
+    try {
+      const inAppNotifications = user_ids.map(uid => ({
+        user_id: uid,
+        classroom_id: req.body.classroom_id || null,
+        title: title || 'Zenith',
+        message: body || 'New Notification Alert',
+        link: url || '/',
+        type: req.body.type || 'info',
+        is_read: false
+      }));
+      
+      const { error: insertErr } = await supabase.from('notifications').insert(inAppNotifications);
+      if (insertErr) {
+        console.warn('[Push Router] Failed to insert in-app notifications:', insertErr.message);
+      }
+    } catch (insertErr) {
+      console.warn('[Push Router] Failed to insert in-app notifications:', insertErr.message);
+    }
+
     const { data: devices, error: dbErr } = await supabase
       .from('push_subscriptions')
       .select('*')

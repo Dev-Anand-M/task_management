@@ -1,7 +1,7 @@
 
 import { useEffect } from 'react';
 import { PlatformService } from './services/infrastructure/PlatformService';
-import { Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useParams, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/layout';
@@ -122,6 +122,18 @@ const ProfileRouter = () => {
 };
 
 function AppRoutes() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleNavigate = (e) => {
+      if (e.detail?.url) {
+        navigate(e.detail.url);
+      }
+    };
+    window.addEventListener('navigate-to-url', handleNavigate);
+    return () => window.removeEventListener('navigate-to-url', handleNavigate);
+  }, [navigate]);
+
   return (
     <Routes>
       {/* Public Routes */}

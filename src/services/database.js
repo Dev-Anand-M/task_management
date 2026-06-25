@@ -720,13 +720,14 @@ const _sendPush = async (payload) => {
 };
 
 export const createNotification = async (notification) => {
-    await supabase.from('notifications').insert(notification);
     if (notification.user_id) {
         _sendPush({
             user_ids: [notification.user_id],
+            classroom_id: notification.classroom_id || null,
             title: notification.title,
             body: notification.message,
             url: notification.link || '/',
+            type: notification.type || 'info',
             channelId: 'tasks'
         }).catch(() => {});
     }
@@ -736,25 +737,14 @@ export const notifyClassroom = async (classroomId, notification) => {
     const { data: students } = await supabase.from('profiles').select('id').eq('classroom_id', classroomId).eq('role', 'member');
     if (!students || students.length === 0) return;
 
-    const notifications = students.map(student => ({
-        user_id: student.id,
-        classroom_id: classroomId,
-        title: notification.title,
-        message: notification.message,
-        type: notification.type || 'info',
-        link: notification.link,
-        is_read: false
-    }));
-
-    await supabase.from('notifications').insert(notifications);
-    
-    // Send push notifications to student devices using the multi-device router
     const studentIds = students.map(s => s.id);
     _sendPush({
         user_ids: studentIds,
+        classroom_id: classroomId,
         title: notification.title,
         body: notification.message,
         url: notification.link || '/',
+        type: notification.type || 'info',
         channelId: 'classroom'
     }).catch(() => {});
 };
@@ -763,25 +753,14 @@ export const notifyAdmins = async (classroomId, notification) => {
     const { data: admins } = await supabase.from('profiles').select('id').eq('classroom_id', classroomId).eq('role', 'admin');
     if (!admins || admins.length === 0) return;
 
-    const notifications = admins.map(admin => ({
-        user_id: admin.id,
-        classroom_id: classroomId,
-        title: notification.title,
-        message: notification.message,
-        type: notification.type || 'info',
-        link: notification.link,
-        is_read: false
-    }));
-
-    await supabase.from('notifications').insert(notifications);
-    
-    // Send push notifications to admin devices using the multi-device router
     const adminIds = admins.map(a => a.id);
     _sendPush({
         user_ids: adminIds,
+        classroom_id: classroomId,
         title: notification.title,
         body: notification.message,
         url: notification.link || '/',
+        type: notification.type || 'info',
         channelId: 'admin'
     }).catch(() => {});
 };

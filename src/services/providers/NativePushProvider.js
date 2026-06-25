@@ -50,9 +50,18 @@ export class NativePushProvider {
     });
 
     await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      if (action.notification.data?.url) {
-        // Safe navigation via location hashing for single-page routing
-        window.location.hash = action.notification.data.url;
+      const url = action.notification.data?.url;
+      if (url) {
+        // Dispatch custom event for single-page routing if App is already loaded
+        const navEvent = new CustomEvent('navigate-to-url', { detail: { url } });
+        window.dispatchEvent(navEvent);
+
+        // Fallback for cold start or if React is not fully loaded yet
+        setTimeout(() => {
+          if (window.location.pathname !== url) {
+            window.location.href = window.location.origin + url;
+          }
+        }, 300);
       }
     });
 

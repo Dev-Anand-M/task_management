@@ -16,24 +16,25 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- Policies
 -- Users can view their own notifications
+DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;
 CREATE POLICY "Users can view own notifications" ON notifications
   FOR SELECT USING (
     auth.uid() = user_id
   );
 
 -- Users can update (mark as read) their own notifications
+DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
 CREATE POLICY "Users can update own notifications" ON notifications
   FOR UPDATE USING (
     auth.uid() = user_id
   );
 
--- Admins or System can insert notifications
--- (For now, we'll allow authenticated users to insert if needed, e.g. "User submitted task" trigger? 
---  Actually better if only system/admin does. But for simplicity, let's allow inserts if they are related to the user or if admin)
-CREATE POLICY "Admins can insert notifications" ON notifications
-  FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+-- Anyone can insert notifications (e.g. students notifying admins, or admins notifying students)
+DROP POLICY IF EXISTS "Admins can insert notifications" ON notifications;
+DROP POLICY IF EXISTS "Anyone can insert notifications" ON notifications;
+CREATE POLICY "Anyone can insert notifications" ON notifications
+  FOR INSERT TO authenticated
+  WITH CHECK (true);
 
 -- Function to broadcast notification to a classroom (Optional utility)
 -- This would be useful if we want to "Send Announcement"
