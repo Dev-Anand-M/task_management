@@ -179,30 +179,73 @@ const Sidebar = ({ isOpen, onClose }) => {
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '18px' }}>🤖</span>
-                                <div style={{ textAlign: 'left' }}>
-                                    <h4 style={{ margin: 0, fontSize: '11px', fontWeight: 600, color: 'var(--sidebar-text, white)', lineHeight: '1.2' }}>Zenith App</h4>
-                                    <p style={{ margin: 0, fontSize: '9px', color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))', lineHeight: '1.2' }}>Get Android APK</p>
+                                <div style={{ textAlign: 'left', flex: 1 }}>
+                                    <h4 style={{ margin: 0, fontSize: '11px', fontWeight: 600, color: 'var(--sidebar-text, white)', lineHeight: '1.2' }}>Zenith Apps</h4>
+                                    <p style={{ margin: 0, fontSize: '9px', color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))', lineHeight: '1.2' }}>Desktop & Mobile</p>
                                 </div>
                             </div>
-                            <a
-                                href="/zenith-v1.0.1.apk"
-                                download
-                                style={{
-                                    padding: '4px 10px',
-                                    background: '#10b981',
-                                    color: 'white',
-                                    borderRadius: 'var(--radius-md)',
-                                    fontSize: '10px',
-                                    fontWeight: 700,
-                                    textDecoration: 'none',
-                                    transition: 'opacity 0.2s',
-                                    cursor: 'pointer',
-                                    whiteSpace: 'nowrap'
-                                }}
-                                className="hover:opacity-90 active:scale-95"
-                            >
-                                Download
-                            </a>
+                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                <a
+                                    href="/zenith-v1.0.1.apk"
+                                    download
+                                    style={{
+                                        padding: '4px 8px',
+                                        background: '#10b981',
+                                        color: 'white',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        textDecoration: 'none',
+                                        transition: 'opacity 0.2s',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                    className="hover:opacity-90 active:scale-95"
+                                    title="Android APK"
+                                >
+                                    📱
+                                </a>
+                                <a
+                                    href="/Zenith_1.0.1_x64-setup.exe"
+                                    download
+                                    style={{
+                                        padding: '4px 8px',
+                                        background: '#3b82f6',
+                                        color: 'white',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        textDecoration: 'none',
+                                        transition: 'opacity 0.2s',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                    className="hover:opacity-90 active:scale-95"
+                                    title="Windows Installer (EXE)"
+                                >
+                                    💻
+                                </a>
+                                <a
+                                    href="/Zenith_1.0.1_x64_en-US.msi"
+                                    download
+                                    style={{
+                                        padding: '4px 8px',
+                                        background: '#6366f1',
+                                        color: 'white',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        textDecoration: 'none',
+                                        transition: 'opacity 0.2s',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                    className="hover:opacity-90 active:scale-95"
+                                    title="Windows Installer (MSI)"
+                                >
+                                    📦
+                                </a>
+                            </div>
                         </div>
                     )}
                     {isAdmin && (

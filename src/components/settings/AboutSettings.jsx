@@ -1,5 +1,5 @@
 import { Card } from '../common';
-import { Shield, Download, Github, Smartphone } from 'lucide-react';
+import { Shield, Download, Github, Smartphone, Monitor } from 'lucide-react';
 import { PlatformService } from '../../services/infrastructure/PlatformService';
 
 const AboutSettings = () => {
@@ -47,17 +47,18 @@ const AboutSettings = () => {
                     paddingTop: 'var(--space-lg)',
                     borderTop: '1px solid var(--border)'
                 }}>
-                    <h4 style={{ margin: '0 0 var(--space-md) 0', fontSize: 'var(--text-md)', fontWeight: 600 }}>Mobile App</h4>
+                    <h4 style={{ margin: '0 0 var(--space-md) 0', fontSize: 'var(--text-md)', fontWeight: 600 }}>Zenith Applications</h4>
                     
                     <div style={{
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 'var(--space-sm)'
+                        gap: 'var(--space-md)'
                     }}>
+                        {/* Mobile Download */}
                         <div style={{
                             padding: 'var(--space-md)',
-                            background: 'color-mix(in srgb, var(--primary-500), transparent 95%)',
-                            border: '1px dashed color-mix(in srgb, var(--primary-500), transparent 70%)',
+                            background: 'color-mix(in srgb, #10b981, transparent 95%)',
+                            border: '1px dashed color-mix(in srgb, #10b981, transparent 70%)',
                             borderRadius: 'var(--radius-md)',
                             display: 'flex',
                             alignItems: 'center',
@@ -80,7 +81,7 @@ const AboutSettings = () => {
                                 </div>
                                 <div style={{ textAlign: 'left' }}>
                                     <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Zenith Mobile (Android)</p>
-                                    <p style={{ margin: '2px 0 0', fontSize: 'var(--text-sm)', fontWeight: 600 }}>v1.0.1 APK</p>
+                                    <p style={{ margin: '2px 0 0', fontSize: 'var(--text-sm)', fontWeight: 600 }}>v1.0.1 APK (Verified)</p>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
@@ -105,30 +106,110 @@ const AboutSettings = () => {
                                 >
                                     <Download size={14} /> Download APK
                                 </a>
+                            </div>
+                        </div>
+
+                        {/* Windows Download */}
+                        <div style={{
+                            padding: 'var(--space-md)',
+                            background: 'color-mix(in srgb, #3b82f6, transparent 95%)',
+                            border: '1px dashed color-mix(in srgb, #3b82f6, transparent 70%)',
+                            borderRadius: 'var(--radius-md)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: 'var(--space-md)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flex: 1, minWidth: '200px' }}>
+                                <div style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    background: '#3b82f6',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'white'
+                                }}>
+                                    <Monitor size={18} />
+                                </div>
+                                <div style={{ textAlign: 'left' }}>
+                                    <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Zenith Desktop (Windows)</p>
+                                    <p style={{ margin: '2px 0 0', fontSize: 'var(--text-sm)', fontWeight: 600 }}>v1.0.1 (EXE & MSI)</p>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
                                 <a 
-                                    href="https://github.com/Dev-Anand-M/task_management/releases" 
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    href="/Zenith_1.0.1_x64-setup.exe" 
+                                    download 
                                     style={{
                                         display: 'inline-flex',
                                         alignItems: 'center',
                                         gap: '6px',
                                         padding: '8px 16px',
-                                        background: 'var(--surface-hover)',
-                                        color: 'var(--text)',
-                                        border: '1px solid var(--border)',
+                                        background: '#3b82f6',
+                                        color: 'white',
                                         borderRadius: 'var(--radius-md)',
                                         fontSize: 'var(--text-sm)',
                                         fontWeight: 600,
                                         textDecoration: 'none',
-                                        transition: 'background-color 0.2s, color 0.2s',
+                                        transition: 'opacity 0.2s',
                                         cursor: 'pointer'
                                     }}
-                                    className="hover:bg-var(--border) active:scale-95"
+                                    className="hover:opacity-90 active:scale-95"
                                 >
-                                    <Github size={14} /> GitHub Releases
+                                    <Download size={14} /> Download EXE
+                                </a>
+                                <a 
+                                    href="/Zenith_1.0.1_x64_en-US.msi" 
+                                    download 
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '8px 16px',
+                                        background: '#6366f1',
+                                        color: 'white',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontSize: 'var(--text-sm)',
+                                        fontWeight: 600,
+                                        textDecoration: 'none',
+                                        transition: 'opacity 0.2s',
+                                        cursor: 'pointer'
+                                    }}
+                                    className="hover:opacity-90 active:scale-95"
+                                >
+                                    <Download size={14} /> Download MSI
                                 </a>
                             </div>
+                        </div>
+
+                        {/* GitHub Releases */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <a 
+                                href="https://github.com/Dev-Anand-M/task_management/releases" 
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '8px 16px',
+                                    background: 'var(--surface-hover)',
+                                    color: 'var(--text)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 'var(--radius-md)',
+                                    fontSize: 'var(--text-sm)',
+                                    fontWeight: 600,
+                                    textDecoration: 'none',
+                                    transition: 'background-color 0.2s, color 0.2s',
+                                    cursor: 'pointer'
+                                }}
+                                className="hover:bg-var(--border) active:scale-95"
+                            >
+                                <Github size={14} /> GitHub Releases
+                            </a>
                         </div>
                     </div>
                 </div>

@@ -10,6 +10,7 @@ import BackHandler from './components/layout/BackHandler';
 import GlobalAlarmListener from './components/layout/GlobalAlarmListener';
 import UpdateDialog from './components/common/UpdateDialog';
 import { updateChecker } from './services/updateChecker';
+import { tauriUpdater } from './services/tauriUpdater';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -242,16 +243,26 @@ function App() {
   // Check for updates on app start
   useEffect(() => {
     const checkUpdates = async () => {
-      const result = await updateChecker.checkForUpdates();
-      
-      if (result.updateAvailable) {
-        // Don't show if user dismissed this version (unless mandatory)
-        if (!result.mandatory && updateChecker.hasUserDismissedVersion(result.latestVersion)) {
-          return;
+      // Check if running in Tauri (Windows desktop app)
+      if (window.__TAURI__) {
+        const result = await tauriUpdater.checkForUpdates();
+        if (result.updateAvailable) {
+          setUpdateInfo({ ...result, platform: 'tauri' });
+          setShowUpdateDialog(true);
         }
+      } else {
+        // Check for Android APK updates
+        const result = await updateChecker.checkForUpdates();
         
-        setUpdateInfo(result);
-        setShowUpdateDialog(true);
+        if (result.updateAvailable) {
+          // Don't show if user dismissed this version (unless mandatory)
+          if (!result.mandatory && updateChecker.hasUserDismissedVersion(result.latestVersion)) {
+            return;
+          }
+          
+          setUpdateInfo({ ...result, platform: 'android' });
+          setShowUpdateDialog(true);
+        }
       }
     };
 
@@ -264,7 +275,16 @@ function App() {
   }, []);
 
   const handleDownloadUpdate = async () => {
-    if (updateInfo?.downloadUrl) {
+    if (updateInfo?.platform === 'tauri') {
+      // Tauri desktop update
+      setShowUpdateDialog(false);
+      const result = await tauriUpdater.downloadAndInstall(updateInfo.update);
+      if (!result.success) {
+        alert('Update failed: ' + result.error);
+      }
+      // App will restart automatically if successful
+    } else if (updateInfo?.downloadUrl) {
+      // Android APK update
       await updateChecker.downloadUpdate(updateInfo.downloadUrl);
       // Keep dialog open if mandatory, close if optional
       if (!updateInfo.mandatory) {
