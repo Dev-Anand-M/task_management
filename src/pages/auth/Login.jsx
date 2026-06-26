@@ -226,78 +226,32 @@ const Login = () => {
                                     🤖
                                 </div>
                                 <div style={{ textAlign: 'left' }}>
-                                    <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)', lineHeight: '1.2' }}>Download Desktop & Mobile</p>
-                                    <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text)', lineHeight: '1.2' }}>Zenith Apps</p>
+                                    <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)', lineHeight: '1.2' }}>Get the Android App</p>
+                                    <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text)', lineHeight: '1.2' }}>Zenith Mobile</p>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                <a 
-                                    href="/zenith-v1.0.1.apk" 
-                                    download 
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        padding: '6px 12px',
-                                        background: '#10b981',
-                                        color: 'white',
-                                        borderRadius: 'var(--radius-md)',
-                                        fontSize: '12px',
-                                        fontWeight: 600,
-                                        textDecoration: 'none',
-                                        transition: 'opacity 0.2s',
-                                        border: 'none',
-                                        cursor: 'pointer'
-                                    }}
-                                    className="hover:opacity-90 active:scale-95"
-                                >
-                                    📱 Android
-                                </a>
-                                <a 
-                                    href="/Zenith_1.0.1_x64-setup.exe" 
-                                    download 
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        padding: '6px 12px',
-                                        background: '#3b82f6',
-                                        color: 'white',
-                                        borderRadius: 'var(--radius-md)',
-                                        fontSize: '12px',
-                                        fontWeight: 600,
-                                        textDecoration: 'none',
-                                        transition: 'opacity 0.2s',
-                                        border: 'none',
-                                        cursor: 'pointer'
-                                    }}
-                                    className="hover:opacity-90 active:scale-95"
-                                >
-                                    💻 Windows (EXE)
-                                </a>
-                                <a 
-                                    href="/Zenith_1.0.1_x64_en-US.msi" 
-                                    download 
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        padding: '6px 12px',
-                                        background: '#6366f1',
-                                        color: 'white',
-                                        borderRadius: 'var(--radius-md)',
-                                        fontSize: '12px',
-                                        fontWeight: 600,
-                                        textDecoration: 'none',
-                                        transition: 'opacity 0.2s',
-                                        border: 'none',
-                                        cursor: 'pointer'
-                                    }}
-                                    className="hover:opacity-90 active:scale-95"
-                                >
-                                    📦 Windows (MSI)
-                                </a>
-                            </div>
+                            <a 
+                                href="/zenith-v1.0.1.apk" 
+                                download 
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '6px 12px',
+                                    background: '#10b981',
+                                    color: 'white',
+                                    borderRadius: 'var(--radius-md)',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    textDecoration: 'none',
+                                    transition: 'opacity 0.2s',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                }}
+                                className="hover:opacity-90 active:scale-95"
+                            >
+                                Download
+                            </a>
                         </div>
                     )}
 
