@@ -71,12 +71,7 @@ const GlobalAlarmListener = () => {
                 
                 if (latest.id !== lastNotifId) {
                     localStorage.setItem('last_notif_id', latest.id);
-                    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                        new Notification(latest.title, {
-                            body: latest.message,
-                            icon: '/zenith.png'
-                        });
-                    }
+                    // Removed browser notification - push notifications handle this to prevent duplicates
                 }
             }
         } catch (err) {
@@ -123,12 +118,8 @@ const GlobalAlarmListener = () => {
         setActiveAlarm(routine);
         setShowStopModal(true);
         
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            new Notification(`⏰ Alarm: ${routine.title}`, {
-                body: `It's time for your scheduled routine! Respond within 15 minutes.`,
-                icon: '/zenith.png'
-            });
-        }
+        // Removed browser notification - push notifications handle this to prevent duplicates
+        // The alarm modal and audio are sufficient for in-app alerts
 
         if (audioRef.current) {
             audioRef.current.play().catch(e => console.warn('[Alarm] Audio blocked:', e));
