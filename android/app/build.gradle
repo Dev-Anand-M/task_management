@@ -3,6 +3,16 @@ apply plugin: 'com.android.application'
 android {
     namespace = "com.idl.zenith"
     compileSdk = rootProject.ext.compileSdkVersion
+
+    signingConfigs {
+        release {
+            storeFile file('zenith-release.keystore')
+            storePassword 'zenith123'
+            keyAlias 'zenith-key'
+            keyPassword 'zenith123'
+        }
+    }
+
     defaultConfig {
         applicationId "com.idl.zenith"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -18,8 +28,12 @@ android {
     }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            signingConfig signingConfigs.release
         }
     }
 }
