@@ -163,7 +163,7 @@ const GlobalAlarmListener = () => {
         if (activeAlarm) {
             if (activeAlarm.id !== 'test') {
                 try {
-                    await routineService.logRoutine(activeAlarm.id);
+                    await routineService.logRoutineProgress(activeAlarm.id, { status: 'done' });
                 } catch (e) {
                     console.error('[Alarm] Logging failed:', e);
                 }
@@ -190,22 +190,8 @@ const GlobalAlarmListener = () => {
             window.removeEventListener('test-alarm', handleTest);
         };
     }, [user?.id, enabled]);
-    // Auto-sync push subscription when user logs in/changes device
-    useEffect(() => {
-        const syncPushSubscription = async () => {
-            if (!user?.id) {
-                return;
-            }
-            try {
-                const { NotificationManager } = await import('../../services/NotificationManager');
-                await NotificationManager.initialize(user.id);
-                await NotificationManager.register();
-            } catch (err) {
-                // Silenced errors to prevent developer console clutter during push notifications pause
-            }
-        };
-        syncPushSubscription();
-    }, [user?.id]);
+
+
 
     return (
         <>

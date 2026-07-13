@@ -720,7 +720,20 @@ const _sendPush = async (payload) => {
 };
 
 export const createNotification = async (notification) => {
+    // 1. Persist to database (always)
     if (notification.user_id) {
+        const { error } = await supabase.from('notifications').insert({
+            user_id: notification.user_id,
+            classroom_id: notification.classroom_id || null,
+            title: notification.title,
+            message: notification.message,
+            type: notification.type || 'info',
+            link: notification.link || '/',
+            is_read: false
+        });
+        if (error) console.error('[createNotification] DB insert error:', error);
+
+        // 2. Also fire push (best-effort)
         _sendPush({
             user_ids: [notification.user_id],
             classroom_id: notification.classroom_id || null,
@@ -738,6 +751,21 @@ export const notifyClassroom = async (classroomId, notification) => {
     if (!students || students.length === 0) return;
 
     const studentIds = students.map(s => s.id);
+
+    // 1. Persist notification rows for each student
+    const notifRows = studentIds.map(id => ({
+        user_id: id,
+        classroom_id: classroomId,
+        title: notification.title,
+        message: notification.message,
+        type: notification.type || 'info',
+        link: notification.link || '/',
+        is_read: false
+    }));
+    const { error } = await supabase.from('notifications').insert(notifRows);
+    if (error) console.error('[notifyClassroom] DB insert error:', error);
+
+    // 2. Fire push (best-effort)
     _sendPush({
         user_ids: studentIds,
         classroom_id: classroomId,
@@ -754,6 +782,21 @@ export const notifyAdmins = async (classroomId, notification) => {
     if (!admins || admins.length === 0) return;
 
     const adminIds = admins.map(a => a.id);
+
+    // 1. Persist notification rows for each admin
+    const notifRows = adminIds.map(id => ({
+        user_id: id,
+        classroom_id: classroomId,
+        title: notification.title,
+        message: notification.message,
+        type: notification.type || 'info',
+        link: notification.link || '/',
+        is_read: false
+    }));
+    const { error } = await supabase.from('notifications').insert(notifRows);
+    if (error) console.error('[notifyAdmins] DB insert error:', error);
+
+    // 2. Fire push (best-effort)
     _sendPush({
         user_ids: adminIds,
         classroom_id: classroomId,

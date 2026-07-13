@@ -49,15 +49,26 @@ const UpdateDialog = ({ updateInfo, onDownload, onDismiss, onClose }) => {
           </button>
         )}
 
-        {/* Icon */}
+        {/* Logo Icon */}
         <div
           style={{
-            fontSize: '64px',
-            textAlign: 'center',
-            marginBottom: '20px',
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '24px',
           }}
         >
-          🎉
+          <img
+            src="/zenith.png"
+            alt="Zenith Logo"
+            style={{
+              width: '80px',
+              height: '80px',
+              objectFit: 'contain',
+              borderRadius: '20px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+              border: '2px solid rgba(255,255,255,0.1)',
+            }}
+          />
         </div>
 
         {/* Title */}

@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { PlatformService } from './services/infrastructure/PlatformService';
 import { Routes, Route, Navigate, Outlet, useParams, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -8,6 +8,8 @@ import { Layout } from './components/layout';
 import { ErrorBoundary, LoadingSpinner, SplashScreen } from './components/common';
 import BackHandler from './components/layout/BackHandler';
 import GlobalAlarmListener from './components/layout/GlobalAlarmListener';
+import UpdateDialog from './components/common/UpdateDialog';
+import { updateChecker } from './services/updateChecker';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -234,6 +236,56 @@ function AppRoutes() {
 
 
 function App() {
+  const [updateInfo, setUpdateInfo] = useState(null);
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+
+  // Check for updates on app start
+  useEffect(() => {
+    const checkUpdates = async () => {
+      const result = await updateChecker.checkForUpdates();
+      
+      if (result.updateAvailable) {
+        // Don't show if user dismissed this version (unless mandatory)
+        if (!result.mandatory && updateChecker.hasUserDismissedVersion(result.latestVersion)) {
+          return;
+        }
+        
+        setUpdateInfo(result);
+        setShowUpdateDialog(true);
+      }
+    };
+
+    // Check on app start (with a small delay to not block initial render)
+    setTimeout(checkUpdates, 2000);
+
+    // Check every hour
+    const interval = setInterval(checkUpdates, 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleDownloadUpdate = async () => {
+    if (updateInfo?.downloadUrl) {
+      await updateChecker.downloadUpdate(updateInfo.downloadUrl);
+      // Keep dialog open if mandatory, close if optional
+      if (!updateInfo.mandatory) {
+        setShowUpdateDialog(false);
+      }
+    }
+  };
+
+  const handleDismissUpdate = () => {
+    if (updateInfo?.latestVersion) {
+      updateChecker.dismissVersion(updateInfo.latestVersion);
+    }
+    setShowUpdateDialog(false);
+  };
+
+  const handleCloseUpdate = () => {
+    if (!updateInfo?.mandatory) {
+      setShowUpdateDialog(false);
+    }
+  };
+
   useEffect(() => {
     const isNative = PlatformService.isNative();
     const isStandalone = isNative || (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches);
@@ -267,6 +319,16 @@ function App() {
           <GlobalAlarmListener />
           <BackHandler />
           <AppRoutes />
+          
+          {/* Update Dialog */}
+          {showUpdateDialog && updateInfo && (
+            <UpdateDialog
+              updateInfo={updateInfo}
+              onDownload={handleDownloadUpdate}
+              onDismiss={handleDismissUpdate}
+              onClose={handleCloseUpdate}
+            />
+          )}
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

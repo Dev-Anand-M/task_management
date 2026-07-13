@@ -1,7 +1,7 @@
 {
-  "version": "1.0.1",
-  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.0.1.apk",
-  "releaseNotes": "🐛 Fixed duplicate notifications\n✨ Improved notification handling in Capacitor app",
-  "mandatory": false,
+  "version": "1.0.2",
+  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.0.2.apk",
+  "releaseNotes": "🐛 Fixed AI settings/API key validation on mobile\n🔔 Fixed notifications not showing in-app\n⏰ Fixed alarm stop crash\n📦 Added @capacitor/browser for reliable downloads\n🧹 Dead code cleanup & stability improvements",
+  "mandatory": true,
   "minSupportedVersion": "1.0.0"
 }

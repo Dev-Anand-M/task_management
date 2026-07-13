@@ -14,7 +14,9 @@ import {
     Edit2,
     Trash2,
     Trophy,
-    Key
+    Key,
+    UserX,
+    Users
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { formatDate, BADGES } from '../../utils/constants';
@@ -29,12 +31,17 @@ const TeamManagement = () => {
     const [selectedMember, setSelectedMember] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [showSwitchModal, setShowSwitchModal] = useState(false);
+    const [classrooms, setClassrooms] = useState([]);
+    const [selectedClassroom, setSelectedClassroom] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [loading, setLoading] = useState(true);
     const [resetting, setResetting] = useState(false);
+    const [switching, setSwitching] = useState(false);
 
     useEffect(() => {
         loadMembers();
+        loadClassrooms();
 
         // GOD COMMAND: REALTIME UPDATES
         const channel = supabase
@@ -48,6 +55,9 @@ const TeamManagement = () => {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_attempts' }, () => {
                 loadMembers();
             })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'classrooms' }, () => {
+                loadClassrooms();
+            })
             .subscribe();
 
         return () => {
@@ -56,6 +66,70 @@ const TeamManagement = () => {
     }, []);
 
     useMiniReload(() => loadMembers());
+
+    const loadClassrooms = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('classrooms')
+                .select('*')
+                .order('name');
+            
+            if (error) throw error;
+            setClassrooms(data || []);
+        } catch (error) {
+            console.error('Error loading classrooms:', error);
+        }
+    };
+
+    const handleRemoveMember = async (member) => {
+        if (!window.confirm(`Are you sure you want to remove ${member.name} from the system?\n\nThis will:\n• Revoke their login access\n• Delete all their submissions\n• Delete all their quiz attempts\n• Delete all their notifications\n• Delete their routines and logs\n• Remove their profile\n\nThis action CANNOT be undone!`)) {
+            return;
+        }
+
+        try {
+            // Use RPC function to delete both auth user and profile
+            const { error } = await supabase
+                .rpc('admin_delete_user', { user_id: member.id });
+
+            if (error) {
+                throw error;
+            }
+
+            alert(`${member.name} has been removed successfully. They can no longer log in.`);
+            loadMembers();
+        } catch (error) {
+            console.error('Error removing member:', error);
+            alert(`Failed to remove member: ${error.message}\n\nMake sure you've run the migration: supabase/migration_admin_delete_member.sql`);
+        }
+    };
+
+    const handleSwitchClassroom = async () => {
+        if (!selectedClassroom) {
+            alert('Please select a classroom');
+            return;
+        }
+
+        setSwitching(true);
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ classroom_id: selectedClassroom })
+                .eq('id', selectedMember.id);
+
+            if (error) throw error;
+
+            const classroom = classrooms.find(c => c.id === selectedClassroom);
+            alert(`${selectedMember.name} has been moved to "${classroom?.name}" successfully!`);
+            setShowSwitchModal(false);
+            setSelectedClassroom('');
+            loadMembers();
+        } catch (error) {
+            console.error('Error switching classroom:', error);
+            alert(`Failed to switch classroom: ${error.message}`);
+        } finally {
+            setSwitching(false);
+        }
+    };
 
     const handleResetPassword = async (email) => {
         if (!window.confirm(`Are you sure you want to send a password reset email to ${email}?`)) {
@@ -270,18 +344,42 @@ const TeamManagement = () => {
                                         </td>
                                         <td className="flex justify-end items-center gap-xs">
                                             {isAdmin && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => {
-                                                        setSelectedMember(member);
-                                                        setShowPasswordModal(true);
-                                                    }}
-                                                    title="Directly Set New Password"
-                                                    style={{ color: 'var(--warning-500)' }}
-                                                >
-                                                    <Key size={16} />
-                                                </Button>
+                                                <>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => {
+                                                            setSelectedMember(member);
+                                                            setSelectedClassroom(member.classroom_id || '');
+                                                            setShowSwitchModal(true);
+                                                        }}
+                                                        title="Switch Classroom"
+                                                        style={{ color: 'var(--primary-500)' }}
+                                                    >
+                                                        <Users size={16} />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => {
+                                                            setSelectedMember(member);
+                                                            setShowPasswordModal(true);
+                                                        }}
+                                                        title="Set Password"
+                                                        style={{ color: 'var(--warning-500)' }}
+                                                    >
+                                                        <Key size={16} />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleRemoveMember(member)}
+                                                        title="Remove Member"
+                                                        style={{ color: 'var(--error-500)' }}
+                                                    >
+                                                        <UserX size={16} />
+                                                    </Button>
+                                                </>
                                             )}
                                             <Button
                                                 variant="ghost"
@@ -349,17 +447,42 @@ const TeamManagement = () => {
                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Joined {formatDate(member.created_at)}</span>
                                 <div className="flex gap-sm">
                                     {isAdmin && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => {
-                                                setSelectedMember(member);
-                                                setShowPasswordModal(true);
-                                            }}
-                                            style={{ color: 'var(--warning-500)', padding: '0.5rem' }}
-                                        >
-                                            <Key size={16} />
-                                        </Button>
+                                        <>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedMember(member);
+                                                    setSelectedClassroom(member.classroom_id || '');
+                                                    setShowSwitchModal(true);
+                                                }}
+                                                style={{ color: 'var(--primary-500)', padding: '0.5rem' }}
+                                                title="Switch Classroom"
+                                            >
+                                                <Users size={16} />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedMember(member);
+                                                    setShowPasswordModal(true);
+                                                }}
+                                                style={{ color: 'var(--warning-500)', padding: '0.5rem' }}
+                                                title="Set Password"
+                                            >
+                                                <Key size={16} />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleRemoveMember(member)}
+                                                style={{ color: 'var(--error-500)', padding: '0.5rem' }}
+                                                title="Remove"
+                                            >
+                                                <UserX size={16} />
+                                            </Button>
+                                        </>
                                     )}
                                     <Button
                                         variant="primary"
@@ -367,7 +490,7 @@ const TeamManagement = () => {
                                         onClick={() => navigate(isAdmin ? `/admin/member/${member.id}` : `/profile/${member.id}`)}
                                         style={{ padding: '0.5rem 1rem' }}
                                     >
-                                        View Profile
+                                        View
                                     </Button>
                                 </div>
                             </div>
@@ -409,6 +532,69 @@ const TeamManagement = () => {
                             style={{ flex: 1 }}
                         >
                             Update Password
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Switch Classroom Modal */}
+            <Modal
+                isOpen={showSwitchModal}
+                onClose={() => setShowSwitchModal(false)}
+                title={`Switch Classroom for ${selectedMember?.name}`}
+                size="sm"
+            >
+                <div className="flex flex-col gap-md">
+                    <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                        Move this member to a different classroom. Their progress and data will be preserved.
+                    </p>
+                    <div>
+                        <label style={{ 
+                            display: 'block', 
+                            fontSize: 'var(--text-sm)', 
+                            fontWeight: 500, 
+                            marginBottom: 'var(--space-xs)',
+                            color: 'var(--text)'
+                        }}>
+                            Select Classroom
+                        </label>
+                        <select
+                            value={selectedClassroom}
+                            onChange={(e) => setSelectedClassroom(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: 'var(--space-sm)',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid var(--border)',
+                                background: 'var(--surface)',
+                                color: 'var(--text)',
+                                fontSize: 'var(--text-sm)',
+                                cursor: 'pointer'
+                            }}
+                            required
+                        >
+                            <option value="">-- Select Classroom --</option>
+                            {classrooms.map(classroom => (
+                                <option key={classroom.id} value={classroom.id}>
+                                    {classroom.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex gap-sm mt-md">
+                        <Button
+                            variant="secondary"
+                            onClick={() => setShowSwitchModal(false)}
+                            style={{ flex: 1 }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleSwitchClassroom}
+                            loading={switching}
+                            style={{ flex: 1 }}
+                        >
+                            Switch Classroom
                         </Button>
                     </div>
                 </div>

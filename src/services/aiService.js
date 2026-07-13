@@ -2,6 +2,7 @@
 
 import { supabase } from '../lib/supabase';
 import { getKnowledgeBase } from './database';
+import { PlatformService } from './infrastructure/PlatformService';
 
 export const PROVIDERS = {
     GEMINI: { id: 'gemini', name: 'Google Gemini', icon: '✨', keyName: 'gemini_api_key', url: 'https://makersuite.google.com/app/apikey' },
@@ -447,7 +448,7 @@ const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // Helper: Call AI proxy with retry logic
 const callAIProxy = async (provider, endpoint, apiKey, body, signal = null, options = {}) => {
     const maxRetries = 5;
-    const proxyUrl = '/api/ai-proxy';
+    const proxyUrl = `${PlatformService.getApiUrl()}/api/ai-proxy`;
     let lastError;
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
