@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npx cap copy && node -e \"const fs=require('fs'); ['android/app/src/main/assets/public', 'ios/App/App/public'].forEach(dir=>{ if(fs.existsSync(dir)){ fs.readdirSync(dir).filter(f=>f.endsWith('.apk')).forEach(f=>fs.unlinkSync(dir+'/'+f)) } })\"",
+    "build": "vite build && node -e \"const fs=require('fs'); ['dist', 'android/app/src/main/assets/public', 'ios/App/App/public'].forEach(dir=>{ if(fs.existsSync(dir)){ fs.readdirSync(dir).filter(f=>f.endsWith('.apk')).forEach(f=>fs.unlinkSync(dir+'/'+f)) } })\" && npx cap copy",
     "lint": "eslint .",
     "preview": "vite preview",
     "cap:sync": "npx cap sync",
