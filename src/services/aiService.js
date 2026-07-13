@@ -429,7 +429,10 @@ export const validateAPIKey = async (providerId, key) => {
         return { valid: false, error: 'Unknown provider' };
     } catch (err) {
         const msg = err.message || 'Validation failed';
-        if (msg.includes('401') || msg.includes('403') || msg.includes('Unauthorized') || msg.includes('Invalid')) {
+        if (msg.includes('402') || msg.toLowerCase().includes('payment') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('credit') || msg.toLowerCase().includes('balance')) {
+            return { valid: false, error: 'Payment Required: Your API key is valid, but the account has run out of credits or quota.' };
+        }
+        if (msg.includes('401') || msg.includes('403') || msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('invalid')) {
             return { valid: false, error: 'Invalid API key. Please double-check and try again.' };
         }
         if (msg.includes('429')) {
@@ -518,7 +521,20 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null, opti
                     const text = await response.text();
                     throw new Error(`HTTP ${response.status}: ${text}`);
                 }
-                throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+                
+                let errMsg = '';
+                if (errorData) {
+                    if (typeof errorData.error === 'object' && errorData.error !== null) {
+                        errMsg = errorData.error.message || errorData.error.error || JSON.stringify(errorData.error);
+                    } else if (typeof errorData.error === 'string') {
+                        errMsg = errorData.error;
+                    } else {
+                        errMsg = errorData.message || errorData.msg || JSON.stringify(errorData);
+                    }
+                }
+                
+                // Include HTTP status code to help diagnose
+                throw new Error(errMsg || `HTTP ${response.status}`);
             }
 
             return await response.json();
