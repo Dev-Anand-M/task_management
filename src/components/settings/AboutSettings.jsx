@@ -1,6 +1,9 @@
-import { Card } from '../common';
-import { Shield, Download, Github, Smartphone } from 'lucide-react';
+import { useState } from 'react';
+import { Card, Button } from '../common';
+import { Shield, Download, Github, Smartphone, RefreshCw } from 'lucide-react';
 import { PlatformService } from '../../services/infrastructure/PlatformService';
+import { updateChecker } from '../../services/updateChecker';
+import packageJson from '../../../package.json';
 
 const AboutSettings = () => {
     return (
@@ -33,7 +36,7 @@ const AboutSettings = () => {
             }}>
                 <div style={{ padding: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
                     <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Version</p>
-                    <p style={{ margin: '4px 0 0', fontWeight: 600 }}>1.0.2</p>
+                    <p style={{ margin: '4px 0 0', fontWeight: 600 }}>{packageJson.version}</p>
                 </div>
                 <div style={{ padding: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
                     <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Build</p>
@@ -82,12 +85,12 @@ const AboutSettings = () => {
                                 </div>
                                 <div style={{ textAlign: 'left' }}>
                                     <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Zenith Mobile (Android)</p>
-                                    <p style={{ margin: '2px 0 0', fontSize: 'var(--text-sm)', fontWeight: 600 }}>v1.0.2 APK</p>
+                                    <p style={{ margin: '2px 0 0', fontSize: 'var(--text-sm)', fontWeight: 600 }}>v{packageJson.version} APK</p>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
                                 <a 
-                                    href="/zenith-v1.0.2.apk" 
+                                    href={`/zenith-v${packageJson.version}.apk`}
                                     download 
                                     style={{
                                         display: 'inline-flex',
