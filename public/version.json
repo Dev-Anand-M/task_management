@@ -1,7 +1,7 @@
 {
-  "version": "1.0.2",
-  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.0.2.apk",
-  "releaseNotes": "🐛 Fixed AI settings/API key validation on mobile\n🔔 Fixed notifications not showing in-app\n⏰ Fixed alarm stop crash\n📦 Added @capacitor/browser for reliable downloads\n🧹 Dead code cleanup & stability improvements",
+  "version": "1.0.3",
+  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.0.3.apk",
+  "releaseNotes": "📱 Fixed layout constraints to stay above system navigation bar\n📜 Fixed scrolling issues on member routines and diary logs\n🐛 Fixed APK download fallback from About page",
   "mandatory": true,
   "minSupportedVersion": "1.0.0"
 }

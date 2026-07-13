@@ -172,7 +172,7 @@ const Timetable = () => {
     const daysMap = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 7 };
 
     return (
-        <div className="page-content animate-fade-in" style={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', paddingBottom: 'var(--space-2xl)' }}>
             <div className="flex justify-between items-center mb-lg">
                 <div>
                     <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', fontSize: isMobile ? 'var(--text-xl)' : 'var(--text-4xl)' }}>

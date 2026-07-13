@@ -484,7 +484,7 @@ const Diary = () => {
     };
 
     return (
-        <div className="page-content animate-fade-in">
+        <div className="animate-fade-in" style={{ paddingBottom: 'var(--space-2xl)' }}>
             <div className="flex flex-mobile-col justify-between items-center mb-xl gap-md">
                 <div>
                     <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
