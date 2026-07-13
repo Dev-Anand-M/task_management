@@ -1,4 +1,16 @@
 {
+    "redirects": [
+        {
+            "source": "/zenith-v1.0.1.apk",
+            "destination": "/zenith-v1.0.3.apk",
+            "permanent": false
+        },
+        {
+            "source": "/zenith-v1.0.2.apk",
+            "destination": "/zenith-v1.0.3.apk",
+            "permanent": false
+        }
+    ],
     "rewrites": [
         {
             "source": "/api/:path*",
