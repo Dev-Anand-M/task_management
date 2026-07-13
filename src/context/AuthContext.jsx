@@ -293,6 +293,13 @@ export const AuthProvider = ({ children }) => {
     // logout with timeout — can NEVER hang
     const logout = useCallback(async () => {
         try {
+            // Clear in-memory AI API keys cache on logout
+            try {
+                const { clearAICache } = await import('../services/aiService');
+                clearAICache();
+            } catch (cacheErr) {
+                console.error('[AuthContext] Failed to clear AI cache:', cacheErr);
+            }
 
             await Promise.race([
                 supabase.auth.signOut(),

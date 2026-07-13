@@ -4,6 +4,9 @@ import { supabase } from '../lib/supabase';
 import { getKnowledgeBase } from './database';
 import { PlatformService } from './infrastructure/PlatformService';
 
+// In-memory cache for decrypted API keys to prevent local storage exposure
+let decryptedKeysCache = {};
+
 export const PROVIDERS = {
     GEMINI: { id: 'gemini', name: 'Google Gemini', icon: '✨', keyName: 'gemini_api_key', url: 'https://makersuite.google.com/app/apikey' },
     OPENAI: { id: 'openai', name: 'OpenAI', icon: '🧠', keyName: 'openai_api_key', url: 'https://platform.openai.com/api-keys' },
@@ -76,25 +79,25 @@ const decryptKey = (encryptedKey, salt) => {
 // Check if API key is configured for a specific provider
 export const isAPIKeyConfigured = (providerId = 'sambanova') => {
     const provider = Object.values(PROVIDERS).find(p => p.id === providerId);
-    return provider ? !!localStorage.getItem(getStorageKeyName(provider.keyName)) : false;
+    return provider ? !!decryptedKeysCache[provider.keyName] : false;
 };
 
 // Check if ANY API key is configured
 export const isAnyAPIKeyConfigured = () => {
-    return Object.values(PROVIDERS).some(p => !!localStorage.getItem(getStorageKeyName(p.keyName)));
+    return Object.values(PROVIDERS).some(p => !!decryptedKeysCache[p.keyName]);
 };
 
 // Fetch available models (Legacy wrapper or generic fetcher)
 export const fetchAvailableModels = async (apiKey) => {
     try {
         // If generic key is passed and it matches a stored key, use that provider
-        const provider = Object.values(PROVIDERS).find(p => localStorage.getItem(getStorageKeyName(p.keyName)) === apiKey);
+        const provider = Object.values(PROVIDERS).find(p => decryptedKeysCache[p.keyName] === apiKey);
         if (provider) {
             const validation = await validateAPIKey(provider.id, apiKey);
             return validation.models || [];
         }
 
-        // Fallback: try Gemini
+        // Fallback: try SambaNova
         return (await validateAPIKey('sambanova', apiKey)).models || [];
     } catch (e) {
         return [];
@@ -104,7 +107,7 @@ export const fetchAvailableModels = async (apiKey) => {
 // Get API key for provider
 export const getAPIKey = (providerId) => {
     const provider = Object.values(PROVIDERS).find(p => p.id === providerId);
-    return provider ? localStorage.getItem(getStorageKeyName(provider.keyName)) || '' : '';
+    return provider ? decryptedKeysCache[provider.keyName] || '' : '';
 };
 
 // Get usage stats
@@ -136,10 +139,10 @@ export const syncToDatabase = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Collect all keys
+        // Collect all keys from in-memory cache
         const keys = {};
         Object.values(PROVIDERS).forEach(p => {
-            const key = localStorage.getItem(getStorageKeyName(p.keyName));
+            const key = decryptedKeysCache[p.keyName];
             if (key) keys[p.keyName] = encryptKey(key, user.id);
         });
 
@@ -169,7 +172,7 @@ export const syncToDatabase = async () => {
 export const saveAPIKey = async (providerId, key) => {
     const provider = Object.values(PROVIDERS).find(p => p.id === providerId);
     if (provider) {
-        localStorage.setItem(getStorageKeyName(provider.keyName), key);
+        decryptedKeysCache[provider.keyName] = key;
         await syncToDatabase();
     }
 };
@@ -178,7 +181,7 @@ export const saveAPIKey = async (providerId, key) => {
 export const removeAPIKey = async (providerId) => {
     const provider = Object.values(PROVIDERS).find(p => p.id === providerId);
     if (provider) {
-        localStorage.removeItem(getStorageKeyName(provider.keyName));
+        delete decryptedKeysCache[provider.keyName];
         await syncToDatabase();
     }
 };
@@ -209,12 +212,12 @@ export const getSelectedModel = () => {
     }
 
     // 3. Fallback to any configured provider
-    if (localStorage.getItem(getStorageKeyName('sambanova_api_key'))) return 'Meta-Llama-3.3-70B-Instruct';
-    if (localStorage.getItem(getStorageKeyName('groq_api_key'))) return 'llama-3.3-70b-versatile';
-    if (localStorage.getItem(getStorageKeyName('gemini_api_key'))) return 'gemini-1.5-flash';
-    if (localStorage.getItem(getStorageKeyName('openai_api_key'))) return 'gpt-4o';
-    if (localStorage.getItem(getStorageKeyName('anthropic_api_key'))) return 'claude-3-5-sonnet-20240620';
-    if (localStorage.getItem(getStorageKeyName('perplexity_api_key'))) return 'llama-3.1-sonar-large-128k-online';
+    if (getAPIKey('sambanova')) return 'Meta-Llama-3.3-70B-Instruct';
+    if (getAPIKey('groq')) return 'llama-3.3-70b-versatile';
+    if (getAPIKey('gemini')) return 'gemini-1.5-flash';
+    if (getAPIKey('openai')) return 'gpt-4o';
+    if (getAPIKey('anthropic')) return 'claude-3-5-sonnet-20240620';
+    if (getAPIKey('perplexity')) return 'llama-3.1-sonar-large-128k-online';
 
     // Default Fallback
     return 'Meta-Llama-3.3-70B-Instruct';
@@ -315,21 +318,29 @@ export const loadFromDatabase = async () => {
         if (profile?.ai_settings) {
             const settings = profile.ai_settings;
 
+            // Clear cache first
+            decryptedKeysCache = {};
+
             // Handle new keys structure
             if (settings.keys) {
                 Object.values(PROVIDERS).forEach(p => {
                     const encrypted = settings.keys[p.keyName];
                     if (encrypted) {
                         const decrypted = decryptKey(encrypted, user.id);
-                        if (decrypted) localStorage.setItem(getStorageKeyName(p.keyName), decrypted);
+                        if (decrypted) decryptedKeysCache[p.keyName] = decrypted;
                     }
                 });
             }
             // Handle legacy structure
             else if (settings.encrypted_api_key) {
                 const decrypted = decryptKey(settings.encrypted_api_key, user.id);
-                if (decrypted) localStorage.setItem(getStorageKeyName('gemini_api_key'), decrypted);
+                if (decrypted) decryptedKeysCache['gemini_api_key'] = decrypted;
             }
+
+            // Security Cleanup: Remove any old plain-text API keys from localStorage
+            Object.values(PROVIDERS).forEach(p => {
+                localStorage.removeItem(getStorageKeyName(p.keyName));
+            });
 
             if (settings.selected_model) {
                 localStorage.setItem(getStorageKeyName('selected_ai_model'), settings.selected_model);
@@ -350,6 +361,11 @@ export const loadFromDatabase = async () => {
         console.error('Failed to load AI settings:', error);
         return false;
     }
+};
+
+// Clear AI memory cache (called on logout)
+export const clearAICache = () => {
+    decryptedKeysCache = {};
 };
 
 // Validate API key
@@ -1331,6 +1347,7 @@ export default {
     incrementUsage,
     syncToDatabase,
     loadFromDatabase,
+    clearAICache,
     reviewCode,
     explainCode,
     generateQuiz,
