@@ -84,22 +84,25 @@ const Zen = () => {
         }
     };
 
-    // Load full system state for ZEN context
+    // Load system state for ZEN context (role-aware)
     const getSystemContext = async () => {
+        const isAdmin = user?.role === 'admin';
         try {
-            const [members, routines, tasks, submissions, inviteCodes, classrooms] = await Promise.all([
-                db.getMembers().catch(() => []),
+            // Always fetch routines, tasks, classrooms
+            const basePromises = [
                 routineService.getAllRoutinesForHistory().catch(() => []),
                 db.getTasks().catch(() => []),
-                db.getGlobalSubmissions().catch(() => []),
-                db.getInviteCodes().catch(() => []),
                 db.getClassrooms().catch(() => [])
-            ]);
+            ];
 
-            // Prune data to avoid exceeding context window / TPM limits
-            const prunedMembers = (members || [])
-                .map(m => ({ name: m.name, email: m.email, role: m.role }))
-                .slice(0, 20);
+            // Admin-only data: members, submissions, invite codes
+            const adminPromises = isAdmin ? [
+                db.getMembers().catch(() => []),
+                db.getGlobalSubmissions().catch(() => []),
+                db.getInviteCodes().catch(() => [])
+            ] : [];
+
+            const [routines, tasks, classrooms, ...adminData] = await Promise.all([...basePromises, ...adminPromises]);
 
             const prunedRoutines = (routines || [])
                 .filter(r => r.user_id === user?.id)
@@ -110,29 +113,34 @@ const Zen = () => {
                 .map(t => ({ id: t.id, title: t.title, status: t.status, xp: t.xp, due_date: t.due_date }))
                 .slice(0, 15);
 
-            const prunedSubmissions = (submissions || [])
-                .filter(s => s.status === 'pending')
-                .map(s => ({ id: s.id, task_title: s.task_title, member_name: s.user_name || s.member_name, submitted_at: s.created_at || s.submitted_at }))
-                .slice(0, 10);
-
-            const prunedInviteCodes = (inviteCodes || [])
-                .filter(c => !c.is_used)
-                .map(c => ({ code: c.code, role: c.role, created_at: c.created_at }))
-                .slice(0, 10);
-
             const prunedClassrooms = (classrooms || [])
                 .map(c => ({ id: c.id, name: c.name, description: c.description || '' }))
                 .slice(0, 15);
 
-            return {
+            const context = {
                 user: { id: user?.id, email: user?.email, role: user?.role, name: user?.name },
-                members: prunedMembers,
                 routines: prunedRoutines,
                 tasks: prunedTasks,
-                submissions: prunedSubmissions,
-                inviteCodes: prunedInviteCodes,
                 classrooms: prunedClassrooms
             };
+
+            // Only inject admin-only data if admin
+            if (isAdmin && adminData.length === 3) {
+                const [members, submissions, inviteCodes] = adminData;
+                context.members = (members || [])
+                    .map(m => ({ name: m.name, email: m.email, role: m.role }))
+                    .slice(0, 20);
+                context.submissions = (submissions || [])
+                    .filter(s => s.status === 'pending')
+                    .map(s => ({ id: s.id, task_title: s.task_title, member_name: s.user_name || s.member_name, submitted_at: s.created_at || s.submitted_at }))
+                    .slice(0, 10);
+                context.inviteCodes = (inviteCodes || [])
+                    .filter(c => !c.is_used)
+                    .map(c => ({ code: c.code, role: c.role, created_at: c.created_at }))
+                    .slice(0, 10);
+            }
+
+            return context;
         } catch (err) {
             console.error('Error fetching ZEN context:', err);
             return { user };

@@ -104,7 +104,7 @@ export const zenService = {
 
                     // --- INVITE CODE ACTIONS (Admin Only) ---
                     case 'CREATE_INVITE':
-                        resData = await db.createInviteCode(action.payload, action.payload.classroom_id);
+                        resData = await db.createInviteCode(action.payload.code, action.payload.classroom_id);
                         results.push({ action: action.type, status: EXEC_STATUS.SUCCESS, data: resData });
                         break;
 
