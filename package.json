@@ -1,11 +1,11 @@
 {
   "name": "idl-skillenhancement",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npx cap copy",
+    "build": "vite build && npx cap copy && node scripts/copy-apk.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "cap:sync": "npx cap sync",
@@ -16,6 +16,7 @@
     "@capacitor/app": "^8.1.0",
     "@capacitor/browser": "^8.0.3",
     "@capacitor/core": "^8.4.1",
+    "@capacitor/local-notifications": "^8.2.0",
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/push-notifications": "^8.1.1",
     "@supabase/supabase-js": "^2.43.0",

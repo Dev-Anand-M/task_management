@@ -38,7 +38,7 @@ export class PlatformService {
     const envUrl = import.meta.env.VITE_API_URL;
     if (envUrl) return envUrl;
     
-    if (this.isNative()) {
+    if (this.isNative() || (typeof window !== 'undefined' && window.location.hostname === 'localhost')) {
       return 'https://zenith-sable-alpha.vercel.app';
     }
     

@@ -437,8 +437,20 @@ const Diary = () => {
                     </div>
 
                     {/* Timeline Grid */}
-                    <div style={{ flex: 1, position: 'relative', borderLeft: '1px solid var(--border)' }}>
-                        {todayLogs.map((log, i) => {
+                    <div style={{ flex: 1, position: 'relative', borderLeft: '1px solid var(--border)', minHeight: '300px' }}>
+                        {todayLogs.length === 0 ? (
+                            <div style={{
+                                position: 'absolute', top: '50px', left: '20px', right: '20px',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                textAlign: 'center', padding: 'var(--space-xl)', color: 'var(--text-muted)'
+                            }}>
+                                <Clock size={40} className="text-primary-300 animate-pulse mb-sm" />
+                                <h4>No active log timestamps today</h4>
+                                <p style={{ fontSize: 'var(--text-xs)', maxWidth: '300px', margin: '4px 0 0' }}>
+                                    Complete tasks or routines today with actual start times to map them to your diary timeline!
+                                </p>
+                            </div>
+                        ) : todayLogs.map((log, i) => {
                             const start = toMinutes(log.actual_start_time);
                             const duration = log.time_spent_minutes || 30;
                             const top = (start / 60) * 60; // 60px per hour

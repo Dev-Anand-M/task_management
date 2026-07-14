@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { routineService } from '../../services/routineService';
+import { RoutineNotificationService } from '../../services/RoutineNotificationService';
 import { supabase } from '../../lib/supabase';
 import { format12h, minutesTo12h, getLocalDatePickerDate } from '../../utils/timeFormat';
 import { Card, Badge, Button, Input, Modal, ProgressBar, LoadingSpinner } from '../../components/common';
@@ -153,11 +154,13 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, onResetLog, nextAlarmIn
                 isDone ? 'var(--success-500)' : 
                 isIgnored ? 'var(--error-500)' : 
                 isPostponed ? 'var(--warning-500)' : 
-                isNext ? 'var(--primary-500)' : 'var(--border)'
+                isNext ? 'var(--primary-500)' :
+                routine.is_anonymous ? '#8b5cf6' : 'var(--border)'
             }`,
             opacity: (isDone || isIgnored || isLocked) ? 0.8 : 1,
             transition: 'all 0.3s',
-            background: isNext ? 'rgba(99, 102, 241, 0.03)' : 'var(--surface)'
+            background: isNext ? 'rgba(99, 102, 241, 0.03)' : 
+                        (routine.is_anonymous && !isDone && !isIgnored ? 'rgba(139, 92, 246, 0.03)' : 'var(--surface)')
         }}>
             <div className="flex items-center gap-md">
                 <button 
@@ -182,6 +185,7 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, onResetLog, nextAlarmIn
                             </Badge>
                         )}
                         {isIgnored && <Badge variant="error">Missed</Badge>}
+                        {routine.is_anonymous && !isDone && !isIgnored && <Badge variant="accent" size="xs">FLEXIBLE</Badge>}
                         {log?.postponed_count > 0 && <Badge variant="warning" size="xs">Postponed {log.postponed_count}x</Badge>}
                     </div>
                     <div className="flex items-center gap-sm" style={{ marginTop: '2px' }}>
@@ -355,11 +359,20 @@ const Routines = () => {
         fetchData();
         fetchMaterials();
         
+        // Initialize routine notifications
+        RoutineNotificationService.init(() => fetchData());
+        
         const channel = supabase.channel('routines_realtime')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'routines' }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'routines' }, () => {
+                fetchData();
+                RoutineNotificationService.reschedule();
+            })
             .subscribe();
             
-        return () => supabase.removeChannel(channel);
+        return () => {
+            supabase.removeChannel(channel);
+            RoutineNotificationService.destroy();
+        };
     }, [user?.id]);
         
     useEffect(() => {
@@ -403,6 +416,9 @@ const Routines = () => {
                 logMap[l.routine_id] = l;
             });
             setLogs(logMap);
+            
+            // Sync local & native alarms/notifications
+            RoutineNotificationService.reschedule();
         } catch (err) {
             console.error('Failed to fetch routines:', err);
         } finally {
@@ -533,13 +549,7 @@ const Routines = () => {
         };
         const createdDate = toLocalISO(r.created_at);
         
-        // Allow logging for 'Yesterday' even if created today (grace period for late-night additions)
-        const todayISO = toLocalISO(new Date());
-        const yesterday = new Date(new Date().getTime() - 86400000);
-        const yesterdayISO = toLocalISO(yesterday);
-        const isGracePeriod = (selectedDate === yesterdayISO && createdDate === todayISO);
-
-        if (createdDate > selectedDate && !isGracePeriod) return false;
+        if (createdDate > selectedDate) return false;
         
         // Don't show if after deadline
         if (r.deadline && new Date(r.deadline) < d) return false;

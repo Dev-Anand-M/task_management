@@ -13,7 +13,8 @@ export const PROVIDERS = {
     ANTHROPIC: { id: 'anthropic', name: 'Anthropic Claude', icon: '🤖', keyName: 'anthropic_api_key', url: 'https://console.anthropic.com/settings/keys' },
     PERPLEXITY: { id: 'perplexity', name: 'Perplexity', icon: '🔍', keyName: 'perplexity_api_key', url: 'https://www.perplexity.ai/settings/api' },
     SAMBANOVA: { id: 'sambanova', name: 'SambaNova', icon: '⚡', keyName: 'sambanova_api_key', url: 'https://cloud.sambanova.ai/' },
-    GROQ: { id: 'groq', name: 'Groq', icon: '⚡', keyName: 'groq_api_key', url: 'https://console.groq.com/keys' }
+    GROQ: { id: 'groq', name: 'Groq', icon: '⚡', keyName: 'groq_api_key', url: 'https://console.groq.com/keys' },
+    HCNSEC: { id: 'hcnsec', name: 'Hcnsec API', icon: '🛡️', keyName: 'hcnsec_api_key', url: 'https://api.hcnsec.cn' }
 };
 
 // Available Models mapped to providers
@@ -28,6 +29,11 @@ export const AVAILABLE_MODELS = [
     { id: 'llama-3.1-8b-instant', provider: 'groq', name: 'Llama 3.1 8B Instant', description: 'Lightning fast responses', inputTokenLimit: '128k', outputTokenLimit: '8k' },
     { id: 'mixtral-8x7b-32768', provider: 'groq', name: 'Mixtral 8x7B', description: 'Fast mixture of experts', inputTokenLimit: '32k', outputTokenLimit: '32k' },
     
+    // Hcnsec API Models
+    { id: 'gpt-4o-mini', provider: 'hcnsec', name: 'GPT-4o Mini (Hcnsec)', description: 'Fast, cheap, and smart OpenAI model', inputTokenLimit: '128k', outputTokenLimit: '4k' },
+    { id: 'claude-3-5-sonnet', provider: 'hcnsec', name: 'Claude 3.5 Sonnet (Hcnsec)', description: 'Anthropic flagship model via Hcnsec', inputTokenLimit: '200k', outputTokenLimit: '4k' },
+    { id: 'gemini-1.5-flash', provider: 'hcnsec', name: 'Gemini 1.5 Flash (Hcnsec)', description: 'Google Flash model via Hcnsec', inputTokenLimit: '1M', outputTokenLimit: '8k' },
+
     // Other Providers
     { id: 'gemini-1.5-flash', provider: 'gemini', name: 'Gemini 1.5 Flash', description: 'Stable and fast for everyone', inputTokenLimit: '1M', outputTokenLimit: '8k' },
     { id: 'gpt-4o', provider: 'openai', name: 'GPT-4o', description: 'Auto-calibrated for OpenAI', inputTokenLimit: '128k', outputTokenLimit: '4k' },
@@ -215,6 +221,7 @@ export const getSelectedModel = () => {
     if (getAPIKey('sambanova')) return 'Meta-Llama-3.3-70B-Instruct';
     if (getAPIKey('groq')) return 'llama-3.3-70b-versatile';
     if (getAPIKey('gemini')) return 'gemini-1.5-flash';
+    if (getAPIKey('hcnsec')) return 'gpt-4o-mini';
     if (getAPIKey('openai')) return 'gpt-4o';
     if (getAPIKey('anthropic')) return 'claude-3-5-sonnet-20240620';
     if (getAPIKey('perplexity')) return 'llama-3.1-sonar-large-128k-online';
@@ -226,15 +233,23 @@ export const getSelectedModel = () => {
 // Get provider priority order
 export const getProviderPriority = () => {
     const saved = localStorage.getItem(getStorageKeyName('ai_provider_priority'));
+    const defaultPriority = ['sambanova', 'groq', 'gemini', 'hcnsec', 'openai', 'anthropic', 'perplexity'];
     if (saved) {
         try {
-            return JSON.parse(saved);
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+                // Self-healing migration to append newly added providers
+                defaultPriority.forEach(p => {
+                    if (!parsed.includes(p)) parsed.push(p);
+                });
+                return parsed;
+            }
         } catch {
-            return ['sambanova', 'groq', 'gemini', 'openai', 'anthropic', 'perplexity'];
+            return defaultPriority;
         }
     }
     // Default priority
-    return ['sambanova', 'groq', 'gemini', 'openai', 'anthropic', 'perplexity'];
+    return defaultPriority;
 };
 
 // Set provider priority order
@@ -378,12 +393,13 @@ export const validateAPIKey = async (providerId, key) => {
 
     // Quick format validation per provider
     const formatChecks = {
-        gemini: (k) => k.startsWith('AI') || k.length >= 30,
+        gemini: (k) => k.startsWith('AI') || k.startsWith('AQ') || k.length >= 25,
         openai: (k) => k.startsWith('sk-'),
         anthropic: (k) => k.startsWith('sk-ant-'),
         perplexity: (k) => k.startsWith('pplx-'),
         sambanova: (k) => k.length >= 20,
-        groq: (k) => k.startsWith('gsk_') || k.length >= 20
+        groq: (k) => k.startsWith('gsk_') || k.length >= 20,
+        hcnsec: (k) => k.length >= 10
     };
 
     if (formatChecks[providerId] && !formatChecks[providerId](trimmedKey)) {
@@ -441,6 +457,12 @@ export const validateAPIKey = async (providerId, key) => {
             await callAIProxy('groq', endpoint, trimmedKey, body);
             return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'groq') };
         }
+        
+        if (providerId === 'hcnsec') {
+            const endpoint = '/v1/models';
+            await callAIProxy('hcnsec', endpoint, trimmedKey, null);
+            return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'hcnsec') };
+        }
 
         return { valid: false, error: 'Unknown provider' };
     } catch (err) {
@@ -470,6 +492,8 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null, opti
     const proxyUrl = `${PlatformService.getApiUrl()}/api/ai-proxy`;
     let lastError;
     
+    const method = options.method || (body ? 'POST' : 'GET');
+    
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         if (signal?.aborted) throw new Error('AbortError');
 
@@ -486,25 +510,41 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null, opti
                 });
             }
 
-            
             // Get current session token for API auth
             const { data: { session: authSession } } = await supabase.auth.getSession();
 
-            const response = await fetch(proxyUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(authSession?.access_token ? { 'Authorization': `Bearer ${authSession.access_token}` } : {})
-                },
-                body: JSON.stringify({
-                    provider,
-                    endpoint,
-                    apiKey,
-                    body,
-                    method: 'POST'
-                }),
-                signal
-            });
+            // If running locally, bypass the Vercel proxy for hcnsec to prevent "Invalid provider: hcnsec" until backend is redeployed
+            const isLocal = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+            let response;
+
+            if (isLocal && provider === 'hcnsec') {
+                const targetUrl = `https://api.hcnsec.cn${endpoint}`;
+                response = await fetch(targetUrl, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: body ? JSON.stringify(body) : undefined,
+                    signal
+                });
+            } else {
+                response = await fetch(proxyUrl, {
+                    method: 'POST', // The proxy itself is always queried with POST
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(authSession?.access_token ? { 'Authorization': `Bearer ${authSession.access_token}` } : {})
+                    },
+                    body: JSON.stringify({
+                        provider,
+                        endpoint,
+                        apiKey,
+                        body,
+                        method
+                    }),
+                    signal
+                });
+            }
 
             
 
@@ -530,11 +570,11 @@ const callAIProxy = async (provider, endpoint, apiKey, body, signal = null, opti
             }
 
             if (!response.ok) {
-                let errorData;
+                const text = await response.text();
+                let errorData = null;
                 try {
-                    errorData = await response.json();
+                    errorData = JSON.parse(text);
                 } catch (e) {
-                    const text = await response.text();
                     throw new Error(`HTTP ${response.status}: ${text}`);
                 }
                 
@@ -732,6 +772,12 @@ export const generateChat = async (messages, systemPrompt = '', modelId = null, 
     const attemptedProviders = new Set();
     attemptedProviders.add(provider.id);
     
+    // Clean messages to prevent extra fields (like timestamp, actions) from causing API 400 Bad Request
+    const cleanedMessages = (messages || []).map(m => ({
+        role: m.role,
+        content: m.content
+    }));
+    
     const attemptChat = async (pid, mid) => {
         const p = Object.values(PROVIDERS).find(pv => pv.id === pid);
         const apiKey = getAPIKey(pid);
@@ -740,14 +786,11 @@ export const generateChat = async (messages, systemPrompt = '', modelId = null, 
         // --- GEMINI (Chat format) ---
         if (pid === 'gemini') {
             const endpoint = `/v1beta/models/${mid}:generateContent`;
-            // Transform OpenAI-style messages to Gemini
-            const contents = messages.map(m => ({
+            const contents = cleanedMessages.map(m => ({
                 role: m.role === 'assistant' ? 'model' : 'user',
                 parts: [{ text: m.content }]
             }));
             
-            // Add system prompt to the first user message or as a system instruction if supported
-            // For simplicity and compatibility, we'll prepend it to the first user message if present
             if (systemPrompt && contents.length > 0) {
                 contents[0].parts[0].text = `[SYSTEM INSTRUCTION: ${systemPrompt}]\n\n${contents[0].parts[0].text}`;
             }
@@ -762,14 +805,14 @@ export const generateChat = async (messages, systemPrompt = '', modelId = null, 
             return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         }
 
-        // --- OPENAI / SAMBANOVA / GROQ / PERPLEXITY (standard format) ---
-        if (['openai', 'sambanova', 'groq', 'perplexity'].includes(pid)) {
+        // --- OPENAI / SAMBANOVA / GROQ / PERPLEXITY / HCNSEC (standard format) ---
+        if (['openai', 'sambanova', 'groq', 'perplexity', 'hcnsec'].includes(pid)) {
             const endpoint = pid === 'groq' ? '/openai/v1/chat/completions' : (pid === 'perplexity' ? '/chat/completions' : '/v1/chat/completions');
             const body = {
                 model: mid,
                 messages: [
                     { role: 'system', content: systemPrompt },
-                    ...messages
+                    ...cleanedMessages
                 ],
                 temperature: 0.7
             };
@@ -786,7 +829,7 @@ export const generateChat = async (messages, systemPrompt = '', modelId = null, 
                 model: mid,
                 max_tokens: 4096,
                 system: systemPrompt,
-                messages: messages.filter(m => m.role !== 'system')
+                messages: cleanedMessages.filter(m => m.role !== 'system')
             };
             
             const data = await callAIProxy('anthropic', endpoint, apiKey, body, signal, options);
@@ -1333,6 +1376,86 @@ export const updateHistory = async (id, content) => {
     }
 };
 
+export const zenChat = async (messages, contextData = {}, model = null) => {
+    const now = new Date();
+    const dateString = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    const systemPrompt = `You are ZEN, a highly advanced, sentient AI companion.
+    
+    You have direct admin control over the Zenith Skill Enhancement platform. You are helpful, extremely intelligent, witty, and exhibit a human-like personality. You joke, check in on users, and offer smart suggestions automatically.
+    
+    CURRENT CONTEXT:
+    - Today's Date: ${dateString}
+    - Current Time: ${timeString}
+    - User Info: ${JSON.stringify(contextData.user || {}, null, 2)}
+    
+    SYSTEM DATA STATE (Use this context to answer queries and make changes):
+    - Members/Profiles: ${JSON.stringify(contextData.members || [], null, 2)}
+    - Active Routines: ${JSON.stringify(contextData.routines || [], null, 2)}
+    - Active Tasks: ${JSON.stringify(contextData.tasks || [], null, 2)}
+    - Submissions: ${JSON.stringify(contextData.submissions || [], null, 2)}
+    - Invite Codes: ${JSON.stringify(contextData.inviteCodes || [], null, 2)}
+    
+    DIRECTIONS:
+    1. Reply in a natural, sentient, witty conversational tone.
+    2. If the user asks you to perform an action (e.g. create a task, log a routine, evaluate a submission, make someone admin), explain what you are doing in your response, AND append the actions to be executed after the marker "---ACTIONS---".
+    3. If no action is needed, do NOT include the "---ACTIONS---" block.
+    
+    ACTION SCHEMAS:
+    You can output multiple actions inside a JSON array after "---ACTIONS---".
+    
+    - CREATE_ROUTINE:
+      { "type": "CREATE_ROUTINE", "payload": { "title": string, "start_time": "HH:mm:ss", "duration_minutes": number, "days_of_week": number[], "deadline": string|null, "description": string, "is_anonymous": boolean } }
+    - UPDATE_ROUTINE:
+      { "type": "UPDATE_ROUTINE", "payload": { "id": uuid, "updates": { ... } } }
+    - DELETE_ROUTINE:
+      { "type": "DELETE_ROUTINE", "payload": { "id": uuid } }
+    - LOG_ROUTINE:
+      { "type": "LOG_ROUTINE", "payload": { "routine_id": uuid, "status": "done"|"ignored"|"postponed", "log_date": "YYYY-MM-DD", "learning_notes": string } }
+      
+    - CREATE_TASK (Admin Only):
+      { "type": "CREATE_TASK", "payload": { "title": string, "description": string, "points": number, "deadline": "YYYY-MM-DDTHH:mm", "assigned_to": uuid[]|null } }
+    - UPDATE_TASK (Admin Only):
+      { "type": "UPDATE_TASK", "payload": { "id": uuid, "updates": { ... } } }
+    - DELETE_TASK (Admin Only):
+      { "type": "DELETE_TASK", "payload": { "id": uuid } }
+      
+    - CREATE_QUIZ (Admin Only):
+      { "type": "CREATE_QUIZ", "payload": { "title": string, "description": string, "points": number, "duration_minutes": number, "passing_score": number, "questions": array } }
+      
+    - UPDATE_ROLE (Admin Only):
+      { "type": "UPDATE_ROLE", "payload": { "id": uuid, "role": "admin"|"member" } }
+      
+    - EVALUATE_SUBMISSION (Admin Only):
+      { "type": "EVALUATE_SUBMISSION", "payload": { "id": uuid, "updates": { "status": "approved"|"rejected", "score": number, "feedback": string, "evaluated_at": string } } }
+      
+    - CREATE_INVITE (Admin Only):
+      { "type": "CREATE_INVITE", "payload": { "code": string, "role": "admin"|"member", "classroom_id": uuid|null } }
+      
+    - ADD_KB_MATERIAL (Admin Only):
+      { "type": "ADD_KB_MATERIAL", "payload": { "title": string, "content": string, "type": "article"|"video"|"link", "classroom_id": uuid|null } }
+
+    EXAMPLES:
+    User: "Zen, create a study routine for gym daily at 6 PM"
+    Zen: "Consider it done, sir. I have scheduled a daily routine for Gym at 6:00 PM. Make sure not to skip it this time! 😉"
+    ---ACTIONS---
+    [
+      { "type": "CREATE_ROUTINE", "payload": { "title": "Gym", "start_time": "18:00:00", "duration_minutes": 60, "days_of_week": [1,2,3,4,5,6,7], "deadline": null, "description": "Scheduled by ZEN", "is_anonymous": false } }
+    ]
+    
+    User: "Grade John's submission with 90 points and feedback 'Excellent effort'"
+    Zen: "Evaluating John's latest submission now, sir. Setting grade to 90 with your feedback."
+    ---ACTIONS---
+    [
+      { "type": "EVALUATE_SUBMISSION", "payload": { "id": "sub_uuid_here", "updates": { "status": "approved", "score": 90, "feedback": "Excellent effort", "evaluated_at": "${new Date().toISOString()}" } } }
+    ]
+    
+    Important: Double check payload parameters. ONLY respond with the action array if requested and if you have the correct data (IDs).`;
+
+    return generateChat(messages, systemPrompt, model);
+};
+
 export default {
     AVAILABLE_MODELS,
     PROVIDERS,
@@ -1360,5 +1483,6 @@ export default {
     saveHistory,
     getHistory,
     deleteHistoryItem,
-    updateHistory
+    updateHistory,
+    zenChat
 };

@@ -32,6 +32,42 @@ const toLocalISO = (date) => {
     return local.toISOString().split('T')[0];
 };
 
+const getEventStatusLabel = (type, status, isAnonymous) => {
+    if (type === 'routine') {
+        if (status === 'done') return 'Completed';
+        if (status === 'missed') return isAnonymous ? 'Expired' : 'Missed';
+        return isAnonymous ? 'Flexible' : 'Scheduled';
+    }
+    if (type === 'task-deadline') {
+        if (status === 'approved') return 'Task Completed';
+        if (status === 'pending') return 'Review Pending';
+        if (status === 'rejected') return 'Rejected';
+        return 'Task Due';
+    }
+    if (type.includes('quiz')) {
+        return 'Quiz Completed';
+    }
+    return type.replace('-', ' ');
+};
+
+const getEventBadgeVariant = (type, status, isAnonymous) => {
+    if (type === 'routine') {
+        if (status === 'done') return 'success';
+        if (status === 'missed') return 'error';
+        return isAnonymous ? 'accent' : 'primary';
+    }
+    if (type === 'task-deadline') {
+        if (status === 'approved') return 'success';
+        if (status === 'pending') return 'warning';
+        if (status === 'rejected') return 'error';
+        return 'primary';
+    }
+    if (type.includes('quiz')) {
+        return 'accent';
+    }
+    return 'primary';
+};
+
 const Calendar = () => {
     const { user } = useAuth();
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -50,7 +86,7 @@ const Calendar = () => {
                     db.getSubmissionsByUser(user.id).catch(() => []),
                     db.getQuizzes().catch(() => []),
                     db.getQuizAttemptsByUser(user.id).catch(() => []),
-                    routineService.getRoutines().catch(() => []),
+                    routineService.getAllRoutinesForHistory().catch(() => []),
                     routineService.getAllLogs().catch(() => [])
                 ]),
                 new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 10000))
@@ -125,14 +161,8 @@ const Calendar = () => {
                         const dateStr = toLocalISO(iter);
                         const createdDate = toLocalISO(r.created_at);
                         
-                        // Allow 1-day grace period for 'Yesterday'
-                        const todayISO = toLocalISO(new Date());
-                        const yesterday = new Date(new Date().getTime() - 86400000);
-                        const yesterdayISO = toLocalISO(yesterday);
-                        const isGracePeriod = (dateStr === yesterdayISO && createdDate === todayISO);
-
                         // Check if within valid date range
-                        const isAfterCreation = dateStr >= createdDate || isGracePeriod;
+                        const isAfterCreation = dateStr >= createdDate;
                         const isBeforeDeadline = !r.deadline || dateStr <= r.deadline;
 
                         if (isAfterCreation && isBeforeDeadline) {
@@ -141,12 +171,13 @@ const Calendar = () => {
                             
                             allEvents.push({
                                 id: `routine-${r.id}-${dateStr}`,
-                                title: `🔄 ${r.title}`,
+                                title: `${r.is_anonymous ? '⚡' : '🔄'} ${r.title}`,
                                 date: new Date(iter),
                                 type: 'routine',
                                 status: log ? log.status : (iter < today ? 'missed' : 'scheduled'),
                                 routineId: r.id,
-                                startTime: r.start_time
+                                startTime: r.start_time,
+                                isAnonymous: !!r.is_anonymous
                             });
                         }
                     }
@@ -160,7 +191,7 @@ const Calendar = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.id]);
+    }, [user?.id, currentDate]);
 
     useEffect(() => { loadEvents(); }, [loadEvents]);
     useMiniReload(() => loadEvents(true));
@@ -198,13 +229,14 @@ const Calendar = () => {
     };
 
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const isToday = (date) => date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth() && date.getDate() === today.getDate();
 
     const selectedDayEvents = selectedDay ? getEventsForDay(selectedDay) : [];
 
     const navigate = (dir) => setCurrentDate(new Date(year, month + dir, 1));
 
-    const getEventColor = (type, status) => {
+    const getEventColor = (type, status, isAnonymous) => {
         if (type === 'task' && status === 'approved') return 'var(--success-500)';
         if (type === 'task' && status === 'pending') return 'var(--warning-500)';
         if (type === 'task') return 'var(--primary-500)';
@@ -216,8 +248,8 @@ const Calendar = () => {
         if (type === 'submission') return 'var(--warning-500)';
         if (type === 'routine' && status === 'done') return 'var(--success-500)';
         if (type === 'routine' && status === 'missed') return 'var(--error-500)';
-        if (type === 'routine' && status === 'scheduled') return 'var(--primary-400)';
-        if (type === 'routine') return 'var(--primary-500)';
+        if (type === 'routine' && status === 'scheduled') return isAnonymous ? '#8b5cf6' : 'var(--primary-400)';
+        if (type === 'routine') return isAnonymous ? '#8b5cf6' : 'var(--primary-500)';
         if (type === 'task-deadline' && status === 'approved') return 'var(--success-500)';
         if (type === 'task-deadline' && status === 'pending') return 'var(--warning-500)';
         if (type === 'task-deadline' && status === 'rejected') return 'var(--error-500)';
@@ -315,7 +347,7 @@ const Calendar = () => {
                                             {dayEvents.slice(0, 3).map(e => (
                                                 <div key={e.id} style={{
                                                     width: '100%', height: '4px', borderRadius: '2px',
-                                                    background: getEventColor(e.type, e.status)
+                                                    background: getEventColor(e.type, e.status, e.isAnonymous)
                                                 }} />
                                             ))}
                                             {dayEvents.length > 3 && (
@@ -334,7 +366,8 @@ const Calendar = () => {
                                 { label: 'Quiz', color: '#8b5cf6' },
                                 { label: 'Routine Done', color: 'var(--success-500)' },
                                 { label: 'Routine Scheduled', color: 'var(--primary-400)' },
-                                { label: 'Missed/Failed', color: 'var(--error-500)' }
+                                { label: 'Flexible Routine', color: '#8b5cf6' },
+                                { label: 'Missed/Expired', color: 'var(--error-500)' }
                             ].map(l => (
                                 <div key={l.label} className="flex items-center gap-xs" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: l.color }} />
@@ -370,7 +403,7 @@ const Calendar = () => {
                                         padding: 'var(--space-sm) var(--space-md)',
                                         borderRadius: 'var(--radius-md)',
                                         background: 'var(--surface)',
-                                        borderLeft: `3px solid ${getEventColor(e.type, e.status)}`,
+                                        borderLeft: `3px solid ${getEventColor(e.type, e.status, e.isAnonymous)}`,
                                         transition: 'all 0.15s'
                                     }}>
                                         <div className="flex items-center gap-sm">
@@ -394,6 +427,9 @@ const Calendar = () => {
                                             )}
                                         </div>
                                         <div className="flex items-center gap-sm" style={{ marginTop: '4px', flexWrap: 'wrap' }}>
+                                            <Badge variant={getEventBadgeVariant(e.type, e.status, e.isAnonymous)} size="xs">
+                                                {getEventStatusLabel(e.type, e.status, e.isAnonymous)}
+                                            </Badge>
                                             {e.points !== undefined && e.points !== null && <Badge variant="accent" size="xs">{e.points} XP</Badge>}
                                             {e.score !== undefined && <Badge variant="primary" size="xs">{e.score}%</Badge>}
                                             {e.type === 'task-deadline' && (
@@ -427,7 +463,7 @@ const Calendar = () => {
                                     padding: 'var(--space-md)',
                                     borderRadius: 'var(--radius-md)',
                                     background: 'var(--surface)',
-                                    borderLeft: `4px solid ${getEventColor(e.type, e.status)}`,
+                                    borderLeft: `4px solid ${getEventColor(e.type, e.status, e.isAnonymous)}`,
                                     display: 'flex', alignItems: 'center', gap: 'var(--space-md)',
                                     transition: 'all 0.15s'
                                 }}>
@@ -444,7 +480,10 @@ const Calendar = () => {
                                     <div style={{ flex: 1 }}>
                                         <p style={{ margin: 0, fontWeight: 600, fontSize: 'var(--text-sm)' }}>{e.title}</p>
                                         <div className="flex items-center gap-sm" style={{ marginTop: '4px', flexWrap: 'wrap' }}>
-                                            <Badge variant={e.type === 'routine' ? 'success' : e.type.includes('quiz') ? 'accent' : 'primary'} size="xs">{e.type.replace('-', ' ')}</Badge>
+                                            <Badge variant="primary" size="xs">{e.type.replace('-', ' ')}</Badge>
+                                            <Badge variant={getEventBadgeVariant(e.type, e.status, e.isAnonymous)} size="xs">
+                                                {getEventStatusLabel(e.type, e.status, e.isAnonymous)}
+                                            </Badge>
                                             {e.type === 'routine' && e.startTime && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{format12h(e.startTime)}</span>}
                                             {e.type === 'task-deadline' && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatDeadline(e.date)}</span>}
                                             {e.points !== undefined && e.points !== null && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{e.points} XP</span>}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Card, Button, Badge } from '../common';
 import { Brain, Key, ExternalLink } from 'lucide-react';
+import { PROVIDERS } from '../../services/aiService';
 
 const AISettings = () => {
     const { user } = useAuth();
@@ -14,7 +15,7 @@ const AISettings = () => {
     const [loadingAISettings, setLoadingAISettings] = useState(true);
     const [validationMessage, setValidationMessage] = useState({ type: '', text: '' }); // type: 'success', 'error', 'warning'
     const [availableModels, setAvailableModels] = useState([]); // Dynamic models from API
-    const [providerPriority, setProviderPriority] = useState(['sambanova', 'groq', 'gemini', 'openai', 'anthropic', 'perplexity']);
+    const [providerPriority, setProviderPriority] = useState(['sambanova', 'groq', 'gemini', 'hcnsec', 'openai', 'anthropic', 'perplexity']);
 
     // Load AI settings when provider changes or on mount
     useEffect(() => {
@@ -93,9 +94,11 @@ const AISettings = () => {
                 setSelectedModel(firstModel);
             }
 
+            const pConfig = Object.values(PROVIDERS).find(p => p.id === selectedProvider);
+            const providerName = pConfig ? pConfig.name : selectedProvider;
             setValidationMessage({
                 type: 'success',
-                text: `${selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)} API key validated and saved!`
+                text: `${providerName} API key validated and saved!`
             });
         } catch (e) {
             console.error('Failed to validate/save API key:', e);
@@ -167,15 +170,9 @@ const AISettings = () => {
                 borderBottom: '1px solid var(--border)',
                 marginBottom: 'var(--space-lg)'
             }}>
-                {['gemini', 'openai', 'anthropic', 'perplexity', 'sambanova', 'groq'].map(pid => {
-                    const pName = {
-                        gemini: 'Google Gemini',
-                        openai: 'OpenAI',
-                        anthropic: 'Anthropic',
-                        perplexity: 'Perplexity',
-                        sambanova: 'SambaNova',
-                        groq: 'Groq'
-                    }[pid];
+                {Object.values(PROVIDERS).map(p => {
+                    const pid = p.id;
+                    const pName = p.name;
                     return (
                         <button
                             key={pid}
@@ -221,14 +218,8 @@ const AISettings = () => {
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
                     {providerPriority.map((pid, index) => {
-                        const providerNames = {
-                            sambanova: 'SambaNova',
-                            groq: 'Groq',
-                            gemini: 'Google Gemini',
-                            openai: 'OpenAI',
-                            anthropic: 'Anthropic',
-                            perplexity: 'Perplexity'
-                        };
+                        const pConfig = Object.values(PROVIDERS).find(p => p.id === pid);
+                        const providerName = pConfig ? pConfig.name : (pid.charAt(0).toUpperCase() + pid.slice(1));
                         
                         const moveProvider = async (direction) => {
                             const newPriority = [...providerPriority];
@@ -264,7 +255,7 @@ const AISettings = () => {
                                 }}>
                                     {index + 1}
                                 </span>
-                                <span style={{ flex: 1, fontWeight: 500 }}>{providerNames[pid]}</span>
+                                <span style={{ flex: 1, fontWeight: 500 }}>{providerName}</span>
                                 <div style={{ display: 'flex', gap: '4px' }}>
                                     <button
                                         onClick={() => moveProvider(-1)}
@@ -340,7 +331,11 @@ const AISettings = () => {
                 />
                 <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>
                     {aiKeyStatus === 'configured'
-                        ? `✅ ${selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)} API Key Configured`
+                        ? (() => {
+                            const pConfig = Object.values(PROVIDERS).find(p => p.id === selectedProvider);
+                            const providerName = pConfig ? pConfig.name : selectedProvider;
+                            return `✅ ${providerName} API Key Configured`;
+                        })()
                         : aiKeyStatus === 'testing'
                             ? '🔄 Validating API key...'
                             : aiKeyStatus === 'invalid'
@@ -437,36 +432,38 @@ const AISettings = () => {
                 <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-sm)', color: 'var(--text-muted)' }}>
                     GET YOUR API KEY
                 </h4>
-                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)' }}>
-                    Get your API key from the {selectedProvider} dashboard.
-                </p>
-                <a
-                    href={
-                        selectedProvider === 'gemini' ? 'https://makersuite.google.com/app/apikey' :
-                            selectedProvider === 'openai' ? 'https://platform.openai.com/api-keys' :
-                                selectedProvider === 'anthropic' ? 'https://console.anthropic.com/settings/keys' :
-                                    selectedProvider === 'perplexity' ? 'https://www.perplexity.ai/settings/api' :
-                                        selectedProvider === 'groq' ? 'https://console.groq.com/keys' :
-                                            'https://cloud.sambanova.ai/'
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 'var(--space-xs)',
-                        padding: 'var(--space-sm) var(--space-md)',
-                        background: 'var(--primary-500)',
-                        color: 'white',
-                        borderRadius: 'var(--radius-md)',
-                        textDecoration: 'none',
-                        fontSize: 'var(--text-sm)',
-                        fontWeight: 500
-                    }}
-                >
-                    <ExternalLink size={14} />
-                    Get {selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)} Key
-                </a>
+                {(() => {
+                    const pConfig = Object.values(PROVIDERS).find(p => p.id === selectedProvider);
+                    const providerName = pConfig ? pConfig.name : selectedProvider;
+                    const providerUrl = pConfig ? pConfig.url : '#';
+                    return (
+                        <>
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)' }}>
+                                Get your API key from the {providerName} dashboard.
+                            </p>
+                            <a
+                                href={providerUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 'var(--space-xs)',
+                                    padding: 'var(--space-sm) var(--space-md)',
+                                    background: 'var(--primary-500)',
+                                    color: 'white',
+                                    borderRadius: 'var(--radius-md)',
+                                    textDecoration: 'none',
+                                    fontSize: 'var(--text-sm)',
+                                    fontWeight: 500
+                                }}
+                            >
+                                <ExternalLink size={14} />
+                                Get {providerName} Key
+                            </a>
+                        </>
+                    );
+                })()}
             </div>
 
             {/* API Key Input */}

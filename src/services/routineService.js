@@ -53,11 +53,32 @@ export const routineService = {
     },
 
     async deleteRoutine(id) {
+        const now = new Date();
+        const offset = now.getTimezoneOffset();
+        const local = new Date(now.getTime() - (offset * 60 * 1000));
+        const todayStr = local.toISOString().split('T')[0];
+        
         const { error } = await supabase
             .from('routines')
-            .update({ is_active: false })
+            .update({ 
+                is_active: false,
+                deadline: todayStr
+            })
             .eq('id', id);
         if (error) throw error;
+    },
+
+    /**
+     * Fetch all routines (active and inactive) for history views (Calendar/Diary)
+     */
+    async getAllRoutinesForHistory() {
+        const { data, error } = await supabase
+            .from('routines')
+            .select('*')
+            .order('start_time', { ascending: true });
+            
+        if (error) throw error;
+        return data;
     },
 
     // --- LOGS (The Diary) ---

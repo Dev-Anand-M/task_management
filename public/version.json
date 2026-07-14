@@ -1,7 +1,7 @@
 {
-  "version": "1.0.3",
-  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.0.3.apk",
-  "releaseNotes": "📱 Fixed layout constraints to stay above system navigation bar\n📜 Fixed scrolling issues on member routines and diary logs\n🐛 Fixed APK download fallback from About page",
+  "version": "1.0.4",
+  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.0.4.apk",
+  "releaseNotes": "🤖 Introduced sentinent JARVIS AI Companion with admin execution console\n🔔 Realtime routine notifications at scheduled start times\n⏱️ 15-minute auto-miss protocol (no response = missed, or postpone/snooze)\n📋 Today's routine checklist popup on login\n📅 Infinite routines calendar display fix",
   "mandatory": true,
   "minSupportedVersion": "1.0.0"
 }

@@ -10,6 +10,7 @@ import BackHandler from './components/layout/BackHandler';
 import GlobalAlarmListener from './components/layout/GlobalAlarmListener';
 import UpdateDialog from './components/common/UpdateDialog';
 import { updateChecker } from './services/updateChecker';
+import PendingWorkPopup from './components/common/PendingWorkPopup';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -46,6 +47,7 @@ import AIAssistant from './pages/ai/AIAssistant';
 import CodeReview from './pages/ai/CodeReview';
 import StudyTools from './pages/ai/StudyTools';
 import QuizGenerator from './pages/ai/QuizGenerator';
+import Zen from './pages/ai/Zen';
 
 // Shared Pages
 import Leaderboard from './pages/Leaderboard';
@@ -73,6 +75,7 @@ const ProtectedLayout = ({ requiredRole }) => {
   return (
     <Layout>
       <Outlet />
+      <PendingWorkPopup />
     </Layout>
   );
 };
@@ -220,6 +223,7 @@ function AppRoutes() {
         <Route path="/ai/code-review" element={<CodeReview />} />
         <Route path="/ai/study-tools" element={<StudyTools />} />
         <Route path="/ai/quiz-generator" element={<QuizGenerator />} />
+        <Route path="/ai/zen" element={<Zen />} />
 
         <Route path="/knowledge-base" element={<KnowledgeBase />} />
         
