@@ -38,8 +38,7 @@ const SearchBar = ({
         { label: 'AI Assistant', path: '/ai/assistant', keywords: ['ai', 'assistant', 'help', 'chat', 'bot'] },
         { label: 'Code Review', path: '/ai/code-review', keywords: ['code', 'review', 'feedback', 'audit'] },
         { label: 'Study Tools', path: '/ai/study-tools', keywords: ['study', 'learn', 'flashcard', 'summary'] },
-        { label: 'Quiz Generator', path: '/ai/quiz-generator', keywords: ['generator', 'create', 'ai quiz', 'build'] },
-        { label: 'ZEN AI', path: '/ai/zen', keywords: ['zen', 'assistant', 'sentient', 'admin', 'execute', 'run'] },
+        { label: 'Quiz Generator', path: '/ai/quiz-generator', keywords: ['generator', 'create', 'ai quiz', 'build'] }
     ];
 
     // Filter results based on search query

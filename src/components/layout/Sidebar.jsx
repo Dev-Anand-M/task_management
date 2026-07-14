@@ -98,16 +98,14 @@ const Sidebar = ({ isOpen, onClose }) => {
 
     const memberAiLinks = [
         { to: '/diary?view=mindmap', icon: Brain, label: 'Mindmap' },
-        { to: '/ai/assistant', icon: MessageSquare, label: 'AI Assistant' },
-        { to: '/ai/zen', icon: Zap, label: 'ZEN AI' }
+        { to: '/ai/assistant', icon: MessageSquare, label: 'AI Assistant' }
     ];
 
     const aiLinks = [
         { to: '/ai/assistant', icon: MessageSquare, label: 'AI Assistant' },
         { to: '/ai/code-review', icon: Code, label: 'Code Review' },
         { to: '/ai/study-tools', icon: GraduationCap, label: 'Study Tools' },
-        { to: '/ai/quiz-generator', icon: Brain, label: 'Quiz Generator' },
-        { to: '/ai/zen', icon: Zap, label: 'ZEN AI' }
+        { to: '/ai/quiz-generator', icon: Brain, label: 'Quiz Generator' }
     ];
 
     const links = isAdmin ? adminLinks : memberLinks;

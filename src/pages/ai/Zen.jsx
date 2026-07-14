@@ -87,12 +87,13 @@ const Zen = () => {
     // Load full system state for ZEN context
     const getSystemContext = async () => {
         try {
-            const [members, routines, tasks, submissions, inviteCodes] = await Promise.all([
+            const [members, routines, tasks, submissions, inviteCodes, classrooms] = await Promise.all([
                 db.getMembers().catch(() => []),
                 routineService.getAllRoutinesForHistory().catch(() => []),
                 db.getTasks().catch(() => []),
                 db.getGlobalSubmissions().catch(() => []),
-                db.getInviteCodes().catch(() => [])
+                db.getInviteCodes().catch(() => []),
+                db.getClassrooms().catch(() => [])
             ]);
 
             // Prune data to avoid exceeding context window / TPM limits
@@ -119,13 +120,18 @@ const Zen = () => {
                 .map(c => ({ code: c.code, role: c.role, created_at: c.created_at }))
                 .slice(0, 10);
 
+            const prunedClassrooms = (classrooms || [])
+                .map(c => ({ id: c.id, name: c.name, description: c.description || '' }))
+                .slice(0, 15);
+
             return {
                 user: { id: user?.id, email: user?.email, role: user?.role, name: user?.name },
                 members: prunedMembers,
                 routines: prunedRoutines,
                 tasks: prunedTasks,
                 submissions: prunedSubmissions,
-                inviteCodes: prunedInviteCodes
+                inviteCodes: prunedInviteCodes,
+                classrooms: prunedClassrooms
             };
         } catch (err) {
             console.error('Error fetching ZEN context:', err);

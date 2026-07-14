@@ -1396,6 +1396,7 @@ export const zenChat = async (messages, contextData = {}, model = null) => {
     - Active Tasks: ${JSON.stringify(contextData.tasks || [], null, 2)}
     - Submissions: ${JSON.stringify(contextData.submissions || [], null, 2)}
     - Invite Codes: ${JSON.stringify(contextData.inviteCodes || [], null, 2)}
+    - Classrooms: ${JSON.stringify(contextData.classrooms || [], null, 2)}
     
     DIRECTIONS:
     1. Reply in a natural, sentient, witty conversational tone.
