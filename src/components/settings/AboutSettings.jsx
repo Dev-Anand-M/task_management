@@ -257,6 +257,8 @@ const AboutSettings = () => {
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
             {/* Check for Updates (Native only) or general Info */}
             <div style={{
                 marginTop: 'var(--space-lg)',
