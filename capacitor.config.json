@@ -9,5 +9,8 @@
     "PushNotifications": {
       "presentationOptions": ["badge", "sound", "alert"]
     }
+  },
+  "android": {
+    "adjustMarginsForEdgeToEdge": "auto"
   }
 }

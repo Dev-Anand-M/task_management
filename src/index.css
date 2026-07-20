@@ -59,27 +59,27 @@ body {
 }
 
 html.is-native {
-  --safe-area-top: env(safe-area-inset-top, 32px);
-  --safe-area-bottom: env(safe-area-inset-bottom, 48px);
+  --safe-area-top: max(env(safe-area-inset-top), 32px);
+  --safe-area-bottom: max(env(safe-area-inset-bottom), 48px);
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
 html.is-standalone {
-  --safe-area-top: env(safe-area-inset-top, 32px);
-  --safe-area-bottom: env(safe-area-inset-bottom, 48px);
+  --safe-area-top: max(env(safe-area-inset-top), 32px);
+  --safe-area-bottom: max(env(safe-area-inset-bottom), 48px);
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
 html.is-android {
-  --safe-area-top: env(safe-area-inset-top, 32px);
-  --safe-area-bottom: env(safe-area-inset-bottom, 48px);
+  --safe-area-top: max(env(safe-area-inset-top), 32px);
+  --safe-area-bottom: max(env(safe-area-inset-bottom), 48px);
 }
 
 html.is-ios {
-  --safe-area-top: env(safe-area-inset-top, 44px);
-  --safe-area-bottom: env(safe-area-inset-bottom, 34px);
+  --safe-area-top: max(env(safe-area-inset-top), 44px);
+  --safe-area-bottom: max(env(safe-area-inset-bottom), 34px);
 }
 
 /* ===========================
