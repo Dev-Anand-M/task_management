@@ -23,7 +23,8 @@ const StudyLab = () => {
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
-    const [viewMode, setViewMode] = useState('split'); // 'split', 'doc', 'chat'
+    const [viewMode, setViewMode] = useState(window.innerWidth < 1024 ? 'doc' : 'split'); // 'split', 'doc', 'chat'
+    const [mockDeviceMode, setMockDeviceMode] = useState(false);
     const [showSyncModal, setShowSyncModal] = useState(false);
     const [syncText, setSyncText] = useState('');
     const [history, setHistory] = useState([]);
@@ -57,6 +58,119 @@ const StudyLab = () => {
             saveChatHistory(messages);
         }
     }, [messages]);
+
+    const performRAGSearch = (documentText, query, chunkSize = 800, overlap = 200) => {
+        if (!documentText) return "";
+        const chunks = [];
+        let start = 0;
+        while (start < documentText.length) {
+            const end = Math.min(start + chunkSize, documentText.length);
+            chunks.push(documentText.slice(start, end));
+            start += chunkSize - overlap;
+        }
+        const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 2);
+        if (keywords.length === 0) {
+            return chunks.slice(0, 3).join("\n\n---\n\n");
+        }
+        const scoredChunks = chunks.map(chunk => {
+            let score = 0;
+            const chunkLower = chunk.toLowerCase();
+            keywords.forEach(kw => {
+                const count = (chunkLower.match(new RegExp(kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g')) || []).length;
+                score += count;
+            });
+            return { chunk, score };
+        });
+        scoredChunks.sort((a, b) => b.score - a.score);
+        const topChunks = scoredChunks.filter(c => c.score > 0).slice(0, 3);
+        if (topChunks.length === 0) {
+            return chunks.slice(0, 3).join("\n\n---\n\n");
+        }
+        return topChunks.map(tc => tc.chunk).join("\n\n---\n\n");
+    };
+
+    const parsePDF = async (file) => {
+        if (!window.pdfjsLib) {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            fullText += `--- Page ${i} ---\n` + pageText + '\n\n';
+        }
+        return fullText;
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setLoading(true);
+        try {
+            let contentText = '';
+            if (file.name.toLowerCase().endsWith('.pdf')) {
+                contentText = await parsePDF(file);
+            } else {
+                contentText = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => resolve(event.target.result);
+                    reader.onerror = (err) => reject(err);
+                    reader.readAsText(file);
+                });
+            }
+
+            if (!contentText.trim()) {
+                throw new Error("No readable text content found in document.");
+            }
+
+            // If we are currently viewing a document, we can overwrite its content,
+            // otherwise create a brand new document!
+            if (materialId && material) {
+                const table = material?.course_id ? 'knowledge_base' : 'study_notes';
+                const { error } = await supabase
+                    .from(table)
+                    .update({ content: contentText })
+                    .eq('id', materialId);
+                if (error) throw error;
+                setMaterial(prev => ({ ...prev, content: contentText }));
+                setMessages(prev => [
+                    ...prev,
+                    { role: 'assistant', content: `🧠 **RAG Brain Sync Complete.** I have successfully parsed and indexed "${file.name}" for semantic context retrieval.` }
+                ]);
+            } else {
+                const title = file.name.replace(/\.[^/.]+$/, ""); // strip extension
+                const { data, error } = await supabase
+                    .from('study_notes')
+                    .insert([{
+                        title,
+                        content: contentText,
+                        user_id: user.id,
+                        file_url: ""
+                    }])
+                    .select();
+
+                if (error) throw error;
+                navigate(`/study-lab/${data[0].id}`);
+            }
+        } catch (err) {
+            console.error('File upload failed:', err);
+            alert('File processing error: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchMaterial = async () => {
         setLoading(true);
@@ -215,22 +329,23 @@ const StudyLab = () => {
             // Filter history to remove old apologies
             const cleanHistory = messages.filter(m => !m.content.toLowerCase().includes("don't have access") && !m.content.toLowerCase().includes("sync ai"));
 
-            const systemPrompt = `You are the Zenith Lab Assistant. 
+            // Perform local semantic chunk match
+            const retrievedContext = performRAGSearch(material?.content || '', userMsg);
+
+            const systemPrompt = `You are the Zenith Lab Assistant.
             
-            CRITICAL DISCLOSURE:
-            1. You CANNOT see the document viewer or the material's file content directly.
-            2. You MUST inform the student of this limitation if they ask questions about the current document's specific text.
-            3. ASK the student to copy and paste the relevant text into the chat for analysis.
-            4. If the student has already pasted content into the chat history, use it.
+            ROLE: CS Professor & Advanced RAG Agent.
+            
+            RETRIEVED DOCUMENT CONTEXT (RAG):
+            ${retrievedContext || 'No context indexed yet. The user has not uploaded or synced document text.'}
             
             MATERIAL METADATA:
             TITLE: ${material?.title}
             
-            ${material?.content && material.content !== 'Attached Material' ? `STORED INDEX: ${material.content}` : 'The student has not yet synced/pasted content.'}
-            
             STRICT DIRECTIVES:
-            - Be transparent about your vision limitation.
-            - Provide academic guidance based ONLY on pasted text or the TITLE metadata.
+            - Answer the student's questions using the provided RETRIEVED DOCUMENT CONTEXT.
+            - Synthesize context-aware responses with technical precision.
+            - If the context doesn't contain the answer, tell the user politely and answer using your general computer science knowledge.
             - Maintain a professional CS Professor persona.`;
 
             const response = await generateChat([...cleanHistory, { role: 'user', content: userMsg }], systemPrompt);
@@ -250,14 +365,43 @@ const StudyLab = () => {
 
     if (!materialId) {
         return (
-            <div style={{ padding: 'var(--space-xl)', maxWidth: '1200px', margin: '0 auto' }}>
-                <div style={{ marginBottom: 'var(--space-xl)', textAlign: 'center' }}>
+            <div style={{ padding: 'var(--space-2xl)', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-xl)' }}>
+                <div style={{ textAlign: 'center' }}>
                     <h1 style={{ fontSize: 'var(--text-4xl)', fontWeight: 800, marginBottom: 'var(--space-md)' }}>Study <span style={{ color: 'var(--primary-500)' }}>Lab</span></h1>
-                    <p style={{ color: 'var(--text-muted)' }}>Select a material to begin your AI-powered deep dive.</p>
+                    <p style={{ color: 'var(--text-muted)' }}>Advanced AI Retrieval-Augmented Generation (RAG) Playground</p>
                 </div>
-                <Button onClick={() => navigate('/study-materials')} variant="primary">
-                    <BookOpen size={20} style={{ marginRight: '8px' }} /> Browse Materials
-                </Button>
+                
+                <Card style={{ padding: 'var(--space-xl)', background: 'linear-gradient(135deg, rgba(99,102,241,0.05) 0%, rgba(139,92,246,0.05) 100%)', border: '1px dashed var(--primary-500)', textAlign: 'center' }}>
+                    <CloudLightning size={48} className="text-primary-500 mb-md" style={{ margin: '0 auto 12px auto' }} />
+                    <h3>Start RAG Session by Uploading</h3>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', maxWidth: '450px', margin: '8px auto 20px' }}>
+                        Upload any PDF, TXT, or MD study file. Zenith AI will parse, chunk, and index it locally for instant context-aware question answering.
+                    </p>
+                    <label 
+                        htmlFor="dashboard-rag-upload" 
+                        style={{ 
+                            display: 'inline-flex', alignItems: 'center', gap: '8px', 
+                            padding: '12px 24px', background: 'var(--primary-500)', color: 'white', 
+                            borderRadius: 'var(--radius-lg)', fontWeight: 700, cursor: 'pointer',
+                            boxShadow: 'var(--shadow-lg)', transition: 'all 0.2s'
+                        }}
+                    >
+                        <Download size={18} /> Upload Document
+                    </label>
+                    <input 
+                        type="file" 
+                        id="dashboard-rag-upload" 
+                        accept=".pdf,.txt,.md" 
+                        style={{ display: 'none' }} 
+                        onChange={(e) => handleFileUpload(e)}
+                    />
+                </Card>
+
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <Button onClick={() => navigate('/study-materials')} variant="outline">
+                        <BookOpen size={20} style={{ marginRight: '8px' }} /> Browse Existing Materials
+                    </Button>
+                </div>
             </div>
         );
     }
@@ -305,9 +449,15 @@ const StudyLab = () => {
                         <Printer size={16} />
                     </Button>
                     <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius-md)', padding: '4px', display: 'flex', gap: '2px' }}>
-                        <button onClick={() => setViewMode('doc')} style={{ padding: '6px 12px', border: 'none', borderRadius: 'var(--radius-sm)', background: viewMode === 'doc' ? 'var(--primary-500)' : 'transparent', color: 'white', cursor: 'pointer' }}><FileText size={16} /></button>
-                        <button onClick={() => setViewMode('split')} style={{ padding: '6px 12px', border: 'none', borderRadius: 'var(--radius-sm)', background: viewMode === 'split' ? 'var(--primary-500)' : 'transparent', color: 'white', cursor: 'pointer' }}><Maximize2 size={16} /></button>
-                        <button onClick={() => setViewMode('chat')} style={{ padding: '6px 12px', border: 'none', borderRadius: 'var(--radius-sm)', background: viewMode === 'chat' ? 'var(--primary-500)' : 'transparent', color: 'white', cursor: 'pointer' }}><MessageSquare size={16} /></button>
+                        <button onClick={() => setViewMode('doc')} style={{ padding: '6px 12px', border: 'none', borderRadius: 'var(--radius-sm)', background: viewMode === 'doc' ? 'var(--primary-500)' : 'transparent', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <FileText size={16} /> {isMobile && <span style={{ fontSize: '10px', fontWeight: 600 }}>Doc</span>}
+                        </button>
+                        {!isMobile && (
+                            <button onClick={() => setViewMode('split')} style={{ padding: '6px 12px', border: 'none', borderRadius: 'var(--radius-sm)', background: viewMode === 'split' ? 'var(--primary-500)' : 'transparent', color: 'white', cursor: 'pointer' }}><Maximize2 size={16} /></button>
+                        )}
+                        <button onClick={() => setViewMode('chat')} style={{ padding: '6px 12px', border: 'none', borderRadius: 'var(--radius-sm)', background: viewMode === 'chat' ? 'var(--primary-500)' : 'transparent', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <MessageSquare size={16} /> {isMobile && <span style={{ fontSize: '10px', fontWeight: 600 }}>Chat</span>}
+                        </button>
                     </div>
                 </div>
             </header>
@@ -351,18 +501,28 @@ const StudyLab = () => {
                                     height: '100%',
                                     overflow: 'hidden'
                                 }}>
-                                    {/* Mini Browser Toolbar */}
+                                    {/* Mock Browser Window Bar */}
                                     <div style={{
                                         display: 'flex',
                                         alignItems: 'center',
+                                        justifyContent: 'space-between',
                                         gap: '12px',
-                                        padding: '8px 16px',
-                                        background: 'rgba(0,0,0,0.2)',
-                                        borderBottom: '1px solid rgba(255,255,255,0.05)',
-                                        marginBottom: '12px',
-                                        borderRadius: 'var(--radius-md)'
+                                        padding: '10px 16px',
+                                        background: 'rgba(25, 25, 35, 0.8)',
+                                        borderBottom: '1.5px solid rgba(255,255,255,0.08)',
+                                        borderRadius: '12px 12px 0 0',
+                                        flexWrap: 'wrap'
                                     }}>
-                                            <div style={{ display: 'flex', gap: '4px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {/* Window Dots */}
+                                            <div style={{ display: 'flex', gap: '5px' }}>
+                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444' }} />
+                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b' }} />
+                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }} />
+                                            </div>
+                                            
+                                            {/* Browser Navigation */}
+                                            <div style={{ display: 'flex', gap: '2px', marginLeft: '12px' }}>
                                                 <button 
                                                     onClick={() => {
                                                         if (historyIndex > 0) {
@@ -376,7 +536,7 @@ const StudyLab = () => {
                                                     disabled={historyIndex <= 0}
                                                     style={{ background: 'none', border: 'none', color: historyIndex > 0 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)', cursor: historyIndex > 0 ? 'pointer' : 'default', padding: '4px' }}
                                                 >
-                                                    <ChevronLeft size={18} />
+                                                    <ChevronLeft size={16} />
                                                 </button>
                                                 <button 
                                                     onClick={() => {
@@ -391,159 +551,252 @@ const StudyLab = () => {
                                                     disabled={historyIndex >= history.length - 1}
                                                     style={{ background: 'none', border: 'none', color: historyIndex < history.length - 1 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)', cursor: historyIndex < history.length - 1 ? 'pointer' : 'default', padding: '4px' }}
                                                 >
-                                                    <ChevronRight size={18} />
+                                                    <ChevronRight size={16} />
                                                 </button>
                                             </div>
-                                            
-                                            <div style={{ 
-                                                flex: 1, 
-                                                background: 'rgba(255,255,255,0.1)', 
-                                                padding: '4px 12px', 
-                                                borderRadius: '8px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '10px',
-                                                border: '1px solid rgba(255,255,255,0.1)'
-                                            }}>
-                                                <Globe size={14} className="text-primary" />
-                                                <input 
-                                                    type="text"
-                                                    value={urlInput}
-                                                    onChange={(e) => setUrlInput(e.target.value)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') {
-                                                            const url = e.target.value;
-                                                            // Clear future history if we're in the middle and branch off
-                                                            const newHistory = history.slice(0, historyIndex + 1);
-                                                            newHistory.push(url);
-                                                            setHistory(newHistory);
-                                                            setHistoryIndex(newHistory.length - 1);
-                                                            setMaterial(prev => ({ ...prev, file_url: url }));
-                                                        }
-                                                    }}
-                                                    style={{ 
-                                                        background: 'none', 
-                                                        border: 'none', 
-                                                        color: urlInput !== material?.file_url ? 'var(--primary-400)' : 'white', 
-                                                        fontSize: '12px', 
-                                                        width: '100%',
-                                                        outline: 'none',
-                                                        fontWeight: '500',
-                                                        transition: 'color 0.3s ease'
-                                                    }}
-                                                    placeholder="Paste a link to study (Drive, PDF, Doc...)"
-                                                />
-                                            </div>
-                                            
-                                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                                <Badge variant="outline" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)', gap: '6px' }}>
-                                                    <EyeOff size={12} /> AI Visibility Restricted
-                                                </Badge>
-                                                
-                                                <button 
-                                                    onClick={() => {
-                                                        const currentUrl = material?.file_url;
-                                                        setMaterial(prev => ({ ...prev, file_url: '' }));
-                                                        setTimeout(() => setMaterial(prev => ({ ...prev, file_url: currentUrl })), 50);
-                                                    }}
-                                                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '4px' }}
-                                                    title="Refresh View"
-                                                >
-                                                    <RefreshCw size={16} />
-                                                </button>
+                                        </div>
 
-                                                <a 
-                                                    href={material?.file_url} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    style={{ color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center' }}
-                                                    title="Open in Full Browser"
-                                                >
-                                                    <ExternalLink size={16} />
-                                                </a>
-                                            </div>
+                                        {/* URL Bar */}
+                                        <div style={{ 
+                                            flex: 1, 
+                                            background: 'rgba(0,0,0,0.4)', 
+                                            padding: '6px 14px', 
+                                            borderRadius: '20px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            border: '1px solid rgba(255,255,255,0.08)',
+                                            minWidth: '200px'
+                                        }}>
+                                            <span style={{ color: '#10b981', display: 'flex', alignItems: 'center' }} title="Secure SSL connection">🔒</span>
+                                            <input 
+                                                type="text"
+                                                value={urlInput}
+                                                onChange={(e) => setUrlInput(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        const url = e.target.value;
+                                                        const newHistory = history.slice(0, historyIndex + 1);
+                                                        newHistory.push(url);
+                                                        setHistory(newHistory);
+                                                        setHistoryIndex(newHistory.length - 1);
+                                                        setMaterial(prev => ({ ...prev, file_url: url }));
+                                                    }
+                                                }}
+                                                style={{ 
+                                                    background: 'none', 
+                                                    border: 'none', 
+                                                    color: 'white', 
+                                                    fontSize: '11px', 
+                                                    width: '100%',
+                                                    outline: 'none',
+                                                    fontWeight: '500'
+                                                }}
+                                                placeholder="Enter URL or paste website link..."
+                                            />
+                                        </div>
+
+                                        {/* Actions Toolbar */}
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                            {/* RAG File Upload Trigger */}
+                                            <label 
+                                                htmlFor="lab-file-upload-input" 
+                                                style={{ 
+                                                    background: 'rgba(99, 102, 241, 0.1)', 
+                                                    color: 'var(--primary-400)', 
+                                                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                                                    borderRadius: '8px',
+                                                    padding: '6px 12px',
+                                                    fontSize: '10px',
+                                                    fontWeight: 700,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                title="Upload PDF/TXT/MD for AI RAG Search"
+                                            >
+                                                <Download size={12} /> RAG Upload
+                                            </label>
+                                            <input 
+                                                type="file" 
+                                                id="lab-file-upload-input" 
+                                                accept=".pdf,.txt,.md" 
+                                                style={{ display: 'none' }} 
+                                                onChange={handleFileUpload} 
+                                            />
+
+                                            {/* Mock Mobile View Toggle */}
+                                            <button 
+                                                onClick={() => setMockDeviceMode(!mockDeviceMode)}
+                                                style={{ 
+                                                    background: mockDeviceMode ? 'var(--primary-500)' : 'rgba(255,255,255,0.05)', 
+                                                    border: '1px solid rgba(255,255,255,0.1)', 
+                                                    borderRadius: '8px', 
+                                                    color: 'white', 
+                                                    padding: '6px 10px',
+                                                    fontSize: '10px',
+                                                    fontWeight: 700,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    cursor: 'pointer'
+                                                }}
+                                                title="Toggle Mobile Simulator Shell"
+                                            >
+                                                <Globe size={12} /> Mobile Shell
+                                            </button>
+
+                                            <button 
+                                                onClick={() => {
+                                                    const currentUrl = material?.file_url;
+                                                    setMaterial(prev => ({ ...prev, file_url: '' }));
+                                                    setTimeout(() => setMaterial(prev => ({ ...prev, file_url: currentUrl })), 50);
+                                                }}
+                                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', padding: '6px', cursor: 'pointer' }}
+                                                title="Refresh View"
+                                            >
+                                                <RefreshCw size={12} />
+                                            </button>
+
+                                            <a 
+                                                href={material?.file_url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', padding: '6px', display: 'flex', alignItems: 'center' }}
+                                                title="Open in Full Browser"
+                                            >
+                                                <ExternalLink size={12} />
+                                            </a>
+                                        </div>
                                     </div>
 
-                                    <div style={{ flex: 1, position: 'relative', overflowY: 'auto' }}>
-                                        {material?.file_url ? (
-                                            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                                                {material.file_url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
-                                                    <img 
-                                                        src={material.file_url} 
-                                                        alt="Attached Material" 
-                                                        style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'var(--radius-md)' }} 
-                                                    />
-                                                ) : (
-                                                    <iframe 
-                                                        key={material.file_url} // Force reload on URL change
-                                                        src={(() => {
-                                                            const url = material.file_url;
-                                                            if (!url) return '';
-                                                            
-                                                            if (url.includes('drive.google.com') && (url.includes('/file/d/') || url.includes('id=')) && !url.includes('/folders/')) {
-                                                                const fileId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
-                                                                if (fileId && !url.includes('folders')) {
-                                                                    // Use the stable /preview mode but with relaxed sandbox for selection
-                                                                    return `https://drive.google.com/file/d/${fileId}/preview`;
-                                                                }
-                                                            }
-                                                            
-                                                            if (url.includes('drive.google.com') && url.includes('folders')) {
-                                                                // Robust folder ID extraction
-                                                                const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
-                                                                if (folderId) {
-                                                                    return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
-                                                                }
-                                                            }
+                                    <div style={{ 
+                                        flex: 1, 
+                                        position: 'relative', 
+                                        overflowY: 'auto',
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        background: mockDeviceMode ? '#1e1e26' : 'transparent',
+                                        padding: mockDeviceMode ? '20px' : 0,
+                                        transition: 'background 0.3s ease'
+                                    }}>
+                                        <div style={mockDeviceMode ? {
+                                            width: '320px',
+                                            height: '568px',
+                                            borderRadius: '24px',
+                                            border: '10px solid #2d2d3d',
+                                            background: '#000',
+                                            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                                            position: 'relative',
+                                            overflow: 'hidden',
+                                            display: 'flex',
+                                            flexDirection: 'column'
+                                        } : { width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                            
+                                            {/* Simulated Phone Status Bar */}
+                                            {mockDeviceMode && (
+                                                <div style={{
+                                                    height: '20px',
+                                                    background: '#2d2d3d',
+                                                    color: 'rgba(255,255,255,0.7)',
+                                                    fontSize: '9px',
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    padding: '0 12px',
+                                                    fontFamily: 'system-ui',
+                                                    fontWeight: 600
+                                                }}>
+                                                    <span>9:41 AM</span>
+                                                    <span style={{ display: 'flex', gap: '4px' }}>
+                                                        <span>📶</span>
+                                                        <span>🛜</span>
+                                                        <span>🔋 100%</span>
+                                                    </span>
+                                                </div>
+                                            )}
 
-                                                            if (url.includes('drive.google.com')) {
-                                                                // Fallback for other drive links
-                                                                if (url.includes('/view') || url.includes('/edit')) {
-                                                                    return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
+                                            {/* Resource Viewer Content */}
+                                            {material?.file_url ? (
+                                                <div style={{ width: '100%', height: '100%', position: 'relative', flex: 1 }}>
+                                                    {material.file_url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i) ? (
+                                                        <img 
+                                                            src={material.file_url} 
+                                                            alt="Attached Material" 
+                                                            style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                                                        />
+                                                    ) : (
+                                                        <iframe 
+                                                            key={material.file_url} // Force reload on URL change
+                                                            src={(() => {
+                                                                const url = material.file_url;
+                                                                if (!url) return '';
+                                                                
+                                                                if (url.includes('drive.google.com') && (url.includes('/file/d/') || url.includes('id=')) && !url.includes('/folders/')) {
+                                                                    const fileId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
+                                                                    if (fileId && !url.includes('folders')) {
+                                                                        return `https://drive.google.com/file/d/${fileId}/preview`;
+                                                                    }
                                                                 }
+                                                                
+                                                                if (url.includes('drive.google.com') && url.includes('folders')) {
+                                                                    const folderId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
+                                                                    if (folderId) {
+                                                                        return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
+                                                                    }
+                                                                }
+
+                                                                if (url.includes('drive.google.com')) {
+                                                                    if (url.includes('/view') || url.includes('/edit')) {
+                                                                        return url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
+                                                                    }
+                                                                    return url;
+                                                                }
+                                                                
+                                                                if (url.includes('docs.google.com')) {
+                                                                    if (!url.includes('embedded=true')) {
+                                                                        const separator = url.includes('?') ? '&' : '?';
+                                                                        return `${url}${separator}embedded=true`;
+                                                                    }
+                                                                    return url;
+                                                                }
+
+                                                                if (url.toLowerCase().endsWith('.pdf') || url.includes('/public/study_materials/')) {
+                                                                    return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+                                                                }
+
+                                                                if (url.match(/\.(doc|docx|ppt|pptx|xls|xlsx)$/i)) {
+                                                                    return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+                                                                }
+
                                                                 return url;
-                                                            }
-                                                            
-                                                            if (url.includes('docs.google.com')) {
-                                                                if (!url.includes('embedded=true')) {
-                                                                    const separator = url.includes('?') ? '&' : '?';
-                                                                    return `${url}${separator}embedded=true`;
-                                                                }
-                                                                return url;
-                                                            }
-
-                                                            if (url.toLowerCase().endsWith('.pdf') || url.includes('/public/study_materials/')) {
-                                                                return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
-                                                            }
-
-                                                            if (url.match(/\.(doc|docx|ppt|pptx|xls|xlsx)$/i)) {
-                                                                return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
-                                                            }
-
-                                                            return url;
-                                                        })()} 
-                                                        style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }}
-                                                        title="Resource Viewer"
-                                                        allow="autoplay; encrypted-media; clipboard-read; clipboard-write; camera; microphone"
-                                                    />
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div className="lab-content" style={{ color: '#d1d1d1', lineHeight: 1.8, fontSize: 'var(--text-base)', padding: 'var(--space-md)' }}>
-                                                {material?.content && material.content !== 'Attached Material' ? (
-                                                    <ReactMarkdown>{material.content}</ReactMarkdown>
-                                                ) : (
-                                                    <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
-                                                        <Info size={48} style={{ marginBottom: 'var(--space-md)', opacity: 0.5 }} />
-                                                        <p>Load a URL to begin your deep-study session. AI will automatically index the content.</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
+                                                            })()} 
+                                                            style={{ width: '100%', height: '100%', border: 'none', background: 'white' }}
+                                                            title="Resource Viewer"
+                                                            allow="autoplay; encrypted-media; clipboard-read; clipboard-write; camera; microphone"
+                                                        />
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="lab-content" style={{ color: '#d1d1d1', lineHeight: 1.8, fontSize: 'var(--text-base)', padding: 'var(--space-md)', flex: 1, overflowY: 'auto' }}>
+                                                    {material?.content && material.content !== 'Attached Material' ? (
+                                                        <ReactMarkdown>{material.content}</ReactMarkdown>
+                                                    ) : (
+                                                        <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
+                                                            <Info size={48} style={{ marginBottom: 'var(--space-md)', opacity: 0.5 }} />
+                                                            <p style={{ fontSize: 'var(--text-sm)' }}>Load a URL or upload a file to begin your study session. AI will automatically index the content.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
                         </div>
                     </div>
+                </div>
                 )}
 
                     {/* Sync Context Modal */}
