@@ -88,11 +88,17 @@ const Zen = () => {
     const getSystemContext = async () => {
         const isAdmin = user?.role === 'admin';
         try {
-            // Always fetch routines, tasks, classrooms
+            // Always fetch routines, tasks, classrooms, logs, quiz attempts, study notes, profiles, notifications, announcements
             const basePromises = [
                 routineService.getAllRoutinesForHistory().catch(() => []),
                 db.getTasks().catch(() => []),
-                db.getClassrooms().catch(() => [])
+                db.getClassrooms().catch(() => []),
+                routineService.getAllLogs().catch(() => []),
+                db.getQuizAttemptsByUser(user.id).catch(() => []),
+                db.getStudyNotes(user.id).catch(() => []),
+                db.getProfiles().catch(() => []),
+                db.getNotifications(user.id).catch(() => []),
+                db.getAnnouncements().catch(() => [])
             ];
 
             // Admin-only data: members, submissions, invite codes
@@ -102,12 +108,20 @@ const Zen = () => {
                 db.getInviteCodes().catch(() => [])
             ] : [];
 
-            const [routines, tasks, classrooms, ...adminData] = await Promise.all([...basePromises, ...adminPromises]);
+            const [
+                routines, tasks, classrooms, logs, quizAttempts, studyNotes, profiles, notifications, announcements,
+                ...adminData
+            ] = await Promise.all([...basePromises, ...adminPromises]);
+
+            // Sort profiles by XP to find leaderboard ranking
+            const sortedProfiles = [...(profiles || [])].sort((a, b) => (b.xp || 0) - (a.xp || 0));
+            const ranking = sortedProfiles.findIndex(p => p.id === user.id) + 1;
+            const userProfile = profiles?.find(p => p.id === user.id) || {};
 
             const prunedRoutines = (routines || [])
                 .filter(r => r.user_id === user?.id)
-                .map(r => ({ id: r.id, title: r.title, frequency: r.frequency, is_active: r.is_active }))
-                .slice(0, 15);
+                .map(r => ({ id: r.id, title: r.title, start_time: r.start_time, days_of_week: r.days_of_week, is_active: r.is_active, is_anonymous: r.is_anonymous }))
+                .slice(0, 20);
 
             const prunedTasks = (tasks || [])
                 .map(t => ({ id: t.id, title: t.title, status: t.status, xp: t.xp, due_date: t.due_date }))
@@ -115,20 +129,56 @@ const Zen = () => {
 
             const prunedClassrooms = (classrooms || [])
                 .map(c => ({ id: c.id, name: c.name, description: c.description || '' }))
+                .slice(0, 10);
+
+            const prunedLogs = (logs || [])
+                .filter(l => l.user_id === user?.id)
+                .map(l => ({ routine_id: l.routine_id, title: l.snapshot_title, status: l.status, log_date: l.log_date, notes: l.learning_notes }))
+                .slice(0, 25);
+
+            const prunedQuizAttempts = (quizAttempts || [])
+                .map(qa => ({ quiz_title: qa.quizzes?.title, score: qa.score, passed: qa.passed, completed_at: qa.completed_at }))
+                .slice(0, 10);
+
+            const prunedStudyNotes = (studyNotes || [])
+                .map(sn => ({ id: sn.id, title: sn.title, content: sn.content?.substring(0, 100) + (sn.content?.length > 100 ? '...' : ''), updated_at: sn.updated_at }))
                 .slice(0, 15);
 
+            const prunedAnnouncements = (announcements || [])
+                .map(an => ({ id: an.id, title: an.title, message: an.message, created_at: an.created_at }))
+                .slice(0, 10);
+
+            const prunedNotifications = (notifications || [])
+                .filter(n => !n.is_read)
+                .map(n => ({ id: n.id, title: n.title, message: n.message, created_at: n.created_at }))
+                .slice(0, 10);
+
             const context = {
-                user: { id: user?.id, email: user?.email, role: user?.role, name: user?.name },
+                user: { 
+                    id: user?.id, 
+                    email: user?.email, 
+                    role: user?.role, 
+                    name: user?.name,
+                    xp: userProfile.xp || 0,
+                    streak: userProfile.streak || 0,
+                    level: userProfile.level || 1,
+                    leaderboard_rank: ranking || 'N/A'
+                },
                 routines: prunedRoutines,
+                routine_logs: prunedLogs,
                 tasks: prunedTasks,
-                classrooms: prunedClassrooms
+                classrooms: prunedClassrooms,
+                quiz_attempts: prunedQuizAttempts,
+                study_notes: prunedStudyNotes,
+                announcements: prunedAnnouncements,
+                notifications: prunedNotifications
             };
 
             // Only inject admin-only data if admin
             if (isAdmin && adminData.length === 3) {
                 const [members, submissions, inviteCodes] = adminData;
                 context.members = (members || [])
-                    .map(m => ({ name: m.name, email: m.email, role: m.role }))
+                    .map(m => ({ id: m.id, name: m.name, email: m.email, role: m.role }))
                     .slice(0, 20);
                 context.submissions = (submissions || [])
                     .filter(s => s.status === 'pending')

@@ -152,6 +152,8 @@ const Calendar = () => {
             // We'll show routines for the current viewed month (+/- some buffer)
             const calendarStart = new Date(year, month - 1, 1);
             const calendarEnd = new Date(year, month + 2, 0);
+            const todayRef = new Date();
+            todayRef.setHours(0, 0, 0, 0);
             
             (routines || []).forEach(r => {
                 let iter = new Date(calendarStart);
@@ -169,12 +171,15 @@ const Calendar = () => {
                             // Check if there's a log for this specific date
                             const log = (routineLogs || []).find(l => l.routine_id === r.id && l.log_date === dateStr);
                             
+                            // For inactive/deleted routines, only show dates with actual logs
+                            if (!r.is_active && !log) continue;
+                            
                             allEvents.push({
                                 id: `routine-${r.id}-${dateStr}`,
                                 title: `${r.is_anonymous ? '⚡' : '🔄'} ${r.title}`,
                                 date: new Date(iter),
                                 type: 'routine',
-                                status: log ? log.status : (iter < today ? 'missed' : 'scheduled'),
+                                status: log ? log.status : (iter < todayRef ? 'missed' : 'scheduled'),
                                 routineId: r.id,
                                 startTime: r.start_time,
                                 isAnonymous: !!r.is_anonymous

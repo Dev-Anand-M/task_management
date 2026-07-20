@@ -479,7 +479,7 @@ export const createQuiz = async (quiz) => {
             
             const userIds = quiz.assigned_to.filter(Boolean);
             if (userIds.length > 0) {
-                _sendPush({
+                sendPush({
                     user_ids: userIds,
                     title: 'New Quiz Assigned',
                     body: `You have been specifically assigned the quiz: "${quiz.title}"`,
@@ -704,7 +704,7 @@ export const markAllNotificationsRead = async (userId) => {
 };
 
 // Internal helper: send push notification via /api/push with auth
-const _sendPush = async (payload) => {
+export const sendPush = async (payload) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
     return fetch(`${PlatformService.getApiUrl()}/api/push`, {
@@ -734,7 +734,7 @@ export const createNotification = async (notification) => {
         if (error) console.error('[createNotification] DB insert error:', error);
 
         // 2. Also fire push (best-effort)
-        _sendPush({
+        sendPush({
             user_ids: [notification.user_id],
             classroom_id: notification.classroom_id || null,
             title: notification.title,

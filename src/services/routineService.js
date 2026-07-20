@@ -112,6 +112,18 @@ export const routineService = {
         return true;
     },
 
+    async clearLogsForRoutine(routineId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+        const { error } = await supabase
+            .from('routine_logs')
+            .delete()
+            .eq('routine_id', routineId)
+            .eq('user_id', user.id);
+        if (error) throw error;
+        return true;
+    },
+
     async logRoutineProgress(routineId, data) {
         const { data: { user } } = await supabase.auth.getUser();
         

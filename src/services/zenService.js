@@ -29,7 +29,8 @@ export const zenService = {
                     'CREATE_TASK', 'UPDATE_TASK', 'DELETE_TASK',
                     'CREATE_QUIZ', 'UPDATE_QUIZ', 'DELETE_QUIZ',
                     'UPDATE_ROLE', 'EVALUATE_SUBMISSION', 'CREATE_INVITE',
-                    'ADD_KB_MATERIAL'
+                    'ADD_KB_MATERIAL', 'CREATE_ANNOUNCEMENT', 'SEND_PUSH',
+                    'REMOVE_MEMBER', 'DELETE_KB_MATERIAL', 'UPDATE_KB_MATERIAL'
                 ].includes(action.type);
 
                 // Permission check
@@ -60,6 +61,44 @@ export const zenService = {
                     case 'LOG_ROUTINE':
                         resData = await routineService.logRoutineProgress(action.payload.routine_id, action.payload);
                         results.push({ action: action.type, status: EXEC_STATUS.SUCCESS, data: resData });
+                        break;
+                    case 'CLEAR_ALL_LOGS':
+                        await routineService.clearAllLogs();
+                        results.push({ action: action.type, status: EXEC_STATUS.SUCCESS });
+                        break;
+                    case 'CLEAR_ROUTINE_LOGS':
+                        await routineService.clearLogsForRoutine(action.payload.routine_id);
+                        results.push({ action: action.type, status: EXEC_STATUS.SUCCESS });
+                        break;
+                    case 'BULK_SCHEDULE':
+                        resData = await routineService.replaceAllRoutines(action.payload.routines);
+                        results.push({ action: action.type, status: EXEC_STATUS.SUCCESS, data: resData });
+                        break;
+
+                    // --- STUDY NOTES ACTIONS (Available to all users) ---
+                    case 'ADD_STUDY_NOTE':
+                        resData = await db.addStudyNote(action.payload);
+                        results.push({ action: action.type, status: EXEC_STATUS.SUCCESS, data: resData });
+                        break;
+                    case 'UPDATE_STUDY_NOTE':
+                        resData = await db.updateStudyNote(action.payload.id, action.payload.updates);
+                        results.push({ action: action.type, status: EXEC_STATUS.SUCCESS, data: resData });
+                        break;
+                    case 'DELETE_STUDY_NOTE':
+                        await db.deleteStudyNote(action.payload.id);
+                        results.push({ action: action.type, status: EXEC_STATUS.SUCCESS });
+                        break;
+
+                    // --- NOTIFICATION ACTIONS ---
+                    case 'MARK_NOTIFICATIONS_READ':
+                        await db.markAllNotificationsRead(currentUser.id);
+                        results.push({ action: action.type, status: EXEC_STATUS.SUCCESS });
+                        break;
+
+                    // --- NAVIGATION ACTION (Client UI only) ---
+                    case 'NAVIGATE':
+                        window.dispatchEvent(new CustomEvent('navigate-to-url', { detail: { url: action.payload.url } }));
+                        results.push({ action: action.type, status: EXEC_STATUS.SUCCESS, data: action.payload.url });
                         break;
 
                     // --- TASK ACTIONS (Admin Only) ---
@@ -108,6 +147,24 @@ export const zenService = {
                         results.push({ action: action.type, status: EXEC_STATUS.SUCCESS, data: resData });
                         break;
 
+                    // --- ANNOUNCEMENT ACTIONS (Admin Only) ---
+                    case 'CREATE_ANNOUNCEMENT':
+                        resData = await db.createAnnouncement(action.payload);
+                        results.push({ action: action.type, status: EXEC_STATUS.SUCCESS, data: resData });
+                        break;
+
+                    // --- BULK PUSH PROTOCOL (Admin Only) ---
+                    case 'SEND_PUSH':
+                        await db.sendPush(action.payload);
+                        results.push({ action: action.type, status: EXEC_STATUS.SUCCESS });
+                        break;
+
+                    // --- CLASSROOM MANAGEMENT ACTIONS (Admin Only) ---
+                    case 'REMOVE_MEMBER':
+                        await db.removeMemberFromClassroom(action.payload.classroom_id, action.payload.user_id);
+                        results.push({ action: action.type, status: EXEC_STATUS.SUCCESS });
+                        break;
+
                     // --- KNOWLEDGE BASE ACTIONS (Admin Only) ---
                     case 'ADD_KB_MATERIAL': {
                         const { data, error } = await supabase
@@ -119,6 +176,14 @@ export const zenService = {
                         results.push({ action: action.type, status: EXEC_STATUS.SUCCESS, data });
                         break;
                     }
+                    case 'DELETE_KB_MATERIAL':
+                        await db.deleteKnowledgeSnippet(action.payload.id);
+                        results.push({ action: action.type, status: EXEC_STATUS.SUCCESS });
+                        break;
+                    case 'UPDATE_KB_MATERIAL':
+                        resData = await db.updateKnowledgeSnippet(action.payload.id, action.payload.updates);
+                        results.push({ action: action.type, status: EXEC_STATUS.SUCCESS, data: resData });
+                        break;
 
                     default:
                         results.push({

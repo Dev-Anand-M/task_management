@@ -81,7 +81,7 @@ import { useNavigate } from 'react-router-dom';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const RoutineItem = ({ routine, log, onUpdate, onDelete, onResetLog, nextAlarmInfo, materials, allLogs, selectedDate, navDate }) => {
+const RoutineItem = ({ routine, log, onUpdate, onDelete, onClearLogs, onResetLog, nextAlarmInfo, materials, allLogs, selectedDate, navDate }) => {
     const [actualStartTime, setActualStartTime] = useState(
         log?.actual_start_time || 
         (routine.is_anonymous ? new Date().toTimeString().slice(0, 5) : routine.start_time.slice(0, 5))
@@ -220,6 +220,9 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, onResetLog, nextAlarmIn
                             </Button>
                         </>
                     )}
+                    <button onClick={onClearLogs} title="Clear all logs for this routine" style={{ background: 'none', border: 'none', color: 'var(--warning-500)', cursor: 'pointer', padding: '4px' }}>
+                        <Calendar size={16} />
+                    </button>
                     <button onClick={onDelete} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: '4px' }}>
                         <Trash2 size={16} />
                     </button>
@@ -477,6 +480,30 @@ const Routines = () => {
         }
     };
 
+    const handleClearAllLogs = async () => {
+        if (confirm('⚠️ This will permanently delete ALL your routine logs across all dates. Your calendar history and diary entries will be wiped. Continue?')) {
+            try {
+                await routineService.clearAllLogs();
+                fetchData();
+                alert('All routine logs cleared successfully.');
+            } catch (err) {
+                console.error('Clear all logs failed:', err);
+                alert('Failed to clear logs: ' + err.message);
+            }
+        }
+    };
+
+    const handleClearRoutineLogs = async (id, title) => {
+        if (confirm(`Delete all logs for "${title}"? This removes its history from the calendar and diary.`)) {
+            try {
+                await routineService.clearLogsForRoutine(id);
+                fetchData();
+            } catch (err) {
+                console.error('Clear routine logs failed:', err);
+            }
+        }
+    };
+
     const toggleDay = (day) => {
         setForm(f => ({ 
             ...f, 
@@ -568,9 +595,10 @@ const Routines = () => {
                     </h1>
                     <p style={{ color: 'var(--text-muted)', margin: 0 }}>Enforce discipline, track your progress</p>
                 </div>
-                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
                     <Button variant="ghost" icon={Calendar} onClick={() => navigate('/timetable')}>View AI Timetable</Button>
                     <Button variant="ghost" icon={BookOpen} onClick={() => navigate('/diary')}>Learning Diary</Button>
+                    <Button variant="ghost" icon={Trash2} onClick={handleClearAllLogs} style={{ color: 'var(--error-500)' }}>Clear All Logs</Button>
                     <Button variant="primary" icon={Plus} onClick={() => setShowAdd(true)}>Add Routine</Button>
                 </div>
             </div>
@@ -645,6 +673,7 @@ const Routines = () => {
                             log={logs[routine.id]}
                             onUpdate={handleUpdateLog}
                             onDelete={() => handleDelete(routine.id)}
+                            onClearLogs={() => handleClearRoutineLogs(routine.id, routine.title)}
                             onResetLog={handleResetLog}
                             nextAlarmInfo={nextAlarmInfo}
                             materials={studyMaterials}
