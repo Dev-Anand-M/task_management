@@ -1,3 +1,4 @@
+// Zenith Routine Reminders Serverless Function (Vercel Cron Triggered)
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 import { WebPushStrategy } from '../strategies/WebPushStrategy.js';
