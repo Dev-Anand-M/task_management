@@ -8,7 +8,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
     Target, Calendar, PieChart, Activity, 
     ChevronLeft, ChevronRight, Filter, BookOpen,
-    Zap, Award, TrendingUp, Brain, AlertTriangle
+    Zap, Award, TrendingUp, Brain, AlertTriangle, Clock
 } from 'lucide-react';
 
 const Diary = () => {
@@ -282,7 +282,16 @@ const Diary = () => {
         </div>
     );
     const renderMindmapView = () => {
-        const mindmapLogs = logs.filter(l => l.learning_notes && l.status === 'done').slice(0, 12);
+        let mindmapLogs = logs.filter(l => l.learning_notes && l.status === 'done');
+        if (mindmapLogs.length === 0) {
+            // Fallback 1: any completed logs
+            mindmapLogs = logs.filter(l => l.status === 'done');
+        }
+        if (mindmapLogs.length === 0) {
+            // Fallback 2: any logs at all
+            mindmapLogs = logs;
+        }
+        mindmapLogs = mindmapLogs.slice(0, 12);
         
         // Group logs by routine category
         const routineGroups = {};
@@ -348,10 +357,11 @@ const Diary = () => {
                 const lx = rx + Math.cos(fanAngle) * logRadius;
                 const ly = ry + Math.sin(fanAngle) * logRadius;
 
+                const notesText = log.learning_notes || log.notes || log.notes_text || `Log #${log.id?.toString().slice(0, 4) || logIdx}`;
                 logNodes.push({
                     id: log.id,
                     log,
-                    title: log.learning_notes.length > 20 ? log.learning_notes.substring(0, 18) + '...' : log.learning_notes,
+                    title: notesText.length > 20 ? notesText.substring(0, 18) + '...' : notesText,
                     x: lx,
                     y: ly,
                     color

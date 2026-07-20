@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { shareOrDownloadFile } from './fileExporter';
 
 /**
  * Export quiz attempt to CSV format
@@ -70,16 +71,8 @@ export const exportQuizToCSV = (attempt, quiz, userName) => {
     
     // Create blob and download
     const csvContent = lines.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `quiz-${quiz.title.replace(/[^a-z0-9]/gi, '_')}-${userName.replace(/[^a-z0-9]/gi, '_')}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const fileName = `quiz-${quiz.title.replace(/[^a-z0-9]/gi, '_')}-${userName.replace(/[^a-z0-9]/gi, '_')}.csv`;
+    shareOrDownloadFile(csvContent, fileName, 'text/csv;charset=utf-8;');
 };
 
 /**
@@ -165,7 +158,9 @@ export const exportQuizToXLSX = (attempt, quiz, userName) => {
     XLSX.utils.book_append_sheet(wb, ws2, 'Questions & Answers');
     
     // Download
-    XLSX.writeFile(wb, `quiz-${quiz.title.replace(/[^a-z0-9]/gi, '_')}-${userName.replace(/[^a-z0-9]/gi, '_')}.xlsx`);
+    const fileName = `quiz-${quiz.title.replace(/[^a-z0-9]/gi, '_')}-${userName.replace(/[^a-z0-9]/gi, '_')}.xlsx`;
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    shareOrDownloadFile(wbout, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 };
 
 /**
@@ -214,5 +209,7 @@ export const exportAllQuizAttemptsToXLSX = (attempts, quizzes, profiles) => {
     XLSX.utils.book_append_sheet(wb, ws, 'All Quiz Attempts');
     
     // Download
-    XLSX.writeFile(wb, `all-quiz-attempts-${new Date().toISOString().split('T')[0]}.xlsx`);
+    const bulkFileName = `all-quiz-attempts-${new Date().toISOString().split('T')[0]}.xlsx`;
+    const bulkWbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    shareOrDownloadFile(bulkWbout, bulkFileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 };

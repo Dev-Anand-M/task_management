@@ -9,7 +9,11 @@ import {
     Sparkles,
     Code,
     MessageSquare,
-    Loader2
+    Loader2,
+    Paperclip,
+    Globe,
+    X,
+    Download
 } from 'lucide-react';
 import * as aiService from '../../services/aiService';
 import ReactMarkdown from 'react-markdown';
@@ -22,6 +26,11 @@ const AIAssistant = () => {
     const [showContext, setShowContext] = useState(false);
     const [copied, setCopied] = useState(null);
     const messagesEndRef = useRef(null);
+
+    // New RAG / Active study lab doc states
+    const [attachedFileName, setAttachedFileName] = useState('');
+    const [useActiveStudyLabDoc, setUseActiveStudyLabDoc] = useState(false);
+    const [activeStudyLabDoc, setActiveStudyLabDoc] = useState(null);
 
     // History state
     const [history, setHistory] = useState([]);
@@ -38,7 +47,86 @@ const AIAssistant = () => {
             await loadHistory();
         };
         loadInitData();
+
+        // Load active study lab doc from localStorage
+        const storedDoc = localStorage.getItem('active_study_lab_material');
+        if (storedDoc) {
+            try {
+                const parsed = JSON.parse(storedDoc);
+                setActiveStudyLabDoc(parsed);
+                setUseActiveStudyLabDoc(true); // Automatically link it
+            } catch (err) {
+                console.error("Failed to parse active study lab material:", err);
+            }
+        }
     }, []);
+
+    // Sync context when study lab document selection or file attachment changes
+    useEffect(() => {
+        if (useActiveStudyLabDoc && activeStudyLabDoc?.content) {
+            setContext(activeStudyLabDoc.content);
+            setAttachedFileName('');
+        } else if (!attachedFileName) {
+            setContext('');
+        }
+    }, [useActiveStudyLabDoc, activeStudyLabDoc, attachedFileName]);
+
+    const parsePDF = async (file) => {
+        if (!window.pdfjsLib) {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            fullText += `--- Page ${i} ---\n` + pageText + '\n\n';
+        }
+        return fullText;
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setLoading(true);
+        try {
+            let contentText = '';
+            if (file.name.toLowerCase().endsWith('.pdf')) {
+                contentText = await parsePDF(file);
+            } else {
+                contentText = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => resolve(event.target.result);
+                    reader.onerror = (err) => reject(err);
+                    reader.readAsText(file);
+                });
+            }
+
+            if (!contentText.trim()) {
+                throw new Error("No readable text content found in document.");
+            }
+
+            setContext(contentText);
+            setAttachedFileName(file.name);
+            setUseActiveStudyLabDoc(false); // upload overrides active doc
+        } catch (err) {
+            console.error('File upload failed:', err);
+            alert('File processing error: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const loadHistory = async () => {
         setHistoryLoading(true);
@@ -218,8 +306,63 @@ const AIAssistant = () => {
                             AI Coding Assistant
                         </h2>
                     </div>
-                    <div className="flex gap-sm items-center">
-                        {/* Model Selector removed for automatic calibration */}
+                    <div className="flex gap-sm items-center" style={{ flexWrap: 'wrap' }}>
+                        {/* File Upload Selector */}
+                        <label 
+                            htmlFor="ai-upload-file-selector"
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                color: 'white',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                            }}
+                            title="Upload PDF, TXT, or MD context file"
+                        >
+                            <Paperclip size={14} /> Upload File
+                        </label>
+                        <input 
+                            type="file" 
+                            id="ai-upload-file-selector" 
+                            accept=".pdf,.txt,.md" 
+                            style={{ display: 'none' }} 
+                            onChange={handleFileUpload} 
+                        />
+
+                        {/* Active Study Note Link Indicator */}
+                        {activeStudyLabDoc && (
+                            <button
+                                onClick={() => {
+                                    setUseActiveStudyLabDoc(!useActiveStudyLabDoc);
+                                    if (!useActiveStudyLabDoc) {
+                                        setAttachedFileName('');
+                                    }
+                                }}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    background: useActiveStudyLabDoc ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                    color: useActiveStudyLabDoc ? 'var(--primary-400)' : 'rgba(255,255,255,0.6)',
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    border: useActiveStudyLabDoc ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                                title="Sync context with active Study Lab document"
+                            >
+                                <Globe size={14} /> {useActiveStudyLabDoc ? 'Active Doc Linked' : 'Link Active Doc'}
+                            </button>
+                        )}
+
                         <Button
                             variant="secondary"
                             size="sm"
@@ -229,6 +372,43 @@ const AIAssistant = () => {
                         </Button>
                     </div>
                 </div>
+
+                {/* Context Attachment Info Bar */}
+                {(attachedFileName || (useActiveStudyLabDoc && activeStudyLabDoc)) && (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: 'rgba(99, 102, 241, 0.1)',
+                        border: '1px solid rgba(99, 102, 241, 0.2)',
+                        borderRadius: '12px',
+                        padding: '10px 16px',
+                        marginBottom: 'var(--space-md)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--primary-400)', fontWeight: 600 }}>
+                            <span style={{ fontSize: '16px' }}>🧠</span>
+                            <span>
+                                {attachedFileName ? `Context File: "${attachedFileName}" (${Math.round(context.length / 102.4) / 10} KB)` : `Linked Study Lab Doc: "${activeStudyLabDoc?.title}"`}
+                            </span>
+                        </div>
+                        <button 
+                            onClick={() => {
+                                setAttachedFileName('');
+                                setUseActiveStudyLabDoc(false);
+                            }}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'rgba(255,255,255,0.4)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                )}
 
                 {/* Context Input */}
                 {showContext && (

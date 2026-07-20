@@ -1,7 +1,7 @@
 {
-  "version": "1.0.5",
-  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.0.5.apk",
-  "releaseNotes": "🤖 ascended ZEN AI with omnipotent platform capability (notes CRUD, UI navigation, bulk schedules, push messaging)\n⏱️ Perfect routines scheduler — scoping & ghost calendar fixes, Clear Logs UI triggers\n🔔 Server-side routine reminders (receives notifications even when the app is completely closed)\n📱 Android edge-to-edge system navigation bar safe area layout fix",
+  "version": "1.0.6",
+  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.0.6.apk",
+  "releaseNotes": "🧠 Resilient connected Mindmap view with automatic fallback branches.\n📱 Universal Exporting System: Fixes file download blocks on mobile apps using native share sheets.\n💬 AI Assistant Context Attachments: Upload PDFs/Docs or link your current Study Lab note directly into the chat.",
   "mandatory": true,
   "minSupportedVersion": "1.0.0"
 }

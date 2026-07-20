@@ -10,6 +10,7 @@ import {
     User, Bot, CheckCircle, AlertTriangle, Zap
 } from 'lucide-react';
 import { format12h, getLocalDatePickerDate } from '../../utils/timeFormat';
+import { shareOrDownloadFile } from '../../utils/fileExporter';
 
 const Timetable = () => {
     const { user } = useAuth();
@@ -183,13 +184,7 @@ const Timetable = () => {
                 <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
                     <Button variant="ghost" icon={Calendar} onClick={() => {
                         const icsContent = routineService.generateICS(routines);
-                        const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-                        const link = document.createElement('a');
-                        link.href = window.URL.createObjectURL(blob);
-                        link.setAttribute('download', 'zenith_routines.ics');
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
+                        shareOrDownloadFile(icsContent, 'zenith_routines.ics', 'text/calendar;charset=utf-8');
                     }}>Export to Calendar</Button>
                     <Badge variant="primary" icon={RefreshCw}>Live Sync Active</Badge>
                 </div>

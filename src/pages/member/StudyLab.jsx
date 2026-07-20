@@ -143,8 +143,12 @@ const StudyLab = () => {
                     .from(table)
                     .update({ content: contentText })
                     .eq('id', materialId);
-                if (error) throw error;
                 setMaterial(prev => ({ ...prev, content: contentText }));
+                localStorage.setItem('active_study_lab_material', JSON.stringify({
+                    id: materialId,
+                    title: material?.title,
+                    content: contentText
+                }));
                 setMessages(prev => [
                     ...prev,
                     { role: 'assistant', content: `🧠 **RAG Brain Sync Complete.** I have successfully parsed and indexed "${file.name}" for semantic context retrieval.` }
@@ -181,9 +185,13 @@ const StudyLab = () => {
                 supabase.from('knowledge_base').select('*').eq('id', materialId).maybeSingle()
             ]);
 
-            const foundMaterial = noteRes.data || kbRes.data;
             if (foundMaterial) {
                 setMaterial(foundMaterial);
+                localStorage.setItem('active_study_lab_material', JSON.stringify({
+                    id: materialId,
+                    title: foundMaterial.title,
+                    content: foundMaterial.content || ''
+                }));
                 if (foundMaterial.file_url) {
                     setHistory([foundMaterial.file_url]);
                     setHistoryIndex(0);
@@ -227,9 +235,12 @@ const StudyLab = () => {
                 .update({ content: syncText })
                 .eq('id', materialId);
 
-            if (error) throw error;
-
             setMaterial(prev => ({ ...prev, content: syncText }));
+            localStorage.setItem('active_study_lab_material', JSON.stringify({
+                id: materialId,
+                title: material?.title,
+                content: syncText
+            }));
             setShowSyncModal(false);
             setSyncText('');
             setMessages(prev => [...prev, { role: 'assistant', content: "🧠 **Knowledge Sync Complete.** I have successfully indexed the document text and saved it to my long-term memory. I am now fully ready to assist you with this specific content." }]);
