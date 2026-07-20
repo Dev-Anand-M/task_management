@@ -173,16 +173,37 @@ const Calendar = () => {
                             
                             // For inactive/deleted routines, only show dates with actual logs
                             if (r.is_active || log) {
-                                allEvents.push({
-                                    id: `routine-${r.id}-${dateStr}`,
-                                    title: `${r.is_anonymous ? '⚡' : '🔄'} ${r.title}`,
-                                    date: new Date(iter),
-                                    type: 'routine',
-                                    status: log ? log.status : (iter < todayRef ? 'missed' : 'scheduled'),
-                                    routineId: r.id,
-                                    startTime: r.start_time,
-                                    isAnonymous: !!r.is_anonymous
-                                });
+                            let eventStatus = 'scheduled';
+                            if (log) {
+                                eventStatus = log.status;
+                            } else if (iter < todayRef) {
+                                eventStatus = 'missed';
+                            } else if (iter.getTime() === todayRef.getTime()) {
+                                if (r.is_anonymous) {
+                                    eventStatus = 'scheduled';
+                                } else {
+                                    const [h, m] = r.start_time.split(':').map(Number);
+                                    const routineStartTime = new Date();
+                                    routineStartTime.setHours(h, m, 0, 0);
+                                    const missTime = new Date(routineStartTime.getTime() + 15 * 60 * 1000);
+                                    if (new Date() > missTime) {
+                                        eventStatus = 'missed';
+                                    } else {
+                                        eventStatus = 'scheduled';
+                                    }
+                                }
+                            }
+
+                            allEvents.push({
+                                id: `routine-${r.id}-${dateStr}`,
+                                title: `${r.is_anonymous ? '⚡' : '🔄'} ${r.title}`,
+                                date: new Date(iter),
+                                type: 'routine',
+                                status: eventStatus,
+                                routineId: r.id,
+                                startTime: r.start_time,
+                                isAnonymous: !!r.is_anonymous
+                            });
                             }
                         }
                     }
@@ -242,23 +263,23 @@ const Calendar = () => {
     const navigate = (dir) => setCurrentDate(new Date(year, month + dir, 1));
 
     const getEventColor = (type, status, isAnonymous) => {
-        if (type === 'task' && status === 'approved') return 'var(--success-500)';
-        if (type === 'task' && status === 'pending') return 'var(--warning-500)';
-        if (type === 'task') return 'var(--primary-500)';
-        if (type === 'quiz') return '#8b5cf6';
-        if (type === 'quiz-result' && status === 'passed') return 'var(--success-500)';
-        if (type === 'quiz-result') return 'var(--error-500)';
-        if (type === 'submission' && status === 'approved') return 'var(--success-500)';
-        if (type === 'submission' && status === 'rejected') return 'var(--error-500)';
-        if (type === 'submission') return 'var(--warning-500)';
-        if (type === 'routine' && status === 'done') return 'var(--success-500)';
-        if (type === 'routine' && status === 'missed') return 'var(--error-500)';
-        if (type === 'routine' && status === 'scheduled') return isAnonymous ? '#8b5cf6' : 'var(--primary-400)';
-        if (type === 'routine') return isAnonymous ? '#8b5cf6' : 'var(--primary-500)';
-        if (type === 'task-deadline' && status === 'approved') return 'var(--success-500)';
-        if (type === 'task-deadline' && status === 'pending') return 'var(--warning-500)';
-        if (type === 'task-deadline' && status === 'rejected') return 'var(--error-500)';
-        if (type === 'task-deadline') return 'var(--primary-500)';
+        if (type === 'task' && status === 'approved') return '#10b981'; // Green
+        if (type === 'task' && status === 'pending') return '#f59e0b'; // Amber
+        if (type === 'task') return '#f59e0b'; // Amber
+        if (type === 'quiz') return '#8b5cf6'; // Purple
+        if (type === 'quiz-result' && status === 'passed') return '#10b981';
+        if (type === 'quiz-result') return '#ef4444';
+        if (type === 'submission' && status === 'approved') return '#10b981';
+        if (type === 'submission' && status === 'rejected') return '#ef4444';
+        if (type === 'submission') return '#f59e0b';
+        if (type === 'routine' && status === 'done') return '#10b981'; // Green
+        if (type === 'routine' && status === 'missed') return '#ef4444'; // Red
+        if (type === 'routine' && status === 'scheduled') return isAnonymous ? '#ec4899' : '#3b82f6'; // Pink vs Blue
+        if (type === 'routine') return isAnonymous ? '#ec4899' : '#3b82f6';
+        if (type === 'task-deadline' && status === 'approved') return '#10b981';
+        if (type === 'task-deadline' && status === 'pending') return '#f59e0b';
+        if (type === 'task-deadline' && status === 'rejected') return '#ef4444';
+        if (type === 'task-deadline') return '#f59e0b';
         return 'var(--text-muted)';
     };
 
@@ -367,12 +388,12 @@ const Calendar = () => {
                         {/* Legend */}
                         <div className="flex flex-wrap gap-md" style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-sm)', borderTop: '1px solid var(--border)' }}>
                             {[
-                                { label: 'Task Due', color: 'var(--primary-500)' },
+                                { label: 'Task Due', color: '#f59e0b' },
                                 { label: 'Quiz', color: '#8b5cf6' },
-                                { label: 'Routine Done', color: 'var(--success-500)' },
-                                { label: 'Routine Scheduled', color: 'var(--primary-400)' },
-                                { label: 'Flexible Routine', color: '#8b5cf6' },
-                                { label: 'Missed/Expired', color: 'var(--error-500)' }
+                                { label: 'Routine Done', color: '#10b981' },
+                                { label: 'Routine Scheduled', color: '#3b82f6' },
+                                { label: 'Flexible Routine', color: '#ec4899' },
+                                { label: 'Missed/Expired', color: '#ef4444' }
                             ].map(l => (
                                 <div key={l.label} className="flex items-center gap-xs" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: l.color }} />
@@ -453,55 +474,86 @@ const Calendar = () => {
                     </Card>
                 </div>
             ) : (
-                /* List View */
-                <Card>
-                    {monthEvents.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: 'var(--space-2xl) 0' }}>
-                            <CalendarIcon size={48} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
-                            <h3>No events this month</h3>
-                            <p style={{ color: 'var(--text-muted)' }}>Navigate to a different month to see activity.</p>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-                            {monthEvents.map(e => (
-                                <div key={e.id} style={{
-                                    padding: 'var(--space-md)',
-                                    borderRadius: 'var(--radius-md)',
-                                    background: 'var(--surface)',
-                                    borderLeft: `4px solid ${getEventColor(e.type, e.status, e.isAnonymous)}`,
-                                    display: 'flex', alignItems: 'center', gap: 'var(--space-md)',
-                                    transition: 'all 0.15s'
+                /* Grouped List View */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                    {(() => {
+                        const groups = {};
+                        monthEvents.forEach(e => {
+                            const dateStr = new Date(e.date).toDateString();
+                            if (!groups[dateStr]) groups[dateStr] = [];
+                            groups[dateStr].push(e);
+                        });
+                        
+                        const groupedList = Object.entries(groups).map(([dateStr, list]) => ({
+                            dateStr,
+                            dateObj: new Date(dateStr),
+                            eventsList: list
+                        })).sort((a, b) => a.dateObj - b.dateObj);
+
+                        if (groupedList.length === 0) {
+                            return (
+                                <Card style={{ textAlign: 'center', padding: 'var(--space-2xl) 0' }}>
+                                    <CalendarIcon size={48} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
+                                    <h3>No events this month</h3>
+                                    <p style={{ color: 'var(--text-muted)' }}>Navigate to a different month to see activity.</p>
+                                </Card>
+                            );
+                        }
+
+                        return groupedList.map(group => (
+                            <Card key={group.dateStr} style={{ padding: 'var(--space-md)' }}>
+                                <div style={{ 
+                                    borderBottom: '1px solid var(--border)', 
+                                    paddingBottom: '8px', 
+                                    marginBottom: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between'
                                 }}>
-                                    <div style={{
-                                        width: '44px', textAlign: 'center', flexShrink: 0
-                                    }}>
-                                        <div style={{ fontSize: 'var(--text-lg)', fontWeight: 800, color: 'var(--text)' }}>
-                                            {new Date(e.date).getDate()}
-                                        </div>
-                                        <div style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                                            {DAYS[new Date(e.date).getDay()]}
-                                        </div>
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <p style={{ margin: 0, fontWeight: 600, fontSize: 'var(--text-sm)' }}>{e.title}</p>
-                                        <div className="flex items-center gap-sm" style={{ marginTop: '4px', flexWrap: 'wrap' }}>
-                                            <Badge variant="primary" size="xs">{e.type.replace('-', ' ')}</Badge>
-                                            <Badge variant={getEventBadgeVariant(e.type, e.status, e.isAnonymous)} size="xs">
-                                                {getEventStatusLabel(e.type, e.status, e.isAnonymous)}
-                                            </Badge>
-                                            {e.type === 'routine' && e.startTime && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{format12h(e.startTime)}</span>}
-                                            {e.type === 'task-deadline' && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatDeadline(e.date)}</span>}
-                                            {e.points !== undefined && e.points !== null && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{e.points} XP</span>}
-                                        </div>
-                                    </div>
-                                    {e.link && (
-                                        <Link to={e.link}><Button variant="ghost" size="xs">View</Button></Link>
-                                    )}
+                                    <h4 style={{ margin: 0, fontWeight: 800, color: 'var(--primary-500)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <CalendarIcon size={14} />
+                                        {group.dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                                    </h4>
+                                    <Badge variant="secondary" size="xs">{group.eventsList.length} events</Badge>
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </Card>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                                    {group.eventsList.map(e => (
+                                        <div key={e.id} style={{
+                                            padding: 'var(--space-sm) var(--space-md)',
+                                            borderRadius: 'var(--radius-md)',
+                                            background: 'var(--surface)',
+                                            borderLeft: `4px solid ${getEventColor(e.type, e.status, e.isAnonymous)}`,
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            gap: 'var(--space-md)',
+                                            flexWrap: 'wrap'
+                                        }}>
+                                            <div style={{ flex: 1, minWidth: '200px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                    <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>{e.title}</span>
+                                                    {e.type === 'routine' && e.startTime && (
+                                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{format12h(e.startTime)}</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-sm" style={{ marginTop: '4px', flexWrap: 'wrap' }}>
+                                                    <Badge variant="primary" size="xs">{e.type.replace('-', ' ')}</Badge>
+                                                    <Badge variant={getEventBadgeVariant(e.type, e.status, e.isAnonymous)} size="xs">
+                                                        {getEventStatusLabel(e.type, e.status, e.isAnonymous)}
+                                                    </Badge>
+                                                    {e.points !== undefined && e.points !== null && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{e.points} XP</span>}
+                                                </div>
+                                            </div>
+                                            {e.link && (
+                                                <Link to={e.link}><Button variant="ghost" size="xs">View</Button></Link>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+                        ));
+                    })()}
+                </div>
             )}
         </div>
     );

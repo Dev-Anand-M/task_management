@@ -393,7 +393,13 @@ const Zen = () => {
                             <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                onClick={() => setSentientVoice(!sentientVoice)}
+                                onClick={() => {
+                                    const nextVal = !sentientVoice;
+                                    setSentientVoice(nextVal);
+                                    if (!nextVal && 'speechSynthesis' in window) {
+                                        window.speechSynthesis.cancel();
+                                    }
+                                }}
                                 style={{ color: sentientVoice ? 'var(--primary-500)' : 'var(--text-muted)' }}
                             >
                                 <Zap size={14} /> Voice Synthesis: {sentientVoice ? 'ON' : 'OFF'}
@@ -433,7 +439,9 @@ const Zen = () => {
                                         fontSize: 'var(--text-sm)',
                                         boxShadow: m.role === 'user' ? 'var(--shadow-md)' : 'none'
                                     }}>
-                                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                                        <div className="markdown-body-zen">
+                                            <ReactMarkdown>{m.content}</ReactMarkdown>
+                                        </div>
                                     </div>
                                     <span style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '4px' }}>
                                         {m.role === 'user' ? 'You' : 'ZEN'} · {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

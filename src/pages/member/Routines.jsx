@@ -335,6 +335,7 @@ const Routines = () => {
     const [logs, setLogs] = useState({}); // routineId -> log object
     const [showAdd, setShowAdd] = useState(false);
     const [selectedDate, setSelectedDate] = useState(getLocalDatePickerDate());
+    const [showDeleted, setShowDeleted] = useState(false);
     
     const [form, setForm] = useState({ 
         title: '', 
@@ -407,7 +408,7 @@ const Routines = () => {
         setLoading(true);
         try {
             const [routineData, logData] = await Promise.all([
-                routineService.getRoutines(),
+                routineService.getAllRoutinesForHistory(),
                 routineService.getLogsForDate(selectedDate)
             ]);
             
@@ -564,6 +565,7 @@ const Routines = () => {
 
     // Filter routines active for selected date
     const activeRoutines = routines.filter(r => {
+        if (!r.is_active) return false;
         const d = new Date(selectedDate);
         const day = d.getDay() === 0 ? 7 : d.getDay();
         
@@ -584,6 +586,7 @@ const Routines = () => {
         return r.days_of_week.includes(day);
     });
 
+    const inactiveRoutines = routines.filter(r => !r.is_active);
     const doneCount = activeRoutines.filter(r => logs[r.id]?.status === 'done').length;
 
     return (
@@ -718,6 +721,80 @@ const Routines = () => {
                     )}
                 </div>
             </div>
+
+            {inactiveRoutines.length > 0 && (
+                <div style={{ marginTop: 'var(--space-2xl)', borderTop: '1px solid var(--border)', paddingTop: 'var(--space-xl)' }}>
+                    <div 
+                        className="flex justify-between items-center" 
+                        onClick={() => setShowDeleted(!showDeleted)}
+                        style={{ cursor: 'pointer', padding: 'var(--space-sm) 0' }}
+                    >
+                        <div className="flex items-center gap-sm">
+                            <Trash2 size={20} className="text-error-500" />
+                            <h3 style={{ margin: 0 }}>Deleted Routines ({inactiveRoutines.length})</h3>
+                        </div>
+                        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', fontWeight: 700 }}>
+                            {showDeleted ? 'Hide' : 'Show'}
+                        </span>
+                    </div>
+
+                    {showDeleted && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
+                            {inactiveRoutines.map(r => (
+                                <Card key={r.id} style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', opacity: 0.8, flexWrap: 'wrap', gap: '12px' }}>
+                                    <div>
+                                        <h4 style={{ margin: 0, fontWeight: 700 }}>{r.title}</h4>
+                                        <p style={{ margin: '2px 0 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                            {r.is_anonymous ? 'Flexible' : `Scheduled at ${format12h(r.start_time)}`}
+                                        </p>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            onClick={async () => {
+                                                try {
+                                                    await routineService.updateRoutine(r.id, { is_active: true, deadline: null });
+                                                    fetchData();
+                                                } catch (err) {
+                                                    alert('Failed to restore: ' + err.message);
+                                                }
+                                            }}
+                                        >
+                                            Restore
+                                        </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            style={{ color: 'var(--warning-500)' }}
+                                            onClick={() => handleClearRoutineLogs(r.id, r.title)}
+                                        >
+                                            Clear Logs
+                                        </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            style={{ color: 'var(--error-500)' }}
+                                            onClick={async () => {
+                                                if (confirm(`Permanently delete "${r.title}"? This will also delete all its past logs.`)) {
+                                                    try {
+                                                        await routineService.deleteRoutinePermanently(r.id);
+                                                        fetchData();
+                                                    } catch (err) {
+                                                        alert('Failed to delete permanently: ' + err.message);
+                                                    }
+                                                }
+                                            }}
+                                        >
+                                            Delete Permanently
+                                        </Button>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Add Routine Modal */}
             <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Create Routine">

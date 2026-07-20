@@ -382,7 +382,13 @@ const ZenWidget = () => {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <button 
-                            onClick={() => setSentientVoice(!sentientVoice)}
+                            onClick={() => {
+                                const nextVal = !sentientVoice;
+                                setSentientVoice(nextVal);
+                                if (!nextVal && 'speechSynthesis' in window) {
+                                    window.speechSynthesis.cancel();
+                                }
+                            }}
                             style={{ background: 'none', border: 'none', color: sentientVoice ? 'var(--primary-400)' : 'rgba(255,255,255,0.3)', cursor: 'pointer' }}
                             title="Toggle Voice Response"
                         >
@@ -425,7 +431,9 @@ const ZenWidget = () => {
                                 fontSize: '12px',
                                 lineHeight: '1.5'
                             }}>
-                                <ReactMarkdown>{m.content}</ReactMarkdown>
+                                <div className="markdown-body-zen">
+                                    <ReactMarkdown>{m.content}</ReactMarkdown>
+                                </div>
                             </div>
                             <span style={{ fontSize: '8px', color: 'rgba(255, 255, 255, 0.3)', marginTop: '2px' }}>
                                 {m.role === 'user' ? 'You' : 'ZEN'} · {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

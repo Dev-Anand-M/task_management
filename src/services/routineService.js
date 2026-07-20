@@ -68,6 +68,17 @@ export const routineService = {
         if (error) throw error;
     },
 
+    async deleteRoutinePermanently(id) {
+        // First delete all logs for this routine
+        await supabase.from('routine_logs').delete().eq('routine_id', id);
+        // Then delete the routine itself
+        const { error } = await supabase
+            .from('routines')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
+    },
+
     /**
      * Fetch all routines (active and inactive) for history views (Calendar/Diary)
      */
@@ -152,6 +163,7 @@ export const routineService = {
                 log_date: logDate,
                 snapshot_title: routine?.title,
                 snapshot_start_time: routine?.start_time,
+                status: 'done', // Default fallback status
                 ...data
             }, { onConflict: 'routine_id,log_date' })
             .select();

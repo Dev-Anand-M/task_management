@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { routineService } from '../../services/routineService';
-import { Card, Badge, Button, ProgressBar, LoadingSpinner } from '../../components/common';
+import { Card, Badge, Button, ProgressBar, LoadingSpinner, Modal } from '../../components/common';
 import { format12h, minutesTo12h } from '../../utils/timeFormat';
 import { Link, useLocation } from 'react-router-dom';
 import { 
@@ -27,6 +27,15 @@ const Diary = () => {
         return `${year}-${month}`;
     };
     const [selectedMonth, setSelectedMonth] = useState(getInitialMonth()); // YYYY-MM
+    
+    const getLocalDateStr = (d = new Date()) => {
+        const offset = d.getTimezoneOffset();
+        const local = new Date(d.getTime() - (offset * 60 * 1000));
+        return local.toISOString().split('T')[0];
+    };
+    const [timelineDate, setTimelineDate] = useState(getLocalDateStr());
+    const [selectedLog, setSelectedLog] = useState(null);
+    
     const isMobile = window.innerWidth < 768;
 
     const location = useLocation();
@@ -272,223 +281,335 @@ const Diary = () => {
             </div>
         </div>
     );
-
     const renderMindmapView = () => {
-        const mindmapLogs = logs.filter(l => l.learning_notes).slice(0, 15);
+        const mindmapLogs = logs.filter(l => l.learning_notes && l.status === 'done').slice(0, 12);
         
+        // Group logs by routine category
+        const routineGroups = {};
+        mindmapLogs.forEach(l => {
+            const rId = l.routine_id || 'flexible';
+            const rTitle = l.snapshot_title || l.routines?.title || 'Flexible Logs';
+            if (!routineGroups[rId]) {
+                routineGroups[rId] = {
+                    id: rId,
+                    title: rTitle,
+                    logs: []
+                };
+            }
+            routineGroups[rId].logs.push(l);
+        });
+        const groupedRoutines = Object.values(routineGroups);
+
+        // Compute layout dimensions
+        const cx = 350;
+        const cy = 350;
+        
+        // Calculate coordinates for parent routine nodes & leaf log nodes
+        const routineNodes = [];
+        const logNodes = [];
+        const lines = [];
+
+        groupedRoutines.forEach((group, groupIdx) => {
+            const N = groupedRoutines.length;
+            const angle = (groupIdx / N) * Math.PI * 2;
+            const rRadius = isMobile ? 100 : 160;
+            const rx = cx + Math.cos(angle) * rRadius;
+            const ry = cy + Math.sin(angle) * rRadius;
+            
+            // Primary branch color
+            const colors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6'];
+            const color = colors[groupIdx % colors.length];
+
+            routineNodes.push({
+                id: group.id,
+                title: group.title,
+                x: rx,
+                y: ry,
+                color
+            });
+
+            // Connect core to routine
+            lines.push({
+                x1: cx,
+                y1: cy,
+                x2: rx,
+                y2: ry,
+                color,
+                dashed: false,
+                width: 2.5
+            });
+
+            // Distribute children log nodes around parent routine node
+            const M = group.logs.length;
+            group.logs.forEach((log, logIdx) => {
+                const logRadius = isMobile ? 65 : 100;
+                // Fan out around the routine node angle
+                const fanAngle = M === 1 ? angle : angle - 0.5 + (logIdx / (M - 1)) * 1.0;
+                const lx = rx + Math.cos(fanAngle) * logRadius;
+                const ly = ry + Math.sin(fanAngle) * logRadius;
+
+                logNodes.push({
+                    id: log.id,
+                    log,
+                    title: log.learning_notes.length > 20 ? log.learning_notes.substring(0, 18) + '...' : log.learning_notes,
+                    x: lx,
+                    y: ly,
+                    color
+                });
+
+                // Connect routine to log
+                lines.push({
+                    x1: rx,
+                    y1: ry,
+                    x2: lx,
+                    y2: ly,
+                    color,
+                    dashed: true,
+                    width: 1.5
+                });
+            });
+        });
+
         return (
             <Card style={{ 
-                textAlign: 'center', 
-                padding: isMobile ? 'var(--space-md)' : 'var(--space-2xl)', 
-                minHeight: '600px', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                position: 'relative',
-                overflow: 'hidden',
-                background: 'radial-gradient(circle at center, #1a1a24 0%, #0f0f12 100%)',
-                border: '1px solid var(--primary-900)'
+                minHeight: '700px', 
+                position: 'relative', 
+                overflowX: 'auto',
+                overflowY: 'hidden',
+                background: 'radial-gradient(circle at center, #13141f 0%, #08080c 100%)',
+                border: '1.5px solid rgba(99, 102, 241, 0.15)',
+                boxShadow: 'inset 0 0 50px rgba(0, 0, 0, 0.8)',
+                padding: 0
             }}>
-                {/* Background Glow */}
-                <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    opacity: 0.1,
-                    background: 'radial-gradient(circle at center, var(--primary-500) 0%, transparent 70%)',
-                    zIndex: 0
-                }} />
-                
-                {/* Center Core */}
                 <div style={{ 
-                    zIndex: 10, 
-                    position: 'relative',
-                    background: 'rgba(99, 102, 241, 0.1)',
-                    padding: 'var(--space-xl)',
-                    borderRadius: '50%',
-                    border: '1px solid var(--primary-500)',
-                    backdropFilter: 'blur(8px)',
-                    boxShadow: '0 0 40px rgba(99, 102, 241, 0.2)'
+                    position: 'relative', 
+                    width: '700px', 
+                    height: '700px', 
+                    margin: '0 auto'
                 }}>
-                    <Brain size={isMobile ? 32 : 48} style={{ color: 'var(--primary-500)', filter: 'drop-shadow(0 0 10px var(--primary-500))' }} />
-                    <div style={{ marginTop: '8px' }}>
-                        <h3 style={{ fontSize: isMobile ? 'var(--text-sm)' : 'var(--text-lg)', fontWeight: 800, margin: 0 }}>CORE</h3>
-                        <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: 0 }}>KNOWLEDGE</p>
+                    {/* SVG Connections Canvas */}
+                    <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}>
+                        {lines.map((line, idx) => (
+                            <line 
+                                key={idx}
+                                x1={line.x1}
+                                y1={line.y1}
+                                x2={line.x2}
+                                y2={line.y2}
+                                stroke={line.color}
+                                strokeWidth={line.width}
+                                strokeDasharray={line.dashed ? "4,4" : "none"}
+                                opacity="0.35"
+                            />
+                        ))}
+                    </svg>
+
+                    {/* Core Mind Node */}
+                    <div style={{
+                        position: 'absolute',
+                        left: `${cx}px`,
+                        top: `${cy}px`,
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: 10,
+                        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(0,0,0,0.8) 100%)',
+                        padding: '16px',
+                        borderRadius: '50%',
+                        border: '2px solid #6366f1',
+                        boxShadow: '0 0 35px rgba(99, 102, 241, 0.4), inset 0 0 10px rgba(99,102,241,0.2)',
+                        textAlign: 'center',
+                        backdropFilter: 'blur(8px)',
+                        cursor: 'default'
+                    }}>
+                        <Brain size={isMobile ? 24 : 36} style={{ color: '#6366f1', filter: 'drop-shadow(0 0 8px #6366f1)' }} />
+                        <div style={{ marginTop: '4px' }}>
+                            <h4 style={{ fontSize: '10px', fontWeight: 800, color: 'white', margin: 0, letterSpacing: '1px' }}>CORE MIND</h4>
+                        </div>
                     </div>
-                </div>
 
-                {/* Nodes & Connections */}
-                <div style={{ 
-                    position: 'absolute',
-                    inset: 0,
-                    zIndex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                }}>
-                    {mindmapLogs.map((l, i) => {
-                        const total = mindmapLogs.length;
-                        const angle = (i / total) * Math.PI * 2;
+                    {/* Routine Category Nodes */}
+                    {routineNodes.map(node => (
+                        <div 
+                            key={node.id}
+                            style={{
+                                position: 'absolute',
+                                left: `${node.x}px`,
+                                top: `${node.y}px`,
+                                transform: 'translate(-50%, -50%)',
+                                zIndex: 8,
+                                padding: '6px 14px',
+                                background: 'rgba(10, 11, 16, 0.9)',
+                                border: `1.5px solid ${node.color}`,
+                                borderRadius: '30px',
+                                color: 'white',
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap',
+                                boxShadow: `0 0 15px ${node.color}33`,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px'
+                            }}
+                        >
+                            {node.title}
+                        </div>
+                    ))}
 
-                        
-                        // Use multiple rings for better distribution
-                        const ring = (i % 2 === 0) ? 1 : 1.6;
-                        const radius = isMobile ? (80 * ring) : (180 * ring);
-                        const x = Math.cos(angle) * radius;
-                        const y = Math.sin(angle) * radius;
-                        
-                        const color = i % 3 === 0 ? 'var(--primary-500)' : i % 3 === 1 ? 'var(--success-500)' : 'var(--warning-500)';
-                        
-                        return (
-                            <div key={i} style={{ position: 'absolute' }}>
-                                {/* Connection Line */}
-                                <div style={{ 
-                                    position: 'absolute', 
-                                    width: `${radius}px`, 
-                                    height: '1px', 
-                                    background: `linear-gradient(90deg, ${color} 0%, transparent 100%)`, 
-                                    opacity: 0.2, 
-                                    top: '0', 
-                                    left: '0', 
-                                    transform: `rotate(${angle}rad)`, 
-                                    transformOrigin: 'left center' 
-                                }} />
-                                
-                                {/* Node */}
-                                <div 
-                                    className="mindmap-node"
-                                    style={{
-                                        position: 'absolute',
-                                        left: `${x}px`,
-                                        top: `${y}px`,
-                                        transform: 'translate(-50%, -50%)',
-                                        padding: '8px 12px',
-                                        background: 'rgba(26, 26, 36, 0.9)',
-                                        color: 'white',
-                                        borderRadius: '12px',
-                                        border: `1px solid ${color}`,
-                                        fontSize: isMobile ? '9px' : '11px',
-                                        fontWeight: 700,
-                                        boxShadow: `0 4px 20px rgba(0,0,0,0.5), 0 0 10px ${color}33`,
-                                        whiteSpace: 'nowrap',
-                                        cursor: 'pointer',
-                                        zIndex: 5,
-                                        transition: 'all 0.3s ease',
-                                        animation: `float ${4 + i % 2}s ease-in-out infinite`,
-                                        animationDelay: `${i * 0.3}s`
-                                    }}
-                                    onClick={() => {
-                                        setFilter('all');
-                                        setSelectedRoutine(l.routine_id);
-                                        setView('list');
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: color }} />
-                                        {(l.learning_notes || '').length > 25 ? (l.learning_notes || '').substring(0, 22) + '...' : (l.learning_notes || '')}
-                                    </div>
-                                </div>
+                    {/* Leaf Insight Log Nodes */}
+                    {logNodes.map(node => (
+                        <div 
+                            key={node.id}
+                            className="mindmap-leaf-node"
+                            onClick={() => setSelectedLog(node.log)}
+                            style={{
+                                position: 'absolute',
+                                left: `${node.x}px`,
+                                top: `${node.y}px`,
+                                transform: 'translate(-50%, -50%)',
+                                zIndex: 6,
+                                padding: '8px 12px',
+                                background: 'rgba(20, 21, 30, 0.95)',
+                                border: `1px solid rgba(255, 255, 255, 0.08)`,
+                                borderLeft: `3px solid ${node.color}`,
+                                borderRadius: '10px',
+                                color: 'var(--text-secondary)',
+                                fontSize: '9px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                                transition: 'all 0.25s ease-out'
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <div style={{ width: 4, height: 4, borderRadius: '50%', background: node.color }} />
+                                {node.title}
                             </div>
-                        );
-                    })}
+                        </div>
+                    ))}
                 </div>
 
-                <div style={{ position: 'absolute', bottom: 'var(--space-md)', width: '100%', textAlign: 'center', zIndex: 10 }}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)', margin: 0 }}>
-                        {isMobile ? 'Nodes scaled for mobile view' : 'Click nodes to filter and view full logs'}
+                <div style={{ position: 'absolute', bottom: '16px', width: '100%', textAlign: 'center', zIndex: 10 }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '10px', margin: 0, fontWeight: 600 }}>
+                        {isMobile ? 'Swipe horizontally to explore · Tap insights to read detail' : 'Interactive structured graph · Click insight nodes to view full entry'}
                     </p>
                 </div>
 
                 <style>{`
-                    .mindmap-node:hover {
-                        transform: translate(-50%, -50%) scale(1.1) !important;
-                        background: var(--surface) !important;
-                        box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 20px var(--primary-500)66 !important;
-                        z-index: 20 !important;
-                    }
-                    @keyframes float {
-                        0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
-                        50% { transform: translate(-50%, -50%) translateY(-10px); }
+                    .mindmap-leaf-node:hover {
+                        transform: translate(-50%, -50%) scale(1.08) !important;
+                        border-color: rgba(255, 255, 255, 0.2) !important;
+                        box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
+                        color: white !important;
+                        z-index: 12 !important;
                     }
                 `}</style>
             </Card>
         );
     };
-
     const renderTimelineView = () => {
-        const todayLogs = filteredLogs.filter(l => l.status === 'done' && l.actual_start_time);
+        const todayLogs = filteredLogs.filter(l => l.log_date === timelineDate && l.status === 'done' && l.actual_start_time);
         const hours = Array.from({ length: 24 }, (_, i) => i);
 
         const toMinutes = (time) => {
-            const [h, m] = time.split(':').map(Number);
+            if (!time) return 0;
+            const [h, m] = time.slice(0, 5).split(':').map(Number);
             return h * 60 + m;
         };
 
+        const navTimelineDate = (dir) => {
+            const d = new Date(timelineDate);
+            d.setDate(d.getDate() + dir);
+            setTimelineDate(getLocalDateStr(d));
+        };
+
         return (
-            <div style={{ position: 'relative', background: 'var(--surface)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-xl)', border: '1px solid var(--border)', minHeight: '800px' }}>
-                <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
-                    {/* Time Axis */}
-                    <div style={{ width: '60px', flexShrink: 0 }}>
-                        {hours.map(h => (
-                            <div key={h} style={{ height: '60px', color: 'var(--text-muted)', fontSize: '10px', borderTop: '1px solid var(--border)', paddingTop: '4px' }}>
-                                {format12h(`${h.toString().padStart(2, '0')}:00`)}
-                            </div>
-                        ))}
-                    </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                {/* Date Switcher */}
+                <div className="flex justify-between items-center bg-surface p-sm rounded-lg border border-border" style={{ marginBottom: 'var(--space-sm)' }}>
+                    <Button variant="ghost" size="sm" icon={ChevronLeft} onClick={() => navTimelineDate(-1)} />
+                    <h3 style={{ margin: 0, fontWeight: 800 }}>
+                        {new Date(timelineDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    </h3>
+                    <Button variant="ghost" size="sm" icon={ChevronRight} onClick={() => navTimelineDate(1)} />
+                </div>
 
-                    {/* Timeline Grid */}
-                    <div style={{ flex: 1, position: 'relative', borderLeft: '1px solid var(--border)', minHeight: '300px' }}>
-                        {todayLogs.length === 0 ? (
-                            <div style={{
-                                position: 'absolute', top: '50px', left: '20px', right: '20px',
-                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                textAlign: 'center', padding: 'var(--space-xl)', color: 'var(--text-muted)'
-                            }}>
-                                <Clock size={40} className="text-primary-300 animate-pulse mb-sm" />
-                                <h4>No active log timestamps today</h4>
-                                <p style={{ fontSize: 'var(--text-xs)', maxWidth: '300px', margin: '4px 0 0' }}>
-                                    Complete tasks or routines today with actual start times to map them to your diary timeline!
-                                </p>
-                            </div>
-                        ) : todayLogs.map((log, i) => {
-                            const start = toMinutes(log.actual_start_time);
-                            const duration = log.time_spent_minutes || 30;
-                            const top = (start / 60) * 60; // 60px per hour
-                            const height = (duration / 60) * 60;
-                            
-                            // Simple overlap check for visual warning
-                            const hasOverlap = todayLogs.some(other => {
-                                if (other.id === log.id) return false;
-                                const otherStart = toMinutes(other.actual_start_time);
-                                const otherEnd = otherStart + other.time_spent_minutes;
-                                const logEnd = start + duration;
-                                return (start < otherEnd) && (logEnd > otherStart);
-                            });
-
-                            return (
-                                <div 
-                                    key={log.id} 
-                                    style={{
-                                        position: 'absolute', top: `${top}px`, left: '10px', right: '10px',
-                                        height: `${Math.max(height, 25)}px`,
-                                        background: hasOverlap ? 'rgba(239, 68, 68, 0.15)' : 'rgba(99, 102, 241, 0.1)',
-                                        border: `1px solid ${hasOverlap ? 'var(--error-500)' : 'var(--primary-500)'}`,
-                                        borderRadius: '8px', padding: '8px', overflow: 'hidden',
-                                        boxShadow: hasOverlap ? '0 0 15px rgba(239, 68, 68, 0.3)' : 'none',
-                                        zIndex: hasOverlap ? 2 : 1,
-                                        transition: 'all 0.3s ease'
-                                    }}
-                                >
-                                    <div className="flex justify-between items-start">
-                                        <div style={{ fontSize: '11px', fontWeight: 700 }}>{log.routines?.title}</div>
-                                        {hasOverlap && <Badge variant="error" size="xs"><AlertTriangle size={10} /> Conflict</Badge>}
-                                    </div>
-                                    <div style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
-                                        {format12h(log.actual_start_time)} • {duration}m
-                                    </div>
+                <div style={{ position: 'relative', background: 'var(--surface)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-xl)', border: '1px solid var(--border)', minHeight: '1500px' }}>
+                    <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
+                        {/* Time Axis */}
+                        <div style={{ width: '60px', flexShrink: 0 }}>
+                            {hours.map(h => (
+                                <div key={h} style={{ height: '60px', color: 'var(--text-muted)', fontSize: '10px', borderTop: '1px solid var(--border)', paddingTop: '4px' }}>
+                                    {format12h(`${h.toString().padStart(2, '0')}:00`)}
                                 </div>
-                            );
-                        })}
+                            ))}
+                        </div>
+
+                        {/* Timeline Grid */}
+                        <div style={{ flex: 1, position: 'relative', borderLeft: '1px solid var(--border)', minHeight: '1440px' }}>
+                            {todayLogs.length === 0 ? (
+                                <div style={{
+                                    position: 'absolute', top: '50px', left: '20px', right: '20px',
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                    textAlign: 'center', padding: 'var(--space-xl)', color: 'var(--text-muted)'
+                                }}>
+                                    <Clock size={40} className="text-primary-300 mb-sm" />
+                                    <h4>No active log timestamps on this date</h4>
+                                    <p style={{ fontSize: 'var(--text-xs)', maxWidth: '300px', margin: '4px 0 0' }}>
+                                        Navigate to another day or log routines for today to view their diary timeline mapping!
+                                    </p>
+                                </div>
+                            ) : todayLogs.map((log, i) => {
+                                const start = toMinutes(log.actual_start_time);
+                                const duration = log.time_spent_minutes || 30;
+                                const top = (start / 60) * 60; // 60px per hour
+                                const height = (duration / 60) * 60;
+                                
+                                // Simple overlap check for visual warning
+                                const hasOverlap = todayLogs.some(other => {
+                                    if (other.id === log.id) return false;
+                                    const otherStart = toMinutes(other.actual_start_time);
+                                    const otherEnd = otherStart + other.time_spent_minutes;
+                                    const logEnd = start + duration;
+                                    return (start < otherEnd) && (logEnd > otherStart);
+                                });
+
+                                return (
+                                    <div 
+                                        key={log.id} 
+                                        style={{
+                                            position: 'absolute', top: `${top}px`, left: '10px', right: '10px',
+                                            height: `${Math.max(height, 50)}px`,
+                                            background: hasOverlap ? 'rgba(239, 68, 68, 0.1)' : 'rgba(99, 102, 241, 0.08)',
+                                            border: `1.5px solid ${hasOverlap ? 'var(--error-500)' : 'var(--primary-500)'}`,
+                                            borderRadius: '12px', padding: '8px 12px', overflow: 'hidden',
+                                            boxShadow: hasOverlap ? '0 0 15px rgba(239, 68, 68, 0.2)' : 'none',
+                                            zIndex: hasOverlap ? 2 : 1,
+                                            transition: 'all 0.3s ease',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            justifyContent: 'center'
+                                        }}
+                                    >
+                                        <div className="flex justify-between items-center">
+                                            <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text)' }}>
+                                                {log.snapshot_title || log.routines?.title}
+                                                {log.routines?.is_anonymous && <Badge variant="accent" size="xs" style={{ marginLeft: '6px' }}>FLEXIBLE</Badge>}
+                                            </div>
+                                            {hasOverlap && <Badge variant="error" size="xs"><AlertTriangle size={10} /> Overlap</Badge>}
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', gap: '8px' }}>
+                                            <span>Start: {format12h(log.actual_start_time)}</span>
+                                            <span>•</span>
+                                            <span>Duration: {duration} mins</span>
+                                        </div>
+                                        {log.learning_notes && (
+                                            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                                Notes: {log.learning_notes}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -578,6 +699,40 @@ const Diary = () => {
                     {view === 'analytics' && renderAnalyticsView()}
                     {view === 'mindmap' && renderMindmapView()}
                 </>
+            )}
+
+            {selectedLog && (
+                <Modal isOpen={!!selectedLog} onClose={() => setSelectedLog(null)} title="Insight Log Detail">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                        <div className="flex justify-between items-center" style={{ flexWrap: 'wrap', gap: '8px' }}>
+                            <Badge variant={selectedLog.status === 'done' ? 'success' : selectedLog.status === 'ignored' ? 'error' : 'warning'}>
+                                {selectedLog.status.toUpperCase()}
+                            </Badge>
+                            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                {new Date(selectedLog.log_date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                        </div>
+                        <div>
+                            <h4 style={{ margin: 0, fontWeight: 800, fontSize: 'var(--text-md)' }}>
+                                {selectedLog.snapshot_title || selectedLog.routines?.title}
+                            </h4>
+                            <p style={{ margin: '4px 0 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                Time Spent: {selectedLog.time_spent_minutes} mins · Scheduled at {format12h(selectedLog.snapshot_start_time || selectedLog.routines?.start_time)}
+                            </p>
+                        </div>
+                        {selectedLog.learning_notes && (
+                            <div style={{ padding: 'var(--space-md)', background: 'var(--bg)', borderRadius: 'var(--radius-md)', borderLeft: '3.5px solid var(--primary-500)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)' }}>
+                                <p style={{ margin: '0 0 6px 0', fontSize: '9px', fontWeight: 800, color: 'var(--primary-500)', letterSpacing: '1px', textTransform: 'uppercase' }}>Diary Entry</p>
+                                <div className="markdown-body-zen">
+                                    <ReactMarkdown>{selectedLog.learning_notes}</ReactMarkdown>
+                                </div>
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-sm)' }}>
+                            <Button variant="ghost" onClick={() => setSelectedLog(null)}>Close</Button>
+                        </div>
+                    </div>
+                </Modal>
             )}
 
             <style>{`

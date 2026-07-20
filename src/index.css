@@ -3520,3 +3520,18 @@ a img {
   user-drag: none;
 }
 
+/* Force inherit color on Markdown parsed elements inside ZEN AI chat bubbles */
+.markdown-body-zen p,
+.markdown-body-zen li,
+.markdown-body-zen ul,
+.markdown-body-zen ol,
+.markdown-body-zen strong,
+.markdown-body-zen em,
+.markdown-body-zen h1,
+.markdown-body-zen h2,
+.markdown-body-zen h3,
+.markdown-body-zen h4,
+.markdown-body-zen span {
+  color: inherit !important;
+}
+

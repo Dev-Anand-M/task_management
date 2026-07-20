@@ -201,7 +201,7 @@ const Timetable = () => {
                 gap: 'var(--space-lg)', 
                 flex: 1, 
                 minHeight: 0,
-                overflowY: 'auto'
+                overflow: isMobile ? 'auto' : 'hidden'
             }}>
                 {/* Chat Column */}
                 <Card style={{ 
@@ -211,7 +211,7 @@ const Timetable = () => {
                     overflow: 'hidden', 
                     border: '1px solid var(--border)',
                     width: isMobile ? '100%' : '350px',
-                    height: isMobile ? '500px' : 'auto',
+                    height: isMobile ? '500px' : 'calc(100dvh - 230px)',
                     flexShrink: 0,
                     boxShadow: 'var(--shadow-lg)',
                     borderRadius: 'var(--radius-xl)'
@@ -275,7 +275,7 @@ const Timetable = () => {
                 </Card>
 
                 {/* Timetable View */}
-                <div style={{ flex: 1, minWidth: 0, paddingRight: '4px' }}>
+                <div style={{ flex: 1, minWidth: 0, paddingRight: '4px', height: isMobile ? 'auto' : 'calc(100dvh - 230px)', overflowY: isMobile ? 'visible' : 'auto' }}>
                     <Card style={{ marginBottom: 'var(--space-md)', background: 'linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%)', border: '1px solid var(--primary-500)' }}>
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-md">
