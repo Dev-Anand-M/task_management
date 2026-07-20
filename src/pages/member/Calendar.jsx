@@ -172,18 +172,18 @@ const Calendar = () => {
                             const log = (routineLogs || []).find(l => l.routine_id === r.id && l.log_date === dateStr);
                             
                             // For inactive/deleted routines, only show dates with actual logs
-                            if (!r.is_active && !log) continue;
-                            
-                            allEvents.push({
-                                id: `routine-${r.id}-${dateStr}`,
-                                title: `${r.is_anonymous ? '⚡' : '🔄'} ${r.title}`,
-                                date: new Date(iter),
-                                type: 'routine',
-                                status: log ? log.status : (iter < todayRef ? 'missed' : 'scheduled'),
-                                routineId: r.id,
-                                startTime: r.start_time,
-                                isAnonymous: !!r.is_anonymous
-                            });
+                            if (r.is_active || log) {
+                                allEvents.push({
+                                    id: `routine-${r.id}-${dateStr}`,
+                                    title: `${r.is_anonymous ? '⚡' : '🔄'} ${r.title}`,
+                                    date: new Date(iter),
+                                    type: 'routine',
+                                    status: log ? log.status : (iter < todayRef ? 'missed' : 'scheduled'),
+                                    routineId: r.id,
+                                    startTime: r.start_time,
+                                    isAnonymous: !!r.is_anonymous
+                                });
+                            }
                         }
                     }
                     iter.setDate(iter.getDate() + 1);

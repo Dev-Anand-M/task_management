@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 
 // Version endpoint - can be a simple JSON file hosted on your server
 const VERSION_CHECK_URL = 'https://zenith-sable-alpha.vercel.app/version.json';
-const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.0.4.apk';
+const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.0.5.apk';
 
 export const updateChecker = {
   /**

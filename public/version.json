@@ -1,7 +1,7 @@
 {
-  "version": "1.0.4",
-  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.0.4.apk",
-  "releaseNotes": "🤖 Introduced sentient ZEN AI Companion with admin execution console\n🔒 Role-based AI permissions — admins get full RWX, members get restricted access\n🔔 Realtime routine notifications at scheduled start times\n⏱️ 15-minute auto-miss protocol (no response = missed, or postpone/snooze)\n📋 Today's routine checklist popup on login\n📅 Infinite routines calendar display fix\n🔄 In-app Check for Updates & Patch Notes in Settings > About\n🏫 Classrooms context awareness for ZEN AI",
+  "version": "1.0.5",
+  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.0.5.apk",
+  "releaseNotes": "🤖 ascended ZEN AI with omnipotent platform capability (notes CRUD, UI navigation, bulk schedules, push messaging)\n⏱️ Perfect routines scheduler — scoping & ghost calendar fixes, Clear Logs UI triggers\n🔔 Server-side routine reminders (receives notifications even when the app is completely closed)\n📱 Android edge-to-edge system navigation bar safe area layout fix",
   "mandatory": true,
   "minSupportedVersion": "1.0.0"
 }
