@@ -21,27 +21,42 @@
     "redirects": [
         {
             "source": "/zenith-v1.0.1.apk",
-            "destination": "/zenith-v1.0.6.apk",
+            "destination": "/zenith-v1.1.0.apk",
             "permanent": false
         },
         {
             "source": "/zenith-v1.0.2.apk",
-            "destination": "/zenith-v1.0.6.apk",
+            "destination": "/zenith-v1.1.0.apk",
             "permanent": false
         },
         {
             "source": "/zenith-v1.0.3.apk",
-            "destination": "/zenith-v1.0.6.apk",
+            "destination": "/zenith-v1.1.0.apk",
             "permanent": false
         },
         {
             "source": "/zenith-v1.0.4.apk",
-            "destination": "/zenith-v1.0.6.apk",
+            "destination": "/zenith-v1.1.0.apk",
             "permanent": false
         },
         {
             "source": "/zenith-v1.0.5.apk",
-            "destination": "/zenith-v1.0.6.apk",
+            "destination": "/zenith-v1.1.0.apk",
+            "permanent": false
+        },
+        {
+            "source": "/zenith-v1.0.6.apk",
+            "destination": "/zenith-v1.1.0.apk",
+            "permanent": false
+        },
+        {
+            "source": "/zenith-v1.0.7.apk",
+            "destination": "/zenith-v1.1.0.apk",
+            "permanent": false
+        },
+        {
+            "source": "/zenith-latest.apk",
+            "destination": "/zenith-v1.1.0.apk",
             "permanent": false
         }
     ],
