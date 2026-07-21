@@ -152,9 +152,8 @@ const Calendar = () => {
             // We'll show routines for the current viewed month (+/- some buffer)
             const calendarStart = new Date(year, month - 1, 1);
             const calendarEnd = new Date(year, month + 2, 0);
-            const todayRef = new Date();
-            todayRef.setHours(0, 0, 0, 0);
-            
+            const todayStr = toLocalISO(new Date());
+
             (routines || []).forEach(r => {
                 let iter = new Date(calendarStart);
                 while (iter <= calendarEnd) {
@@ -173,37 +172,41 @@ const Calendar = () => {
                             
                             // For inactive/deleted routines, only show dates with actual logs
                             if (r.is_active || log) {
-                            let eventStatus = 'scheduled';
-                            if (log) {
-                                eventStatus = log.status;
-                            } else if (iter < todayRef) {
-                                eventStatus = 'missed';
-                            } else if (iter.getTime() === todayRef.getTime()) {
-                                if (r.is_anonymous) {
-                                    eventStatus = 'scheduled';
-                                } else {
-                                    const [h, m] = r.start_time.split(':').map(Number);
-                                    const routineStartTime = new Date();
-                                    routineStartTime.setHours(h, m, 0, 0);
-                                    const missTime = new Date(routineStartTime.getTime() + 15 * 60 * 1000);
-                                    if (new Date() > missTime) {
-                                        eventStatus = 'missed';
-                                    } else {
+                                let eventStatus = 'scheduled';
+                                if (log && (log.status === 'done' || log.status === 'completed')) {
+                                    eventStatus = 'done';
+                                } else if (dateStr < todayStr) {
+                                    eventStatus = 'missed';
+                                } else if (dateStr === todayStr) {
+                                    if (log && (log.status === 'done' || log.status === 'completed')) {
+                                        eventStatus = 'done';
+                                    } else if (r.is_anonymous) {
                                         eventStatus = 'scheduled';
+                                    } else {
+                                        const [h, m] = (r.start_time || '00:00').split(':').map(Number);
+                                        const routineStartTime = new Date();
+                                        routineStartTime.setHours(h, m, 0, 0);
+                                        const missTime = new Date(routineStartTime.getTime() + 15 * 60 * 1000);
+                                        if (new Date() > missTime) {
+                                            eventStatus = 'missed';
+                                        } else {
+                                            eventStatus = 'scheduled';
+                                        }
                                     }
+                                } else {
+                                    eventStatus = 'scheduled';
                                 }
-                            }
 
-                            allEvents.push({
-                                id: `routine-${r.id}-${dateStr}`,
-                                title: `${r.is_anonymous ? '⚡' : '🔄'} ${r.title}`,
-                                date: new Date(iter),
-                                type: 'routine',
-                                status: eventStatus,
-                                routineId: r.id,
-                                startTime: r.start_time,
-                                isAnonymous: !!r.is_anonymous
-                            });
+                                allEvents.push({
+                                    id: `routine-${r.id}-${dateStr}`,
+                                    title: `${r.is_anonymous ? '⚡' : '🔄'} ${r.title}`,
+                                    date: new Date(iter),
+                                    type: 'routine',
+                                    status: eventStatus,
+                                    routineId: r.id,
+                                    startTime: r.start_time,
+                                    isAnonymous: !!r.is_anonymous
+                                });
                             }
                         }
                     }

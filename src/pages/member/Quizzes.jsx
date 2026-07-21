@@ -95,31 +95,16 @@ const Quizzes = () => {
     return (
         <div className="animate-fade-in">
             {/* Search */}
-            <Card style={{ marginBottom: 'var(--space-lg)', padding: 'var(--space-md)' }}>
-                <div className="flex items-center gap-sm" style={{
-                    background: 'var(--card)',
-                    borderRadius: 'var(--radius-lg)',
-                    padding: '0 var(--space-md)',
-                    border: '1px solid var(--border)'
-                }}>
-                    <Search size={18} style={{ color: 'var(--text-muted)' }} />
-                    <input
-                        type="text"
-                        placeholder="Search quizzes..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{
-                            flex: 1,
-                            background: 'transparent',
-                            border: 'none',
-                            padding: 'var(--space-md) 0',
-                            color: 'var(--text)',
-                            outline: 'none',
-                            fontSize: 'var(--text-base)'
-                        }}
-                    />
-                </div>
-            </Card>
+            <div className="search-container-box" style={{ marginBottom: 'var(--space-lg)' }}>
+                <Search size={18} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                <input
+                    type="text"
+                    className="search-bar-input"
+                    placeholder="Search quizzes..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+            </div>
 
             {/* Pending Quizzes */}
             {pendingQuizzes.length > 0 && (

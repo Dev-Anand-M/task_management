@@ -1,26 +1,47 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Card, Button, Input, Badge } from '../common';
+import { ZenLogo } from '../common/ZenLogo';
 import {
-    Brain,
     Send,
     Trash2,
     Loader2,
-    Terminal,
     Zap,
     X,
     MessageSquare,
     Volume2,
-    VolumeX
+    VolumeX,
+    ChevronDown,
+    Settings,
+    Cpu
 } from 'lucide-react';
 import * as aiService from '../../services/aiService';
 import { zenService } from '../../services/zenService';
+import { sentientBroadcastService } from '../../services/sentientBroadcastService';
 import * as db from '../../services/database';
 import { routineService } from '../../services/routineService';
 import ReactMarkdown from 'react-markdown';
+import { useNavigate } from 'react-router-dom';
+import { ttsService } from '../../services/ttsService';
+import { useTheme } from '../../context/ThemeContext';
 
 const ZenWidget = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
+
+    let themeCtx = null;
+    try {
+        themeCtx = useTheme();
+    } catch {
+        themeCtx = null;
+    }
+
+    const activeTheme = (themeCtx?.theme || (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') : '') || '').toLowerCase();
+    const activeColorScheme = (themeCtx?.colorScheme || (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-color-scheme') : '') || '').toLowerCase();
+
+    const isLiquidGlass = 
+        activeTheme.includes('liquid') || activeTheme.includes('crystal') || activeTheme.includes('glass') ||
+        activeColorScheme.includes('liquid') || activeColorScheme.includes('crystal') || activeColorScheme.includes('glass');
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -29,6 +50,24 @@ const ZenWidget = () => {
     const [actionTrace, setActionTrace] = useState([]);
     const [isExecuting, setIsExecuting] = useState(false);
     const [sessionId, setSessionId] = useState(null);
+    const [speakingIndex, setSpeakingIndex] = useState(null);
+
+    const handleSpeakMessage = (index, text) => {
+        if (speakingIndex === index) {
+            ttsService.stop();
+            setSpeakingIndex(null);
+        } else {
+            ttsService.stop();
+            const success = ttsService.speak(text);
+            if (success) {
+                setSpeakingIndex(index);
+            }
+        }
+    };
+
+    // AI Provider & Model selection state
+    const [selectedModel, setSelectedModel] = useState(aiService.getSelectedModel());
+    const [allModels, setAllModels] = useState([]);
 
     const messagesEndRef = useRef(null);
 
@@ -42,6 +81,51 @@ const ZenWidget = () => {
         }
     }, [isOpen, messages]);
 
+    // Load available models and sync state
+    const refreshModels = () => {
+        const models = aiService.getAllAvailableModels();
+        setAllModels(models);
+        setSelectedModel(aiService.getSelectedModel());
+    };
+
+    useEffect(() => {
+        refreshModels();
+
+        const handleModelChange = (e) => {
+            if (e.detail?.modelId) {
+                setSelectedModel(e.detail.modelId);
+            }
+        };
+
+        window.addEventListener('ai-model-changed', handleModelChange);
+        return () => window.removeEventListener('ai-model-changed', handleModelChange);
+    }, []);
+
+    const widgetRef = useRef(null);
+
+    // Fold drawer when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (isOpen && widgetRef.current && !widgetRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [isOpen]);
+
+    // Check for periodic sentient AI daily broadcasts
+    useEffect(() => {
+        if (user?.id) {
+            sentientBroadcastService.checkAndRunDailyBroadcast(user.id, user.name);
+        }
+    }, [user?.id]);
+
     // Load active history session from DB on widget load
     useEffect(() => {
         if (!user?.id) return;
@@ -49,7 +133,6 @@ const ZenWidget = () => {
             try {
                 const history = await aiService.getHistory('zen');
                 if (history && history.length > 0) {
-                    // Load the most recent session
                     const latest = history[0];
                     setSessionId(latest.id);
                     setMessages(latest.content || []);
@@ -64,7 +147,7 @@ const ZenWidget = () => {
     // Welcome greeting when opened and no messages exist
     useEffect(() => {
         if (isOpen && messages.length === 0) {
-            const welcome = "Systems operational, sir. ZEN online and standing by.";
+            const welcome = "Astral core operational, sir. ZEN online and synchronized with your workspace.";
             const initialMsgs = [
                 {
                     role: 'assistant',
@@ -73,14 +156,10 @@ const ZenWidget = () => {
                 }
             ];
             setMessages(initialMsgs);
-            if (sentientVoice && 'speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(welcome);
-                utterance.pitch = 0.95;
-                utterance.rate = 1.0;
-                window.speechSynthesis.speak(utterance);
+            if (sentientVoice) {
+                ttsService.speak(welcome);
             }
             
-            // Persist initial message
             aiService.saveHistory('zen', initialMsgs, 'Zen Widget Session', null)
                 .then(session => {
                     if (session) setSessionId(session.id);
@@ -91,7 +170,6 @@ const ZenWidget = () => {
     const getSystemContext = async () => {
         const isAdmin = user?.role === 'admin';
         try {
-            // Always fetch routines, tasks, classrooms, logs, quiz attempts, study notes, profiles, notifications, announcements
             const basePromises = [
                 routineService.getAllRoutinesForHistory().catch(() => []),
                 db.getTasks().catch(() => []),
@@ -104,7 +182,6 @@ const ZenWidget = () => {
                 db.getAnnouncements().catch(() => [])
             ];
 
-            // Admin-only data: members, submissions, invite codes
             const adminPromises = isAdmin ? [
                 db.getMembers().catch(() => []),
                 db.getGlobalSubmissions().catch(() => []),
@@ -116,45 +193,23 @@ const ZenWidget = () => {
                 ...adminData
             ] = await Promise.all([...basePromises, ...adminPromises]);
 
-            // Sort profiles by XP to find leaderboard ranking
             const sortedProfiles = [...(profiles || [])].sort((a, b) => (b.xp || 0) - (a.xp || 0));
             const ranking = sortedProfiles.findIndex(p => p.id === user.id) + 1;
             const userProfile = profiles?.find(p => p.id === user.id) || {};
 
-            const prunedRoutines = (routines || [])
-                .filter(r => r.user_id === user?.id)
-                .map(r => ({ id: r.id, title: r.title, start_time: r.start_time, days_of_week: r.days_of_week, is_active: r.is_active, is_anonymous: r.is_anonymous }))
-                .slice(0, 20);
+            const userRoutines = (routines || []).filter(r => r.user_id === user?.id);
+            const userTasks = (tasks || []).slice(0, 15);
 
-            const prunedTasks = (tasks || [])
-                .map(t => ({ id: t.id, title: t.title, status: t.status, xp: t.xp, due_date: t.due_date }))
-                .slice(0, 15);
+            // Time-Aware Start-of-Day Dispatch Executor
+            const todayDispatchPlan = await sentientBroadcastService.checkAndExecuteScheduledDispatches(
+                user?.id,
+                user?.name,
+                userRoutines,
+                userTasks,
+                messages
+            );
 
-            const prunedClassrooms = (classrooms || [])
-                .map(c => ({ id: c.id, name: c.name, description: c.description || '' }))
-                .slice(0, 10);
-
-            const prunedLogs = (logs || [])
-                .filter(l => l.user_id === user?.id)
-                .map(l => ({ routine_id: l.routine_id, title: l.snapshot_title, status: l.status, log_date: l.log_date, notes: l.learning_notes }))
-                .slice(0, 25);
-
-            const prunedQuizAttempts = (quizAttempts || [])
-                .map(qa => ({ quiz_title: qa.quizzes?.title, score: qa.score, passed: qa.passed, completed_at: qa.completed_at }))
-                .slice(0, 10);
-
-            const prunedStudyNotes = (studyNotes || [])
-                .map(sn => ({ id: sn.id, title: sn.title, content: sn.content?.substring(0, 100) + (sn.content?.length > 100 ? '...' : ''), updated_at: sn.updated_at }))
-                .slice(0, 15);
-
-            const prunedAnnouncements = (announcements || [])
-                .map(an => ({ id: an.id, title: an.title, message: an.message, created_at: an.created_at }))
-                .slice(0, 10);
-
-            const prunedNotifications = (notifications || [])
-                .filter(n => !n.is_read)
-                .map(n => ({ id: n.id, title: n.title, message: n.message, created_at: n.created_at }))
-                .slice(0, 10);
+            const broadcastHistory = sentientBroadcastService.getBroadcastHistory(user?.id);
 
             const context = {
                 user: { 
@@ -167,30 +222,23 @@ const ZenWidget = () => {
                     level: userProfile.level || 1,
                     leaderboard_rank: ranking || 'N/A'
                 },
-                routines: prunedRoutines,
-                routine_logs: prunedLogs,
-                tasks: prunedTasks,
-                classrooms: prunedClassrooms,
-                quiz_attempts: prunedQuizAttempts,
-                study_notes: prunedStudyNotes,
-                announcements: prunedAnnouncements,
-                notifications: prunedNotifications
+                routines: userRoutines.slice(0, 20),
+                routine_logs: (logs || []).filter(l => l.user_id === user?.id).slice(0, 25),
+                tasks: userTasks,
+                classrooms: (classrooms || []).slice(0, 10),
+                quiz_attempts: (quizAttempts || []).slice(0, 10),
+                study_notes: (studyNotes || []).slice(0, 15),
+                announcements: (announcements || []).slice(0, 10),
+                notifications: (notifications || []).filter(n => !n.is_read).slice(0, 10),
+                broadcast_history: broadcastHistory,
+                today_dispatch_plan: todayDispatchPlan
             };
 
-            // Only inject admin-only data if admin
             if (isAdmin && adminData.length === 3) {
                 const [members, submissions, inviteCodes] = adminData;
-                context.members = (members || [])
-                    .map(m => ({ id: m.id, name: m.name, email: m.email, role: m.role }))
-                    .slice(0, 20);
-                context.submissions = (submissions || [])
-                    .filter(s => s.status === 'pending')
-                    .map(s => ({ id: s.id, task_title: s.task_title, member_name: s.user_name || s.member_name, submitted_at: s.created_at || s.submitted_at }))
-                    .slice(0, 10);
-                context.inviteCodes = (inviteCodes || [])
-                    .filter(c => !c.is_used)
-                    .map(c => ({ code: c.code, role: c.role, created_at: c.created_at }))
-                    .slice(0, 10);
+                context.members = (members || []).slice(0, 20);
+                context.submissions = (submissions || []).filter(s => s.status === 'pending').slice(0, 10);
+                context.inviteCodes = (inviteCodes || []).filter(c => !c.is_used).slice(0, 10);
             }
 
             return context;
@@ -200,12 +248,18 @@ const ZenWidget = () => {
         }
     };
 
+    const handleModelSelect = async (modelId) => {
+        setSelectedModel(modelId);
+        await aiService.setSelectedModel(modelId);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!input.trim() || loading || isExecuting) return;
 
         if (!aiService.isAnyAPIKeyConfigured()) {
             alert('Please configure an API Key in Settings > AI Settings to use ZEN.');
+            navigate('/settings');
             return;
         }
 
@@ -219,7 +273,7 @@ const ZenWidget = () => {
 
         try {
             const contextData = await getSystemContext();
-            const response = await aiService.zenChat(updatedMessages, contextData, null);
+            const response = await aiService.zenChat(updatedMessages, contextData, selectedModel);
 
             let naturalReply = response;
             let actionJson = null;
@@ -239,7 +293,6 @@ const ZenWidget = () => {
             const finalMessages = [...updatedMessages, aiMsg];
             setMessages(finalMessages);
 
-            // Persist conversation history to Supabase
             if (sessionId) {
                 await aiService.updateHistory(sessionId, finalMessages);
             } else {
@@ -247,12 +300,8 @@ const ZenWidget = () => {
                 if (session) setSessionId(session.id);
             }
 
-            if (sentientVoice && 'speechSynthesis' in window) {
-                const cleanText = naturalReply.replace(/[*#`_]/g, '');
-                const utterance = new SpeechSynthesisUtterance(cleanText.substring(0, 200));
-                utterance.pitch = 0.95;
-                utterance.rate = 1.0;
-                window.speechSynthesis.speak(utterance);
+            if (sentientVoice) {
+                ttsService.speak(naturalReply);
             }
 
             if (actionJson && actionJson.length > 0) {
@@ -288,9 +337,16 @@ const ZenWidget = () => {
 
         } catch (error) {
             console.error('ZEN error:', error);
+            let errText = error.message || 'Unknown protocol error';
+            
+            // Helpful troubleshooting prompt if distributor channel error occurs
+            if (errText.includes('distributor') || errText.includes('channel') || errText.includes('Protocol error')) {
+                errText += '\n\n💡 **Tip:** The selected AI provider/model channel is currently unavailable. Please use the **Engine Selector bar** at the top of this panel to switch to another active provider or model (e.g. SambaNova or Groq)!';
+            }
+
             setMessages(prev => [
                 ...prev,
-                { role: 'assistant', content: `**Protocol error:** ${error.message}`, timestamp: new Date(), isError: true }
+                { role: 'assistant', content: `**Protocol error:** ${errText}`, timestamp: new Date(), isError: true }
             ]);
         } finally {
             setLoading(false);
@@ -300,56 +356,51 @@ const ZenWidget = () => {
 
     if (!user) return null;
 
+    const currentModelObj = allModels.find(m => m.id === selectedModel) || { name: selectedModel, provider: 'AI' };
+
     return (
         <>
-            {/* Holographic Glowing Floating Orb (FAB) - Hidden when drawer is open */}
+            {/* Pure Floating Smoke Entity Button (No Square Widget Container) */}
             {!isOpen && (
                 <div 
                     onClick={() => setIsOpen(true)}
                     style={{
                         position: 'fixed',
-                        bottom: '85px',
-                        right: '24px',
-                        width: '56px',
-                        height: '56px',
-                        borderRadius: '50%',
-                        background: 'radial-gradient(circle, #6366f1 0%, #4338ca 70%, #000 100%)',
-                        boxShadow: '0 0 15px rgba(99, 102, 241, 0.4), inset 0 0 5px rgba(255,255,255,0.2)',
+                        bottom: 'calc(80px + max(env(safe-area-inset-bottom, 0px), 16px))',
+                        right: '16px',
+                        width: '64px',
+                        height: '64px',
+                        background: 'transparent',
+                        border: 'none',
+                        boxShadow: 'none',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'pointer',
                         zIndex: 99999,
-                        border: '1.5px solid rgba(255,255,255,0.15)',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                     }}
-                    className="zen-orb-fab"
+                    className="zen-orb-fab hover:scale-110 active:scale-95"
+                    title="Awaken ZEN Smoke Entity"
                 >
-                    <div style={{
-                        position: 'absolute',
-                        width: '100%',
-                        height: '100%',
-                        borderRadius: '50%',
-                        border: '2px solid rgba(99, 102, 241, 0.3)',
-                        animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
-                        pointerEvents: 'none'
-                    }} />
-                    <Brain size={24} className="text-white" />
+                    <ZenLogo size={60} glow={true} />
                 </div>
             )}
 
-            {/* Glowing Drawer Style Chat Panel */}
-            <div style={{
+            {/* Theme-Adaptive Glassmorphism Drawer Chat Panel */}
+            <div 
+                ref={widgetRef}
+                style={{
                 position: 'fixed',
                 top: 0,
                 right: 0,
                 bottom: 0,
-                width: '380px',
-                maxWidth: '90vw',
-                background: 'rgba(10, 11, 16, 0.95)',
-                backdropFilter: 'blur(16px)',
-                borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
-                boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.5)',
+                width: '400px',
+                maxWidth: '92vw',
+                background: 'var(--surface, var(--card, #0f172a))',
+                backdropFilter: 'blur(25px)',
+                borderLeft: '1.5px solid var(--border)',
+                boxShadow: '-15px 0 50px rgba(0, 0, 0, 0.5), inset 1px 0 0 var(--border)',
                 transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
                 transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                 zIndex: 99998,
@@ -357,27 +408,34 @@ const ZenWidget = () => {
                 flexDirection: 'column',
                 overflow: 'hidden'
             }}>
-                {/* Header */}
+                {/* Theme Ambient Glow Backdrop */}
                 <div style={{
-                    padding: 'var(--space-md) var(--space-lg)',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'radial-gradient(circle at 50% 0%, var(--primary-500-alpha, rgba(99, 102, 241, 0.15)) 0%, transparent 70%)',
+                    pointerEvents: 'none'
+                }} />
+
+                {/* Top Theme Header */}
+                <div style={{
+                    position: 'relative',
+                    zIndex: 2,
+                    padding: '14px 16px',
+                    borderBottom: '1px solid var(--border)',
+                    background: 'var(--card)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ position: 'relative' }}>
-                            <Brain className="text-primary-400 animate-pulse" size={20} />
-                            <span style={{
-                                position: 'absolute', bottom: -2, right: -2,
-                                width: 6, height: 6, borderRadius: '50%',
-                                background: '#10b981', border: '1.5px solid #000'
-                            }} />
-                        </div>
+                        <ZenLogo size={28} />
                         <div>
-                            <h4 style={{ margin: 0, color: 'white', fontWeight: 800 }}>ZEN Companion</h4>
-                            <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)' }}>Sentient Interface Module</span>
+                            <h4 style={{ margin: 0, color: 'var(--text, #0f172a)', fontWeight: 800, fontSize: '15px', letterSpacing: '0.5px' }}>
+                                ZEN
+                            </h4>
+                            <span style={{ fontSize: '10px', color: 'var(--primary-500)', fontWeight: 600 }}>
+                                Sentient AI Companion
+                            </span>
                         </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -385,22 +443,96 @@ const ZenWidget = () => {
                             onClick={() => {
                                 const nextVal = !sentientVoice;
                                 setSentientVoice(nextVal);
-                                if (!nextVal && 'speechSynthesis' in window) {
-                                    window.speechSynthesis.cancel();
+                                if (!nextVal) {
+                                    ttsService.stop();
                                 }
                             }}
-                            style={{ background: 'none', border: 'none', color: sentientVoice ? 'var(--primary-400)' : 'rgba(255,255,255,0.3)', cursor: 'pointer' }}
+                            style={{ background: 'none', border: 'none', color: sentientVoice ? 'var(--primary-500)' : 'var(--text-muted)', cursor: 'pointer' }}
                             title="Toggle Voice Response"
                         >
                             {sentientVoice ? <Volume2 size={16} /> : <VolumeX size={16} />}
                         </button>
                         <button 
-                            onClick={() => setIsOpen(false)}
-                            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}
+                            onClick={() => {
+                                ttsService.stop();
+                                setIsOpen(false);
+                            }}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
                         >
                             <X size={18} />
                         </button>
                     </div>
+                </div>
+
+                {/* Astral AI Engine Selector Sub-Header Bar */}
+                <div style={{
+                    position: 'relative',
+                    zIndex: 2,
+                    padding: '8px 12px',
+                    background: 'var(--surface)',
+                    borderBottom: '1px solid var(--border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '6px',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    overflow: 'hidden'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--text-muted)', flexShrink: 0 }}>
+                        <Cpu size={14} style={{ color: 'var(--primary-500)' }} />
+                        <span style={{ fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Model:
+                        </span>
+                    </div>
+
+                    <select
+                        value={selectedModel}
+                        onChange={(e) => handleModelSelect(e.target.value)}
+                        style={{
+                            flex: 1,
+                            minWidth: 0,
+                            maxWidth: '100%',
+                            textOverflow: 'ellipsis',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap',
+                            background: 'var(--card)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '6px',
+                            color: 'var(--text)',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            padding: '4px 6px',
+                            outline: 'none',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        {allModels.map((m, idx) => (
+                            <option key={`${m.provider}_${m.id}_${idx}`} value={m.id} style={{ background: 'var(--card)', color: 'var(--text)' }}>
+                                [{m.provider.toUpperCase()}] {m.name}
+                            </option>
+                        ))}
+                    </select>
+
+                    <button
+                        onClick={() => {
+                            setIsOpen(false);
+                            navigate('/settings');
+                        }}
+                        style={{
+                            background: 'var(--card)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '6px',
+                            padding: '4px 6px',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center'
+                        }}
+                        title="AI Settings & API Keys"
+                    >
+                        <Settings size={12} />
+                    </button>
                 </div>
 
                 {/* Messages Body */}
@@ -420,23 +552,47 @@ const ZenWidget = () => {
                             flexDirection: 'column',
                             alignItems: m.role === 'user' ? 'flex-end' : 'flex-start'
                         }}>
-                            <div style={{
-                                padding: '8px 12px',
-                                borderRadius: '12px',
+                            <div 
+                                className={m.role === 'user' ? 'zen-user-chat-bubble' : 'zen-assistant-chat-bubble'}
+                                style={{
+                                padding: '10px 14px',
+                                borderRadius: '14px',
                                 background: m.isSystemTrace 
-                                    ? 'rgba(99, 102, 241, 0.05)'
-                                    : m.role === 'user' ? 'var(--primary-600)' : 'rgba(255, 255, 255, 0.04)',
-                                color: 'white',
-                                border: m.isSystemTrace ? '1px dashed rgba(99, 102, 241, 0.3)' : '1px solid rgba(255, 255, 255, 0.06)',
+                                    ? 'var(--primary-500-alpha, rgba(239, 68, 68, 0.08))'
+                                    : m.role === 'user' 
+                                        ? 'linear-gradient(135deg, var(--primary-500, #f59e0b) 0%, var(--primary-600, #d97706) 50%, var(--primary-700, #b45309) 100%)' 
+                                        : 'var(--card, #ffffff)',
+                                color: m.role === 'user' ? '#ffffff' : 'var(--text, #1c1917)',
+                                border: m.isSystemTrace ? '1px dashed var(--primary-500, #ef4444)' : m.isError ? '1px solid rgba(239, 68, 68, 0.4)' : m.role === 'user' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid var(--border)',
                                 fontSize: '12px',
-                                lineHeight: '1.5'
+                                lineHeight: '1.5',
+                                boxShadow: m.role === 'user' ? '0 4px 14px var(--primary-500-alpha, rgba(0,0,0,0.25))' : '0 2px 8px rgba(0,0,0,0.06)'
                             }}>
                                 <div className="markdown-body-zen">
                                     <ReactMarkdown>{m.content}</ReactMarkdown>
                                 </div>
                             </div>
-                            <span style={{ fontSize: '8px', color: 'rgba(255, 255, 255, 0.3)', marginTop: '2px' }}>
+                            <span style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '3px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 {m.role === 'user' ? 'You' : 'ZEN'} · {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {m.role === 'assistant' && !m.isSystemTrace && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSpeakMessage(idx, m.content)}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: speakingIndex === idx ? 'var(--primary-500, #ef4444)' : 'var(--text-muted)',
+                                            cursor: 'pointer',
+                                            padding: '2px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '2px'
+                                        }}
+                                        title={speakingIndex === idx ? "Stop speaking" : "Listen to audio response"}
+                                    >
+                                        {speakingIndex === idx ? <VolumeX size={12} className="animate-pulse" /> : <Volume2 size={12} />}
+                                    </button>
+                                )}
                             </span>
                         </div>
                     ))}
@@ -447,17 +603,17 @@ const ZenWidget = () => {
                 {actionTrace.length > 0 && (
                     <div style={{
                         height: '100px',
-                        background: 'rgba(5, 5, 8, 0.9)',
-                        borderTop: '1px solid rgba(255,255,255,0.06)',
+                        background: 'var(--card)',
+                        borderTop: '1px solid var(--border)',
                         padding: '6px 12px',
                         fontFamily: 'monospace',
                         fontSize: '9px',
                         color: '#10b981',
                         overflowY: 'auto'
                     }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(255,255,255,0.4)', marginBottom: '4px', fontSize: '8px' }}>
-                            <span>SYSTEM EXECUTION TRACE</span>
-                            {isExecuting && <span className="animate-pulse">RUNNING...</span>}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', marginBottom: '4px', fontSize: '8px' }}>
+                            <span>QUANTUM SYSTEM TRACE</span>
+                            {isExecuting && <span className="animate-pulse">EXECUTING...</span>}
                         </div>
                         {actionTrace.map((trace, idx) => (
                             <div key={idx} style={{ 
@@ -473,11 +629,11 @@ const ZenWidget = () => {
                 <form 
                     onSubmit={handleSubmit}
                     style={{
-                        padding: '10px',
-                        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                        padding: '12px',
+                        borderTop: '1px solid var(--border)',
                         display: 'flex',
-                        gap: '6px',
-                        background: 'rgba(0, 0, 0, 0.2)'
+                        gap: '8px',
+                        background: 'var(--surface-muted, rgba(0, 0, 0, 0.1))'
                     }}
                 >
                     <input 
@@ -488,11 +644,11 @@ const ZenWidget = () => {
                         disabled={loading || isExecuting}
                         style={{
                             flex: 1,
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            borderRadius: '8px',
+                            background: 'var(--card)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '10px',
                             padding: '8px 12px',
-                            color: 'white',
+                            color: 'var(--text-main)',
                             fontSize: '12px',
                             outline: 'none'
                         }}
@@ -501,19 +657,20 @@ const ZenWidget = () => {
                         type="submit"
                         disabled={loading || isExecuting || !input.trim()}
                         style={{
-                            background: 'var(--primary-600)',
+                            background: 'linear-gradient(135deg, var(--primary-500, #ef4444) 0%, var(--primary-600, #dc2626) 100%)',
                             border: 'none',
-                            borderRadius: '8px',
-                            width: '32px',
-                            height: '32px',
+                            borderRadius: '10px',
+                            width: '36px',
+                            height: '36px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            color: 'white'
+                            color: 'white',
+                            boxShadow: '0 2px 8px var(--primary-500-alpha, rgba(239, 68, 68, 0.4))'
                         }}
                     >
-                        {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                        {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                     </button>
                 </form>
             </div>
@@ -527,11 +684,8 @@ const ZenWidget = () => {
                     }
                 }
                 .zen-orb-fab:hover {
-                    transform: scale(1.15) rotate(5deg);
-                    box-shadow: 0 0 25px rgba(99, 102, 241, 0.8), inset 0 0 15px rgba(255,255,255,0.5);
-                }
-                .active-orb {
-                    transform: rotate(180deg) scale(0.9);
+                    transform: scale(1.08);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
                 }
             `}} />
         </>

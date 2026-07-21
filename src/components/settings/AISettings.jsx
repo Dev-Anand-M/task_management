@@ -40,8 +40,8 @@ const AISettings = () => {
                 setValidationMessage({ type: '', text: '' });
 
                 if (key) {
-                    const { AVAILABLE_MODELS } = await import('../../services/aiService');
-                    setAvailableModels(AVAILABLE_MODELS.filter(m => m.provider === selectedProvider));
+                    const { getAllAvailableModels } = await import('../../services/aiService');
+                    setAvailableModels(getAllAvailableModels().filter(m => m.provider === selectedProvider));
                 } else {
                     setAvailableModels([]);
                 }
@@ -62,7 +62,15 @@ const AISettings = () => {
             }
         };
 
+        const handleGlobalModelChange = (e) => {
+            if (e.detail?.modelId) {
+                setSelectedModel(e.detail.modelId);
+            }
+        };
+
+        window.addEventListener('ai-model-changed', handleGlobalModelChange);
         loadAISettings();
+        return () => window.removeEventListener('ai-model-changed', handleGlobalModelChange);
     }, [selectedProvider, user?.id]);
 
     const handleSaveApiKey = async () => {
@@ -343,6 +351,45 @@ const AISettings = () => {
                                 : '⚠️ API Key Not Configured'}
                 </span>
             </div>
+
+            {/* Active Model Selector */}
+            {aiKeyStatus === 'configured' && availableModels.length > 0 && (
+                <div style={{
+                    padding: 'var(--space-md)',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-md)',
+                    marginBottom: 'var(--space-lg)'
+                }}>
+                    <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-xs)', color: 'var(--text-main)' }}>
+                        🎯 ACTIVE MODEL FOR {selectedProvider.toUpperCase()}
+                    </h4>
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)' }}>
+                        Select the primary AI model to power your ZEN assistant and evaluations.
+                    </p>
+                    <select
+                        value={selectedModel}
+                        onChange={(e) => handleModelChange(e.target.value)}
+                        style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--primary-500)',
+                            background: 'var(--card)',
+                            color: 'var(--text-main)',
+                            fontSize: 'var(--text-sm)',
+                            fontWeight: 600,
+                            outline: 'none'
+                        }}
+                    >
+                        {availableModels.map((m, idx) => (
+                            <option key={`${m.provider}_${m.id}_${idx}`} value={m.id}>
+                                {m.name} ({m.id})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
             {validationMessage.text && (
                 <div style={{

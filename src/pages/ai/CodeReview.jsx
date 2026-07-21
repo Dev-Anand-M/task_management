@@ -50,7 +50,7 @@ const CodeReview = () => {
     useEffect(() => {
         const loadInitData = async () => {
             // Get all configured models from all providers
-            const allModels = aiService.AVAILABLE_MODELS;
+            const allModels = aiService.getAllAvailableModels();
             const configuredModels = [];
 
             // This is a bit of a hack: ideally we'd have a service method to get "valid" models

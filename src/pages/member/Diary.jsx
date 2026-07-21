@@ -10,6 +10,7 @@ import {
     ChevronLeft, ChevronRight, Filter, BookOpen,
     Zap, Award, TrendingUp, Brain, AlertTriangle, Clock
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 const Diary = () => {
     const { user } = useAuth();

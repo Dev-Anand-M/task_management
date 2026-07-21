@@ -148,6 +148,10 @@ export const routineService = {
             logDate = localDate.toISOString().split('T')[0];
         }
         
+        const cleanedData = { ...data };
+        delete cleanedData.start_time;
+        delete cleanedData.log_date;
+        
         // Fetch routine details to snapshot
         const { data: routine } = await supabase
             .from('routines')
@@ -164,7 +168,7 @@ export const routineService = {
                 snapshot_title: routine?.title,
                 snapshot_start_time: routine?.start_time,
                 status: 'done', // Default fallback status
-                ...data
+                ...cleanedData
             }, { onConflict: 'routine_id,log_date' })
             .select();
             

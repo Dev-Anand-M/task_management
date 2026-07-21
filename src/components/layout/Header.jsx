@@ -650,6 +650,29 @@ const Header = ({ onMenuClick, title }) => {
                     >
                       <Settings size={18} /> Settings
                     </button>
+                    <button
+                      onClick={() => {
+                        window.location.reload();
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        border: 'none',
+                        background: 'none',
+                        color: 'var(--text)',
+                        borderRadius: 'var(--radius-lg)',
+                        cursor: 'pointer',
+                        fontSize: 'var(--text-sm)',
+                        fontWeight: 600,
+                        textAlign: 'left'
+                      }}
+                      className="hover:bg-surface"
+                    >
+                      <RefreshCw size={18} /> Reload App
+                    </button>
 
                     <div style={{ height: '1px', background: 'var(--border)', margin: '8px 0' }} />
 

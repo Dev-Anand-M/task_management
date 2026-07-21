@@ -253,59 +253,65 @@ const Leaderboard = () => {
                 <div className="leaderboard-podium">
                     {/* 2nd Place */}
                     {topThree.length >= 2 && (
-                        <div className="podium-item">
+                        <div className="podium-item second-place">
                             <div className="podium-avatar">
                                 <Avatar name={topThree[1].name} image={topThree[1].avatar_url} size="lg" />
                             </div>
-                            <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px' }}>{topThree[1].name}</h4>
-                            <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[2].bg, color: 'white' }}>
+                            <h4 style={{ margin: '4px 0 2px', fontSize: 'var(--text-xs)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', fontWeight: 700 }}>
+                                {topThree[1].name}
+                            </h4>
+                            <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[2].bg, color: 'white', display: 'inline-block' }}>
                                 {RANK_TIERS[2].emoji} {RANK_TIERS[2].label}
                             </span>
-                            <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                            <p style={{ margin: '2px 0 6px', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                                 {topThree[1].xp?.toLocaleString() || 0} XP
                             </p>
                             <div className="podium-rank silver">
-                                <Medal size={32} style={{ color: '#C0C0C0' }} />
-                                <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 800 }}>2</span>
+                                <Medal size={28} style={{ color: '#C0C0C0' }} />
+                                <span style={{ fontSize: 'var(--text-xl)', fontWeight: 800 }}>2</span>
                             </div>
                         </div>
                     )}
                     {/* 1st Place */}
                     {topThree.length >= 1 && (
-                        <div className="podium-item">
+                        <div className="podium-item first-place">
                             <div className="podium-avatar">
                                 <div className="podium-crown">👑</div>
                                 <Avatar name={topThree[0].name} image={topThree[0].avatar_url} size="xl" />
                             </div>
-                            <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-base)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px', fontWeight: 700 }}>{topThree[0].name}</h4>
-                            <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[1].bg, color: 'white' }}>
+                            <h4 style={{ margin: '4px 0 2px', fontSize: 'var(--text-sm)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', fontWeight: 800 }}>
+                                {topThree[0].name}
+                            </h4>
+                            <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 10px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[1].bg, color: 'white', display: 'inline-block' }}>
                                 {RANK_TIERS[1].emoji} {RANK_TIERS[1].label}
                             </span>
-                            <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--primary-400)', fontWeight: 600 }}>
+                            <p style={{ margin: '2px 0 6px', fontSize: 'var(--text-xs)', color: 'var(--primary-400)', fontWeight: 700 }}>
                                 {topThree[0].xp?.toLocaleString() || 0} XP
                             </p>
                             <div className="podium-rank gold">
                                 <Trophy size={32} style={{ color: '#FFD700' }} />
-                                <span style={{ fontSize: 'var(--text-3xl)', fontWeight: 800, color: '#FFD700' }}>1</span>
+                                <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: '#FFD700' }}>1</span>
                             </div>
                         </div>
                     )}
                     {/* 3rd Place */}
                     {topThree.length >= 3 && (
-                        <div className="podium-item">
+                        <div className="podium-item third-place">
                             <div className="podium-avatar">
                                 <Avatar name={topThree[2].name} image={topThree[2].avatar_url} size="lg" />
                             </div>
-                            <h4 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px' }}>{topThree[2].name}</h4>
-                            <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[3].bg, color: 'white' }}>
+                            <h4 style={{ margin: '4px 0 2px', fontSize: 'var(--text-xs)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', fontWeight: 700 }}>
+                                {topThree[2].name}
+                            </h4>
+                            <span style={{ fontSize: '10px', fontWeight: 800, padding: '1px 8px', borderRadius: 'var(--radius-full)', background: RANK_TIERS[3].bg, color: 'white', display: 'inline-block' }}>
                                 {RANK_TIERS[3].emoji} {RANK_TIERS[3].label}
                             </span>
-                            <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                            <p style={{ margin: '2px 0 6px', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                                 {topThree[2].xp?.toLocaleString() || 0} XP
                             </p>
                             <div className="podium-rank bronze">
-                                <Medal size={32} style={{ color: '#CD7F32' }} />
-                                <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 800 }}>3</span>
+                                <Medal size={24} style={{ color: '#CD7F32' }} />
+                                <span style={{ fontSize: 'var(--text-lg)', fontWeight: 800 }}>3</span>
                             </div>
                         </div>
                     )}

@@ -307,22 +307,20 @@ const KnowledgeBase = () => {
                 </Card>
             )}
 
-            <Card style={{ marginBottom: 'var(--space-lg)', padding: 'var(--space-sm) var(--space-md)' }}>
-                <div className="flex items-center gap-sm">
-                    <Search className="text-muted" size={18} />
-                    <input 
-                        className="search-bar-input"
-                        placeholder="Search knowledge by title, content or tags..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    {searchQuery && (
-                        <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}>
-                            <X size={14} />
-                        </button>
-                    )}
-                </div>
-            </Card>
+            <div className="search-container-box" style={{ marginBottom: 'var(--space-lg)' }}>
+                <Search className="text-muted" size={18} style={{ flexShrink: 0 }} />
+                <input 
+                    className="search-bar-input"
+                    placeholder="Search knowledge by title, content or tags..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <X size={14} />
+                    </button>
+                )}
+            </div>
 
             {loading ? (
                 <div className="flex items-center justify-center p-xl">

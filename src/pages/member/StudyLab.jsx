@@ -6,7 +6,7 @@ import {
     ChevronLeft, ChevronRight, Share2, Sparkles, FileText, 
     Download, Info, Settings, MessageSquare,
     Eye, EyeOff, ExternalLink, Globe, RefreshCw,
-    Brain, CloudLightning
+    Brain, CloudLightning, Paperclip, Upload
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generateChat } from '../../services/aiService';
@@ -31,8 +31,49 @@ const StudyLab = () => {
     const [historyIndex, setHistoryIndex] = useState(-1);
     const [urlInput, setUrlInput] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+    const [chatUploadedFile, setChatUploadedFile] = useState(null);
+    const chatFileInputRef = useRef(null);
     const chatEndRef = useRef(null);
     const printRef = useRef(null);
+
+    const handleChatFileUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setLoading(true);
+        try {
+            let contentText = '';
+            if (file.name.toLowerCase().endsWith('.pdf')) {
+                contentText = await parsePDF(file);
+            } else {
+                contentText = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => resolve(event.target.result);
+                    reader.onerror = (err) => reject(err);
+                    reader.readAsText(file);
+                });
+            }
+
+            if (!contentText.trim()) {
+                throw new Error("No readable text content found in attached file.");
+            }
+
+            setChatUploadedFile({ name: file.name, content: contentText, size: file.size });
+            setMessages(prev => [
+                ...prev,
+                { 
+                    role: 'assistant', 
+                    content: `📎 **Backup File Uploaded & Synced:** "${file.name}" (${(file.size / 1024).toFixed(1)} KB). I have indexed its text into Study Lab RAG memory! Ask me anything about it.` 
+                }
+            ]);
+        } catch (err) {
+            console.error('Chat file upload failed:', err);
+            alert('File processing error: ' + err.message);
+        } finally {
+            setLoading(false);
+            if (e.target) e.target.value = '';
+        }
+    };
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -340,8 +381,14 @@ const StudyLab = () => {
             // Filter history to remove old apologies
             const cleanHistory = messages.filter(m => !m.content.toLowerCase().includes("don't have access") && !m.content.toLowerCase().includes("sync ai"));
 
+            // Combine primary document content + chat backup uploaded file content!
+            const combinedContent = [
+                material?.content || '',
+                chatUploadedFile ? `\n\n--- CHAT UPLOADED BACKUP FILE: ${chatUploadedFile.name} ---\n${chatUploadedFile.content}` : ''
+            ].filter(Boolean).join('\n\n');
+
             // Perform local semantic chunk match
-            const retrievedContext = performRAGSearch(material?.content || '', userMsg);
+            const retrievedContext = performRAGSearch(combinedContent, userMsg);
 
             const systemPrompt = `You are the Zenith Lab Assistant.
             
@@ -942,14 +989,50 @@ const StudyLab = () => {
 
                         {/* Input Area */}
                         <div style={{ padding: isMobile ? 'var(--space-md)' : 'var(--space-lg)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                            {chatUploadedFile && (
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '6px 12px',
+                                    marginBottom: '8px',
+                                    background: 'rgba(99, 102, 241, 0.15)',
+                                    border: '1px solid var(--primary-500)',
+                                    borderRadius: '8px',
+                                    fontSize: '11px',
+                                    color: 'white'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Paperclip size={14} className="text-primary-400" />
+                                        <span style={{ fontWeight: 600 }}>Backup File Context Active: {chatUploadedFile.name}</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setChatUploadedFile(null)}
+                                        style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', fontWeight: 700 }}
+                                        title="Remove attached file"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            )}
+
                             <form onSubmit={handleSendMessage} style={{ position: 'relative' }}>
+                                <input 
+                                    type="file" 
+                                    ref={chatFileInputRef} 
+                                    accept=".pdf,.txt,.md,.js,.py,.csv,.json,.html" 
+                                    style={{ display: 'none' }} 
+                                    onChange={handleChatFileUpload}
+                                />
+
                                 <textarea 
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
-                                    placeholder="Ask anything about this material..."
+                                    placeholder="Ask anything about this material or upload a backup file..."
                                     style={{ 
                                         width: '100%', 
-                                        padding: '16px 56px 16px 16px', 
+                                        padding: '16px 96px 16px 16px', 
                                         background: 'rgba(255,255,255,0.05)', 
                                         border: '1px solid rgba(255,255,255,0.1)',
                                         borderRadius: 'var(--radius-lg)',
@@ -968,29 +1051,51 @@ const StudyLab = () => {
                                         }
                                     }}
                                 />
-                                <button 
-                                    type="submit"
-                                    disabled={!input.trim() || sending}
-                                    style={{ 
-                                        position: 'absolute', 
-                                        right: '12px', 
-                                        bottom: '12px', 
-                                        width: '36px', 
-                                        height: '36px', 
-                                        borderRadius: 'var(--radius-md)', 
-                                        background: 'var(--primary-500)', 
-                                        border: 'none', 
-                                        color: 'white', 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        justifyContent: 'center', 
-                                        cursor: 'pointer',
-                                        opacity: (!input.trim() || sending) ? 0.5 : 1,
-                                        transition: 'transform 0.2s'
-                                    }}
-                                >
-                                    <Send size={18} />
-                                </button>
+
+                                <div style={{ position: 'absolute', right: '10px', bottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => chatFileInputRef.current?.click()}
+                                        disabled={sending}
+                                        title="Upload backup file to Study Lab chat"
+                                        style={{
+                                            width: '36px',
+                                            height: '36px',
+                                            borderRadius: 'var(--radius-md)',
+                                            background: 'rgba(255, 255, 255, 0.1)',
+                                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                                            color: 'white',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        <Paperclip size={18} />
+                                    </button>
+
+                                    <button 
+                                        type="submit"
+                                        disabled={!input.trim() || sending}
+                                        style={{ 
+                                            width: '36px', 
+                                            height: '36px', 
+                                            borderRadius: 'var(--radius-md)', 
+                                            background: 'var(--primary-500)', 
+                                            border: 'none', 
+                                            color: 'white', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            cursor: 'pointer',
+                                            opacity: (!input.trim() || sending) ? 0.5 : 1,
+                                            transition: 'transform 0.2s'
+                                        }}
+                                    >
+                                        <Send size={18} />
+                                    </button>
+                                </div>
                             </form>
                         </div>
                     </div>

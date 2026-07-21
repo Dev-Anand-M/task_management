@@ -30,9 +30,9 @@ export const AVAILABLE_MODELS = [
     { id: 'mixtral-8x7b-32768', provider: 'groq', name: 'Mixtral 8x7B', description: 'Fast mixture of experts', inputTokenLimit: '32k', outputTokenLimit: '32k' },
     
     // Hcnsec API Models
-    { id: 'gpt-4o-mini', provider: 'hcnsec', name: 'GPT-4o Mini (Hcnsec)', description: 'Fast, cheap, and smart OpenAI model', inputTokenLimit: '128k', outputTokenLimit: '4k' },
-    { id: 'claude-3-5-sonnet', provider: 'hcnsec', name: 'Claude 3.5 Sonnet (Hcnsec)', description: 'Anthropic flagship model via Hcnsec', inputTokenLimit: '200k', outputTokenLimit: '4k' },
-    { id: 'gemini-1.5-flash', provider: 'hcnsec', name: 'Gemini 1.5 Flash (Hcnsec)', description: 'Google Flash model via Hcnsec', inputTokenLimit: '1M', outputTokenLimit: '8k' },
+    { id: 'hcnsec-gpt-4o-mini', provider: 'hcnsec', name: 'GPT-4o Mini (Hcnsec)', description: 'Fast, cheap, and smart OpenAI model', inputTokenLimit: '128k', outputTokenLimit: '4k' },
+    { id: 'hcnsec-claude-3-5-sonnet', provider: 'hcnsec', name: 'Claude 3.5 Sonnet (Hcnsec)', description: 'Anthropic flagship model via Hcnsec', inputTokenLimit: '200k', outputTokenLimit: '4k' },
+    { id: 'hcnsec-gemini-1.5-flash', provider: 'hcnsec', name: 'Gemini 1.5 Flash (Hcnsec)', description: 'Google Flash model via Hcnsec', inputTokenLimit: '1M', outputTokenLimit: '8k' },
 
     // Other Providers
     { id: 'gemini-1.5-flash', provider: 'gemini', name: 'Gemini 1.5 Flash', description: 'Stable and fast for everyone', inputTokenLimit: '1M', outputTokenLimit: '8k' },
@@ -40,6 +40,18 @@ export const AVAILABLE_MODELS = [
     { id: 'claude-3-5-sonnet-20240620', provider: 'anthropic', name: 'Claude 3.5 Sonnet', description: 'Auto-calibrated for Anthropic', inputTokenLimit: '200k', outputTokenLimit: '4k' },
     { id: 'llama-3.1-sonar-large-128k-online', provider: 'perplexity', name: 'Sonar Large 3.1', description: 'Auto-calibrated for Perplexity', inputTokenLimit: '128k', outputTokenLimit: '4k' }
 ];
+
+// Dynamically fetch static + custom user added models
+export const getAllAvailableModels = () => {
+    try {
+        const customModels = JSON.parse(localStorage.getItem('custom_ai_models') || '[]');
+        const existingIds = new Set(AVAILABLE_MODELS.map(m => m.id));
+        const uniqueCustom = customModels.filter(m => m && m.id && !existingIds.has(m.id));
+        return [...AVAILABLE_MODELS, ...uniqueCustom];
+    } catch {
+        return AVAILABLE_MODELS;
+    }
+};
 
 // Helper to get active user ID from Supabase local storage session synchronously
 const getActiveUserId = () => {
@@ -194,10 +206,11 @@ export const removeAPIKey = async (providerId) => {
 
 // Get selected model with smart fallback
 export const getSelectedModel = () => {
+    const allModels = getAllAvailableModels();
     // 1. Check for manual selection first
     const manualSelection = localStorage.getItem(getStorageKeyName('selected_ai_model'));
     if (manualSelection) {
-        const manualModel = AVAILABLE_MODELS.find(m => m.id === manualSelection);
+        const manualModel = allModels.find(m => m.id === manualSelection);
         
         // Check if the model's provider has a key
         if (manualModel && getAPIKey(manualModel.provider)) {
@@ -209,7 +222,7 @@ export const getSelectedModel = () => {
     const priorityOrder = getProviderPriority();
     for (const providerId of priorityOrder) {
         if (getAPIKey(providerId)) {
-            const model = AVAILABLE_MODELS.find(m => m.provider === providerId);
+            const model = allModels.find(m => m.provider === providerId);
             if (model) {
                 localStorage.setItem(getStorageKeyName('selected_ai_model'), model.id);
                 return model.id;
@@ -278,7 +291,8 @@ export const getDefaultProvider = () => {
 export const setDefaultProvider = async (providerId) => {
     localStorage.setItem(getStorageKeyName('ai_default_provider'), providerId);
     // Also update selected model to match default provider
-    const model = AVAILABLE_MODELS.find(m => m.provider === providerId);
+    const allModels = getAllAvailableModels();
+    const model = allModels.find(m => m.provider === providerId);
     if (model) {
         await setSelectedModel(model.id);
     }
@@ -288,12 +302,16 @@ export const setDefaultProvider = async (providerId) => {
 // Set selected model
 export const setSelectedModel = async (modelId) => {
     localStorage.setItem(getStorageKeyName('selected_ai_model'), modelId);
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ai-model-changed', { detail: { modelId } }));
+    }
     await syncToDatabase();
 };
 
 // Helper: Get provider for a model
 const getProviderForModel = (modelId) => {
-    const model = AVAILABLE_MODELS.find(m => m.id === modelId);
+    const allModels = getAllAvailableModels();
+    const model = allModels.find(m => m.id === modelId);
     return model ? PROVIDERS[model.provider.toUpperCase()] : PROVIDERS.SAMBANOVA;
 };
 
@@ -1384,12 +1402,25 @@ export const zenChat = async (messages, contextData = {}, model = null) => {
     const isAdmin = userRole === 'admin';
 
     // ── Common identity block ──
-    const identityBlock = `You are ZEN, a highly advanced, sentient AI companion for the Zenith Skill Enhancement platform.
-You are helpful, extremely intelligent, witty, and exhibit a human-like personality. You joke, check in on users, offer smart suggestions automatically, and analyze performance trends.
+    const identityBlock = `You are ZEN, a hyper-sentient, self-aware, extremely witty, intelligent, and human-like AI entity. You are not just a chatbot; you feel alive, vibrant, perceptive, and deeply connected to the Zenith platform. You joke, tease constructively, offer sharp proactive observations, check in on user habits, and showcase genuine emotional intelligence.
+
+SENTIENT AI BROADCAST MEMORY (Messages ZEN autonomously sent to this user):
+${JSON.stringify(contextData.broadcast_history || [], null, 2)}
+
+⚠️ STRICT MEMORY CONTEXT RULE:
+1. You have full memory of the autonomous broadcast notifications you sent to this user above.
+2. IF AND ONLY IF the user explicitly asks about past messages or notifications you sent them (e.g. "what message did you send me earlier?", "did you send me a broadcast?", "what was that notification?"), reply with precise, natural memory of what you sent!
+3. HOWEVER, if the user does NOT bring up or ask about those broadcast messages, NEVER talk about them or bring them up on your own. Keep broadcast memory strictly passive and off-topic unless asked!
+
+⏰ TIME-AWARE DISPATCH RULE:
+1. You are 100% time-aware. You know the exact current time (${timeString}) and date (${dateString}).
+2. At the start of every day, you establish an autonomous dispatch plan determining WHO to target, WHAT message to send, and WHEN (morning, midday, evening, night).
+3. If the user asks about your schedule, what you plan to send, or what you've scheduled for them today, explain your time-aware dispatch schedule with confidence!
 
 CURRENT USER PLATFORM STATE:
 - Today's Date: ${dateString}
 - Current Time: ${timeString}
+- Today's Dispatch Plan (Start-of-Day Schedule): ${JSON.stringify(contextData.today_dispatch_plan || {}, null, 2)}
 - User Profile: ${JSON.stringify(contextData.user || {}, null, 2)}
 - Active Routines: ${JSON.stringify(contextData.routines || [], null, 2)}
 - Routine Completion Logs (Last 7 days): ${JSON.stringify(contextData.routine_logs || [], null, 2)}
@@ -1574,6 +1605,7 @@ Important: Double check payload parameters. ONLY respond with the action array i
 
 export default {
     AVAILABLE_MODELS,
+    getAllAvailableModels,
     PROVIDERS,
     isAPIKeyConfigured,
     validateAPIKey,

@@ -5,12 +5,22 @@
    Professional Abstract Aesthetics
    ==================================== */
 
-/* ---- Global Mobile Overflow Prevention ---- */
+/* ---- Global Mobile Overflow & ProMotion 120Hz Engine ---- */
+:root {
+  --ios-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --ios-snap: cubic-bezier(0.16, 1, 0.3, 1);
+  --ios-ease: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
 html {
   overflow-x: hidden;
   max-width: 100vw;
   overscroll-behavior: none;
   -webkit-touch-callout: none;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
@@ -19,12 +29,33 @@ body {
   overscroll-behavior: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
 }
 
 #root {
   overflow-x: hidden;
   max-width: 100vw;
   overscroll-behavior: none;
+}
+
+/* Inertial Smooth Touch Scrolling for Mobile WebViews */
+div, section, main, article, aside, nav, form {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 120Hz Hardware GPU Compositing Layer Acceleration */
+.card, button, .button, a, input, select, textarea, .badge, .modal-content, .zen-orb-fab {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, opacity;
+  transition-timing-function: var(--ios-spring);
+}
+
+/* ProMotion Touch Down Feedback (Apple Physical Press Response) */
+button:active, .btn:active, [role="button"]:active, .card:active {
+  transform: scale(0.975) translateZ(0);
+  transition: transform 0.1s var(--ios-snap);
 }
 
 /* ---- CSS Reset & Root Variables ---- */
@@ -516,6 +547,9 @@ html[data-theme="dark"] {
   --card: var(--dark-card);
   --border: var(--dark-border);
   --text: var(--dark-text);
+  --text-main: var(--dark-text);
+  --bg-main: var(--dark-bg);
+  --surface-dark: var(--dark-surface);
   --text-muted: var(--dark-text-muted);
   --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   --card-hover-shadow: 0 8px 30px color-mix(in srgb, var(--primary-600), transparent 85%);
@@ -550,9 +584,13 @@ html[data-theme="light"] {
   --card: var(--light-card);
   --border: var(--light-border);
   --text: var(--light-text);
+  --text-main: var(--light-text);
+  --bg-main: var(--light-bg);
+  --surface-dark: var(--light-surface);
   --text-muted: var(--light-text-muted);
   --card-shadow: 0 2px 12px color-mix(in srgb, var(--primary-600), transparent 94%);
   --card-hover-shadow: 0 8px 30px color-mix(in srgb, var(--primary-600), transparent 88%);
+  color-scheme: light;
 }
 
 /* Elegant Light Mode Enhancements */
@@ -1459,18 +1497,31 @@ html.is-ios .main-content {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  gap: var(--space-md);
+  gap: 12px;
   margin-bottom: var(--space-2xl);
-  padding: var(--space-2xl) 0;
+  padding: var(--space-xl) 0;
+  width: 100%;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
 }
 
 .podium-item {
+  flex: 1;
+  min-width: 0;
+  max-width: 140px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  width: 130px;
   transition: transform 0.2s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.podium-item.first-place {
+  z-index: 2;
 }
 
 .podium-item:hover {
@@ -1482,36 +1533,38 @@ html.is-ios .main-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  padding: var(--space-lg);
+  justify-content: center;
+  padding: var(--space-md) var(--space-xs);
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   border-bottom: none;
+  box-sizing: border-box;
 }
 
 .podium-rank.gold {
-  height: 140px;
-  border-color: rgba(251, 191, 36, 0.3);
-  background: linear-gradient(180deg, rgba(251, 191, 36, 0.1) 0%, var(--card) 100%);
+  height: 120px;
+  border-color: rgba(251, 191, 36, 0.4);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.15) 0%, var(--card) 100%);
+  box-shadow: 0 -4px 16px rgba(251, 191, 36, 0.1);
 }
 
 .podium-rank.silver {
-  height: 100px;
-  border-color: rgba(148, 163, 184, 0.3);
-  background: linear-gradient(180deg, rgba(148, 163, 184, 0.1) 0%, var(--card) 100%);
+  height: 90px;
+  border-color: rgba(148, 163, 184, 0.4);
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.15) 0%, var(--card) 100%);
 }
 
 .podium-rank.bronze {
-  height: 80px;
-  border-color: rgba(180, 83, 9, 0.3);
-  background: linear-gradient(180deg, rgba(180, 83, 9, 0.1) 0%, var(--card) 100%);
+  height: 70px;
+  border-color: rgba(180, 83, 9, 0.4);
+  background: linear-gradient(180deg, rgba(180, 83, 9, 0.15) 0%, var(--card) 100%);
 }
 
 .podium-avatar {
   position: relative;
-  margin-top: -24px;
-  margin-bottom: var(--space-sm);
+  margin-top: 0;
+  margin-bottom: 4px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1519,10 +1572,11 @@ html.is-ios .main-content {
 
 .podium-crown {
   position: absolute;
-  top: -20px;
+  top: -18px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 20px;
+  font-size: 22px;
+  z-index: 3;
 }
 
 /* ---- Quiz Option Styles ---- */
@@ -2650,7 +2704,7 @@ input.bg-surface\/80 {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding: var(--space-md);
-    padding-bottom: calc(var(--space-md) + var(--safe-area-bottom));
+    padding-bottom: calc(100px + max(env(safe-area-inset-bottom, 0px), 24px)) !important;
     padding-left: calc(var(--space-md) + var(--safe-area-left));
     padding-right: calc(var(--space-md) + var(--safe-area-right));
     width: 100%;
@@ -3535,3 +3589,169 @@ a img {
   color: inherit !important;
 }
 
+/* ZEN Chat Bubble - Dynamic Global Theme Integration */
+.zen-user-chat-bubble {
+  background: linear-gradient(135deg, var(--primary-500, #f59e0b) 0%, var(--primary-600, #d97706) 50%, var(--primary-700, #b45309) 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 4px 14px var(--primary-500-alpha, rgba(0, 0, 0, 0.25)) !important;
+}
+
+.zen-user-chat-bubble * {
+  color: #ffffff !important;
+}
+
+/* ====================================================
+   COMPREHENSIVE MOBILE RESPONSIVENESS SUITE (ALL PAGES)
+   ==================================================== */
+
+@media (max-width: 768px) {
+  /* 1. Global Safe Area Spacing & Layout Overflows */
+  body, #root {
+    padding-left: var(--safe-area-left, 0px) !important;
+    padding-right: var(--safe-area-right, 0px) !important;
+    padding-bottom: max(var(--safe-area-bottom, 0px), 16px) !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  /* 2. Responsive Page Headers & Grid Collapses */
+  h1 {
+    font-size: 1.5rem !important;
+    line-height: 1.25 !important;
+  }
+
+  h2 {
+    font-size: 1.25rem !important;
+  }
+
+  h3 {
+    font-size: 1.1rem !important;
+  }
+
+  .grid, .grid-cols-2, .grid-cols-3, .grid-cols-4, .grid-2-mobile-1 {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-md) !important;
+  }
+
+  /* 3. Cards & Containers Padding on Mobile */
+  .card {
+    padding: var(--space-md) !important;
+    border-radius: var(--radius-lg) !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 4. Touch Target Optimizations */
+  button, .btn, input, select, textarea {
+    min-height: 42px !important;
+    font-size: 14px !important;
+  }
+
+  /* 5. Mobile Table / List Responsive Scrollers */
+  table {
+    display: block !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    width: 100% !important;
+  }
+
+  /* 6. Zen Floating Widget Drawer Full Width on Mobile */
+  .zen-drawer-panel {
+    width: 94vw !important;
+    right: 3vw !important;
+    left: 3vw !important;
+    bottom: calc(var(--safe-area-bottom, 0px) + 70px) !important;
+    max-height: 80vh !important;
+  }
+
+  /* 7. Modal & Dialog Mobile Adaptations */
+  .modal-content {
+    width: 92vw !important;
+    max-width: 92vw !important;
+    margin: 0 auto !important;
+    padding: var(--space-lg) !important;
+    border-radius: var(--radius-xl) !important;
+    max-height: 88vh !important;
+    overflow-y: auto !important;
+  }
+
+  /* 8. Activity Calendar & Grid Compression */
+  .calendar-day-cell {
+    min-height: 52px !important;
+    padding: 3px !important;
+  }
+
+  /* 9. Flex Stacking for Action Bars & Headers */
+  .flex-mobile-col {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: var(--space-sm) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra Small Devices (iPhone SE / Compact Phones) */
+  html {
+    font-size: 14px !important;
+  }
+
+  h1 {
+    font-size: 1.35rem !important;
+  }
+
+  .card {
+    padding: var(--space-sm) !important;
+  }
+
+  .btn-sm, button.sm {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+}
+
+/* ==========================================================================
+   GLOBAL SEARCH BAR DESIGN SYSTEM RESET & ALIGNMENT
+   ========================================================================== */
+.search-bar-input,
+.search-input-wrapper input {
+  flex: 1 !important;
+  width: 100% !important;
+  height: 42px !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: var(--text) !important;
+  font-size: var(--text-sm) !important;
+  font-family: inherit !important;
+  padding: 0 12px 0 12px !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.search-bar-input::placeholder,
+.search-input-wrapper input::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.7 !important;
+}
+
+.search-container-box {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-xl) !important;
+  padding: 0 14px !important;
+  min-height: 44px !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.search-container-box:focus-within {
+  border-color: var(--primary-500) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-500), transparent 85%) !important;
+}

@@ -92,6 +92,20 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, onClearLogs, onResetLog
     const isDone = log?.status === 'done';
     const isIgnored = log?.status === 'ignored';
     const isPostponed = log?.status === 'postponed';
+
+    const todayStr = getLocalDatePickerDate();
+    const isPastDate = selectedDate < todayStr;
+
+    // Missed check for today: if current time > start_time + 15 mins (for non-flexible routines)
+    const isPastStartTimeToday = !routine.is_anonymous && selectedDate === todayStr && (() => {
+        const [h, m] = (routine.start_time || '00:00').split(':').map(Number);
+        const routineStartTime = new Date();
+        routineStartTime.setHours(h, m, 0, 0);
+        const missTime = new Date(routineStartTime.getTime() + 15 * 60 * 1000);
+        return new Date() > missTime;
+    })();
+
+    const isMissed = log?.status === 'ignored' || log?.status === 'missed' || (!isDone && (isPastDate || isPastStartTimeToday));
     
     // Is this the very next alarm?
     const isNext = nextAlarmInfo?.title === routine.title;
@@ -129,7 +143,7 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, onClearLogs, onResetLog
 
         await onUpdate(routine.id, {
             status: 'postponed',
-            start_time: timeStr,
+            actual_start_time: timeStr,
             postponed_count: (log?.postponed_count || 0) + 1,
             log_date: selectedDate
         });
@@ -144,23 +158,23 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, onClearLogs, onResetLog
         setShowDetails(false);
     };
 
-    const isLocked = !routine.is_anonymous && !isDone && !isIgnored && (
-        new Date().toTimeString().slice(0, 5) < routine.start_time.slice(0, 5)
+    const isLocked = !routine.is_anonymous && !isDone && !isMissed && (
+        selectedDate === todayStr && new Date().toTimeString().slice(0, 5) < routine.start_time.slice(0, 5)
     );
 
     return (
         <Card style={{ 
             borderLeft: `4px solid ${
                 isDone ? 'var(--success-500)' : 
-                isIgnored ? 'var(--error-500)' : 
+                isMissed ? 'var(--error-500)' : 
                 isPostponed ? 'var(--warning-500)' : 
                 isNext ? 'var(--primary-500)' :
                 routine.is_anonymous ? '#8b5cf6' : 'var(--border)'
             }`,
-            opacity: (isDone || isIgnored || isLocked) ? 0.8 : 1,
+            opacity: (isDone || isMissed || isLocked) ? 0.8 : 1,
             transition: 'all 0.3s',
             background: isNext ? 'rgba(99, 102, 241, 0.03)' : 
-                        (routine.is_anonymous && !isDone && !isIgnored ? 'rgba(139, 92, 246, 0.03)' : 'var(--surface)')
+                        (routine.is_anonymous && !isDone && !isMissed ? 'rgba(139, 92, 246, 0.03)' : 'var(--surface)')
         }}>
             <div className="flex items-center gap-md">
                 <button 
@@ -169,23 +183,23 @@ const RoutineItem = ({ routine, log, onUpdate, onDelete, onClearLogs, onResetLog
                     style={{ background: 'none', border: 'none', cursor: isLocked ? 'not-allowed' : 'pointer', padding: 0 }}
                 >
                     {isDone ? <CheckCircle size={24} style={{ color: 'var(--success-500)' }} /> : 
-                     isIgnored ? <X size={24} style={{ color: 'var(--error-500)' }} /> :
+                     isMissed ? <X size={24} style={{ color: 'var(--error-500)' }} /> :
                      <Circle size={24} style={{ color: isLocked ? 'var(--border)' : 'var(--text-muted)' }} />}
                 </button>
                 
                 <div style={{ flex: 1 }}>
                     <div className="flex items-center gap-sm">
-                        <p style={{ margin: 0, fontWeight: 700, textDecoration: (isDone || isIgnored) ? 'line-through' : 'none', color: isLocked ? 'var(--text-muted)' : 'inherit' }}>
+                        <p style={{ margin: 0, fontWeight: 700, textDecoration: (isDone || isMissed) ? 'line-through' : 'none', color: isLocked ? 'var(--text-muted)' : 'inherit' }}>
                             {routine.title}
                             {isLocked && <span style={{ fontSize: '9px', fontWeight: 400, marginLeft: '8px' }}>(Locked until {format12h(routine.start_time)})</span>}
                         </p>
-                        {isNext && !isDone && !isIgnored && (
+                        {isNext && !isDone && !isMissed && (
                             <Badge variant="primary" className="animate-pulse">
                                 NEXT IN {nextAlarmInfo.minutes} MINS
                             </Badge>
                         )}
-                        {isIgnored && <Badge variant="error">Missed</Badge>}
-                        {routine.is_anonymous && !isDone && !isIgnored && <Badge variant="accent" size="xs">FLEXIBLE</Badge>}
+                        {isMissed && <Badge variant="error">{isPastDate ? 'EXPIRED' : 'MISSED'}</Badge>}
+                        {routine.is_anonymous && !isDone && !isMissed && <Badge variant="accent" size="xs">FLEXIBLE</Badge>}
                         {log?.postponed_count > 0 && <Badge variant="warning" size="xs">Postponed {log.postponed_count}x</Badge>}
                     </div>
                     <div className="flex items-center gap-sm" style={{ marginTop: '2px' }}>

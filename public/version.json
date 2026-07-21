@@ -1,7 +1,7 @@
 {
-  "version": "1.0.6",
-  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.0.6.apk",
-  "releaseNotes": "🧠 Resilient connected Mindmap view with automatic fallback branches.\n📱 Universal Exporting System: Fixes file download blocks on mobile apps using native share sheets.\n💬 AI Assistant Context Attachments: Upload PDFs/Docs or link your current Study Lab note directly into the chat.",
+  "version": "1.0.7",
+  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.0.7.apk",
+  "releaseNotes": "✨ Study Lab Backup File Upload & Document Context Reading.\n🎯 Universal Search Bar Alignment & Clean Single-Wrapper Layout.\n🥇 Leaderboard Responsive Podium Layout: Fixed 1st & 2nd place item overlap.\n🔄 Profile Dropdown Reload App Option & Multi-Model Unique Keys Fix.\n📁 Universal Data URL Export: Fixes CSV, XLSX, and text downloads on mobile APKs.\n🔊 AI ZEN Voice Audio: Interactive Read Aloud and Web Speech synthesis fallback.",
   "mandatory": true,
   "minSupportedVersion": "1.0.0"
 }

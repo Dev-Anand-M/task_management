@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Card, Button, Input, Badge } from '../../components/common';
+import { ZenLogo } from '../../components/common/ZenLogo';
 import {
-    Brain,
     Send,
     Trash2,
     MessageSquare,
@@ -14,16 +14,39 @@ import {
     XCircle,
     AlertCircle,
     Zap,
-    Play
+    Play,
+    Cpu,
+    Settings,
+    Volume2,
+    VolumeX
 } from 'lucide-react';
 import * as aiService from '../../services/aiService';
 import { zenService } from '../../services/zenService';
+import { sentientBroadcastService } from '../../services/sentientBroadcastService';
+import { ttsService } from '../../services/ttsService';
 import * as db from '../../services/database';
 import { routineService } from '../../services/routineService';
 import ReactMarkdown from 'react-markdown';
+import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../../context/ThemeContext';
 
 const Zen = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
+
+    let themeCtx = null;
+    try {
+        themeCtx = useTheme();
+    } catch {
+        themeCtx = null;
+    }
+
+    const activeTheme = (themeCtx?.theme || (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') : '') || '').toLowerCase();
+    const activeColorScheme = (themeCtx?.colorScheme || (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-color-scheme') : '') || '').toLowerCase();
+
+    const isLiquidGlass = 
+        activeTheme.includes('liquid') || activeTheme.includes('crystal') || activeTheme.includes('glass') ||
+        activeColorScheme.includes('liquid') || activeColorScheme.includes('crystal') || activeColorScheme.includes('glass');
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -31,8 +54,26 @@ const Zen = () => {
     const [sessionId, setSessionId] = useState(null);
     const [historyLoading, setHistoryLoading] = useState(true);
     const [sentientVoice, setSentientVoice] = useState(true);
-    const [actionTrace, setActionTrace] = useState([]); // execution log of actions
+    const [actionTrace, setActionTrace] = useState([]);
     const [isExecuting, setIsExecuting] = useState(false);
+    const [speakingIndex, setSpeakingIndex] = useState(null);
+
+    const handleSpeakMessage = (index, text) => {
+        if (speakingIndex === index) {
+            ttsService.stop();
+            setSpeakingIndex(null);
+        } else {
+            ttsService.stop();
+            const success = ttsService.speak(text);
+            if (success) {
+                setSpeakingIndex(index);
+            }
+        }
+    };
+
+    // Active AI Model Selection
+    const [selectedModel, setSelectedModel] = useState(aiService.getSelectedModel());
+    const [allModels, setAllModels] = useState([]);
 
     const messagesEndRef = useRef(null);
 
@@ -42,11 +83,27 @@ const Zen = () => {
 
     useEffect(() => {
         loadHistory();
+        refreshModels();
+
+        const handleModelChange = (e) => {
+            if (e.detail?.modelId) {
+                setSelectedModel(e.detail.modelId);
+            }
+        };
+
+        window.addEventListener('ai-model-changed', handleModelChange);
+        return () => window.removeEventListener('ai-model-changed', handleModelChange);
     }, []);
 
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    const refreshModels = () => {
+        const models = aiService.getAllAvailableModels();
+        setAllModels(models);
+        setSelectedModel(aiService.getSelectedModel());
+    };
 
     const loadHistory = async () => {
         setHistoryLoading(true);
@@ -84,11 +141,9 @@ const Zen = () => {
         }
     };
 
-    // Load system state for ZEN context (role-aware)
     const getSystemContext = async () => {
         const isAdmin = user?.role === 'admin';
         try {
-            // Always fetch routines, tasks, classrooms, logs, quiz attempts, study notes, profiles, notifications, announcements
             const basePromises = [
                 routineService.getAllRoutinesForHistory().catch(() => []),
                 db.getTasks().catch(() => []),
@@ -101,7 +156,6 @@ const Zen = () => {
                 db.getAnnouncements().catch(() => [])
             ];
 
-            // Admin-only data: members, submissions, invite codes
             const adminPromises = isAdmin ? [
                 db.getMembers().catch(() => []),
                 db.getGlobalSubmissions().catch(() => []),
@@ -113,45 +167,23 @@ const Zen = () => {
                 ...adminData
             ] = await Promise.all([...basePromises, ...adminPromises]);
 
-            // Sort profiles by XP to find leaderboard ranking
             const sortedProfiles = [...(profiles || [])].sort((a, b) => (b.xp || 0) - (a.xp || 0));
             const ranking = sortedProfiles.findIndex(p => p.id === user.id) + 1;
             const userProfile = profiles?.find(p => p.id === user.id) || {};
 
-            const prunedRoutines = (routines || [])
-                .filter(r => r.user_id === user?.id)
-                .map(r => ({ id: r.id, title: r.title, start_time: r.start_time, days_of_week: r.days_of_week, is_active: r.is_active, is_anonymous: r.is_anonymous }))
-                .slice(0, 20);
+            const userRoutines = (routines || []).filter(r => r.user_id === user?.id);
+            const userTasks = (tasks || []).slice(0, 15);
 
-            const prunedTasks = (tasks || [])
-                .map(t => ({ id: t.id, title: t.title, status: t.status, xp: t.xp, due_date: t.due_date }))
-                .slice(0, 15);
+            // Time-Aware Start-of-Day Dispatch Executor
+            const todayDispatchPlan = await sentientBroadcastService.checkAndExecuteScheduledDispatches(
+                user?.id,
+                user?.name,
+                userRoutines,
+                userTasks,
+                messages
+            );
 
-            const prunedClassrooms = (classrooms || [])
-                .map(c => ({ id: c.id, name: c.name, description: c.description || '' }))
-                .slice(0, 10);
-
-            const prunedLogs = (logs || [])
-                .filter(l => l.user_id === user?.id)
-                .map(l => ({ routine_id: l.routine_id, title: l.snapshot_title, status: l.status, log_date: l.log_date, notes: l.learning_notes }))
-                .slice(0, 25);
-
-            const prunedQuizAttempts = (quizAttempts || [])
-                .map(qa => ({ quiz_title: qa.quizzes?.title, score: qa.score, passed: qa.passed, completed_at: qa.completed_at }))
-                .slice(0, 10);
-
-            const prunedStudyNotes = (studyNotes || [])
-                .map(sn => ({ id: sn.id, title: sn.title, content: sn.content?.substring(0, 100) + (sn.content?.length > 100 ? '...' : ''), updated_at: sn.updated_at }))
-                .slice(0, 15);
-
-            const prunedAnnouncements = (announcements || [])
-                .map(an => ({ id: an.id, title: an.title, message: an.message, created_at: an.created_at }))
-                .slice(0, 10);
-
-            const prunedNotifications = (notifications || [])
-                .filter(n => !n.is_read)
-                .map(n => ({ id: n.id, title: n.title, message: n.message, created_at: n.created_at }))
-                .slice(0, 10);
+            const broadcastHistory = sentientBroadcastService.getBroadcastHistory(user?.id);
 
             const context = {
                 user: { 
@@ -164,30 +196,23 @@ const Zen = () => {
                     level: userProfile.level || 1,
                     leaderboard_rank: ranking || 'N/A'
                 },
-                routines: prunedRoutines,
-                routine_logs: prunedLogs,
-                tasks: prunedTasks,
-                classrooms: prunedClassrooms,
-                quiz_attempts: prunedQuizAttempts,
-                study_notes: prunedStudyNotes,
-                announcements: prunedAnnouncements,
-                notifications: prunedNotifications
+                routines: userRoutines.slice(0, 20),
+                routine_logs: (logs || []).filter(l => l.user_id === user?.id).slice(0, 25),
+                tasks: userTasks,
+                classrooms: (classrooms || []).slice(0, 10),
+                quiz_attempts: (quizAttempts || []).slice(0, 10),
+                study_notes: (studyNotes || []).slice(0, 15),
+                announcements: (announcements || []).slice(0, 10),
+                notifications: (notifications || []).filter(n => !n.is_read).slice(0, 10),
+                broadcast_history: broadcastHistory,
+                today_dispatch_plan: todayDispatchPlan
             };
 
-            // Only inject admin-only data if admin
             if (isAdmin && adminData.length === 3) {
                 const [members, submissions, inviteCodes] = adminData;
-                context.members = (members || [])
-                    .map(m => ({ id: m.id, name: m.name, email: m.email, role: m.role }))
-                    .slice(0, 20);
-                context.submissions = (submissions || [])
-                    .filter(s => s.status === 'pending')
-                    .map(s => ({ id: s.id, task_title: s.task_title, member_name: s.user_name || s.member_name, submitted_at: s.created_at || s.submitted_at }))
-                    .slice(0, 10);
-                context.inviteCodes = (inviteCodes || [])
-                    .filter(c => !c.is_used)
-                    .map(c => ({ code: c.code, role: c.role, created_at: c.created_at }))
-                    .slice(0, 10);
+                context.members = (members || []).slice(0, 20);
+                context.submissions = (submissions || []).filter(s => s.status === 'pending').slice(0, 10);
+                context.inviteCodes = (inviteCodes || []).filter(c => !c.is_used).slice(0, 10);
             }
 
             return context;
@@ -197,12 +222,18 @@ const Zen = () => {
         }
     };
 
+    const handleModelSelect = async (modelId) => {
+        setSelectedModel(modelId);
+        await aiService.setSelectedModel(modelId);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!input.trim() || loading || isExecuting) return;
 
         if (!aiService.isAnyAPIKeyConfigured()) {
             alert('Please configure an API Key in Settings > AI Settings to use ZEN.');
+            navigate('/settings');
             return;
         }
 
@@ -215,13 +246,9 @@ const Zen = () => {
         setActionTrace([]);
 
         try {
-            // Gather system context for the model
             const contextData = await getSystemContext();
+            const response = await aiService.zenChat(updatedMessages, contextData, selectedModel);
 
-            // Ask ZEN
-            const response = await aiService.zenChat(updatedMessages, contextData, null);
-
-            // Separate action script and natural response
             let naturalReply = response;
             let actionJson = null;
 
@@ -240,7 +267,6 @@ const Zen = () => {
             const finalMessages = [...updatedMessages, aiMsg];
             setMessages(finalMessages);
 
-            // Save history
             if (sessionId) {
                 await aiService.updateHistory(sessionId, finalMessages);
             } else {
@@ -252,16 +278,10 @@ const Zen = () => {
                 }
             }
 
-            // Speak sentient reply if enabled
-            if (sentientVoice && 'speechSynthesis' in window) {
-                const cleanText = naturalReply.replace(/[*#`_]/g, '');
-                const utterance = new SpeechSynthesisUtterance(cleanText.substring(0, 200));
-                utterance.pitch = 0.9;
-                utterance.rate = 1.0;
-                window.speechSynthesis.speak(utterance);
+            if (sentientVoice) {
+                ttsService.speak(naturalReply);
             }
 
-            // Execute Actions automatically
             if (actionJson && actionJson.length > 0) {
                 setIsExecuting(true);
                 setActionTrace(actionJson.map(act => ({ type: act.type, status: 'pending', details: act.payload })));
@@ -274,7 +294,6 @@ const Zen = () => {
                     message: res.message || (res.status === 'success' ? 'Completed successfully' : 'Failed')
                 })));
 
-                // Add response from actions execution trace
                 const traceSummary = results.map(res => 
                     `- **${res.action}**: ${res.status === 'success' ? '✅ Executed' : `❌ ${res.message}`}`
                 ).join('\n');
@@ -283,7 +302,7 @@ const Zen = () => {
                     ...prev,
                     {
                         role: 'assistant',
-                        content: `*System Execution Summary:*\n\n${traceSummary}`,
+                        content: `*System Protocol Output:*\n\n${traceSummary}`,
                         timestamp: new Date(),
                         isSystemTrace: true
                     }
@@ -291,10 +310,15 @@ const Zen = () => {
             }
 
         } catch (error) {
-            console.error('ZEN chat error:', error);
+            console.error('ZEN error:', error);
+            let errText = error.message || 'Unknown protocol error';
+            if (errText.includes('distributor') || errText.includes('channel') || errText.includes('Protocol error')) {
+                errText += '\n\n💡 **Tip:** The selected AI provider/model channel is currently unavailable. Please use the **Model Selector bar** at the top of this panel to switch to another active provider or model (e.g. SambaNova or Groq)!';
+            }
+
             setMessages(prev => [
                 ...prev,
-                { role: 'assistant', content: `**System Fault:** ${error.message}`, timestamp: new Date(), isError: true }
+                { role: 'assistant', content: `**Protocol error:** ${errText}`, timestamp: new Date(), isError: true }
             ]);
         } finally {
             setLoading(false);
@@ -308,9 +332,9 @@ const Zen = () => {
             {/* History Sidebar */}
             <Card className="ai-sidebar-mobile" style={{ width: '260px', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', flexShrink: 0 }}>
                 <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border)' }}>
-                    <Button onClick={startNewChat} style={{ width: '100%' }}>
+                    <Button onClick={startNewChat} style={{ width: '100%', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)' }}>
                         <MessageSquare size={16} />
-                        <span style={{ marginLeft: '8px' }}>Initiate Session</span>
+                        <span style={{ marginLeft: '8px' }}>Initiate New Session</span>
                     </Button>
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-sm)' }}>
@@ -332,8 +356,9 @@ const Zen = () => {
                                         padding: 'var(--space-sm) var(--space-md)',
                                         borderRadius: 'var(--radius-md)',
                                         cursor: 'pointer',
-                                        background: sessionId === item.id ? 'var(--primary-100)' : 'transparent',
-                                        color: sessionId === item.id ? 'var(--primary-700)' : 'var(--text-main)',
+                                        background: sessionId === item.id ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                                        border: sessionId === item.id ? '1px solid rgba(168, 85, 247, 0.3)' : '1px solid transparent',
+                                        color: sessionId === item.id ? '#c084fc' : 'var(--text-main)',
                                         fontSize: 'var(--text-sm)',
                                         whiteSpace: 'nowrap',
                                         overflow: 'hidden',
@@ -361,29 +386,21 @@ const Zen = () => {
             {/* Main Chat & Execution Area */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, gap: 'var(--space-md)' }}>
                 
-                {/* Chat Panel */}
-                <Card style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
+                <Card style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0, border: '1px solid rgba(168, 85, 247, 0.25)' }}>
                     {/* Header */}
                     <div style={{ 
                         padding: 'var(--space-md)', 
                         borderBottom: '1px solid var(--border)',
-                        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%)',
+                        background: 'var(--card)',
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                     }}>
                         <div className="flex items-center gap-md">
-                            <div style={{ position: 'relative' }}>
-                                <Brain className="text-primary-500 animate-pulse" size={24} />
-                                <span style={{
-                                    position: 'absolute', bottom: -2, right: -2,
-                                    width: 8, height: 8, borderRadius: '50%',
-                                    background: '#10b981', border: '2px solid var(--surface)'
-                                }} />
-                            </div>
+                            <ZenLogo size={32} />
                             <div>
-                                <h3 style={{ margin: 0, fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    ZEN <Badge variant="accent" size="xs">Sentient AI v1.0</Badge>
+                                <h3 style={{ margin: 0, fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
+                                    ZEN <Badge variant="accent" size="xs">Sentient AI v3.0</Badge>
                                 </h3>
-                                <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>
+                                <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
                                     Active Core Module · Direct Platform Access
                                 </p>
                             </div>
@@ -400,11 +417,70 @@ const Zen = () => {
                                         window.speechSynthesis.cancel();
                                     }
                                 }}
-                                style={{ color: sentientVoice ? 'var(--primary-500)' : 'var(--text-muted)' }}
+                                style={{ color: sentientVoice ? '#c084fc' : 'var(--text-muted)' }}
                             >
                                 <Zap size={14} /> Voice Synthesis: {sentientVoice ? 'ON' : 'OFF'}
                             </Button>
                         </div>
+                    </div>
+
+                    {/* AI Model Selector Sub-Header Bar */}
+                    <div style={{
+                        padding: '8px 16px',
+                        background: 'rgba(15, 17, 26, 0.8)',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
+                            <Cpu size={14} className="text-indigo-400" />
+                            <span style={{ fontWeight: 600, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                Engine Model:
+                            </span>
+                        </div>
+
+                        <select
+                            value={selectedModel}
+                            onChange={(e) => handleModelSelect(e.target.value)}
+                            style={{
+                                flex: 1,
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                border: '1px solid rgba(99, 102, 241, 0.4)',
+                                borderRadius: '8px',
+                                color: '#a78bfa',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                padding: '6px 12px',
+                                outline: 'none',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {allModels.map((m, idx) => (
+                                <option key={`${m.provider}_${m.id}_${idx}`} value={m.id} style={{ background: '#0f172a', color: 'white' }}>
+                                    [{m.provider.toUpperCase()}] {m.name}
+                                </option>
+                            ))}
+                        </select>
+
+                        <button
+                            onClick={() => navigate('/settings')}
+                            style={{
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '8px',
+                                padding: '6px 10px',
+                                color: 'rgba(255,255,255,0.7)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '11px'
+                            }}
+                        >
+                            <Settings size={14} /> AI Settings
+                        </button>
                     </div>
 
                     {/* Messages Container */}
@@ -414,10 +490,10 @@ const Zen = () => {
                                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                                 height: '100%', color: 'var(--text-muted)', textAlign: 'center', padding: 'var(--space-xl)'
                             }}>
-                                <Brain size={48} className="text-primary-200 mb-md animate-bounce" />
-                                <h3>ZEN Core Initialized</h3>
-                                <p style={{ maxWidth: '400px', fontSize: 'var(--text-sm)' }}>
-                                    "Good day, sir. I have synchronized with the database. You can ask me to manage routines, schedule tasks, grade submissions, or handle invitation codes. What are your instructions?"
+                                <ZenLogo size={64} className="mb-md" />
+                                <h3>ZEN Initialized</h3>
+                                <p style={{ maxWidth: '420px', fontSize: 'var(--text-sm)' }}>
+                                    "Systems online and fully synchronized. I am ready to manage your routines, schedule tasks, grade submissions, or analyze your performance trends. What are your instructions?"
                                 </p>
                             </div>
                         ) : (
@@ -428,23 +504,49 @@ const Zen = () => {
                                     display: 'flex', flexDirection: 'column',
                                     alignItems: m.role === 'user' ? 'flex-end' : 'flex-start'
                                 }}>
-                                    <div style={{
+                                    <div 
+                                        className={m.role === 'user' ? 'zen-user-chat-bubble' : 'zen-assistant-chat-bubble'}
+                                        style={{
                                         padding: 'var(--space-md) var(--space-lg)',
                                         borderRadius: 'var(--radius-lg)',
                                         background: m.isSystemTrace 
-                                            ? 'rgba(99, 102, 241, 0.05)'
-                                            : m.role === 'user' ? 'var(--primary-500)' : 'var(--surface-muted)',
-                                        color: m.role === 'user' ? 'white' : 'var(--text-main)',
-                                        border: m.isSystemTrace ? '1px dashed var(--primary-500)' : '1px solid var(--border)',
+                                            ? 'var(--primary-500-alpha, rgba(239, 68, 68, 0.08))'
+                                            : m.role === 'user' 
+                                                ? 'linear-gradient(135deg, var(--primary-500, #f59e0b) 0%, var(--primary-600, #d97706) 50%, var(--primary-700, #b45309) 100%)' 
+                                                : 'var(--card, var(--surface, #ffffff))',
+                                        color: m.role === 'user' ? '#ffffff' : 'var(--text, var(--text-main, #1c1917))',
+                                        border: m.isSystemTrace ? '1px dashed var(--primary-500)' : m.isError ? '1px solid rgba(239, 68, 68, 0.4)' : m.role === 'user' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid var(--border)',
                                         fontSize: 'var(--text-sm)',
-                                        boxShadow: m.role === 'user' ? 'var(--shadow-md)' : 'none'
+                                        boxShadow: m.role === 'user' ? '0 4px 14px var(--primary-500-alpha, rgba(0, 0, 0, 0.25))' : '0 2px 8px rgba(0,0,0,0.06)'
                                     }}>
                                         <div className="markdown-body-zen">
                                             <ReactMarkdown>{m.content}</ReactMarkdown>
                                         </div>
                                     </div>
-                                    <span style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                    <span style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         {m.role === 'user' ? 'You' : 'ZEN'} · {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {m.role === 'assistant' && !m.isSystemTrace && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleSpeakMessage(idx, m.content)}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: speakingIndex === idx ? 'var(--primary-500)' : 'var(--text-muted)',
+                                                    cursor: 'pointer',
+                                                    padding: '2px 4px',
+                                                    borderRadius: '4px',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '2px',
+                                                    fontSize: '10px'
+                                                }}
+                                                title={speakingIndex === idx ? "Stop speaking" : "Listen to audio response"}
+                                            >
+                                                {speakingIndex === idx ? <VolumeX size={12} className="animate-pulse" /> : <Volume2 size={12} />}
+                                                {speakingIndex === idx ? 'Stop' : 'Read Aloud'}
+                                            </button>
+                                        )}
                                     </span>
                                 </div>
                             ))
@@ -452,51 +554,44 @@ const Zen = () => {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Chat Input */}
+                    {/* Execution trace */}
+                    {actionTrace.length > 0 && (
+                        <div style={{
+                            padding: 'var(--space-sm) var(--space-md)',
+                            background: 'rgba(5, 5, 8, 0.95)',
+                            borderTop: '1px solid var(--border)',
+                            fontSize: '11px',
+                            fontFamily: 'monospace',
+                            color: '#10b981'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', opacity: 0.7 }}>
+                                <span>EXECUTION TRACE</span>
+                                {isExecuting && <span className="animate-pulse">EXECUTING...</span>}
+                            </div>
+                            {actionTrace.map((trace, idx) => (
+                                <div key={idx} style={{ 
+                                    color: trace.status === 'success' ? '#10b981' : trace.status === 'pending' ? '#f59e0b' : '#ef4444' 
+                                }}>
+                                    {trace.type} {"->"} {trace.status.toUpperCase()} {trace.message ? `(${trace.message})` : ''}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Input Form */}
                     <form onSubmit={handleSubmit} style={{ padding: 'var(--space-md)', borderTop: '1px solid var(--border)', display: 'flex', gap: 'var(--space-sm)' }}>
                         <Input
-                            placeholder={isExecuting ? "Executing action protocols..." : "Speak to ZEN (e.g., 'Grade my routine logs' or 'Create a task for tomorrow')"}
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
+                            placeholder={isExecuting ? "Executing actions..." : "Command ZEN..."}
                             disabled={loading || isExecuting}
                             style={{ flex: 1 }}
                         />
-                        <Button variant="primary" type="submit" disabled={loading || isExecuting || !input.trim()}>
+                        <Button type="submit" disabled={loading || isExecuting || !input.trim()} style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}>
                             {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                         </Button>
                     </form>
                 </Card>
-
-                {/* Execution Trace Console */}
-                {actionTrace.length > 0 && (
-                    <Card style={{ 
-                        height: '160px', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden',
-                        border: '1px solid var(--primary-500)', background: '#0a0b10', color: '#10b981'
-                    }}>
-                        <div style={{ 
-                            padding: 'var(--space-xs) var(--space-md)', borderBottom: '1px solid #1a1c23',
-                            background: '#0e1017', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            fontSize: '11px', fontWeight: 'bold'
-                        }}>
-                            <div className="flex items-center gap-xs">
-                                <Terminal size={12} />
-                                <span>EXECUTION PROTOCOLS ACTIVE</span>
-                            </div>
-                            {isExecuting && <Badge variant="warning" size="xs">RUNNING</Badge>}
-                        </div>
-                        <div style={{ flex: 1, padding: 'var(--space-sm) var(--space-md)', overflowY: 'auto', fontFamily: 'monospace', fontSize: '11px' }}>
-                            {actionTrace.map((trace, idx) => (
-                                <div key={idx} style={{ 
-                                    marginBottom: '4px',
-                                    color: trace.status === 'success' ? '#10b981' : trace.status === 'pending' ? '#f59e0b' : '#ef4444'
-                                }}>
-                                    [{new Date().toLocaleTimeString()}] {trace.type} {"->"} {trace.status.toUpperCase()} 
-                                    {trace.message ? ` (${trace.message})` : ''}
-                                </div>
-                            ))}
-                        </div>
-                    </Card>
-                )}
             </div>
         </div>
     );

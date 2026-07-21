@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import ZenWidget from './ZenWidget';
+import RoutineApprovalModal from '../routines/RoutineApprovalModal';
 
 const getPageTitle = (pathname) => {
     const titles = {
@@ -52,6 +53,7 @@ const Layout = () => {
                     <Outlet />
                 </div>
             </main>
+            <RoutineApprovalModal />
             <ZenWidget />
         </div>
     );

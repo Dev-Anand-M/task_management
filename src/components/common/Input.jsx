@@ -20,16 +20,15 @@ const Input = forwardRef(({
                 {Icon && (
                     <span style={{
                         position: 'absolute',
-                        left: '0',
-                        width: '48px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
+                        left: '12px',
+                        top: 0,
+                        bottom: 0,
                         color: 'var(--text-muted)',
                         pointerEvents: 'none',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        height: '100%'
+                        zIndex: 2
                     }}>
                         <Icon size={18} />
                     </span>
@@ -39,7 +38,7 @@ const Input = forwardRef(({
                     className={`input ${isTextarea ? 'textarea' : ''} ${isSelect ? 'select' : ''} ${error ? 'input-error' : ''} ${className}`}
                     {...((isTextarea || isSelect) ? (() => { const { type, ...rest } = props; return rest; })() : props)}
                     style={{
-                        ...(Icon ? { paddingLeft: '48px' } : {}),
+                        ...(Icon ? { paddingLeft: '40px' } : {}),
                         ...(props.style || {})
                     }}
                 />
