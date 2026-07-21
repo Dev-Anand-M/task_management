@@ -1,9 +1,10 @@
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import packageJson from '../../package.json';
 
-// Version endpoint - can be a simple JSON file hosted on your server
+// Version endpoint - simple JSON file hosted on Vercel server
 const VERSION_CHECK_URL = 'https://zenith-sable-alpha.vercel.app/version.json';
-const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.0.5.apk';
+const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.1.0.apk';
 
 export const updateChecker = {
   /**
@@ -12,19 +13,23 @@ export const updateChecker = {
    */
   async checkForUpdates() {
     try {
-      // Only works on native Android
-      if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') {
-        return { updateAvailable: false, currentVersion: 'web', latestVersion: 'web', downloadUrl: null };
-      }
+      let currentVersion = packageJson.version || '1.1.0';
 
-      // Get current installed version
-      const appInfo = await App.getInfo();
-      const currentVersion = appInfo.version; // e.g., "1.0.0"
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const appInfo = await App.getInfo();
+          if (appInfo?.version) currentVersion = appInfo.version;
+        } catch (err) {
+          console.warn('[UpdateChecker] Native App.getInfo failed, fallback to package version:', err);
+        }
+      }
 
       // Fetch latest version from server
       const response = await fetch(VERSION_CHECK_URL, { cache: 'no-store' });
+      if (!response.ok) throw new Error('Unable to fetch version metadata');
+      
       const versionData = await response.json();
-      const latestVersion = versionData.version;
+      const latestVersion = versionData.version || '1.1.0';
       const downloadUrl = versionData.downloadUrl || APK_DOWNLOAD_URL;
 
       // Compare versions

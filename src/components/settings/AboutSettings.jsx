@@ -83,7 +83,7 @@ const AboutSettings = () => {
                 </div>
                 <div style={{ padding: 'var(--space-md)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
                     <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Build</p>
-                    <p style={{ margin: '4px 0 0', fontWeight: 600 }}>2026.07.13</p>
+                    <p style={{ margin: '4px 0 0', fontWeight: 600 }}>2026.07.21</p>
                 </div>
             </div>
 
