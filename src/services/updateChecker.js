@@ -4,7 +4,7 @@ import packageJson from '../../package.json';
 
 // Version endpoint - simple JSON file hosted on Vercel server
 const VERSION_CHECK_URL = 'https://zenith-sable-alpha.vercel.app/version.json';
-const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.1.0.apk';
+const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.1.1.apk';
 
 export const updateChecker = {
   /**
