@@ -327,7 +327,7 @@ const Zen = () => {
     };
 
     return (
-        <div className="animate-fade-in flex-mobile-col ai-container-mobile" style={{ height: 'calc(100vh - 120px)', display: 'flex', gap: 'var(--space-md)' }}>
+        <div className="stagger-in flex-mobile-col ai-container-mobile" style={{ flex: 1, minHeight: 0, display: 'flex', gap: 'var(--space-md)' }}>
             
             {/* History Sidebar */}
             <Card className="ai-sidebar-mobile" style={{ width: '260px', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', flexShrink: 0 }}>
@@ -551,6 +551,31 @@ const Zen = () => {
                                 </div>
                             ))
                         )}
+                        {loading && (
+                            <div style={{
+                                alignSelf: 'flex-start',
+                                maxWidth: '85%',
+                                padding: 'var(--space-md) var(--space-lg)',
+                                borderRadius: 'var(--radius-lg)',
+                                background: 'var(--card, #ffffff)',
+                                border: '1px solid var(--primary-500)',
+                                boxShadow: '0 0 15px var(--primary-500-alpha, rgba(99, 102, 241, 0.2))',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px'
+                            }}>
+                                <Loader2 size={16} className="animate-spin text-primary-500" />
+                                <span className="animate-pulse" style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--primary-500)' }}>
+                                    {[
+                                        "Calibrating neural core...",
+                                        "Reading context nodes...",
+                                        "For real thinking bro...",
+                                        "Synthesizing wisdom...",
+                                        "Querying matrix..."
+                                    ][Math.floor((Date.now() / 2500) % 5)]}
+                                </span>
+                            </div>
+                        )}
                         <div ref={messagesEndRef} />
                     </div>
 
@@ -583,7 +608,7 @@ const Zen = () => {
                         <Input
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder={isExecuting ? "Executing actions..." : "Command ZEN..."}
+                            placeholder={loading ? "ZEN is thinking..." : isExecuting ? "Executing actions..." : "Command ZEN..."}
                             disabled={loading || isExecuting}
                             style={{ flex: 1 }}
                         />

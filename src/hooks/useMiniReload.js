@@ -7,6 +7,10 @@ import { useEffect } from 'react';
 export const useMiniReload = (reloadFn) => {
     useEffect(() => {
         const handleRefresh = () => {
+            document.documentElement.classList.add('zenith-reloading');
+            setTimeout(() => {
+                document.documentElement.classList.remove('zenith-reloading');
+            }, 600);
             if (reloadFn) reloadFn();
         };
 

@@ -591,7 +591,7 @@ const AISettings = () => {
                         />
                         <Button
                             variant="secondary"
-                            onClick={() => {
+                            onClick={async () => {
                                 const input = document.getElementById('custom-model-input');
                                 const modelId = input.value.trim();
                                 if (modelId) {
@@ -604,16 +604,12 @@ const AISettings = () => {
                                     if (!availableModels.some(m => m.id === modelId)) {
                                         setAvailableModels([newModel, ...availableModels]);
                                     }
-                                    handleModelChange(modelId);
+                                    const { addCustomModel } = await import('../../services/aiService');
+                                    await addCustomModel(newModel);
+                                    await handleModelChange(modelId);
                                     input.value = '';
 
-                                    const customModels = JSON.parse(localStorage.getItem('custom_ai_models') || '[]');
-                                    if (!customModels.find(m => m.id === modelId)) {
-                                        customModels.push(newModel);
-                                        localStorage.setItem('custom_ai_models', JSON.stringify(customModels));
-                                    }
-
-                                    alert(`Added and selected ${modelId}`);
+                                    alert(`Added and saved custom model ${modelId} to account!`);
                                 }
                             }}
                         >

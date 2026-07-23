@@ -232,6 +232,22 @@ export const sentientBroadcastService = {
                 dispatch.status = 'sent';
                 dispatch.sent_at = now.toISOString();
 
+                // Dynamic AI Sentient notification generation powered by Admin API Keys
+                try {
+                    const { generateAdminSentientNotification } = await import('./aiService');
+                    const aiContent = await generateAdminSentientNotification({
+                        userName: userName || 'Commander',
+                        timeSlot: dispatch.time_slot,
+                        type: dispatch.type,
+                        routinesCount: routines.length,
+                        tasksCount: tasks.filter(t => !t.completed).length,
+                        baseFallback: dispatch.content
+                    });
+                    if (aiContent) dispatch.content = aiContent;
+                } catch (e) {
+                    console.warn('[SentientBroadcast] Admin AI generation fallback:', e);
+                }
+
                 await this.recordBroadcast(userId, {
                     id: dispatch.id,
                     title: dispatch.title,

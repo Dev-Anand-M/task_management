@@ -517,7 +517,210 @@ html[data-theme="light"][data-color-scheme="glass"] .input-field {
   --text-3xl: 1.875rem;
   --text-4xl: 2.25rem;
   --text-5xl: 3rem;
+}
 
+/* ---- Dynamic Font / App Scaling ---- */
+html[data-font-size="small"] {
+  font-size: 14px !important;
+  --text-xs: 0.7rem !important;
+  --text-sm: 0.8rem !important;
+  --text-base: 0.875rem !important;
+  --text-lg: 1rem !important;
+  --text-xl: 1.1rem !important;
+  --text-2xl: 1.3rem !important;
+}
+
+html[data-font-size="normal"] {
+  font-size: 16px !important;
+  --text-xs: 0.75rem !important;
+  --text-sm: 0.875rem !important;
+  --text-base: 1rem !important;
+  --text-lg: 1.125rem !important;
+  --text-xl: 1.25rem !important;
+  --text-2xl: 1.5rem !important;
+}
+
+html[data-font-size="large"] {
+  font-size: 18px !important;
+  --text-xs: 0.85rem !important;
+  --text-sm: 1rem !important;
+  --text-base: 1.125rem !important;
+  --text-lg: 1.25rem !important;
+  --text-xl: 1.4rem !important;
+  --text-2xl: 1.75rem !important;
+}
+
+html[data-font-size="xlarge"] {
+  font-size: 20px !important;
+  --text-xs: 0.95rem !important;
+  --text-sm: 1.125rem !important;
+  --text-base: 1.25rem !important;
+  --text-lg: 1.45rem !important;
+  --text-xl: 1.65rem !important;
+  --text-2xl: 2rem !important;
+}
+
+/* ==========================================================================
+   COHESIVE PREMIUM MOTION GRAPHICS REVEAL ENGINE
+   ========================================================================== */
+
+/* 1. Search Bar Reveal (Initially 70% scale, narrower, opacity 0 -> 100% scale, opacity 1) */
+@keyframes searchBarReveal {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scaleX(0.70) scaleY(0.75);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scaleX(1) scaleY(1);
+  }
+}
+
+/* 2. Cohesive Card Bloom Reveal (Scale 0.75, Opacity 0, Blur 3px -> Scale 1, Opacity 1, Blur 0) */
+@keyframes cardBloomReveal {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.75);
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+/* Page Stage Container Base */
+.stagger-in,
+.animate-fade-in,
+.page-container {
+  animation: searchBarReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Search Bar Motion Reveal (First in Sequence) */
+.search-container-box {
+  animation: searchBarReveal 0.55s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  animation-delay: 0s !important;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Cohesive Card Motion Reveal for All Cards & Component Boxes */
+.card,
+.stat-card,
+.settings-group,
+.settings-section,
+.setting-card,
+.leaderboard-item,
+.material-card,
+.note-card,
+.task-card,
+.routine-card,
+.routine-item,
+.history-item,
+.quiz-card,
+.stagger-item {
+  animation: cardBloomReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  will-change: transform, opacity, filter;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease !important;
+}
+
+/* 70ms Stagger Sequence Between Cards */
+.card:nth-child(1), .stat-card:nth-child(1), .setting-card:nth-child(1), .task-card:nth-child(1), .material-card:nth-child(1), .leaderboard-item:nth-child(1), .routine-card:nth-child(1), .quiz-card:nth-child(1), .stagger-item:nth-child(1) { animation-delay: 0.07s !important; }
+.card:nth-child(2), .stat-card:nth-child(2), .setting-card:nth-child(2), .task-card:nth-child(2), .material-card:nth-child(2), .leaderboard-item:nth-child(2), .routine-card:nth-child(2), .quiz-card:nth-child(2), .stagger-item:nth-child(2) { animation-delay: 0.14s !important; }
+.card:nth-child(3), .stat-card:nth-child(3), .setting-card:nth-child(3), .task-card:nth-child(3), .material-card:nth-child(3), .leaderboard-item:nth-child(3), .routine-card:nth-child(3), .quiz-card:nth-child(3), .stagger-item:nth-child(3) { animation-delay: 0.21s !important; }
+.card:nth-child(4), .stat-card:nth-child(4), .setting-card:nth-child(4), .task-card:nth-child(4), .material-card:nth-child(4), .leaderboard-item:nth-child(4), .routine-card:nth-child(4), .quiz-card:nth-child(4), .stagger-item:nth-child(4) { animation-delay: 0.28s !important; }
+.card:nth-child(5), .stat-card:nth-child(5), .setting-card:nth-child(5), .task-card:nth-child(5), .material-card:nth-child(5), .leaderboard-item:nth-child(5), .routine-card:nth-child(5), .quiz-card:nth-child(5), .stagger-item:nth-child(5) { animation-delay: 0.35s !important; }
+.card:nth-child(6), .stat-card:nth-child(6), .setting-card:nth-child(6), .task-card:nth-child(6), .material-card:nth-child(6), .leaderboard-item:nth-child(6), .routine-card:nth-child(6), .quiz-card:nth-child(6), .stagger-item:nth-child(6) { animation-delay: 0.42s !important; }
+
+/* Interactive Hover/Tap Lift Scale (1.02x + 4px lift) */
+.card:hover,
+.stat-card:hover,
+.setting-card:hover,
+.task-card:hover,
+.material-card:hover,
+.routine-card:hover,
+.quiz-card:hover {
+  transform: translateY(-4px) scale(1.02) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22), 0 0 15px var(--primary-500-alpha, rgba(99, 102, 241, 0.2)) !important;
+}
+
+.card:active,
+.stat-card:active,
+.task-card:active {
+  transform: translateY(-1px) scale(0.99) !important;
+}
+
+/* ==========================================================================
+   DROPDOWN REVEAL ANIMATIONS (Profile & Notifications)
+   ========================================================================== */
+
+@keyframes dropdownRevealDesktop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -14px, 0) scale(0.88);
+    filter: blur(4px);
+  }
+  60% {
+    opacity: 0.95;
+    transform: translate3d(0, 2px, 0) scale(1.02);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+@keyframes dropdownRevealMobile {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 100%, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-scale-in,
+.header-dropdown,
+.notification-dropdown,
+.profile-dropdown {
+  animation: dropdownRevealDesktop 0.35s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  will-change: transform, opacity, filter;
+  transform-origin: top right;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+@media (max-width: 768px) {
+  .header-dropdown,
+  .notification-dropdown,
+  .profile-dropdown {
+    animation: dropdownRevealMobile 0.38s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+    transform-origin: bottom center;
+  }
+}
+
+/* Micro Reload Trigger State */
+.zenith-reloading {
+  animation: searchBarReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+.zenith-reloading .card,
+.zenith-reloading .search-container-box {
+  animation-duration: 0.4s !important;
+}
+
+:root {
   /* Line Heights */
   --leading-tight: 1.25;
   --leading-normal: 1.5;
@@ -3748,10 +3951,59 @@ a img {
   padding: 0 14px !important;
   min-height: 44px !important;
   box-sizing: border-box !important;
-  transition: all 0.2s ease-in-out !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .search-container-box:focus-within {
   border-color: var(--primary-500) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-500), transparent 85%) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-500), transparent 80%), 0 4px 14px var(--primary-500-alpha, rgba(99, 102, 241, 0.2)) !important;
+  transform: translateY(-1px) scale(1.005);
+}
+
+/* ---- 120Hz Smooth Stagger Entrance Animations ---- */
+@keyframes staggerIn {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.stagger-in,
+.animate-fade-in,
+.page-container {
+  animation: staggerIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.stagger-in .card,
+.animate-fade-in .card,
+.stagger-in .search-container-box,
+.animate-fade-in .search-container-box,
+.stagger-in .input-group,
+.animate-fade-in .input-group {
+  animation: staggerIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.stagger-in .card:nth-child(1), .animate-fade-in .card:nth-child(1), .stagger-item:nth-child(1) { animation-delay: 0.03s; }
+.stagger-in .card:nth-child(2), .animate-fade-in .card:nth-child(2), .stagger-item:nth-child(2) { animation-delay: 0.06s; }
+.stagger-in .card:nth-child(3), .animate-fade-in .card:nth-child(3), .stagger-item:nth-child(3) { animation-delay: 0.09s; }
+.stagger-in .card:nth-child(4), .animate-fade-in .card:nth-child(4), .stagger-item:nth-child(4) { animation-delay: 0.12s; }
+.stagger-in .card:nth-child(5), .animate-fade-in .card:nth-child(5), .stagger-item:nth-child(5) { animation-delay: 0.15s; }
+.stagger-in .card:nth-child(6), .animate-fade-in .card:nth-child(6), .stagger-item:nth-child(6) { animation-delay: 0.18s; }
+
+/* ---- Safe-Area & Notch / Navigation Bar Collisions ---- */
+#root {
+  min-height: 100% !important;
+}
+
+.zen-container,
+.ai-assistant-container,
+.zen-full-page {
+  padding-top: env(safe-area-inset-top, 0px) !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  box-sizing: border-box !important;
 }

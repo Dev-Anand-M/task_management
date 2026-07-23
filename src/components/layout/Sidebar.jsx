@@ -67,6 +67,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
     const adminLinks = [
         { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+        { to: '/chat', icon: MessageSquare, label: 'Messages' },
         { to: '/admin/tasks', icon: ListTodo, label: 'Tasks' },
         { to: '/admin/quizzes', icon: HelpCircle, label: 'Quizzes' },
         { to: '/admin/evaluations', icon: ClipboardCheck, label: 'Evaluations' },
@@ -80,6 +81,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
     const memberLinks = [
         { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+        { to: '/chat', icon: MessageSquare, label: 'Messages' },
         { to: '/tasks', icon: ListTodo, label: 'Tasks' },
         { to: '/quizzes', icon: HelpCircle, label: 'Quizzes' },
         { to: '/study-materials', icon: Brain, label: 'Study Materials' },
@@ -96,13 +98,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: '/diary', icon: Target, label: 'Learning Diary' }
     ];
 
-    const memberAiLinks = [
-        { to: '/diary?view=mindmap', icon: Brain, label: 'Mindmap' },
-        { to: '/ai/assistant', icon: MessageSquare, label: 'AI Assistant' }
-    ];
-
     const aiLinks = [
-        { to: '/ai/assistant', icon: MessageSquare, label: 'AI Assistant' },
         { to: '/ai/code-review', icon: Code, label: 'Code Review' },
         { to: '/ai/study-tools', icon: GraduationCap, label: 'Study Tools' },
         { to: '/ai/quiz-generator', icon: Brain, label: 'Quiz Generator' }
@@ -185,7 +181,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 </div>
                             </div>
                             <a
-                                href="/zenith-v1.0.1.apk"
+                                href="/zenith-v1.2.0.apk"
                                 download
                                 style={{
                                     padding: '4px 10px',
@@ -317,6 +313,16 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 >
                                     <link.icon size={18} />
                                     <span style={{ flex: 1 }}>{link.label}</span>
+                                    {link.to === '/chat' && (
+                                      <span style={{
+                                        fontSize: '9px', fontWeight: 700,
+                                        padding: '2px 6px',
+                                        background: 'rgba(99,102,241,0.3)',
+                                        color: '#a5b4fc',
+                                        borderRadius: '8px',
+                                        letterSpacing: '0.02em',
+                                      }}>v2.0</span>
+                                    )}
                                 </NavLink>
                             </li>
                         ))}
@@ -336,46 +342,6 @@ const Sidebar = ({ isOpen, onClose }) => {
                             </div>
                             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                 {consistencyLinks.map(link => (
-                                    <li key={link.to}>
-                                        <NavLink
-                                            to={link.to}
-                                            replace={true}
-                                            onClick={onClose}
-                                            style={({ isActive }) => ({
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 'var(--space-sm)',
-                                                padding: '0.625rem var(--space-md)',
-                                                borderRadius: 'var(--radius-md)',
-                                                color: isActive ? 'var(--sidebar-active-text, #fef3c7)' : 'var(--sidebar-text, rgba(255,255,255,0.8))',
-                                                background: isActive ? 'var(--sidebar-active-bg, rgba(255,255,255,0.2))' : 'transparent',
-                                                textDecoration: 'none',
-                                                fontSize: 'var(--text-sm)',
-                                                fontWeight: isActive ? 600 : 500,
-                                                transition: 'all var(--transition-fast)',
-                                                borderLeft: isActive ? 'var(--sidebar-active-text, #fef3c7)' : '2px solid transparent',
-                                                marginLeft: '0'
-                                            })}
-                                        >
-                                            <link.icon size={18} />
-                                            <span style={{ flex: 1 }}>{link.label}</span>
-                                        </NavLink>
-                                    </li>
-                                ))}
-                            </ul>
-
-                            <div style={{
-                                fontSize: '10px',
-                                color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))',
-                                padding: 'var(--space-md) var(--space-sm) var(--space-xs)',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                                fontWeight: 600
-                            }}>
-                                AI Labs
-                            </div>
-                            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                {memberAiLinks.map(link => (
                                     <li key={link.to}>
                                         <NavLink
                                             to={link.to}

@@ -93,7 +93,7 @@ const Quizzes = () => {
     }
 
     return (
-        <div className="animate-fade-in">
+        <div className="stagger-in">
             {/* Search */}
             <div className="search-container-box" style={{ marginBottom: 'var(--space-lg)' }}>
                 <Search size={18} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />

@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import * as db from '../../services/database';
+import { Capacitor } from '@capacitor/core';
 import { Menu, Bell, Search, User, LogOut, Settings, Clock, Check, ChevronRight, LayoutDashboard, Database, HelpCircle, ArrowRight, ArrowLeft, Sun, Moon, CheckCircle, Award, AlertCircle, Info, X, RefreshCw } from 'lucide-react';
 import { Button, SearchBar, Avatar } from '../common';
 
@@ -204,12 +205,14 @@ const Header = ({ onMenuClick, title }) => {
 
 
 
-        <div className="flex items-center gap-sm">
+        <div className="flex items-center gap-sm" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
           <h1 style={{
-            fontSize: 'var(--text-xl)',
+            fontSize: isMobile ? 'var(--text-lg)' : 'var(--text-xl)',
             fontWeight: 600,
             margin: 0,
-            whiteSpace: 'nowrap'
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
           }}>
             {title}
           </h1>
@@ -650,29 +653,31 @@ const Header = ({ onMenuClick, title }) => {
                     >
                       <Settings size={18} /> Settings
                     </button>
-                    <button
-                      onClick={() => {
-                        window.location.reload();
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        border: 'none',
-                        background: 'none',
-                        color: 'var(--text)',
-                        borderRadius: 'var(--radius-lg)',
-                        cursor: 'pointer',
-                        fontSize: 'var(--text-sm)',
-                        fontWeight: 600,
-                        textAlign: 'left'
-                      }}
-                      className="hover:bg-surface"
-                    >
-                      <RefreshCw size={18} /> Reload App
-                    </button>
+                    {Capacitor.isNativePlatform() && (
+                      <button
+                        onClick={() => {
+                          window.location.reload();
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          border: 'none',
+                          background: 'none',
+                          color: 'var(--text)',
+                          borderRadius: 'var(--radius-lg)',
+                          cursor: 'pointer',
+                          fontSize: 'var(--text-sm)',
+                          fontWeight: 600,
+                          textAlign: 'left'
+                        }}
+                        className="hover:bg-surface"
+                      >
+                        <RefreshCw size={18} /> Reload App
+                      </button>
+                    )}
 
                     <div style={{ height: '1px', background: 'var(--border)', margin: '8px 0' }} />
 

@@ -205,7 +205,9 @@ const Diary = () => {
                             boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
                         }}>
                             <p style={{ margin: '0 0 8px 0', fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--primary-500)', letterSpacing: '1px' }}>Insight Log</p>
-                            <LinkifiedText text={log.learning_notes} />
+                            <div className="markdown-body-zen">
+                                <ReactMarkdown>{log.learning_notes}</ReactMarkdown>
+                            </div>
                         </div>
                     )}
                 </Card>
@@ -283,22 +285,18 @@ const Diary = () => {
         </div>
     );
     const renderMindmapView = () => {
-        let mindmapLogs = logs.filter(l => l.learning_notes && l.status === 'done');
+        // Include Completed, Missed, and Postponed logs in Mindmap
+        let mindmapLogs = logs.filter(l => ['done', 'ignored', 'postponed'].includes(l.status));
         if (mindmapLogs.length === 0) {
-            // Fallback 1: any completed logs
-            mindmapLogs = logs.filter(l => l.status === 'done');
-        }
-        if (mindmapLogs.length === 0) {
-            // Fallback 2: any logs at all
             mindmapLogs = logs;
         }
-        mindmapLogs = mindmapLogs.slice(0, 12);
+        mindmapLogs = mindmapLogs.slice(0, 16);
         
         // Group logs by routine category
         const routineGroups = {};
         mindmapLogs.forEach(l => {
             const rId = l.routine_id || 'flexible';
-            const rTitle = l.snapshot_title || l.routines?.title || 'Flexible Logs';
+            const rTitle = l.snapshot_title || l.routines?.title || 'Flexible Sessions';
             if (!routineGroups[rId]) {
                 routineGroups[rId] = {
                     id: rId,
@@ -354,18 +352,23 @@ const Diary = () => {
             group.logs.forEach((log, logIdx) => {
                 const logRadius = isMobile ? 65 : 100;
                 // Fan out around the routine node angle
-                const fanAngle = M === 1 ? angle : angle - 0.5 + (logIdx / (M - 1)) * 1.0;
+                const fanAngle = M === 1 ? angle : angle - 0.5 + (logIdx / Math.max(M - 1, 1)) * 1.0;
                 const lx = rx + Math.cos(fanAngle) * logRadius;
                 const ly = ry + Math.sin(fanAngle) * logRadius;
 
-                const notesText = log.learning_notes || log.notes || log.notes_text || `Log #${log.id?.toString().slice(0, 4) || logIdx}`;
+                const isDone = log.status === 'done';
+                const isMissed = log.status === 'ignored';
+                const nodeStatusColor = isDone ? '#10b981' : isMissed ? '#ef4444' : '#f59e0b';
+
+                const notesText = log.learning_notes || log.notes || log.notes_text || log.snapshot_title || `Session #${log.id?.toString().slice(0, 4) || logIdx}`;
                 logNodes.push({
                     id: log.id,
                     log,
-                    title: notesText.length > 20 ? notesText.substring(0, 18) + '...' : notesText,
+                    title: notesText.length > 18 ? notesText.substring(0, 16) + '...' : notesText,
                     x: lx,
                     y: ly,
-                    color
+                    color: nodeStatusColor,
+                    statusText: isDone ? 'DONE' : isMissed ? 'MISSED' : 'POSTPONED'
                 });
 
                 // Connect routine to log
@@ -374,7 +377,7 @@ const Diary = () => {
                     y1: ry,
                     x2: lx,
                     y2: ly,
-                    color,
+                    color: nodeStatusColor,
                     dashed: true,
                     width: 1.5
                 });
@@ -410,7 +413,7 @@ const Diary = () => {
                                 stroke={line.color}
                                 strokeWidth={line.width}
                                 strokeDasharray={line.dashed ? "4,4" : "none"}
-                                opacity="0.35"
+                                opacity="0.45"
                             />
                         ))}
                     </svg>
@@ -476,11 +479,11 @@ const Diary = () => {
                                 top: `${node.y}px`,
                                 transform: 'translate(-50%, -50%)',
                                 zIndex: 6,
-                                padding: '8px 12px',
+                                padding: '6px 10px',
                                 background: 'rgba(20, 21, 30, 0.95)',
                                 border: `1px solid rgba(255, 255, 255, 0.08)`,
                                 borderLeft: `3px solid ${node.color}`,
-                                borderRadius: '10px',
+                                borderRadius: '8px',
                                 color: 'var(--text-secondary)',
                                 fontSize: '9px',
                                 fontWeight: 600,
@@ -490,9 +493,19 @@ const Diary = () => {
                                 transition: 'all 0.25s ease-out'
                             }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                <div style={{ width: 4, height: 4, borderRadius: '50%', background: node.color }} />
-                                {node.title}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ 
+                                    padding: '1px 4px', 
+                                    borderRadius: '4px', 
+                                    fontSize: '8px', 
+                                    fontWeight: 800, 
+                                    background: `${node.color}25`, 
+                                    color: node.color,
+                                    border: `1px solid ${node.color}50`
+                                }}>
+                                    {node.statusText}
+                                </span>
+                                <span>{node.title}</span>
                             </div>
                         </div>
                     ))}
@@ -517,13 +530,14 @@ const Diary = () => {
         );
     };
     const renderTimelineView = () => {
-        const todayLogs = filteredLogs.filter(l => l.log_date === timelineDate && l.status === 'done' && l.actual_start_time);
+        const todayLogs = logs.filter(l => l.log_date === timelineDate && ['done', 'ignored', 'postponed'].includes(l.status));
         const hours = Array.from({ length: 24 }, (_, i) => i);
+        const HOUR_HEIGHT = 110; // 110px per hour for roomy, fully readable cards
 
         const toMinutes = (time) => {
-            if (!time) return 0;
+            if (!time) return 600; // Default 10:00 AM if no timestamp specified
             const [h, m] = time.slice(0, 5).split(':').map(Number);
-            return h * 60 + m;
+            return (isNaN(h) ? 10 : h) * 60 + (isNaN(m) ? 0 : m);
         };
 
         const navTimelineDate = (dir) => {
@@ -537,48 +551,57 @@ const Diary = () => {
                 {/* Date Switcher */}
                 <div className="flex justify-between items-center bg-surface p-sm rounded-lg border border-border" style={{ marginBottom: 'var(--space-sm)' }}>
                     <Button variant="ghost" size="sm" icon={ChevronLeft} onClick={() => navTimelineDate(-1)} />
-                    <h3 style={{ margin: 0, fontWeight: 800 }}>
+                    <h3 style={{ margin: 0, fontWeight: 800, fontSize: 'var(--text-lg)' }}>
                         {new Date(timelineDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                     </h3>
                     <Button variant="ghost" size="sm" icon={ChevronRight} onClick={() => navTimelineDate(1)} />
                 </div>
 
-                <div style={{ position: 'relative', background: 'var(--surface)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-xl)', border: '1px solid var(--border)', minHeight: '1500px' }}>
+                <div style={{ position: 'relative', background: 'var(--surface)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-xl)', border: '1px solid var(--border)', minHeight: `${24 * HOUR_HEIGHT + 60}px` }}>
                     <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
                         {/* Time Axis */}
-                        <div style={{ width: '60px', flexShrink: 0 }}>
+                        <div style={{ width: '70px', flexShrink: 0 }}>
                             {hours.map(h => (
-                                <div key={h} style={{ height: '60px', color: 'var(--text-muted)', fontSize: '10px', borderTop: '1px solid var(--border)', paddingTop: '4px' }}>
+                                <div key={h} style={{ height: `${HOUR_HEIGHT}px`, color: 'var(--text-muted)', fontSize: 'var(--text-xs)', borderTop: '1px solid var(--border)', paddingTop: '6px', fontWeight: 600 }}>
                                     {format12h(`${h.toString().padStart(2, '0')}:00`)}
                                 </div>
                             ))}
                         </div>
 
                         {/* Timeline Grid */}
-                        <div style={{ flex: 1, position: 'relative', borderLeft: '1px solid var(--border)', minHeight: '1440px' }}>
+                        <div style={{ flex: 1, position: 'relative', borderLeft: '1px solid var(--border)', minHeight: `${24 * HOUR_HEIGHT}px` }}>
                             {todayLogs.length === 0 ? (
                                 <div style={{
-                                    position: 'absolute', top: '50px', left: '20px', right: '20px',
+                                    position: 'absolute', top: '100px', left: '20px', right: '20px',
                                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                                     textAlign: 'center', padding: 'var(--space-xl)', color: 'var(--text-muted)'
                                 }}>
-                                    <Clock size={40} className="text-primary-300 mb-sm" />
-                                    <h4>No active log timestamps on this date</h4>
-                                    <p style={{ fontSize: 'var(--text-xs)', maxWidth: '300px', margin: '4px 0 0' }}>
-                                        Navigate to another day or log routines for today to view their diary timeline mapping!
+                                    <Clock size={48} className="text-primary-300 mb-sm" />
+                                    <h3 style={{ margin: '8px 0 4px' }}>No session logs recorded on this date</h3>
+                                    <p style={{ fontSize: 'var(--text-sm)', maxWidth: '360px', margin: 0 }}>
+                                        Navigate to another date or complete routines to view your interactive session timeline!
                                     </p>
                                 </div>
                             ) : todayLogs.map((log, i) => {
-                                const start = toMinutes(log.actual_start_time);
-                                const duration = log.time_spent_minutes || 30;
-                                const top = (start / 60) * 60; // 60px per hour
-                                const height = (duration / 60) * 60;
+                                const isFlexible = !log.routine_id || log.routines?.is_anonymous;
+                                const startTimeStr = log.actual_start_time || log.snapshot_start_time || log.routines?.start_time || (isFlexible ? '10:00' : '09:00');
+                                const start = toMinutes(startTimeStr);
+                                const duration = Math.max(log.time_spent_minutes || 30, 25);
+                                const top = (start / 60) * HOUR_HEIGHT;
+                                const height = (duration / 60) * HOUR_HEIGHT;
                                 
-                                // Simple overlap check for visual warning
+                                const isDone = log.status === 'done';
+                                const isMissed = log.status === 'ignored';
+
+                                const statusColor = isDone ? 'var(--success-500, #10b981)' : isMissed ? 'var(--error-500, #ef4444)' : 'var(--warning-500, #f59e0b)';
+                                const statusBg = isDone ? 'rgba(16, 185, 129, 0.12)' : isMissed ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)';
+
+                                // Overlap check for visual warning
                                 const hasOverlap = todayLogs.some(other => {
                                     if (other.id === log.id) return false;
-                                    const otherStart = toMinutes(other.actual_start_time);
-                                    const otherEnd = otherStart + other.time_spent_minutes;
+                                    const otherTimeStr = other.actual_start_time || other.snapshot_start_time || other.routines?.start_time || '09:00';
+                                    const otherStart = toMinutes(otherTimeStr);
+                                    const otherEnd = otherStart + Math.max(other.time_spent_minutes || 30, 25);
                                     const logEnd = start + duration;
                                     return (start < otherEnd) && (logEnd > otherStart);
                                 });
@@ -586,35 +609,49 @@ const Diary = () => {
                                 return (
                                     <div 
                                         key={log.id} 
+                                        onClick={() => setSelectedLog(log)}
                                         style={{
-                                            position: 'absolute', top: `${top}px`, left: '10px', right: '10px',
-                                            height: `${Math.max(height, 50)}px`,
-                                            background: hasOverlap ? 'rgba(239, 68, 68, 0.1)' : 'rgba(99, 102, 241, 0.08)',
-                                            border: `1.5px solid ${hasOverlap ? 'var(--error-500)' : 'var(--primary-500)'}`,
-                                            borderRadius: '12px', padding: '8px 12px', overflow: 'hidden',
-                                            boxShadow: hasOverlap ? '0 0 15px rgba(239, 68, 68, 0.2)' : 'none',
+                                            position: 'absolute', top: `${top}px`, left: '12px', right: '12px',
+                                            minHeight: `${Math.max(height, 75)}px`,
+                                            background: hasOverlap ? 'rgba(239, 68, 68, 0.15)' : statusBg,
+                                            border: `2px solid ${hasOverlap ? 'var(--error-500)' : statusColor}`,
+                                            borderRadius: '12px', padding: '10px 14px', overflow: 'hidden',
+                                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                                             zIndex: hasOverlap ? 2 : 1,
-                                            transition: 'all 0.3s ease',
+                                            transition: 'transform 0.2s, box-shadow 0.2s',
                                             display: 'flex',
                                             flexDirection: 'column',
-                                            justifyContent: 'center'
+                                            justifyContent: 'space-between',
+                                            cursor: 'pointer'
                                         }}
+                                        className="hover:scale-[1.01]"
                                     >
-                                        <div className="flex justify-between items-center">
-                                            <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text)' }}>
-                                                {log.snapshot_title || log.routines?.title}
-                                                {log.routines?.is_anonymous && <Badge variant="accent" size="xs" style={{ marginLeft: '6px' }}>FLEXIBLE</Badge>}
+                                        <div>
+                                            <div className="flex justify-between items-center gap-xs">
+                                                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 800, color: 'var(--text)' }}>
+                                                    {log.snapshot_title || log.routines?.title || 'Flexible Session Log'}
+                                                </div>
+                                                <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
+                                                    {isFlexible && <Badge variant="accent" size="xs">FLEXIBLE TASK</Badge>}
+                                                    <Badge variant={isDone ? 'success' : isMissed ? 'error' : 'warning'} size="xs">
+                                                        {isDone ? 'COMPLETED' : isMissed ? 'MISSED' : 'POSTPONED'}
+                                                    </Badge>
+                                                    {hasOverlap && <Badge variant="error" size="xs"><AlertTriangle size={10} /> Overlap</Badge>}
+                                                </div>
                                             </div>
-                                            {hasOverlap && <Badge variant="error" size="xs"><AlertTriangle size={10} /> Overlap</Badge>}
-                                        </div>
-                                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', gap: '8px' }}>
-                                            <span>Start: {format12h(log.actual_start_time)}</span>
-                                            <span>•</span>
-                                            <span>Duration: {duration} mins</span>
+                                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', gap: '10px', fontWeight: 600 }}>
+                                                <span>⏱️ Scheduled: {format12h(startTimeStr)}</span>
+                                                <span>•</span>
+                                                <span>⏳ Duration: {duration} mins</span>
+                                            </div>
                                         </div>
                                         {log.learning_notes && (
-                                            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                                                Notes: {log.learning_notes}
+                                            <div style={{ 
+                                                fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '6px', 
+                                                padding: '4px 8px', background: 'rgba(0,0,0,0.15)', borderRadius: '6px',
+                                                textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' 
+                                            }}>
+                                                📝 {log.learning_notes}
                                             </div>
                                         )}
                                     </div>

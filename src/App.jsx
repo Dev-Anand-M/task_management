@@ -41,6 +41,7 @@ import Routines from './pages/member/Routines';
 import Diary from './pages/member/Diary';
 import Timetable from './pages/member/Timetable';
 import StudyLab from './pages/member/StudyLab';
+import Chat from './pages/member/Chat';
 
 // AI Pages
 import AIAssistant from './pages/ai/AIAssistant';
@@ -54,6 +55,64 @@ import Leaderboard from './pages/Leaderboard';
 import Settings from './pages/Settings';
 import Notifications from './pages/Notifications';
 import DebugConnection from './pages/DebugConnection';
+
+// Coming Soon wrapper for Chat (v2.0.0 feature)
+const ComingSoonChat = () => {
+  const navigate = useNavigate();
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+      {/* Blurred chat underneath as a teaser */}
+      <div style={{ filter: 'blur(8px)', pointerEvents: 'none', opacity: 0.3, height: '100%' }}>
+        <Chat />
+      </div>
+      {/* Overlay */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+        zIndex: 10,
+      }}>
+        <div style={{
+          textAlign: 'center', padding: '48px 32px',
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: '24px', maxWidth: '420px', width: '90%',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+        }}>
+          <div style={{
+            width: '80px', height: '80px', margin: '0 auto 20px',
+            background: 'var(--gradient-primary)', borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '36px',
+          }}>💬</div>
+          <h2 style={{ margin: '0 0 8px', fontSize: '24px', fontWeight: 800 }}>Messages</h2>
+          <p style={{ margin: '0 0 20px', color: 'var(--text-muted)', fontSize: '15px', lineHeight: 1.5 }}>
+            Real-time messaging is coming soon.<br />Stay tuned!
+          </p>
+          <div style={{
+            display: 'inline-block', padding: '8px 20px',
+            background: 'var(--gradient-secondary)', borderRadius: '20px',
+            fontWeight: 700, fontSize: '14px', letterSpacing: '0.5px',
+            color: 'white', marginBottom: '20px',
+          }}>
+            Coming in v2.0.0
+          </div>
+          <br />
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              marginTop: '8px', padding: '12px 32px',
+              background: 'var(--primary-500)', color: 'white',
+              border: 'none', borderRadius: '12px',
+              fontWeight: 700, fontSize: '15px', cursor: 'pointer',
+            }}
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Protected Route Component (Layout Wrapper)
 const ProtectedLayout = ({ requiredRole }) => {
@@ -214,6 +273,7 @@ function AppRoutes() {
 
         {/* Shared Routes */}
         <Route path="/profile" element={<ProfileRouter />} />
+        <Route path="/chat" element={<ComingSoonChat />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/notifications" element={<Notifications />} />

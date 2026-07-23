@@ -114,16 +114,27 @@ const GlobalAlarmListener = () => {
         setNextAlarm(next);
     };
 
+    const playAlarmChime = () => {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.6);
+        } catch (e) {}
+    };
+
     const triggerAlarm = (routine) => {
         setActiveAlarm(routine);
         setShowStopModal(true);
-        
-        // Removed browser notification - push notifications handle this to prevent duplicates
-        // The alarm modal and audio are sufficient for in-app alerts
-
-        if (audioRef.current) {
-            audioRef.current.play().catch(e => console.warn('[Alarm] Audio blocked:', e));
-        }
+        playAlarmChime();
     };
 
     const toggleEnabled = async () => {
@@ -195,7 +206,6 @@ const GlobalAlarmListener = () => {
 
     return (
         <>
-            <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto" loop />
             
             {showStopModal && (
                 <div style={{

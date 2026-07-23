@@ -4,7 +4,7 @@ import packageJson from '../../package.json';
 
 // Version endpoint - simple JSON file hosted on Vercel server
 const VERSION_CHECK_URL = 'https://zenith-sable-alpha.vercel.app/version.json';
-const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.1.1.apk';
+const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.2.0.apk';
 
 export const updateChecker = {
   /**
@@ -13,7 +13,7 @@ export const updateChecker = {
    */
   async checkForUpdates() {
     try {
-      let currentVersion = packageJson.version || '1.1.0';
+      let currentVersion = packageJson.version || '1.2.0';
 
       if (Capacitor.isNativePlatform()) {
         try {
@@ -29,7 +29,7 @@ export const updateChecker = {
       if (!response.ok) throw new Error('Unable to fetch version metadata');
       
       const versionData = await response.json();
-      const latestVersion = versionData.version || '1.1.0';
+      const latestVersion = versionData.version || '1.2.0';
       const downloadUrl = versionData.downloadUrl || APK_DOWNLOAD_URL;
 
       // Compare versions
@@ -54,12 +54,14 @@ export const updateChecker = {
    * @returns {number} -1 if v1 < v2, 0 if equal, 1 if v1 > v2
    */
   compareVersions(v1, v2) {
-    const parts1 = v1.split('.').map(Number);
-    const parts2 = v2.split('.').map(Number);
+    const clean1 = (v1 || '').toString().replace(/^v/i, '').trim();
+    const clean2 = (v2 || '').toString().replace(/^v/i, '').trim();
+    const parts1 = clean1.split('.').map(Number);
+    const parts2 = clean2.split('.').map(Number);
 
     for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-      const num1 = parts1[i] || 0;
-      const num2 = parts2[i] || 0;
+      const num1 = isNaN(parts1[i]) ? 0 : parts1[i];
+      const num2 = isNaN(parts2[i]) ? 0 : parts2[i];
 
       if (num1 < num2) return -1;
       if (num1 > num2) return 1;
@@ -69,14 +71,22 @@ export const updateChecker = {
   },
 
   /**
-   * Open the download URL in the system browser
+   * Directly download/open the update APK file
    */
-  async downloadUpdate(downloadUrl) {
+  async downloadUpdate(downloadUrl = APK_DOWNLOAD_URL) {
     try {
-      const { Browser } = await import('@capacitor/browser');
-      await Browser.open({ url: downloadUrl });
+      if (Capacitor.isNativePlatform()) {
+        const { Browser } = await import('@capacitor/browser');
+        await Browser.open({ url: downloadUrl });
+      } else {
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = downloadUrl.split('/').pop() || 'zenith-latest.apk';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     } catch (error) {
-      // Fallback to window.open if Browser plugin not available
       window.open(downloadUrl, '_blank');
     }
   },

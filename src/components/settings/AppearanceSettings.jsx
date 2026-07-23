@@ -62,7 +62,14 @@ const colorSchemes = [
 ];
 
 const AppearanceSettings = () => {
-    const { isDark, toggleTheme, colorScheme, setColorScheme } = useTheme();
+    const { isDark, toggleTheme, colorScheme, setColorScheme, fontSize, setFontSize } = useTheme();
+
+    const fontSizes = [
+        { id: 'small', label: 'Small', size: '14px' },
+        { id: 'normal', label: 'Normal (Default)', size: '16px' },
+        { id: 'large', label: 'Large', size: '18px' },
+        { id: 'xlarge', label: 'Extra Large', size: '20px' }
+    ];
 
     return (
         <Card>
@@ -82,7 +89,7 @@ const AppearanceSettings = () => {
                 <div>
                     <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>Appearance</h3>
                     <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-                        Customize how Zenith looks
+                        Customize how Zenith looks and scales
                     </p>
                 </div>
             </div>
@@ -133,6 +140,37 @@ const AppearanceSettings = () => {
                         <span style={{ fontWeight: 600, color: isDark ? 'var(--primary-300)' : 'var(--text)' }}>Dark</span>
                         {isDark && <Check size={16} style={{ color: 'var(--primary-300)' }} />}
                     </button>
+                </div>
+            </div>
+
+            {/* Font Size Scaling */}
+            <div style={{ marginBottom: 'var(--space-xl)' }}>
+                <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-md)', color: 'var(--text-muted)' }}>
+                    GLOBAL FONT / APP TEXT SCALE
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-sm)' }}>
+                    {fontSizes.map((f) => (
+                        <button
+                            key={f.id}
+                            onClick={() => setFontSize(f.id)}
+                            style={{
+                                padding: 'var(--space-md)',
+                                background: (fontSize === f.id || (!fontSize && f.id === 'normal')) ? 'var(--primary-500-alpha, rgba(99, 102, 241, 0.15))' : 'var(--card)',
+                                border: (fontSize === f.id || (!fontSize && f.id === 'normal')) ? '2px solid var(--primary-500)' : '1px solid var(--border)',
+                                borderRadius: 'var(--radius-md)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                color: 'var(--text)',
+                                fontWeight: 600,
+                                fontSize: f.size
+                            }}
+                        >
+                            <span>{f.label}</span>
+                            {(fontSize === f.id || (!fontSize && f.id === 'normal')) && <Check size={16} style={{ color: 'var(--primary-500)' }} />}
+                        </button>
+                    ))}
                 </div>
             </div>
 

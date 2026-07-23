@@ -26,7 +26,5 @@ export const minutesTo12h = (totalMinutes) => {
 };
 
 export const getLocalDatePickerDate = (date = new Date()) => {
-    const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-    return localDate.toISOString().split('T')[0];
+    return new Date(date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 };

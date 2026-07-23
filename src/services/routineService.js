@@ -142,10 +142,7 @@ export const routineService = {
         let logDate = data.log_date;
         
         if (!logDate) {
-            const now = new Date();
-            const offset = now.getTimezoneOffset();
-            const localDate = new Date(now.getTime() - (offset * 60 * 1000));
-            logDate = localDate.toISOString().split('T')[0];
+            logDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
         }
         
         const cleanedData = { ...data };

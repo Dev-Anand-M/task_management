@@ -301,15 +301,15 @@ const Calendar = () => {
     return (
         <div className="animate-fade-in" style={{ paddingBottom: 'var(--space-2xl)' }}>
             {/* Header */}
-            <div className="flex flex-mobile-col justify-between items-center mb-lg" style={{ gap: 'var(--space-md)' }}>
+            <div className="flex flex-mobile-col justify-between items-start mb-lg" style={{ gap: 'var(--space-md)' }}>
                 <div>
-                    <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <CalendarIcon className="text-primary-400" />
+                    <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: 'var(--text-xl)' }}>
+                        <CalendarIcon className="text-primary-400" size={24} />
                         Activity Calendar
                     </h2>
-                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>Tasks, quizzes, and milestones at a glance</p>
+                    <p style={{ color: 'var(--text-muted)', margin: '4px 0 0 0', fontSize: 'var(--text-sm)' }}>Tasks, quizzes, and milestones at a glance</p>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-start' }}>
                     <button onClick={() => setView('month')} style={{
                         padding: '8px 16px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border)', cursor: 'pointer',
                         fontWeight: 700, fontSize: 'var(--text-xs)',

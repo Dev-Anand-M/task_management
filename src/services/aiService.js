@@ -41,10 +41,30 @@ export const AVAILABLE_MODELS = [
     { id: 'llama-3.1-sonar-large-128k-online', provider: 'perplexity', name: 'Sonar Large 3.1', description: 'Auto-calibrated for Perplexity', inputTokenLimit: '128k', outputTokenLimit: '4k' }
 ];
 
+// Get custom models per user account
+export const getCustomModels = () => {
+    try {
+        const stored = localStorage.getItem(getStorageKeyName('custom_ai_models'));
+        return stored ? JSON.parse(stored) : [];
+    } catch {
+        return [];
+    }
+};
+
+// Add custom model per user account
+export const addCustomModel = async (modelObj) => {
+    const existing = getCustomModels();
+    if (!existing.some(m => m.id === modelObj.id)) {
+        const updated = [...existing, modelObj];
+        localStorage.setItem(getStorageKeyName('custom_ai_models'), JSON.stringify(updated));
+        await syncToDatabase();
+    }
+};
+
 // Dynamically fetch static + custom user added models
 export const getAllAvailableModels = () => {
     try {
-        const customModels = JSON.parse(localStorage.getItem('custom_ai_models') || '[]');
+        const customModels = getCustomModels();
         const existingIds = new Set(AVAILABLE_MODELS.map(m => m.id));
         const uniqueCustom = customModels.filter(m => m && m.id && !existingIds.has(m.id));
         return [...AVAILABLE_MODELS, ...uniqueCustom];
@@ -168,13 +188,15 @@ export const syncToDatabase = async () => {
         const usage = getUsageStats();
         const priority = getProviderPriority();
         const defaultProvider = localStorage.getItem(getStorageKeyName('ai_default_provider'));
+        const customModels = getCustomModels();
 
         const aiSettings = {
             keys: keys,
             selected_model: model,
             usage: usage,
             provider_priority: priority,
-            default_provider: defaultProvider
+            default_provider: defaultProvider,
+            custom_models: customModels
         };
 
         await supabase
@@ -386,6 +408,9 @@ export const loadFromDatabase = async () => {
             }
             if (settings.default_provider) {
                 localStorage.setItem(getStorageKeyName('ai_default_provider'), settings.default_provider);
+            }
+            if (settings.custom_models && Array.isArray(settings.custom_models)) {
+                localStorage.setItem(getStorageKeyName('custom_ai_models'), JSON.stringify(settings.custom_models));
             }
             return true;
         }
@@ -1603,6 +1628,103 @@ Important: Double check payload parameters. ONLY respond with the action array i
     return generateChat(messages, systemPrompt, model);
 };
 
+/**
+ * Generate sentient background notification strictly powered by Admin's API key rotation system.
+ * User's own API keys are NEVER used for system-level notifications.
+ * If all admin keys fail, an alert notification is sent to the admin.
+ */
+export const generateAdminSentientNotification = async ({ userName, timeSlot, type, routinesCount, tasksCount, baseFallback }) => {
+    try {
+        // Fetch Admin API keys from Supabase profiles
+        const { data: adminProfiles } = await supabase
+            .from('profiles')
+            .select('id, email, preferences, role, is_admin')
+            .or('role.eq.admin,is_admin.eq.true');
+
+        let adminKeys = [];
+
+        if (adminProfiles && adminProfiles.length > 0) {
+            for (const admin of adminProfiles) {
+                const prefs = admin.preferences || {};
+                const keys = [
+                    prefs.sambanova_api_key,
+                    prefs.groq_api_key,
+                    prefs.gemini_api_key,
+                    prefs.openai_api_key,
+                    prefs.hcnsec_api_key
+                ].filter(Boolean);
+                adminKeys.push(...keys);
+            }
+        }
+
+        // Add local admin cached keys if available
+        const localAdminKeys = Object.values(PROVIDERS)
+            .map(p => decryptedKeysCache[p.keyName])
+            .filter(Boolean);
+        adminKeys.push(...localAdminKeys);
+
+        // Deduplicate admin keys
+        adminKeys = [...new Set(adminKeys)];
+
+        if (adminKeys.length === 0) {
+            console.warn('[AdminAI] No admin API keys configured. Using base dispatch content.');
+            return baseFallback;
+        }
+
+        const systemPrompt = `You are ZEN, a sentient, witty, high-tech AI personal assistant for ${userName}.
+Generate a short 1-2 sentence engaging, highly motivating notification message for the user for the ${timeSlot} pulse (${type}).
+Context: User has ${routinesCount} active routines and ${tasksCount} pending tasks.
+Do NOT use quotes or hashtags. Be direct, crisp, and inspiring.`;
+
+        // Try admin keys in rotation
+        for (const key of adminKeys) {
+            try {
+                // Determine provider by key pattern or try SambaNova/Groq
+                const res = await fetch('https://api.sambanova.ai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'Meta-Llama-3.3-70B-Instruct',
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: 'Generate notification message.' }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 100
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    const text = data.choices?.[0]?.message?.content?.trim();
+                    if (text) return text;
+                }
+            } catch (err) {
+                console.warn('[AdminAI] Admin key rotation attempt failed, trying next key...', err);
+            }
+        }
+
+        // If ALL admin API keys fail, notify admin in Supabase notifications table!
+        if (adminProfiles && adminProfiles.length > 0) {
+            for (const admin of adminProfiles) {
+                await supabase.from('notifications').insert([{
+                    user_id: admin.id,
+                    title: '🚨 Admin AI Key Exhaustion Alert',
+                    message: 'All Admin API keys failed during autonomous sentient notification generation. Please update admin keys in Settings > AI Settings.',
+                    type: 'system_alert',
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                }]);
+            }
+        }
+
+        return baseFallback;
+    } catch (err) {
+        console.error('[AdminAI] Notification generation error:', err);
+        return baseFallback;
+    }
+};
+
 export default {
     AVAILABLE_MODELS,
     getAllAvailableModels,
@@ -1632,5 +1754,6 @@ export default {
     getHistory,
     deleteHistoryItem,
     updateHistory,
-    zenChat
+    zenChat,
+    generateAdminSentientNotification
 };

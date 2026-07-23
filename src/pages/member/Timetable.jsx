@@ -119,11 +119,13 @@ const Timetable = () => {
                 const parts = response.split('---METADATA---');
                 text = parts[0];
                 metadataStr = parts[1];
-            } else if (response.includes('{"routines":')) {
-                // Fallback: Try to find start of JSON if marker is missing
-                const jsonStart = response.indexOf('{"routines":');
-                text = response.substring(0, jsonStart);
-                metadataStr = response.substring(jsonStart);
+            } else if (response.includes('{"routines":') || response.includes('[{"day":') || response.includes('[ { "day":')) {
+                const match = response.match(/(\{|\[)[\s\S]*(\}|\])/);
+                if (match) {
+                    const jsonStart = response.indexOf(match[0]);
+                    text = response.substring(0, jsonStart);
+                    metadataStr = match[0];
+                }
             }
             
             if (metadataStr) {
@@ -140,8 +142,9 @@ const Timetable = () => {
                     const metadata = JSON.parse(cleanedMetadata);
                     
                     // 1. Sync Timetable (Routines)
-                    if (metadata.routines) {
-                        await routineService.replaceAllRoutines(metadata.routines);
+                    const routinesList = metadata.routines || (Array.isArray(metadata) ? metadata : null);
+                    if (routinesList) {
+                        await routineService.replaceAllRoutines(routinesList);
                     }
                     
                     // 2. Perform Log Actions (Today's instances)
@@ -161,7 +164,12 @@ const Timetable = () => {
                 }
             }
 
-            setMessages(prev => [...prev, { role: 'assistant', content: text.trim() }]);
+            let displayText = text.replace(/```json[\s\S]*?```/gi, '').replace(/[\{\[\"]+day[\s\S]*/gi, '').trim();
+            if (!displayText) {
+                displayText = "I've processed your request and updated your AI Timetable schedule!";
+            }
+
+            setMessages(prev => [...prev, { role: 'assistant', content: displayText }]);
         } catch (err) {
             setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I encountered an error while updating your schedule. " + err.message }]);
         } finally {
@@ -173,30 +181,37 @@ const Timetable = () => {
     const daysMap = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 7 };
 
     return (
-        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', paddingBottom: 'var(--space-2xl)' }}>
-            <div className="flex justify-between items-center mb-lg">
+        <div className="stagger-in" style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: 'var(--space-md)', 
+            paddingBottom: 'var(--space-2xl)', 
+            paddingTop: isMobile ? 'var(--space-sm)' : 0,
+            minHeight: 0 
+        }}>
+            {/* Page Header */}
+            <div className="flex flex-mobile-col justify-between items-start gap-md mb-md" style={{ flexWrap: 'wrap' }}>
                 <div>
-                    <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', fontSize: isMobile ? 'var(--text-xl)' : 'var(--text-4xl)' }}>
-                        <Brain className="text-primary-500" /> {isMobile ? 'AI Planner' : 'AI Scheduling Architect'}
+                    <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: isMobile ? 'var(--text-xl)' : 'var(--text-3xl)', fontWeight: 800 }}>
+                        <Brain className="text-primary-500" /> {isMobile ? 'AI Schedule Architect' : 'AI Scheduling Architect'}
                     </h1>
-                    <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: isMobile ? '10px' : 'var(--text-sm)' }}>Natural language timetable management</p>
+                    <p style={{ color: 'var(--text-muted)', margin: '4px 0 0', fontSize: 'var(--text-xs)', fontWeight: 600 }}>Natural language routine & timetable management</p>
                 </div>
-                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                    <Button variant="ghost" icon={Calendar} onClick={() => {
+                <div style={{ display: 'flex', gap: 'var(--space-xs)', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <Button variant="ghost" size="sm" icon={Calendar} onClick={() => {
                         const icsContent = routineService.generateICS(routines);
                         shareOrDownloadFile(icsContent, 'zenith_routines.ics', 'text/calendar;charset=utf-8');
-                    }}>Export to Calendar</Button>
-                    <Badge variant="primary" icon={RefreshCw}>Live Sync Active</Badge>
+                    }}>Export .ICS</Button>
+                    <Badge variant="primary" icon={RefreshCw} size="sm">Live Sync</Badge>
                 </div>
             </div>
 
             <div style={{ 
                 display: 'flex', 
                 flexDirection: isMobile ? 'column' : 'row', 
-                gap: 'var(--space-lg)', 
+                gap: 'var(--space-md)', 
                 flex: 1, 
-                minHeight: 0,
-                overflow: isMobile ? 'auto' : 'hidden'
+                minHeight: 0
             }}>
                 {/* Chat Column */}
                 <Card style={{ 
@@ -205,19 +220,20 @@ const Timetable = () => {
                     padding: 0, 
                     overflow: 'hidden', 
                     border: '1px solid var(--border)',
-                    width: isMobile ? '100%' : '350px',
-                    height: isMobile ? '500px' : 'calc(100dvh - 230px)',
+                    width: isMobile ? '100%' : '340px',
+                    height: isMobile ? '380px' : 'auto',
+                    minHeight: isMobile ? '350px' : '500px',
                     flexShrink: 0,
-                    boxShadow: 'var(--shadow-lg)',
+                    boxShadow: 'var(--shadow-md)',
                     borderRadius: 'var(--radius-xl)'
                 }}>
-                    <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border)', background: 'rgba(99, 102, 241, 0.05)' }}>
-                        <h3 style={{ margin: 0, fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary-500)' }}>
-                            <Sparkles size={16} /> Strategy & Planning
+                    <div style={{ padding: 'var(--space-sm) var(--space-md)', borderBottom: '1px solid var(--border)', background: 'rgba(99, 102, 241, 0.05)' }}>
+                        <h3 style={{ margin: 0, fontSize: 'var(--text-xs)', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary-500)', fontWeight: 800 }}>
+                            <Sparkles size={14} /> AI TIMETABLE ASSISTANT
                         </h3>
                     </div>
                     
-                    <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
                         {messages.map((msg, i) => (
                             <div key={i} style={{ 
                                 alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
@@ -227,11 +243,11 @@ const Timetable = () => {
                                 gap: '2px'
                             }}>
                                 <div style={{ 
-                                    padding: '10px 14px', 
-                                    borderRadius: msg.role === 'user' ? '18px 18px 2px 18px' : '18px 18px 18px 2px',
+                                    padding: '8px 12px', 
+                                    borderRadius: msg.role === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
                                     background: msg.role === 'user' ? 'var(--primary-600)' : 'var(--surface)',
                                     color: msg.role === 'user' ? 'white' : 'var(--text)',
-                                    fontSize: '13px',
+                                    fontSize: 'var(--text-xs)',
                                     fontWeight: '500',
                                     boxShadow: 'var(--shadow-sm)',
                                     border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
@@ -246,38 +262,38 @@ const Timetable = () => {
                             </div>
                         ))}
                         {sending && (
-                            <div style={{ alignSelf: 'flex-start', padding: '10px 14px', background: 'var(--surface)', borderRadius: '18px 18px 18px 2px', border: '1px solid var(--border)' }}>
+                            <div style={{ alignSelf: 'flex-start', padding: '8px 12px', background: 'var(--surface)', borderRadius: '14px 14px 14px 2px', border: '1px solid var(--border)' }}>
                                 <LoadingSpinner size="sm" />
                             </div>
                         )}
                         <div ref={chatEndRef} />
                     </div>
 
-                    <form onSubmit={handleSendMessage} style={{ padding: 'var(--space-md)', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
-                        <div className="flex gap-sm">
+                    <form onSubmit={handleSendMessage} style={{ padding: 'var(--space-sm)', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
+                        <div className="flex gap-xs">
                             <Input 
                                 placeholder="e.g. Add 2h study every Mon" 
                                 value={userInput} 
                                 onChange={e => setUserInput(e.target.value)}
                                 disabled={sending}
-                                style={{ margin: 0, borderRadius: 'var(--radius-full)' }}
+                                style={{ margin: 0, borderRadius: 'var(--radius-full)', fontSize: 'var(--text-xs)' }}
                             />
-                            <Button variant="primary" type="submit" disabled={sending || !userInput.trim()} style={{ borderRadius: 'var(--radius-full)', width: '42px', height: '42px', padding: 0 }}>
-                                <Send size={18} />
+                            <Button variant="primary" type="submit" disabled={sending || !userInput.trim()} style={{ borderRadius: 'var(--radius-full)', width: '38px', height: '38px', padding: 0, flexShrink: 0 }}>
+                                <Send size={16} />
                             </Button>
                         </div>
                     </form>
                 </Card>
 
                 {/* Timetable View */}
-                <div style={{ flex: 1, minWidth: 0, paddingRight: '4px', height: isMobile ? 'auto' : 'calc(100dvh - 230px)', overflowY: isMobile ? 'visible' : 'auto' }}>
-                    <Card style={{ marginBottom: 'var(--space-md)', background: 'linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%)', border: '1px solid var(--primary-500)' }}>
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-md">
-                                <RefreshCw className="text-primary-500 animate-spin-slow" />
+                <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
+                    <Card style={{ marginBottom: 'var(--space-md)', background: 'linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%)', border: '1px solid var(--primary-500)', padding: 'var(--space-md)' }}>
+                        <div className="flex justify-between items-center gap-sm flex-wrap">
+                            <div className="flex items-center gap-sm" style={{ flex: 1, minWidth: '200px' }}>
+                                <RefreshCw size={20} className="text-primary-500 animate-spin-slow" style={{ flexShrink: 0 }} />
                                 <div>
-                                    <h3 style={{ margin: 0, fontSize: 'var(--text-sm)' }}>Live Calendar Sync</h3>
-                                    <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                    <h3 style={{ margin: 0, fontSize: 'var(--text-xs)', fontWeight: 800 }}>Live Calendar Sync</h3>
+                                    <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>
                                         Subscribe once, and your phone calendar will auto-update with the AI's plan.
                                     </p>
                                 </div>
@@ -291,38 +307,38 @@ const Timetable = () => {
                     </Card>
 
                     {loading ? (
-                        <div className="flex justify-center p-2xl"><LoadingSpinner size="lg" /></div>
+                        <div className="flex justify-center p-xl"><LoadingSpinner size="lg" /></div>
                     ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-md)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 'var(--space-md)' }}>
                             {days.map(day => {
                                 const dayNum = daysMap[day];
                                 const dayRoutines = routines.filter(r => r.days_of_week.includes(dayNum))
                                     .sort((a,b) => a.start_time.localeCompare(b.start_time));
 
                                 return (
-                                    <Card key={day} style={{ display: 'flex', flexDirection: 'column', minHeight: '150px' }}>
-                                        <div className="flex justify-between items-center mb-md">
-                                            <h3 style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 800 }}>{day}</h3>
+                                    <Card key={day} style={{ display: 'flex', flexDirection: 'column', minHeight: '140px', padding: 'var(--space-sm)' }}>
+                                        <div className="flex justify-between items-center mb-sm">
+                                            <h3 style={{ margin: 0, fontSize: 'var(--text-xs)', fontWeight: 800 }}>{day}</h3>
                                             <Badge variant={dayRoutines.length > 0 ? 'primary' : 'secondary'} size="xs">{dayRoutines.length}</Badge>
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                             {dayRoutines.map((r, i) => (
                                                 <div key={i} style={{ 
-                                                    padding: '8px', 
+                                                    padding: '6px 8px', 
                                                     background: 'var(--bg)', 
-                                                    borderRadius: '8px',
+                                                    borderRadius: '6px',
                                                     borderLeft: '3px solid var(--primary-500)',
-                                                    fontSize: '11px'
+                                                    fontSize: '10px'
                                                 }}>
                                                     <div style={{ color: 'var(--primary-500)', fontWeight: 700, marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                         {r.is_anonymous ? <Zap size={10} fill="currentColor" /> : <Clock size={10} />}
                                                         {r.is_anonymous ? 'Flexible' : format12h(r.start_time)}
                                                     </div>
-                                                    <div style={{ fontWeight: 600 }}>{r.title}</div>
+                                                    <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.title}</div>
                                                 </div>
                                             ))}
                                             {dayRoutines.length === 0 && (
-                                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '10px', fontStyle: 'italic', height: '60px' }}>
+                                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '10px', fontStyle: 'italic', height: '40px' }}>
                                                     Free Day
                                                 </div>
                                             )}

@@ -48,6 +48,24 @@ export const ThemeProvider = ({ children }) => {
     // Let's try to grab the user session directly from supabase in useEffect to sync initial state
     // but avoid tight coupling if possible.
 
+    const [fontSize, setFontSizeState] = useState(() => {
+        return localStorage.getItem('zenith_font_size') || 'normal';
+    });
+
+    const setFontSize = (newSize) => {
+        setFontSizeState(newSize);
+        localStorage.setItem('zenith_font_size', newSize);
+        applyFontSize(newSize);
+        syncPreferenceToDb({ fontSize: newSize });
+    };
+
+    const applyFontSize = (size) => {
+        const fontMap = { small: '14px', normal: '16px', large: '18px', xlarge: '20px' };
+        const pxValue = fontMap[size] || '16px';
+        document.documentElement.style.fontSize = pxValue;
+        document.documentElement.setAttribute('data-font-size', size);
+    };
+
     const setTheme = (newTheme) => {
         setThemeState(newTheme);
         storage.setTheme(newTheme);
@@ -65,8 +83,6 @@ export const ThemeProvider = ({ children }) => {
         // Save to DB if user is logged in
         syncPreferenceToDb({ colorScheme: newScheme });
     };
-
-
 
     // Helper to sync to DB
     const syncPreferenceToDb = async (prefUpdate) => {
@@ -95,6 +111,7 @@ export const ThemeProvider = ({ children }) => {
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.setAttribute('data-color-scheme', colorScheme);
+        applyFontSize(fontSize);
 
         const fetchAndApplyPrefs = async (userId) => {
             try {
@@ -114,6 +131,11 @@ export const ThemeProvider = ({ children }) => {
                         setColorSchemeState(profileData.preferences.colorScheme);
                         localStorage.setItem('skillquest_color_scheme', profileData.preferences.colorScheme);
                         document.documentElement.setAttribute('data-color-scheme', profileData.preferences.colorScheme);
+                    }
+                    if (profileData.preferences.fontSize) {
+                        setFontSizeState(profileData.preferences.fontSize);
+                        localStorage.setItem('zenith_font_size', profileData.preferences.fontSize);
+                        applyFontSize(profileData.preferences.fontSize);
                     }
                 }
             } catch (err) {
@@ -135,6 +157,10 @@ export const ThemeProvider = ({ children }) => {
                     setColorSchemeState('gold');
                     localStorage.setItem('skillquest_color_scheme', 'gold');
                     document.documentElement.setAttribute('data-color-scheme', 'gold');
+
+                    setFontSizeState('normal');
+                    localStorage.setItem('zenith_font_size', 'normal');
+                    applyFontSize('normal');
                 }
             }
         );
@@ -154,7 +180,9 @@ export const ThemeProvider = ({ children }) => {
         isDark: theme === 'dark',
         toggleTheme,
         colorScheme,
-        setColorScheme
+        setColorScheme,
+        fontSize,
+        setFontSize
     };
 
     return (

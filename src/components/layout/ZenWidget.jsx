@@ -397,6 +397,8 @@ const ZenWidget = () => {
                 bottom: 0,
                 width: '400px',
                 maxWidth: '92vw',
+                paddingTop: 'env(safe-area-inset-top, 0px)',
+                paddingBottom: 'env(safe-area-inset-bottom, 0px)',
                 background: 'var(--surface, var(--card, #0f172a))',
                 backdropFilter: 'blur(25px)',
                 borderLeft: '1.5px solid var(--border)',
@@ -406,6 +408,7 @@ const ZenWidget = () => {
                 zIndex: 99998,
                 display: 'flex',
                 flexDirection: 'column',
+                boxSizing: 'border-box',
                 overflow: 'hidden'
             }}>
                 {/* Theme Ambient Glow Backdrop */}

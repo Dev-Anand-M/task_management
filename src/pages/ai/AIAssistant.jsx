@@ -240,7 +240,7 @@ const AIAssistant = () => {
     };
 
     return (
-        <div className="animate-fade-in flex-mobile-col ai-container-mobile" style={{ height: 'calc(100vh - 120px)', display: 'flex', gap: 'var(--space-md)' }}>
+        <div className="stagger-in flex-mobile-col ai-container-mobile" style={{ flex: 1, minHeight: 0, display: 'flex', gap: 'var(--space-md)' }}>
 
             {/* History Sidebar */}
             <Card className="ai-sidebar-mobile" style={{ width: '260px', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', flexShrink: 0 }}>
