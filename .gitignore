@@ -37,6 +37,6 @@ dist-ssr
 
 # Exclude LN-Reader folder (separate project)
 LN-Reader/
-
+Scheduler-for-Ease-Prep/
 .vercel
 .env*
