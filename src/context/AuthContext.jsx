@@ -237,26 +237,7 @@ export const AuthProvider = ({ children }) => {
             ]);
 
             if (error) {
-                // Check if the user was removed from the system
-                // If login fails with "Invalid login credentials", check if profile exists
-                if (error.message.includes('Invalid login credentials') || error.message.includes('Email not confirmed')) {
-                    // Try to check if a profile exists with this email
-                    const { data: profiles } = await supabase
-                        .from('profiles')
-                        .select('id')
-                        .eq('email', email.toLowerCase().trim())
-                        .limit(1);
-                    
-                    // If no profile exists, user was likely removed
-                    if (!profiles || profiles.length === 0) {
-                        return { 
-                            success: false, 
-                            error: '⛔ Your account has been removed from the system. Please contact your administrator if you believe this is an error.',
-                            isRemoved: true 
-                        };
-                    }
-                }
-                return { success: false, error: error.message };
+                return { success: false, error: 'Invalid email or password. Please try again.' };
             }
             if (data.user) {
                 setUser(data.user);

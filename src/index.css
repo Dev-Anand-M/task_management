@@ -624,22 +624,139 @@ html[data-font-size="xlarge"] {
 .history-item,
 .quiz-card,
 .stagger-item {
-  animation: cardBloomReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-  will-change: transform, opacity, filter;
+  animation: cardBloomReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both !important;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease !important;
 }
 
 /* 70ms Stagger Sequence Between Cards */
-.card:nth-child(1), .stat-card:nth-child(1), .setting-card:nth-child(1), .task-card:nth-child(1), .material-card:nth-child(1), .leaderboard-item:nth-child(1), .routine-card:nth-child(1), .quiz-card:nth-child(1), .stagger-item:nth-child(1) { animation-delay: 0.07s !important; }
-.card:nth-child(2), .stat-card:nth-child(2), .setting-card:nth-child(2), .task-card:nth-child(2), .material-card:nth-child(2), .leaderboard-item:nth-child(2), .routine-card:nth-child(2), .quiz-card:nth-child(2), .stagger-item:nth-child(2) { animation-delay: 0.14s !important; }
-.card:nth-child(3), .stat-card:nth-child(3), .setting-card:nth-child(3), .task-card:nth-child(3), .material-card:nth-child(3), .leaderboard-item:nth-child(3), .routine-card:nth-child(3), .quiz-card:nth-child(3), .stagger-item:nth-child(3) { animation-delay: 0.21s !important; }
-.card:nth-child(4), .stat-card:nth-child(4), .setting-card:nth-child(4), .task-card:nth-child(4), .material-card:nth-child(4), .leaderboard-item:nth-child(4), .routine-card:nth-child(4), .quiz-card:nth-child(4), .stagger-item:nth-child(4) { animation-delay: 0.28s !important; }
-.card:nth-child(5), .stat-card:nth-child(5), .setting-card:nth-child(5), .task-card:nth-child(5), .material-card:nth-child(5), .leaderboard-item:nth-child(5), .routine-card:nth-child(5), .quiz-card:nth-child(5), .stagger-item:nth-child(5) { animation-delay: 0.35s !important; }
-.card:nth-child(6), .stat-card:nth-child(6), .setting-card:nth-child(6), .task-card:nth-child(6), .material-card:nth-child(6), .leaderboard-item:nth-child(6), .routine-card:nth-child(6), .quiz-card:nth-child(6), .stagger-item:nth-child(6) { animation-delay: 0.42s !important; }
+.card:nth-child(1), .stat-card:nth-child(1), .setting-card:nth-child(1), .task-card:nth-child(1), .material-card:nth-child(1), .leaderboard-item:nth-child(1), .routine-card:nth-child(1), .quiz-card:nth-child(1), .stagger-item:nth-child(1) { animation-delay: 0.05s !important; }
+.card:nth-child(2), .stat-card:nth-child(2), .setting-card:nth-child(2), .task-card:nth-child(2), .material-card:nth-child(2), .leaderboard-item:nth-child(2), .routine-card:nth-child(2), .quiz-card:nth-child(2), .stagger-item:nth-child(2) { animation-delay: 0.10s !important; }
+.card:nth-child(3), .stat-card:nth-child(3), .setting-card:nth-child(3), .task-card:nth-child(3), .material-card:nth-child(3), .leaderboard-item:nth-child(3), .routine-card:nth-child(3), .quiz-card:nth-child(3), .stagger-item:nth-child(3) { animation-delay: 0.15s !important; }
+.card:nth-child(4), .stat-card:nth-child(4), .setting-card:nth-child(4), .task-card:nth-child(4), .material-card:nth-child(4), .leaderboard-item:nth-child(4), .routine-card:nth-child(4), .quiz-card:nth-child(4), .stagger-item:nth-child(4) { animation-delay: 0.20s !important; }
+.card:nth-child(5), .stat-card:nth-child(5), .setting-card:nth-child(5), .task-card:nth-child(5), .material-card:nth-child(5), .leaderboard-item:nth-child(5), .routine-card:nth-child(5), .quiz-card:nth-child(5), .stagger-item:nth-child(5) { animation-delay: 0.25s !important; }
+.card:nth-child(6), .stat-card:nth-child(6), .setting-card:nth-child(6), .task-card:nth-child(6), .material-card:nth-child(6), .leaderboard-item:nth-child(6), .routine-card:nth-child(6), .quiz-card:nth-child(6), .stagger-item:nth-child(6) { animation-delay: 0.30s !important; }
 
-/* Interactive Hover/Tap Lift Scale (1.02x + 4px lift) */
+/* Interactive Hover/Tap Lift Scale & Metallic Shine Sweep (Hover-Only for Zero Mobile Touch Lag) */
+.card,
+.stat-card,
+.setting-card,
+.task-card,
+.material-card,
+.routine-card,
+.quiz-card,
+.note-card,
+/* Card Shine Sweep Engine (High Contrast - Works on Desktop Hover & Mobile Touch Tap) */
+.card,
+.stat-card,
+.setting-card,
+.task-card,
+.material-card,
+.routine-card,
+.quiz-card,
+.note-card,
+.study-card,
+.lab-card,
+.dashboard-card,
+.xp-card,
+.planner-card,
+.timetable-card,
+.calendar-card,
+.profile-card,
+div[class*="-card"],
+div[class*="Card"] {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.card::after,
+.stat-card::after,
+.setting-card::after,
+.task-card::after,
+.material-card::after,
+.routine-card::after,
+.quiz-card::after,
+.note-card::after,
+.study-card::after,
+.lab-card::after,
+.dashboard-card::after,
+.xp-card::after,
+.planner-card::after,
+.timetable-card::after,
+.calendar-card::after,
+.profile-card::after,
+div[class*="-card"]::after,
+div[class*="Card"]::after {
+  content: '' !important;
+  position: absolute !important;
+  top: -60% !important;
+  left: -60% !important;
+  width: 220% !important;
+  height: 220% !important;
+  background: linear-gradient(
+    65deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.15) 46%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 215, 0, 0.45) 52%,
+    transparent 58%
+  ) !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  transform: translate3d(-100%, 0, 0) rotate(25deg) !important;
+  z-index: 20 !important;
+}
+
+.card:hover::after,
+.card:active::after,
+.stat-card:hover::after,
+.stat-card:active::after,
+.setting-card:hover::after,
+.setting-card:active::after,
+.task-card:hover::after,
+.task-card:active::after,
+.material-card:hover::after,
+.material-card:active::after,
+.routine-card:hover::after,
+.routine-card:active::after,
+.quiz-card:hover::after,
+.quiz-card:active::after,
+.note-card:hover::after,
+.note-card:active::after,
+.study-card:hover::after,
+.study-card:active::after,
+.lab-card:hover::after,
+.lab-card:active::after,
+.dashboard-card:hover::after,
+.dashboard-card:active::after,
+.xp-card:hover::after,
+.xp-card:active::after,
+.planner-card:hover::after,
+.planner-card:active::after,
+.timetable-card:hover::after,
+.timetable-card:active::after,
+.calendar-card:hover::after,
+.calendar-card:active::after,
+.profile-card:hover::after,
+.profile-card:active::after,
+div[class*="-card"]:hover::after,
+div[class*="-card"]:active::after,
+div[class*="Card"]:hover::after,
+div[class*="Card"]:active::after {
+  opacity: 1 !important;
+  animation: cardShineSweep 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes cardShineSweep {
+  0% {
+    transform: translate3d(-120%, 0, 0) rotate(25deg);
+  }
+  100% {
+    transform: translate3d(120%, 0, 0) rotate(25deg);
+  }
+}
+
 .card:hover,
 .stat-card:hover,
 .setting-card:hover,
@@ -655,6 +772,34 @@ html[data-font-size="xlarge"] {
 .stat-card:active,
 .task-card:active {
   transform: translateY(-1px) scale(0.99) !important;
+}
+
+/* Ultra Pro Max Mobile Hardware Acceleration & Zero-Lag 120Hz Optimization */
+@media (max-width: 768px) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .card,
+  .stat-card,
+  .setting-card,
+  .task-card,
+  .material-card,
+  .routine-card,
+  .quiz-card,
+  .note-card {
+    will-change: auto !important;
+    transform: translateZ(0) !important;
+    backface-visibility: hidden !important;
+    -webkit-backface-visibility: hidden !important;
+  }
+
+  :root[data-color-scheme="glass"] .card,
+  :root[data-color-scheme="glass"] .header,
+  :root[data-color-scheme="glass"] .sidebar {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
 }
 
 /* ==========================================================================
@@ -3255,8 +3400,8 @@ input.bg-surface\/80 {
   }
   
   .modal-overlay {
-    align-items: flex-end;
-    padding: 0;
+    align-items: center;
+    padding: var(--space-md);
   }
 
   /* Notification Panel Mobile Fix */
@@ -3376,8 +3521,11 @@ input.bg-surface\/80 {
   .btn {
     padding: 0.75rem 1.25rem;
     font-size: var(--text-sm);
-    width: 100%; /* Full width buttons on very small screens */
-    justify-content: center;
+    /* Don't make ALL buttons full width — only block-level ones should stretch */
+  }
+
+  .btn:not(.btn-icon):not([style*="width"]) {
+    width: auto;
   }
 
   .card {
@@ -3474,24 +3622,34 @@ html, body {
     align-items: stretch;
   }
   
-  /* Mobile modal full screen */
+  /* Mobile modal - keep centered, don't go full-screen (traps users) */
   .modal {
-    margin: 0;
-    max-width: 100vw;
-    max-height: 100vh;
-    border-radius: 0;
+    margin: var(--space-md);
+    max-width: calc(100vw - 2 * var(--space-md));
+    max-height: calc(100vh - 2 * var(--space-md));
+    border-radius: var(--radius-xl);
+    overflow-y: auto;
   }
   
   .modal-overlay {
-    padding: 0;
+    padding: var(--space-md);
+    align-items: center;
   }
   
-  /* Mobile button improvements */
-  .btn {
+  /* Mobile button improvements - but preserve icon button sizing */
+  .btn:not(.btn-icon) {
     min-height: 48px;
     font-size: var(--text-base);
     padding: var(--space-md) var(--space-lg);
     border-radius: var(--radius-lg);
+  }
+
+  .btn-icon {
+    flex-direction: row !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-height: unset !important;
+    padding: 10px !important;
   }
   
   /* Mobile quiz question text */
@@ -3846,8 +4004,8 @@ a img {
   }
 
   /* 4. Touch Target Optimizations */
-  button, .btn, input, select, textarea {
-    min-height: 42px !important;
+  button:not(.btn-icon):not([style*="height"]), .btn:not(.btn-icon), input, select, textarea {
+    min-height: 42px;
     font-size: 14px !important;
   }
 

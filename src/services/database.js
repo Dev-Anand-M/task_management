@@ -132,21 +132,36 @@ export const updateProfile = async (id, updates) => {
 
 export const uploadAvatar = async (userId, file) => {
     try {
-        const fileExt = file.name.split('.').pop();
+        if (!userId) throw new Error('User ID is missing for avatar upload');
+
+        const fileExt = (file.name || 'avatar.jpg').split('.').pop() || 'jpg';
         const fileName = `${Date.now()}.${fileExt}`;
         const filePath = `${userId}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
             .from('avatars')
-            .upload(filePath, file, { upsert: true });
+            .upload(filePath, file, { upsert: true, contentType: file.type || 'image/jpeg' });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+            console.warn('[uploadAvatar] Supabase storage upload error, falling back to Data URL:', uploadError);
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
 
         const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
         return data.publicUrl;
     } catch (err) {
-        console.error('Error in uploadAvatar:', err);
-        throw err;
+        console.warn('[uploadAvatar] Storage exception, returning base64 fallback:', err);
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = (e) => reject(err || e);
+            reader.readAsDataURL(file);
+        });
     }
 };
 

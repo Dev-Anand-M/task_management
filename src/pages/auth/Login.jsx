@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Input } from '../../components/common';
 import * as db from '../../services/database';
-import { Mail, Lock, Zap, ArrowRight, Target, Award, TrendingUp, Users } from 'lucide-react';
+import { Mail, Lock, Zap, ArrowRight, Target, Award, TrendingUp, Users, Shield } from 'lucide-react';
 import { PlatformService } from '../../services/infrastructure/PlatformService';
 
 const Login = () => {
@@ -51,10 +51,10 @@ const Login = () => {
     };
 
     const features = [
-        { icon: Target, title: 'Task-Based Learning', desc: 'Complete real projects' },
-        { icon: Award, title: 'Earn Rewards', desc: 'XP, badges & rankings' },
-        { icon: TrendingUp, title: 'Track Progress', desc: 'Visual skill growth' },
-        { icon: Users, title: 'Team Collaboration', desc: 'Learn together' }
+        { icon: Shield, title: 'Invite-Only Access', desc: 'Private workspace for verified members' },
+        { icon: Target, title: 'Task & Goal Hub', desc: 'Streamlined execution & milestones' },
+        { icon: Zap, title: 'Intelligent Workflows', desc: 'AI-assisted productivity tools' },
+        { icon: TrendingUp, title: 'Real-Time Analytics', desc: 'Track progress & performance' }
     ];
 
     return (
@@ -69,9 +69,9 @@ const Login = () => {
                     <div className="auth-logo-large">
                         <img src="/zenith.png" alt="Zenith" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
-                    <h1 className="brand-title">Zenith</h1>
+                    <h1 className="brand-title">Zenith OS</h1>
                     <p className="brand-tagline">
-                        Transform your skills into superpowers with interactive challenges
+                        Your private, invite-only command center for high-performance productivity
                     </p>
 
                     {/* Feature Cards */}
@@ -107,15 +107,15 @@ const Login = () => {
                     {/* Mobile Logo */}
                     <div className="mobile-logo">
                         <div className="mobile-logo-icon">
-                            <img src="/zenith.png" alt="Zenith" style={{ width: '24px', height: '24px' }} />
+                            <img src="/zenith.png" alt="Zenith" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
                         </div>
-                        <span>Zenith</span>
+                        <span><span style={{ color: '#10b981' }}>Zenith</span> OS</span>
                     </div>
 
                     {/* Header */}
                     <div className="form-header">
-                        <h2>Welcome Back</h2>
-                        <p>Sign in to continue your journey</p>
+                        <h2>Welcome to <span style={{ background: 'linear-gradient(135deg, #6ee7b7 0%, #10b981 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Zenith</span></h2>
+                        <p>Sign in to access your private workspace</p>
                     </div>
 
                     {/* Error Message */}
@@ -231,7 +231,7 @@ const Login = () => {
                                 </div>
                             </div>
                             <a 
-                                href="/zenith-v1.1.1.apk" 
+                                href="/zenith-v1.3.0.apk" 
                                 download 
                                 style={{
                                     display: 'inline-flex',
@@ -316,15 +316,13 @@ const Login = () => {
                 .auth-logo-large {
                     width: 80px;
                     height: 80px;
-                    background: rgba(255,255,255,0.2);
-                    border: 2px solid rgba(255,255,255,0.3);
-                    border-radius: 20px;
+                    background: transparent !important;
+                    border: none !important;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     margin: 0 auto var(--space-lg);
-                    color: white;
-                    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+                    box-shadow: none !important;
                 }
 
                 .brand-title {
@@ -355,55 +353,74 @@ const Login = () => {
                     align-items: flex-start;
                     gap: var(--space-sm);
                     padding: var(--space-md);
-                    background: rgba(255,255,255,0.1);
-                    backdrop-filter: blur(10px);
-                    border: 1px solid rgba(255,255,255,0.2);
+                    background: rgba(255, 255, 255, 0.08);
+                    backdrop-filter: blur(14px);
+                    -webkit-backdrop-filter: blur(14px);
+                    border: 1px solid rgba(255, 255, 255, 0.15);
                     border-radius: var(--radius-lg);
                     animation: fadeInUp 0.5s ease forwards;
                     opacity: 0;
+                    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+                }
+
+                .feature-card:hover {
+                    transform: translateX(6px) translateY(-2px);
+                    background: rgba(255, 255, 255, 0.15);
+                    border-color: rgba(52, 211, 153, 0.4);
+                    box-shadow: 0 10px 28px rgba(16, 185, 129, 0.25);
                 }
 
                 .feature-card h4 {
                     font-size: 0.875rem;
                     font-weight: 600;
                     margin: 0 0 2px;
+                    color: white;
                 }
 
                 .feature-card p {
                     font-size: 0.75rem;
-                    opacity: 0.8;
+                    opacity: 0.85;
                     margin: 0;
+                    color: rgba(255, 255, 255, 0.8);
                 }
 
-                /* Decorative Circles */
+                /* Decorative Circles & Ambient Mesh */
                 .deco-circle {
                     position: absolute;
                     border-radius: 50%;
-                    border: 1px solid rgba(255,255,255,0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    pointer-events: none;
                 }
 
                 .deco-1 {
-                    width: 400px;
-                    height: 400px;
-                    top: -100px;
-                    left: -100px;
-                    background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+                    width: 450px;
+                    height: 450px;
+                    top: -120px;
+                    left: -120px;
+                    background: radial-gradient(circle, rgba(52, 211, 153, 0.18) 0%, transparent 70%);
+                    animation: meshPulse 10s ease-in-out infinite alternate;
                 }
 
                 .deco-2 {
-                    width: 300px;
-                    height: 300px;
-                    bottom: -50px;
-                    right: -50px;
-                    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+                    width: 380px;
+                    height: 380px;
+                    bottom: -80px;
+                    right: -80px;
+                    background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, transparent 70%);
+                    animation: meshPulse 12s ease-in-out infinite alternate-reverse;
                 }
 
                 .deco-3 {
-                    width: 150px;
-                    height: 150px;
-                    top: 40%;
-                    right: 10%;
-                    background: rgba(255,255,255,0.05);
+                    width: 200px;
+                    height: 200px;
+                    top: 35%;
+                    right: 8%;
+                    background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, transparent 70%);
+                }
+
+                @keyframes meshPulse {
+                    0% { transform: scale(1) translate(0, 0); opacity: 0.7; }
+                    100% { transform: scale(1.15) translate(20px, -20px); opacity: 1; }
                 }
 
                 /* RIGHT SIDE - Form Area */
@@ -414,7 +431,7 @@ const Login = () => {
                     align-items: center;
                     justify-content: center;
                     padding: var(--space-2xl);
-                    background: linear-gradient(to right, transparent, #1c1917 40px);
+                    background: linear-gradient(135deg, rgba(28, 25, 23, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
                     overflow-y: auto;
                     position: relative;
                     border-radius: 0 40px 40px 0;
@@ -434,14 +451,23 @@ const Login = () => {
                     background: rgba(255, 255, 255, 0.1);
                     border-radius: 3px;
                 }
-                
-                .auth-right::-webkit-scrollbar-thumb:hover {
-                    background: rgba(255, 255, 255, 0.2);
-                }
 
                 .auth-form-container {
                     width: 100%;
-                    max-width: 380px;
+                    max-width: 420px;
+                    padding: 40px 36px;
+                    background: rgba(255, 255, 255, 0.03);
+                    backdrop-filter: blur(24px);
+                    -webkit-backdrop-filter: blur(24px);
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 28px;
+                    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+                    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+                }
+
+                .auth-form-container:hover {
+                    border-color: rgba(52, 211, 153, 0.3);
+                    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 30px rgba(16, 185, 129, 0.2);
                 }
 
                 .mobile-logo {
@@ -453,48 +479,55 @@ const Login = () => {
                 }
 
                 .mobile-logo-icon {
-                    width: 40px;
-                    height: 40px;
-                    background: var(--gradient-primary);
-                    border-radius: var(--radius-lg);
+                    width: 48px;
+                    height: 48px;
+                    background: transparent !important;
+                    border: none !important;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    color: white;
+                    box-shadow: none !important;
                 }
 
                 .mobile-logo span {
                     font-size: var(--text-xl);
-                    font-weight: 700;
-                    color: var(--text);
+                    font-weight: 800;
+                    background: linear-gradient(135deg, #ffffff 0%, #10b981 100%) !important;
+                    -webkit-background-clip: text !important;
+                    -webkit-text-fill-color: transparent !important;
                 }
 
                 .form-header {
                     margin-bottom: var(--space-xl);
+                    text-align: center;
                 }
 
                 .form-header h2 {
-                    font-size: var(--text-2xl);
-                    font-weight: 700;
-                    color: var(--text);
+                    font-size: 1.85rem;
+                    font-weight: 800;
+                    background: linear-gradient(135deg, #ffffff 0%, #34d399 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
                     margin: 0 0 var(--space-xs);
+                    letter-spacing: -0.02em;
                 }
 
                 .form-header p {
-                    color: var(--text-muted);
+                    color: #a8a29e;
                     margin: 0;
                     font-size: var(--text-sm);
                 }
 
                 .error-box {
                     padding: var(--space-md);
-                    background: rgba(244, 63, 94, 0.1);
-                    border: 1px solid rgba(244, 63, 94, 0.2);
+                    background: rgba(244, 63, 94, 0.12);
+                    border: 1px solid rgba(244, 63, 94, 0.3);
                     border-radius: var(--radius-md);
                     margin-bottom: var(--space-lg);
-                    color: var(--error-500);
+                    color: #fb7185;
                     font-size: var(--text-sm);
                     text-align: center;
+                    box-shadow: 0 4px 14px rgba(244, 63, 94, 0.15);
                 }
 
                 .form-fields {
@@ -504,28 +537,72 @@ const Login = () => {
                 }
 
                 .submit-btn {
+                    position: relative !important;
+                    overflow: hidden !important;
                     width: 100%;
-                    height: 48px;
+                    height: 52px;
                     margin-top: var(--space-md);
-                    background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #059669 100%) !important;
-                    border: none !important;
-                    font-weight: 600;
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+                    border: 1px solid rgba(255, 215, 0, 0.35) !important;
+                    border-radius: 14px !important;
+                    font-weight: 700;
+                    font-size: 1rem;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     gap: var(--space-sm);
+                    color: white !important;
+                    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.35) !important;
+                    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.35s ease, box-shadow 0.35s ease !important;
+                }
+
+                .submit-btn::before {
+                    content: '' !important;
+                    position: absolute !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    height: 2.5px !important;
+                    background: linear-gradient(90deg, transparent 0%, #ffd700 30%, #f59e0b 50%, #d4af37 70%, transparent 100%) !important;
+                    transform: scaleX(0);
+                    transform-origin: center;
+                    opacity: 0;
+                    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease !important;
+                    pointer-events: none !important;
+                    z-index: 3 !important;
+                }
+
+                .submit-btn::after {
+                    content: '' !important;
+                    position: absolute !important;
+                    inset: 0 !important;
+                    background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 215, 0, 0.25) 50%, transparent 80%) !important;
+                    opacity: 0 !important;
+                    transition: opacity 0.35s ease !important;
+                    pointer-events: none !important;
+                    z-index: 2 !important;
                 }
 
                 .submit-btn:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5) !important;
+                    transform: translateY(-2px) !important;
+                    border-color: rgba(255, 215, 0, 0.7) !important;
+                    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35), 0 0 16px rgba(255, 215, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.6) !important;
+                }
+
+                .submit-btn:hover::before {
+                    transform: scaleX(1) !important;
+                    opacity: 1 !important;
+                }
+
+                .submit-btn:hover::after {
+                    opacity: 1 !important;
                 }
 
                 .register-link {
                     text-align: center;
                     margin-top: var(--space-xl);
                     padding-top: var(--space-lg);
-                    border-top: 1px solid var(--border);
+                    border-top: 1px solid rgba(255, 255, 255, 0.1);
                 }
 
                 .register-link p {
@@ -588,18 +665,18 @@ const Login = () => {
                 }
 
                 .liquid-wave-1 {
-                    background: rgba(16, 185, 129, 0.15); /* Green liquid */
+                    background: rgba(6, 95, 70, 0.75); /* Deep dark green */
                     border-radius: 42%;
                 }
 
                 .liquid-wave-2 {
-                    background: rgba(16, 185, 129, 0.1);
+                    background: rgba(4, 120, 87, 0.55);
                     border-radius: 38%;
                     animation: liquid-spin 15s linear infinite reverse;
                 }
 
                 .liquid-wave-3 {
-                    background: rgba(16, 185, 129, 0.05);
+                    background: rgba(6, 78, 59, 0.40);
                     border-radius: 45%;
                     animation: liquid-spin 12s linear infinite;
                 }
@@ -609,12 +686,14 @@ const Login = () => {
                     100% { transform: rotate(360deg); }
                 }
 
-                /* Responsive */
+                /* Zero-Scroll Ultra-Compact Mobile Layout */
                 @media (max-width: 1024px) {
                     .auth-page {
                         flex-direction: column;
-                        overflow: hidden;
                         height: 100dvh;
+                        max-height: 100dvh;
+                        width: 100%;
+                        overflow: hidden !important;
                     }
 
                     .auth-left {
@@ -622,37 +701,94 @@ const Login = () => {
                     }
 
                     .auth-right {
-                        flex: 1;
                         width: 100%;
                         height: 100dvh;
-                        padding: var(--space-md);
-                        background: #1c1917;
+                        max-height: 100dvh;
+                        padding: 12px;
+                        border-radius: 24px;
+                        background: transparent !important;
                         overflow: hidden !important;
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        scrollbar-width: none;
-                        -ms-overflow-style: none;
-                    }
-                    
-                    .auth-right::-webkit-scrollbar {
-                        display: none;
+                        box-sizing: border-box;
                     }
 
                     .auth-form-container {
                         width: 100%;
-                        max-width: 400px;
+                        max-width: 380px;
+                        padding: 24px 20px;
                         margin: 0 auto;
+                        box-sizing: border-box;
+                        border-radius: 22px;
+                        background: rgba(12, 16, 28, 0.92) !important;
+                        backdrop-filter: blur(20px) !important;
+                        -webkit-backdrop-filter: blur(20px) !important;
+                        border: 1px solid rgba(52, 211, 153, 0.2) !important;
+                        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(52, 211, 153, 0.08) !important;
                     }
 
                     .mobile-logo {
                         display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        margin-bottom: 12px;
+                    }
+
+                    .mobile-logo-icon {
+                        width: 36px;
+                        height: 36px;
+                    }
+
+                    .mobile-logo span {
+                        font-size: 1.15rem;
+                    }
+
+                    .form-header {
+                        margin-bottom: 14px;
+                        text-align: center;
+                    }
+
+                    .form-header h2 {
+                        font-size: 1.45rem;
+                        margin: 0 0 2px;
+                    }
+
+                    .form-header p {
+                        font-size: 0.85rem;
+                    }
+
+                    .form-fields {
+                        gap: 10px !important;
+                    }
+
+                    .submit-btn {
+                        height: 46px !important;
+                        margin-top: 10px !important;
+                        font-size: 0.95rem !important;
+                    }
+
+                    .register-link {
+                        margin-top: 12px !important;
+                        padding-top: 10px !important;
+                    }
+
+                    .register-link p {
+                        font-size: 0.825rem !important;
                     }
                 }
 
                 @media (max-width: 480px) {
                     .auth-right {
-                        padding: var(--space-lg);
+                        padding: 8px;
+                        background: transparent !important;
+                        border-radius: 20px;
+                    }
+
+                    .auth-form-container {
+                        padding: 20px 16px;
+                        border-radius: 18px;
                     }
                 }
 

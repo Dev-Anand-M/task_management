@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Card, Button, Badge, Avatar, Modal } from '../../components/common';
+import ImageCropper from '../../components/common/ImageCropper';
 import {
     User,
     Mail,
@@ -37,6 +38,7 @@ const Profile = ({ userId = null, readonly = false }) => {
         quizzesPassed: 0,
         avgScore: 0
     });
+    const [cropImageSrc, setCropImageSrc] = useState(null);
     const fileInputRef = useRef(null);
 
     // Determine which user ID to use
@@ -187,26 +189,42 @@ const Profile = ({ userId = null, readonly = false }) => {
         }
     };
 
-    const handleFileChange = async (e) => {
+    const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (file.size > 5 * 1024 * 1024) {
-            alert('File is too large. Max 5MB.');
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File is too large. Max 10MB.');
             return;
         }
 
-        try {
-            // Optimistic update or loading state could be here
-            const url = await db.uploadAvatar(authUser.id, file);
-            await updateProfile({ avatar_url: url });
-            await refreshUser();
+        const src = URL.createObjectURL(file);
+        setCropImageSrc(src);
+        e.target.value = '';
+    };
 
-            // Update local state temporarily to show immediate change
+    const handleCropComplete = async (croppedBlob) => {
+        try {
+            const activeUid = authUser?.id || profileData?.id || targetUserId;
+            if (!activeUid) {
+                alert('User session not found. Please log in again.');
+                return;
+            }
+            const croppedFile = new File([croppedBlob], `avatar-${Date.now()}.jpg`, { type: 'image/jpeg' });
+            const url = await db.uploadAvatar(activeUid, croppedFile);
+
+            if (updateProfile) {
+                await updateProfile({ avatar_url: url });
+            }
+            if (refreshUser) {
+                await refreshUser();
+            }
+
             setProfileData(prev => ({ ...prev, avatar_url: url }));
+            setCropImageSrc(null);
         } catch (err) {
             console.error('Avatar upload error:', err);
-            alert('Failed to upload avatar. Please try again.');
+            alert(`Failed to upload avatar: ${err?.message || 'Unknown error'}`);
         }
     };
 
@@ -498,7 +516,11 @@ const Profile = ({ userId = null, readonly = false }) => {
 
             {/* Avatar Zoom Modal */}
             <Modal isOpen={isZoomed} onClose={() => setIsZoomed(false)} title="Profile Picture">
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 'var(--space-md)' }}>
+                <div 
+                    onClick={() => setIsZoomed(false)}
+                    style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 'var(--space-md)', cursor: 'pointer' }}
+                    title="Click or tap anywhere to close"
+                >
                     {profileData?.avatar_url ? (
                         <img 
                             src={profileData.avatar_url} 
@@ -530,6 +552,15 @@ const Profile = ({ userId = null, readonly = false }) => {
                     )}
                 </div>
             </Modal>
+
+            {/* Image Cropper Modal */}
+            {cropImageSrc && (
+                <ImageCropper
+                    imageSrc={cropImageSrc}
+                    onCrop={handleCropComplete}
+                    onCancel={() => setCropImageSrc(null)}
+                />
+            )}
 
             {/* XP History Modal */}
             <Modal 

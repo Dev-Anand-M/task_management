@@ -1,7 +1,7 @@
 {
-  "version": "1.2.0",
-  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.2.0.apk",
-  "releaseNotes": "🚀 Zenith v1.2.0\n✨ AI Custom Models — Add & persist your own AI model keys across sessions.\n🎨 Zen AI — @mentions, #tags, and rich text formatting in chat.\n🔔 Smart Alarm System — Built-in Web Audio chime for routine reminders.\n🛡️ Enhanced Auth — Safer context handling across all routes.\n📐 Layout Robustness — Fixed message bubble collapse on mobile.\n💬 Messages — Coming Soon in v2.0.0!",
-  "mandatory": false,
-  "minSupportedVersion": "1.0.0"
+  "version": "1.3.0",
+  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.3.0.apk",
+  "releaseNotes": "🚀 Zenith v1.3.0\n🔐 Auth Security — No false 'account removed' errors.\n🎨 Mobile Aesthetics — Liquid wave animations on Login & Register.\n✂️ Profile Cropper — Smooth drag, zoom & crop for avatars.\n⚡ Responsive Fixes — Clean button layout on all mobile screens.",
+  "mandatory": true,
+  "minSupportedVersion": "1.3.0"
 }
