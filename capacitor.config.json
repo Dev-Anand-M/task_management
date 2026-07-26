@@ -11,6 +11,7 @@
     }
   },
   "android": {
-    "adjustMarginsForEdgeToEdge": "auto"
+    "adjustMarginsForEdgeToEdge": "force",
+    "backgroundColor": "#0b0f14"
   }
 }
