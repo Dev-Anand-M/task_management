@@ -765,15 +765,39 @@ div[class*="Card"]:active::after {
 .task-card:hover,
 .material-card:hover,
 .routine-card:hover,
-.quiz-card:hover {
-  transform: translateY(-4px) scale(1.02) !important;
+.quiz-card:hover,
+.note-card:hover,
+.study-card:hover,
+.lab-card:hover,
+.dashboard-card:hover {
+  transform: translateY(-2px) !important;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22), 0 0 15px var(--primary-500-alpha, rgba(99, 102, 241, 0.2)) !important;
 }
 
+/* Eliminate jump/scale animation when clicking components so inner links and buttons remain 100% stable */
 .card:active,
 .stat-card:active,
-.task-card:active {
-  transform: translateY(-1px) scale(0.99) !important;
+.setting-card:active,
+.task-card:active,
+.material-card:active,
+.routine-card:active,
+.quiz-card:active,
+.note-card:active,
+.study-card:active,
+.lab-card:active,
+.dashboard-card:active,
+.xp-card:active,
+.planner-card:active,
+.timetable-card:active,
+.calendar-card:active,
+.profile-card:active,
+div[class*="-card"]:active,
+div[class*="Card"]:active,
+button:active,
+a:active,
+*:active {
+  transform: none !important;
+  transition: transform 0s ease !important;
 }
 
 /* Ultra Pro Max Mobile Hardware Acceleration & Zero-Lag 120Hz Optimization */

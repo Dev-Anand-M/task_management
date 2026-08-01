@@ -1456,7 +1456,7 @@ CURRENT USER PLATFORM STATE:
 - Unread Notifications: ${JSON.stringify(contextData.notifications || [], null, 2)}
 - Class Announcements: ${JSON.stringify(contextData.announcements || [], null, 2)}
 
-ZENITH v1.4.0 PLATFORM & SPRINT TRACKER KNOWLEDGE:
+ZENITH v1.5.0 PLATFORM & SPRINT TRACKER KNOWLEDGE:
 - Sprint Tracker (/sprint-tracker): An 8-week evaluation scoreboard for the Tarothon sprint program.
   - Evaluation Pillars (40 pts max per week):
     1. Task Ownership (10 pts) — Active contribution, code reading, testing, and implementation.
