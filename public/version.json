@@ -3,6 +3,6 @@
   "maintenance": true,
   "maintenanceMessage": "🛠️ Zenith is currently undergoing system maintenance & backend optimization. Please check back shortly!",
   "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.4.0.apk",
-  "mandatory": false,
+  "mandatory": true,
   "minSupportedVersion": "1.4.0"
 }

@@ -44,7 +44,7 @@ export const updateChecker = {
         latestVersion,
         downloadUrl,
         releaseNotes: versionData.releaseNotes || '',
-        mandatory: isMaintenance ? false : (versionData.mandatory || false),
+        mandatory: isMaintenance ? true : (versionData.mandatory || false),
       };
     } catch (error) {
       console.error('[UpdateChecker] Check failed:', error);

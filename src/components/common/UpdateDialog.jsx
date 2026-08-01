@@ -1,7 +1,24 @@
-import { Download, X, Wrench } from 'lucide-react';
+import { Download, X, Wrench, LogOut } from 'lucide-react';
+import { App as CapApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 const UpdateDialog = ({ updateInfo, onDownload, onDismiss, onClose }) => {
   const { latestVersion, currentVersion, releaseNotes, mandatory, isMaintenance, maintenanceMessage } = updateInfo;
+
+  const handleExitApp = () => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        CapApp.exitApp();
+      } catch (err) {
+        console.error('[Maintenance] Exit app error:', err);
+      }
+    } else {
+      try {
+        window.close();
+      } catch (err) {}
+      window.location.href = 'about:blank';
+    }
+  };
 
   if (isMaintenance) {
     return (
@@ -9,8 +26,8 @@ const UpdateDialog = ({ updateInfo, onDownload, onDismiss, onClose }) => {
         style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.85)',
-          backdropFilter: 'blur(12px)',
+          background: 'rgba(0,0,0,0.92)',
+          backdropFilter: 'blur(16px)',
           zIndex: 100000,
           display: 'flex',
           alignItems: 'center',
@@ -24,31 +41,13 @@ const UpdateDialog = ({ updateInfo, onDownload, onDismiss, onClose }) => {
             border: '1px solid var(--warning)',
             borderRadius: '24px',
             padding: '40px 32px',
-            maxWidth: '480px',
+            maxWidth: '460px',
             width: '100%',
             position: 'relative',
-            boxShadow: '0 0 50px rgba(245,158,11,0.3)',
+            boxShadow: '0 0 60px rgba(245,158,11,0.35)',
             textAlign: 'center'
           }}
         >
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            style={{
-              position: 'absolute',
-              top: '20px',
-              right: '20px',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text-muted)',
-              padding: '8px',
-            }}
-            className="hover:text-white"
-          >
-            <X size={20} />
-          </button>
-
           {/* Logo / Maintenance Icon */}
           <div
             style={{
@@ -58,27 +57,46 @@ const UpdateDialog = ({ updateInfo, onDownload, onDismiss, onClose }) => {
             }}
           >
             <div style={{
-              width: '80px', height: '80px', borderRadius: '24px',
+              width: '84px', height: '84px', borderRadius: '24px',
               background: 'rgba(245,158,11,0.15)', border: '2px solid rgba(245,158,11,0.4)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: 'var(--warning)'
             }}>
-              <Wrench size={38} />
+              <Wrench size={42} />
             </div>
           </div>
 
           {/* Title */}
           <h2
             style={{
-              fontSize: '22px',
+              fontSize: '24px',
               fontWeight: '800',
               textAlign: 'center',
               margin: '0 0 12px 0',
               color: 'var(--text)'
             }}
           >
-            App is in Maintenance
+            System Under Maintenance
           </h2>
+
+          {/* Mandatory notice */}
+          <div
+            style={{
+              background: 'rgba(245, 158, 11, 0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              padding: '8px 14px',
+              borderRadius: '20px',
+              marginBottom: '20px',
+              fontSize: '12px',
+              fontWeight: 700,
+              color: 'var(--warning)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            ⚠️ Mandatory Maintenance Active
+          </div>
 
           {/* Maintenance Message */}
           <div
@@ -94,27 +112,33 @@ const UpdateDialog = ({ updateInfo, onDownload, onDismiss, onClose }) => {
               border: '1px solid var(--border)'
             }}
           >
-            {maintenanceMessage || '🛠️ Zenith is currently undergoing system maintenance & platform optimizations. Please check back shortly!'}
+            {maintenanceMessage || '🛠️ Zenith is currently undergoing scheduled system maintenance & platform optimizations. Please check back shortly!'}
           </div>
 
-          {/* Only Close Button */}
+          {/* Only Exit/Close App Button */}
           <button
-            onClick={onClose}
+            onClick={handleExitApp}
             style={{
               width: '100%',
-              padding: '14px',
-              borderRadius: '12px',
-              border: '1px solid var(--border)',
-              background: 'var(--card)',
-              color: 'var(--text)',
-              fontWeight: '700',
-              fontSize: '15px',
+              padding: '16px',
+              borderRadius: '14px',
+              border: 'none',
+              background: 'var(--warning)',
+              color: '#1a1a1a',
+              fontWeight: '800',
+              fontSize: '16px',
               cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 20px rgba(245,158,11,0.3)',
               transition: 'all 0.15s ease'
             }}
-            className="hover:bg-gray-800 active:scale-95"
+            className="hover:opacity-90 active:scale-95"
           >
-            Close
+            <LogOut size={20} />
+            Close App
           </button>
         </div>
       </div>
