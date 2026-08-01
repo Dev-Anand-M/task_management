@@ -1,7 +1,125 @@
-import { Download, X } from 'lucide-react';
+import { Download, X, Wrench } from 'lucide-react';
 
 const UpdateDialog = ({ updateInfo, onDownload, onDismiss, onClose }) => {
-  const { latestVersion, currentVersion, releaseNotes, mandatory } = updateInfo;
+  const { latestVersion, currentVersion, releaseNotes, mandatory, isMaintenance, maintenanceMessage } = updateInfo;
+
+  if (isMaintenance) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(12px)',
+          zIndex: 100000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+        }}
+      >
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--warning)',
+            borderRadius: '24px',
+            padding: '40px 32px',
+            maxWidth: '480px',
+            width: '100%',
+            position: 'relative',
+            boxShadow: '0 0 50px rgba(245,158,11,0.3)',
+            textAlign: 'center'
+          }}
+        >
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-muted)',
+              padding: '8px',
+            }}
+            className="hover:text-white"
+          >
+            <X size={20} />
+          </button>
+
+          {/* Logo / Maintenance Icon */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginBottom: '20px',
+            }}
+          >
+            <div style={{
+              width: '80px', height: '80px', borderRadius: '24px',
+              background: 'rgba(245,158,11,0.15)', border: '2px solid rgba(245,158,11,0.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--warning)'
+            }}>
+              <Wrench size={38} />
+            </div>
+          </div>
+
+          {/* Title */}
+          <h2
+            style={{
+              fontSize: '22px',
+              fontWeight: '800',
+              textAlign: 'center',
+              margin: '0 0 12px 0',
+              color: 'var(--text)'
+            }}
+          >
+            App is in Maintenance
+          </h2>
+
+          {/* Maintenance Message */}
+          <div
+            style={{
+              background: 'var(--background)',
+              padding: '18px 20px',
+              borderRadius: '16px',
+              marginBottom: '28px',
+              fontSize: '14px',
+              color: 'var(--text-muted)',
+              whiteSpace: 'pre-line',
+              lineHeight: '1.6',
+              border: '1px solid var(--border)'
+            }}
+          >
+            {maintenanceMessage || '🛠️ Zenith is currently undergoing system maintenance & platform optimizations. Please check back shortly!'}
+          </div>
+
+          {/* Only Close Button */}
+          <button
+            onClick={onClose}
+            style={{
+              width: '100%',
+              padding: '14px',
+              borderRadius: '12px',
+              border: '1px solid var(--border)',
+              background: 'var(--card)',
+              color: 'var(--text)',
+              fontWeight: '700',
+              fontSize: '15px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            className="hover:bg-gray-800 active:scale-95"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

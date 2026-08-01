@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import Button from './Button';
 
@@ -20,13 +21,13 @@ const Modal = ({
 
         if (isOpen) {
             document.addEventListener('keydown', handleEscape);
+            const prevOverflow = document.body.style.overflow;
             document.body.style.overflow = 'hidden';
+            return () => {
+                document.removeEventListener('keydown', handleEscape);
+                document.body.style.overflow = prevOverflow || '';
+            };
         }
-
-        return () => {
-            document.removeEventListener('keydown', handleEscape);
-            document.body.style.overflow = '';
-        };
     }, [isOpen, onClose]);
 
     const handleBackdropClick = (e) => {
@@ -43,7 +44,7 @@ const Modal = ({
         full: { maxWidth: '95vw', width: '100%' }
     };
 
-    return (
+    return createPortal(
         <div className="modal-overlay" onClick={handleBackdropClick}>
             <div
                 ref={modalRef}
@@ -68,7 +69,8 @@ const Modal = ({
                     </div>
                 )}
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

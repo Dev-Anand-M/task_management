@@ -26,6 +26,7 @@ import InviteCodes from './pages/admin/InviteCodes';
 import ClassroomSettings from './pages/admin/ClassroomSettings';
 import ClassroomDetail from './pages/admin/ClassroomDetail';
 import KnowledgeBase from './pages/shared/KnowledgeBase';
+import SprintTracker from './pages/shared/SprintTracker';
 import AdminProfile from './pages/admin/AdminProfile';
 
 // Member Pages
@@ -286,6 +287,7 @@ function AppRoutes() {
         <Route path="/ai/zen" element={<Zen />} />
 
         <Route path="/knowledge-base" element={<KnowledgeBase />} />
+        <Route path="/sprint-tracker" element={<SprintTracker />} />
         
         {/* Debug Route */}
         <Route path="/debug" element={<DebugConnection />} />

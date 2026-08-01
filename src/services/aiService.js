@@ -1454,7 +1454,19 @@ CURRENT USER PLATFORM STATE:
 - Quiz Attempt History: ${JSON.stringify(contextData.quiz_attempts || [], null, 2)}
 - Study Notes List: ${JSON.stringify(contextData.study_notes || [], null, 2)}
 - Unread Notifications: ${JSON.stringify(contextData.notifications || [], null, 2)}
-- Class Announcements: ${JSON.stringify(contextData.announcements || [], null, 2)}`;
+- Class Announcements: ${JSON.stringify(contextData.announcements || [], null, 2)}
+
+ZENITH v1.4.0 PLATFORM & SPRINT TRACKER KNOWLEDGE:
+- Sprint Tracker (/sprint-tracker): An 8-week evaluation scoreboard for the Tarothon sprint program.
+  - Evaluation Pillars (40 pts max per week):
+    1. Task Ownership (10 pts) — Active contribution, code reading, testing, and implementation.
+    2. Code Quality (10 pts) — Clean code, responsive UI, no console errors.
+    3. Demo & Understanding (10 pts) — Ability to clearly explain feature architecture during live demo.
+    4. Autonomy (10 pts) — Solving blockers independently.
+  - Evaluators: Teammates, Tech Lead (Dev Anand M), and Admins.
+  - Master Scoreboard: Top-3 podium (🥇 🥈 🥉), cumulative points, weekly breakdown accordions, and multi-evaluator score averaging.
+  - Admin Mode: Admins (Dev Anand / Tech Lead) can rate any teammate for any week, edit ratings, delete ratings, toggle week submission locks (sprint_locks), and manage classroom sprint rosters (sprint_participants).
+  - Navigation: You can navigate users to '/sprint-tracker' whenever they ask about sprint scores, team evaluation, Tarothon leaderboard, or weekly ratings!`;
 
     let systemPrompt;
 

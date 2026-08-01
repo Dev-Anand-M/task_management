@@ -75,6 +75,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: '/admin/invite-codes', icon: Key, label: 'Invite Codes' },
         { to: '/admin/classroom', icon: School, label: 'Classroom' },
         { to: '/knowledge-base', icon: Database, label: 'Knowledge Base' },
+        { to: '/sprint-tracker', icon: Zap, label: 'Sprint Tracker' },
         { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
         { to: '/settings', icon: Settings, label: 'Settings' }
     ];
@@ -87,6 +88,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: '/study-materials', icon: Brain, label: 'Study Materials' },
         { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
         { to: '/team', icon: Users, label: 'Team' },
+        { to: '/sprint-tracker', icon: Zap, label: 'Sprint Tracker' },
         { to: '/calendar', icon: Calendar, label: 'Calendar' },
         { to: '/profile', icon: User, label: 'Profile' },
         { to: '/settings', icon: Settings, label: 'Settings' }

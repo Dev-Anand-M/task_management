@@ -29,19 +29,22 @@ export const updateChecker = {
       if (!response.ok) throw new Error('Unable to fetch version metadata');
       
       const versionData = await response.json();
-      const latestVersion = versionData.version || '1.2.0';
+      const latestVersion = versionData.version || '1.4.0';
       const downloadUrl = versionData.downloadUrl || APK_DOWNLOAD_URL;
+      const isMaintenance = Boolean(versionData.maintenance);
 
-      // Compare versions
-      const updateAvailable = this.compareVersions(currentVersion, latestVersion) < 0;
+      // If maintenance mode is active on server, show popup on all client versions
+      const updateAvailable = isMaintenance || this.compareVersions(currentVersion, latestVersion) < 0;
 
       return {
         updateAvailable,
+        isMaintenance,
+        maintenanceMessage: versionData.maintenanceMessage || '🛠️ App is in maintenance mode. Please check back shortly!',
         currentVersion,
         latestVersion,
         downloadUrl,
         releaseNotes: versionData.releaseNotes || '',
-        mandatory: versionData.mandatory || false,
+        mandatory: isMaintenance ? false : (versionData.mandatory || false),
       };
     } catch (error) {
       console.error('[UpdateChecker] Check failed:', error);
