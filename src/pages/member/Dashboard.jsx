@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Card, Badge, Avatar, Button, ProgressBar } from '../../components/common';
 import { supabase } from '../../lib/supabase';
@@ -14,7 +14,11 @@ import {
     Clock,
     ArrowRight,
     CheckCircle,
-    Star
+    Star,
+    Zap,
+    Calendar,
+    Lock,
+    Unlock
 } from 'lucide-react';
 import * as db from '../../services/database';
 import {
@@ -28,6 +32,7 @@ import { useMiniReload } from '../../hooks/useMiniReload';
 
 const MemberDashboard = () => {
     const { user, refreshUser } = useAuth();
+    const navigate = useNavigate();
     const [stats, setStats] = useState({
         assignedTasks: 0,
         completedTasks: 0,
@@ -39,6 +44,7 @@ const MemberDashboard = () => {
     const [upcomingQuizzes, setUpcomingQuizzes] = useState([]);
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [sprintWeek, setSprintWeek] = useState(null); // { weekNum, title, start_date, end_date, isLocked }
 
     const loadDashboardData = useCallback(async (silent = false) => {
         if (!user?.id) return;
@@ -139,6 +145,58 @@ const MemberDashboard = () => {
                 .slice(0, 3);
             setUpcomingQuizzes(upcoming);
             setAnnouncements(ann || []);
+
+            // Sprint current-week card
+            if (user?.classroom_id) {
+                try {
+                    const today = new Date();
+                    const todayStr = today.toISOString().split('T')[0];
+
+                    // Find the week whose date window contains today
+                    const { data: templates } = await supabase
+                        .from('sprint_templates')
+                        .select('week_number, title, start_date, end_date')
+                        .eq('classroom_id', user.classroom_id)
+                        .order('week_number', { ascending: true });
+
+                    if (templates && templates.length > 0) {
+                        // Find week that contains today
+                        let activeWeek = templates.find(w =>
+                            w.start_date && w.end_date &&
+                            todayStr >= w.start_date && todayStr <= w.end_date
+                        );
+                        // Fallback: most recent week by start_date before today
+                        if (!activeWeek) {
+                            const past = templates.filter(w => w.start_date && w.start_date <= todayStr);
+                            activeWeek = past[past.length - 1] || templates[0];
+                        }
+
+                        if (activeWeek) {
+                            // Check lock status
+                            const { data: lockRow } = await supabase
+                                .from('sprint_locks')
+                                .select('is_locked')
+                                .eq('classroom_id', user.classroom_id)
+                                .eq('week_number', activeWeek.week_number)
+                                .maybeSingle();
+
+                            const dayOfWeek = today.getDay(); // 0=Sun
+                            const autoLocked = dayOfWeek !== 0; // locked Mon-Sat
+                            const isLocked = lockRow ? lockRow.is_locked : autoLocked;
+
+                            setSprintWeek({
+                                weekNum: activeWeek.week_number,
+                                title: activeWeek.title,
+                                start_date: activeWeek.start_date,
+                                end_date: activeWeek.end_date,
+                                isLocked
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error('[Dashboard] Sprint week fetch error:', e);
+                }
+            }
         } catch (error) {
             console.error('[Dashboard] Error loading dashboard data:', error);
         } finally {
@@ -267,6 +325,72 @@ const MemberDashboard = () => {
                 </Card>
             </Link>
 
+            {/* Sprint Week Card */}
+            {sprintWeek && (
+                <div
+                    onClick={() => navigate('/sprint-tracker')}
+                    style={{
+                        marginBottom: 'var(--space-xl)',
+                        padding: 'var(--space-md) var(--space-lg)',
+                        borderRadius: 'var(--radius-xl)',
+                        background: sprintWeek.isLocked
+                            ? 'linear-gradient(135deg, rgba(100,116,139,0.15), rgba(71,85,105,0.1))'
+                            : 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(5,150,105,0.08))',
+                        border: `1px solid ${sprintWeek.isLocked ? 'rgba(100,116,139,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 'var(--space-md)',
+                        flexWrap: 'wrap',
+                        transition: 'transform 0.15s, box-shadow 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', minWidth: 0 }}>
+                        {/* Icon */}
+                        <div style={{
+                            width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0,
+                            background: sprintWeek.isLocked ? 'rgba(100,116,139,0.2)' : 'rgba(16,185,129,0.2)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: sprintWeek.isLocked ? 'var(--text-muted)' : '#10b981'
+                        }}>
+                            <Zap size={22} />
+                        </div>
+                        {/* Text */}
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: sprintWeek.isLocked ? 'var(--text-muted)' : '#10b981', marginBottom: '2px' }}>
+                                This Week's Sprint · W{sprintWeek.weekNum}
+                            </div>
+                            <div style={{ fontWeight: 700, fontSize: 'var(--text-base)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {sprintWeek.title}
+                            </div>
+                            {(sprintWeek.start_date || sprintWeek.end_date) && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                    <Calendar size={11} />
+                                    {sprintWeek.start_date ? new Date(sprintWeek.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
+                                    {' → '}
+                                    {sprintWeek.end_date ? new Date(sprintWeek.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {/* Status + Arrow */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flexShrink: 0 }}>
+                        <span style={{
+                            display: 'flex', alignItems: 'center', gap: '5px',
+                            fontSize: 'var(--text-xs)', fontWeight: 700,
+                            padding: '4px 10px', borderRadius: '20px',
+                            background: sprintWeek.isLocked ? 'rgba(100,116,139,0.2)' : 'rgba(16,185,129,0.15)',
+                            color: sprintWeek.isLocked ? 'var(--text-muted)' : '#10b981',
+                        }}>
+                            {sprintWeek.isLocked ? <><Lock size={11} /> Locked</> : <><Unlock size={11} /> Open</>}
+                        </span>
+                        <ArrowRight size={16} style={{ color: 'var(--text-muted)' }} />
+                    </div>
+                </div>
+            )}
             {/* Quick Stats */}
             <div className="stat-card-grid mb-xl">
                 {[

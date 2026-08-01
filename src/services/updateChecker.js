@@ -2,9 +2,11 @@ import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import packageJson from '../../package.json';
 
-// Version endpoint - simple JSON file hosted on Vercel server
-const VERSION_CHECK_URL = 'https://zenith-sable-alpha.vercel.app/version.json';
-const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.2.0.apk';
+// Version endpoint - relative for web dev/prod, absolute for mobile native
+const VERSION_CHECK_URL = typeof window !== 'undefined' && !Capacitor.isNativePlatform() 
+  ? '/version.json' 
+  : 'https://zenith-sable-alpha.vercel.app/version.json';
+const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.4.0.apk';
 
 export const updateChecker = {
   /**

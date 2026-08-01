@@ -1,8 +1,8 @@
 {
-  "version": "1.4.0",
-  "maintenance": true,
-  "maintenanceMessage": "🛠️ Zenith is currently undergoing system maintenance & backend optimization. Please check back shortly!",
-  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.4.0.apk",
-  "mandatory": true,
+  "version": "1.5.0",
+  "maintenance": false,
+  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.5.0.apk",
+  "releaseNotes": "🚀 Zenith v1.5.0 — Dynamic Sprint Templates, Knowledge Hub Sprint Vault, Deadline Auto-Locking & Bulk CSV Import/Export.",
+  "mandatory": false,
   "minSupportedVersion": "1.4.0"
 }

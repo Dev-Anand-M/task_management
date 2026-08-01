@@ -18,23 +18,32 @@ import {
     Unlock,
     UserPlus,
     UserCheck,
-    Settings
+    Settings,
+    Download,
+    PlusCircle,
+    BookOpen,
+    ExternalLink,
+    Link as LinkIcon,
+    HelpCircle,
+    Upload,
+    Copy,
+    Check
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import * as db from '../../services/database';
 
-// Weekly assignment data for The Tarot Club
-const WEEKLY_ASSIGNMENTS = [
-    { week: 1, title: 'Core Storefront', assignments: { hemanth: 'UPI Settings & Bank Details', dhanushree: 'Public Catalog Layout & Grid', dev: 'Voice Input & API Routes Setup' } },
-    { week: 2, title: 'Payments & i18n', assignments: { hemanth: 'Dynamic QR Generator & WhatsApp Order Link', dhanushree: '6-Language Regional Keyboard & Selector', dev: 'AI Response Parsing & Supabase DB' } },
-    { week: 3, title: 'Exporters & Prices', assignments: { hemanth: 'Pricing Data Structures & API Handlers', dhanushree: 'Export Catalog UI Cards (Shopify/Amazon)', dev: 'Shopify REST Sync Endpoints' } },
-    { week: 4, title: '🃏 TAROTHON #1', assignments: { hemanth: 'Innovation Pitch', dhanushree: 'Innovation Pitch', dev: 'Technical Mentoring & PR Reviews' }, isTarothon: true },
-    { week: 5, title: 'Dashboards', assignments: { hemanth: 'Payment Toggles & Summary UI', dhanushree: 'Dashboard Layout & Filters', dev: 'Voice Command Interpreter Endpoint' } },
-    { week: 6, title: 'Multimodal UI', assignments: { hemanth: 'Product Edit Pricing Fields', dhanushree: 'Camera Capture Modal UI', dev: 'AI Fallback Handlers (Gemini/Perplexity)' } },
-    { week: 7, title: 'Landing & Polish', assignments: { hemanth: 'Payment Security Review & Setup Guide', dhanushree: 'Landing Page UI & Docs Polish', dev: 'Vercel Production Build & Deploy' } },
-    { week: 8, title: '🏆 TAROTHON #2', assignments: { hemanth: 'Final Showcase Feature', dhanushree: 'Final Showcase Feature', dev: 'Final Pitch Defense & Launch Prep' }, isTarothon: true }
+// Fallback default template — used only when no DB template is configured for a classroom
+const DEFAULT_TEMPLATE = [
+    { week: 1, title: 'Week 1', description: 'Configure this template from Admin Panel → Configure Sprint Weeks.', is_showcase: false },
+    { week: 2, title: 'Week 2', description: 'Configure this template from Admin Panel → Configure Sprint Weeks.', is_showcase: false },
+    { week: 3, title: 'Week 3', description: 'Configure this template from Admin Panel → Configure Sprint Weeks.', is_showcase: false },
+    { week: 4, title: 'Week 4 — Showcase', description: 'Mid-sprint showcase. Configure from Admin Panel.', is_showcase: true },
+    { week: 5, title: 'Week 5', description: 'Configure this template from Admin Panel → Configure Sprint Weeks.', is_showcase: false },
+    { week: 6, title: 'Week 6', description: 'Configure this template from Admin Panel → Configure Sprint Weeks.', is_showcase: false },
+    { week: 7, title: 'Week 7', description: 'Configure this template from Admin Panel → Configure Sprint Weeks.', is_showcase: false },
+    { week: 8, title: 'Week 8 — Final Showcase', description: 'Final sprint showcase. Configure from Admin Panel.', is_showcase: true }
 ];
 
 const RUBRIC = [
@@ -57,10 +66,18 @@ const SprintTracker = () => {
     const [selectedWeek, setSelectedWeek] = useState(1);
     const [showEvalModal, setShowEvalModal] = useState(false);
     const [showParticipantModal, setShowParticipantModal] = useState(false);
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
     const [evalTarget, setEvalTarget] = useState(null);
     const [evalScores, setEvalScores] = useState({ task_ownership: 5, code_quality: 5, demo_understanding: 5, autonomy: 5, notes: '' });
     const [saving, setSaving] = useState(false);
     const [expandedWeek, setExpandedWeek] = useState(null);
+
+    // Sprint template state
+    const [sprintTemplate, setSprintTemplate] = useState(DEFAULT_TEMPLATE);
+    const [templateDraft, setTemplateDraft] = useState([]);
+    const [templateSaving, setTemplateSaving] = useState(false);
+    const [showCsvHelp, setShowCsvHelp] = useState(false);
+    const [copiedFormat, setCopiedFormat] = useState(false);
 
     const [classrooms, setClassrooms] = useState([]);
     const [selectedClassroomId, setSelectedClassroomId] = useState(user?.classroom_id || '');
@@ -125,6 +142,35 @@ const SprintTracker = () => {
                 setSprintLocks(lockMap);
             }
 
+            // Load sprint template for this classroom
+            let templateQuery = supabase
+                .from('sprint_templates')
+                .select('*')
+                .order('week_number', { ascending: true });
+            if (targetClassroomId) {
+                templateQuery = templateQuery.eq('classroom_id', targetClassroomId);
+            }
+            const { data: templateRows, error: templateErr } = await templateQuery;
+            if (templateErr) console.error('[SprintTracker] Template load error:', templateErr);
+
+            if (templateRows && templateRows.length > 0) {
+                // Map DB rows to consistent shape
+                const mapped = templateRows.map(r => ({
+                    week: r.week_number,
+                    title: r.title,
+                    description: r.description || '',
+                    is_showcase: r.is_showcase || false,
+                    start_date: r.start_date || '',
+                    end_date: r.end_date || '',
+                    resource_url: r.resource_url || '',
+                    resource_label: r.resource_label || ''
+                }));
+                setSprintTemplate(mapped);
+            } else {
+                // Fall back to default template
+                setSprintTemplate(DEFAULT_TEMPLATE);
+            }
+
             clearTimeout(safetyTimeout);
         } catch (err) {
             console.error('[SprintTracker] Load error:', err);
@@ -142,6 +188,7 @@ const SprintTracker = () => {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'sprint_evaluations' }, () => loadData())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'sprint_locks' }, () => loadData())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'sprint_participants' }, () => loadData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'sprint_templates' }, () => loadData())
             .subscribe();
 
         return () => supabase.removeChannel(channel);
@@ -172,12 +219,22 @@ const SprintTracker = () => {
         }
     };
 
-    // Check if a week is locked (manual override > automatic schedule)
+    // Check if a week is locked (manual DB override > deadline > automatic day-of-week schedule)
     const isWeekLocked = (weekNum) => {
+        // 1. Manual admin override takes priority
         if (sprintLocks[weekNum] !== undefined) {
             return sprintLocks[weekNum];
         }
-        // Auto-lock schedule: future weeks are locked unless unlocked by Admin or Sunday demo
+        // 2. Auto-lock if today is past the week's end_date
+        const weekData = sprintTemplate[weekNum - 1];
+        if (weekData?.end_date) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const deadline = new Date(weekData.end_date);
+            deadline.setHours(23, 59, 59, 999); // lock after end of deadline day
+            if (today > deadline) return true;
+        }
+        // 3. Default: lock all weeks except week 1, unless it's Sunday (demo day)
         return weekNum > 1 && new Date().getDay() !== 0;
     };
 
@@ -202,8 +259,197 @@ const SprintTracker = () => {
         }
     };
 
-    // Get evaluatable teammates (Admin gets full control over all members)
-    const getEvaluatableMembers = () => isAdmin ? teamMembers : teamMembers.filter(m => m.id !== user?.id);
+    // ─── Admin: Save Sprint Template ──────────────────────────────────────────
+    const saveSprintTemplate = async () => {
+        if (templateDraft.length === 0) {
+            alert('Template cannot be empty — add at least one week.');
+            return;
+        }
+        setTemplateSaving(true);
+        const classroomId = selectedClassroomId || user?.classroom_id || null;
+        try {
+            // Delete all existing rows for this classroom first
+            const { error: delErr } = await supabase
+                .from('sprint_templates')
+                .delete()
+                .eq('classroom_id', classroomId);
+            if (delErr) throw delErr;
+
+            // Insert the new template rows
+            const rows = templateDraft.map((w, idx) => ({
+                classroom_id: classroomId,
+                week_number: idx + 1,
+                title: w.title || `Week ${idx + 1}`,
+                description: w.description || '',
+                is_showcase: w.is_showcase || false,
+                start_date: w.start_date || null,
+                end_date: w.end_date || null,
+                resource_url: w.resource_url || null,
+                resource_label: w.resource_label || null,
+                updated_at: new Date().toISOString()
+            }));
+            const { error: insErr } = await supabase.from('sprint_templates').insert(rows);
+            if (insErr) throw insErr;
+
+            setShowTemplateModal(false);
+            loadData();
+        } catch (err) {
+            console.error('[SprintTracker] Save template error:', err);
+            alert('Failed to save template: ' + err.message);
+        } finally {
+            setTemplateSaving(false);
+        }
+    };
+
+    // Template draft helpers
+    const openTemplateModal = () => {
+        // Clone current template into draft (re-index weeks to match position)
+        setTemplateDraft(sprintTemplate.map((w, idx) => ({
+            title: w.title,
+            description: w.description,
+            is_showcase: w.is_showcase,
+            start_date: w.start_date || '',
+            end_date: w.end_date || '',
+            resource_url: w.resource_url || '',
+            resource_label: w.resource_label || ''
+        })));
+        setShowTemplateModal(true);
+    };
+
+    const updateDraftWeek = (idx, field, value) => {
+        setTemplateDraft(prev => prev.map((w, i) => i === idx ? { ...w, [field]: value } : w));
+    };
+
+    const addDraftWeek = () => {
+        setTemplateDraft(prev => [...prev, { title: `Week ${prev.length + 1}`, description: '', is_showcase: false, start_date: '', end_date: '', resource_url: '', resource_label: '' }]);
+    };
+
+    const removeDraftWeek = (idx) => {
+        if (templateDraft.length <= 1) { alert('A template must have at least one week.'); return; }
+        setTemplateDraft(prev => prev.filter((_, i) => i !== idx));
+    };
+
+    // CSV Import Parser
+    const parseSprintCSV = (csvText) => {
+        const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
+        if (lines.length <= 1) return [];
+
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
+
+        const rows = [];
+        for (let i = 1; i < lines.length; i++) {
+            const rawLine = lines[i];
+            if (!rawLine.trim()) continue;
+
+            const cols = [];
+            let cur = '';
+            let inQuotes = false;
+            for (let c = 0; c < rawLine.length; c++) {
+                const char = rawLine[c];
+                if (char === '"' || char === "'") {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    cols.push(cur.trim().replace(/^["']|["']$/g, ''));
+                    cur = '';
+                } else {
+                    cur += char;
+                }
+            }
+            cols.push(cur.trim().replace(/^["']|["']$/g, ''));
+
+            const getCol = (key) => {
+                const idx = headers.indexOf(key);
+                return idx !== -1 && cols[idx] !== undefined ? cols[idx] : '';
+            };
+
+            const week = parseInt(getCol('week_number') || getCol('week') || i, 10);
+            const title = getCol('title') || `Week ${week}`;
+            const description = getCol('description') || '';
+            const is_showcase = ['true', '1', 'yes'].includes((getCol('is_showcase') || '').toLowerCase());
+            const start_date = getCol('start_date') || '';
+            const end_date = getCol('end_date') || '';
+            const resource_url = getCol('resource_url') || '';
+            const resource_label = getCol('resource_label') || '';
+
+            rows.push({
+                week,
+                title,
+                description,
+                is_showcase,
+                start_date,
+                end_date,
+                resource_url,
+                resource_label
+            });
+        }
+        return rows;
+    };
+
+    const handleImportCSV = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const parsed = parseSprintCSV(evt.target.result);
+                if (parsed.length === 0) {
+                    alert('No valid week rows found in CSV. Click the (?) icon for expected format.');
+                    return;
+                }
+                setTemplateDraft(parsed.map(w => ({
+                    title: w.title,
+                    description: w.description,
+                    is_showcase: w.is_showcase,
+                    start_date: w.start_date,
+                    end_date: w.end_date,
+                    resource_url: w.resource_url,
+                    resource_label: w.resource_label
+                })));
+                alert(`Successfully imported ${parsed.length} weeks from CSV! Review and click Save Template.`);
+            } catch (err) {
+                console.error('CSV parse error:', err);
+                alert('Failed to parse CSV file: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    };
+
+    const handleExportTemplateCSV = () => {
+        const headers = ['week_number', 'title', 'description', 'is_showcase', 'start_date', 'end_date', 'resource_url', 'resource_label'];
+        const rows = templateDraft.map((w, idx) => [
+            idx + 1,
+            `"${(w.title || '').replace(/"/g, '""')}"`,
+            `"${(w.description || '').replace(/"/g, '""')}"`,
+            w.is_showcase ? 'true' : 'false',
+            w.start_date || '',
+            w.end_date || '',
+            `"${(w.resource_url || '').replace(/"/g, '""')}"`,
+            `"${(w.resource_label || '').replace(/"/g, '""')}"`
+        ]);
+        const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `sprint_weeks_template.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
+    // Move a week up or down
+    const moveDraftWeek = (idx, direction) => {
+        setTemplateDraft(prev => {
+            const arr = [...prev];
+            const target = idx + direction;
+            if (target < 0 || target >= arr.length) return arr;
+            [arr[idx], arr[target]] = [arr[target], arr[idx]];
+            return arr;
+        });
+    };
+
+    // Get evaluatable teammates (self-evaluation is strictly disallowed)
+    const getEvaluatableMembers = () => teamMembers.filter(m => m.id !== user?.id);
 
     // Delete evaluation entry (Admin full control feature)
     const handleDeleteEval = async (evalId) => {
@@ -253,6 +499,10 @@ const SprintTracker = () => {
 
     // Open evaluation modal
     const openEvalModal = (member, weekNum) => {
+        if (member.id === user?.id) {
+            alert('Self-evaluation is not allowed.');
+            return;
+        }
         const existing = getExistingEval(member.id, weekNum);
         if (existing) {
             setEvalScores({
@@ -399,6 +649,30 @@ const SprintTracker = () => {
         .map(m => ({ ...m, cumulative: getCumulativeScore(m.id) }))
         .sort((a, b) => b.cumulative.total - a.cumulative.total);
 
+    const exportToCSV = () => {
+        const headers = ['Rank', 'Name', 'Email', 'Total Score (out of 320)', 'Weeks Scored'];
+        const rows = rankedMembers.map((m, idx) => {
+            const totalScore = m.cumulative?.total ?? 0;
+            const weeksScored = m.cumulative?.weeksScored ?? 0;
+            return [
+                idx + 1,
+                `"${(m.name || 'Member').replace(/"/g, '""')}"`,
+                `"${(m.email || '').replace(/"/g, '""')}"`,
+                totalScore.toFixed(1),
+                weeksScored
+            ];
+        });
+
+        const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `Zenith_Sprint_Evaluations_Summary.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="page-content" style={{ maxWidth: '1000px', margin: '0 auto' }}>
             {/* Header */}
@@ -408,7 +682,7 @@ const SprintTracker = () => {
                     Sprint Tracker
                 </h1>
                 <p style={{ color: 'var(--text-muted)', marginTop: 'var(--space-xs)' }}>
-                    The Tarot Club — Weekly Peer Evaluations & Scoreboard
+                    {classrooms.find(c => c.id === selectedClassroomId)?.name || 'Classroom'} — 8-Week Milestone Scoreboard & Peer Evaluations
                 </p>
                 {isAdmin && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: 'var(--space-md)' }}>
@@ -455,6 +729,24 @@ const SprintTracker = () => {
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                         >
                             <Users size={14} /> Manage Sprint Roster ({teamMembers.length})
+                        </Button>
+
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={openTemplateModal}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                            <Settings size={14} /> Configure Sprint Weeks ({sprintTemplate.length} wks)
+                        </Button>
+
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={exportToCSV}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                            <Download size={14} /> Export CSV
                         </Button>
                     </div>
                 )}
@@ -534,11 +826,11 @@ const SprintTracker = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {WEEKLY_ASSIGNMENTS.map(assignment => {
+                                        {sprintTemplate.map(assignment => {
                                             return (
                                                 <tr key={assignment.week} style={{ borderBottom: '1px solid var(--border)' }}>
                                                     <td style={{ padding: 'var(--space-sm) var(--space-xs)', fontWeight: 600 }}>
-                                                        W{assignment.week} {assignment.isTarothon && '🃏'}
+                                                        W{assignment.week} {assignment.is_showcase && '🃏'}
                                                     </td>
                                                     {teamMembers.map(m => {
                                                         const score = getWeeklyAvg(m.id, assignment.week);
@@ -580,7 +872,7 @@ const SprintTracker = () => {
 
                     {/* Week selector */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)', marginBottom: 'var(--space-lg)' }}>
-                        {WEEKLY_ASSIGNMENTS.map(week => (
+                        {sprintTemplate.map(week => (
                             <button
                                 key={week.week}
                                 onClick={() => setSelectedWeek(week.week)}
@@ -608,8 +900,45 @@ const SprintTracker = () => {
                     }}>
                         <div>
                             <div style={{ fontWeight: 700, fontSize: 'var(--text-base)', marginBottom: 'var(--space-xs)' }}>
-                                {WEEKLY_ASSIGNMENTS[selectedWeek - 1]?.isTarothon ? '🃏 ' : '📌 '}
-                                Week {selectedWeek}: {WEEKLY_ASSIGNMENTS[selectedWeek - 1]?.title}
+                                {sprintTemplate[selectedWeek - 1]?.is_showcase ? '🃏 ' : '📌 '}
+                                Week {selectedWeek}: {sprintTemplate[selectedWeek - 1]?.title}
+                            </div>
+                            {sprintTemplate[selectedWeek - 1]?.description && (
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-xs)', lineHeight: 1.4 }}>
+                                    {sprintTemplate[selectedWeek - 1].description}
+                                </div>
+                            )}
+                            {(sprintTemplate[selectedWeek - 1]?.start_date || sprintTemplate[selectedWeek - 1]?.end_date) && (
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: 'var(--space-xs)' }}>
+                                    <Calendar size={12} />
+                                    {sprintTemplate[selectedWeek - 1]?.start_date
+                                        ? new Date(sprintTemplate[selectedWeek - 1].start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                                        : '—'}
+                                    {' → '}
+                                    {sprintTemplate[selectedWeek - 1]?.end_date
+                                        ? new Date(sprintTemplate[selectedWeek - 1].end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                                        : '—'}
+                                </div>
+                            )}
+                            <div style={{ marginTop: 'var(--space-xs)', marginBottom: 'var(--space-xs)' }}>
+                                <a
+                                    href={sprintTemplate[selectedWeek - 1]?.resource_url || `/study-materials?tab=sprint`}
+                                    target={sprintTemplate[selectedWeek - 1]?.resource_url?.startsWith('http') ? '_blank' : '_self'}
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                        fontSize: 'var(--text-xs)', fontWeight: 600,
+                                        color: '#3b82f6',
+                                        background: 'rgba(59, 130, 246, 0.1)',
+                                        padding: '4px 10px', borderRadius: 'var(--radius-md)',
+                                        border: '1px solid rgba(59, 130, 246, 0.25)',
+                                        textDecoration: 'none'
+                                    }}
+                                >
+                                    <BookOpen size={13} />
+                                    {sprintTemplate[selectedWeek - 1]?.resource_label || 'View Sprint Vault & Resources'}
+                                    <ExternalLink size={11} />
+                                </a>
                             </div>
                             <div style={{ fontSize: 'var(--text-xs)', color: isWeekLocked(selectedWeek) ? 'var(--warning)' : 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 {isWeekLocked(selectedWeek) ? <><Lock size={13} /> Submissions Locked (Auto Schedule / Admin Lock)</> : <><Unlock size={13} /> Submissions Open</>}
@@ -641,22 +970,23 @@ const SprintTracker = () => {
                                 <div key={member.id} style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                     padding: 'var(--space-md)', borderRadius: 'var(--radius-lg)',
-                                    border: '1px solid var(--border)',
-                                    background: evaluated ? 'var(--success-50, rgba(34,197,94,0.05))' : 'var(--card)',
+                                    border: evaluated ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid var(--border)',
+                                    borderLeft: evaluated ? '4px solid #22c55e' : '1px solid var(--border)',
+                                    background: evaluated ? 'rgba(34, 197, 94, 0.08)' : 'var(--card)',
                                     flexWrap: 'wrap', gap: 'var(--space-sm)'
                                 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', flex: 1, minWidth: 0, overflow: 'hidden' }}>
                                         <div style={{
                                             width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0,
-                                            background: 'var(--primary-100)', display: 'flex',
+                                            background: 'rgba(59, 130, 246, 0.15)', display: 'flex',
                                             alignItems: 'center', justifyContent: 'center',
-                                            fontWeight: 700, color: 'var(--primary-600)',
-                                            fontSize: 'var(--text-sm)'
+                                            fontWeight: 700, color: 'var(--primary-400, #60a5fa)',
+                                            fontSize: 'var(--text-sm)', border: '1px solid rgba(59, 130, 246, 0.2)'
                                         }}>
                                             {(member.name || member.email)?.[0]?.toUpperCase()}
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                                            <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            <div style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {member.name || member.email?.split('@')[0]}
                                             </div>
                                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -668,8 +998,8 @@ const SprintTracker = () => {
                                         {evaluated && (
                                             <span style={{
                                                 display: 'flex', alignItems: 'center', gap: 'var(--space-xs)',
-                                                fontSize: 'var(--text-sm)', fontWeight: 600,
-                                                color: 'var(--success)'
+                                                fontSize: 'var(--text-sm)', fontWeight: 700,
+                                                color: '#4ade80'
                                             }}>
                                                 <CheckCircle size={16} />
                                                 {totalScore}/40
@@ -678,7 +1008,7 @@ const SprintTracker = () => {
 
                                         {isWeekLocked(selectedWeek) && !isAdmin ? (
                                             <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                                                <Lock size={13} /> Locked until Demo
+                                                <Lock size={13} /> Locked
                                             </span>
                                         ) : (
                                             <Button
@@ -712,7 +1042,7 @@ const SprintTracker = () => {
                         Weekly Details
                     </h2>
 
-                    {WEEKLY_ASSIGNMENTS.map(week => {
+                    {sprintTemplate.map(week => {
                         const isExpanded = expandedWeek === week.week;
                         return (
                             <div key={week.week} style={{ marginBottom: 'var(--space-sm)' }}>
@@ -721,13 +1051,14 @@ const SprintTracker = () => {
                                     style={{
                                         width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                         padding: 'var(--space-md) var(--space-lg)',
-                                        background: week.isTarothon ? 'var(--primary-50)' : 'var(--surface)',
-                                        border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
+                                        background: week.is_showcase ? 'rgba(168, 85, 247, 0.12)' : 'var(--surface)',
+                                        border: week.is_showcase ? '1px solid rgba(168, 85, 247, 0.3)' : '1px solid var(--border)',
+                                        borderRadius: 'var(--radius-lg)',
                                         cursor: 'pointer', color: 'var(--text)', fontWeight: 600,
                                         fontSize: 'var(--text-sm)', textAlign: 'left'
                                     }}
                                 >
-                                    <span>{week.isTarothon ? '🃏' : '📌'} Week {week.week}: {week.title}</span>
+                                    <span>{week.is_showcase ? '🃏' : '📌'} Week {week.week}: {week.title}</span>
                                     {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                                 </button>
 
@@ -738,6 +1069,35 @@ const SprintTracker = () => {
                                         borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
                                         background: 'var(--card)'
                                     }}>
+                                        {(week.description || week.resource_url) && (
+                                            <div style={{
+                                                marginBottom: 'var(--space-md)', padding: 'var(--space-sm) var(--space-md)',
+                                                background: 'var(--surface)', borderRadius: 'var(--radius-md)',
+                                                border: '1px solid var(--border)'
+                                            }}>
+                                                {week.description && (
+                                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: week.resource_url ? 'var(--space-xs)' : 0 }}>
+                                                        {week.description}
+                                                    </div>
+                                                )}
+                                                {week.resource_url && (
+                                                    <a
+                                                        href={week.resource_url}
+                                                        target={week.resource_url.startsWith('http') ? '_blank' : '_self'}
+                                                        rel="noopener noreferrer"
+                                                        style={{
+                                                            display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                                            fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                            color: '#3b82f6', textDecoration: 'none'
+                                                        }}
+                                                    >
+                                                        <BookOpen size={13} />
+                                                        {week.resource_label || 'View Study Material / Resource'}
+                                                        <ExternalLink size={11} />
+                                                    </a>
+                                                )}
+                                            </div>
+                                        )}
                                         {teamMembers.map(member => {
                                             const weekEvals = evaluations.filter(e => e.subject_id === member.id && e.week_number === week.week);
                                             const avg = getWeeklyAvg(member.id, week.week);
@@ -921,6 +1281,332 @@ const SprintTracker = () => {
                     </div>
                 </div>
             </Modal>
+
+            {/* ─── Sprint Template Editor Modal ─── */}
+            {isAdmin && (
+                <Modal
+                    isOpen={showTemplateModal}
+                    onClose={() => setShowTemplateModal(false)}
+                    title="⚙️ Configure Sprint Weeks"
+                    size="lg"
+                    footer={
+                        <div style={{ display: 'flex', gap: 'var(--space-md)', width: '100%', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <button
+                                onClick={addDraftWeek}
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                    padding: '8px 16px', borderRadius: 'var(--radius-lg)',
+                                    border: '1px dashed var(--primary-500)',
+                                    background: 'color-mix(in srgb, var(--primary-500), transparent 90%)',
+                                    color: 'var(--primary-400)', fontWeight: 600,
+                                    fontSize: 'var(--text-sm)', cursor: 'pointer'
+                                }}
+                            >
+                                <PlusCircle size={16} /> Add Week
+                            </button>
+                            <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                                <Button variant="ghost" onClick={() => setShowTemplateModal(false)}>Cancel</Button>
+                                <Button variant="primary" onClick={saveSprintTemplate} disabled={templateSaving}>
+                                    {templateSaving ? 'Saving...' : '💾 Save Template'}
+                                </Button>
+                            </div>
+                        </div>
+                    }
+                >
+                    <div>
+                        {/* Info banner & CSV Toolbar */}
+                        <div style={{
+                            padding: 'var(--space-md)', borderRadius: 'var(--radius-lg)',
+                            background: 'color-mix(in srgb, var(--primary-500), transparent 90%)',
+                            border: '1px solid color-mix(in srgb, var(--primary-500), transparent 60%)',
+                            marginBottom: 'var(--space-md)', display: 'flex', flexWrap: 'wrap',
+                            justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-sm)'
+                        }}>
+                            <div>
+                                <strong style={{ color: 'var(--primary-400)' }}>Classroom:</strong>{' '}
+                                {classrooms.find(c => c.id === (selectedClassroomId || user?.classroom_id))?.name || 'Current Classroom'}
+                            </div>
+
+                            {/* CSV Actions Toolbar */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <label style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                    fontSize: 'var(--text-xs)', fontWeight: 600, padding: '4px 10px',
+                                    borderRadius: 'var(--radius-md)', background: 'var(--surface)',
+                                    border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text)'
+                                }}>
+                                    <Upload size={13} /> Import CSV
+                                    <input type="file" accept=".csv" onChange={handleImportCSV} style={{ display: 'none' }} />
+                                </label>
+
+                                <button
+                                    onClick={handleExportTemplateCSV}
+                                    style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                        fontSize: 'var(--text-xs)', fontWeight: 600, padding: '4px 10px',
+                                        borderRadius: 'var(--radius-md)', background: 'var(--surface)',
+                                        border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text)'
+                                    }}
+                                >
+                                    <Download size={13} /> Export CSV
+                                </button>
+
+                                <button
+                                    onClick={() => setShowCsvHelp(!showCsvHelp)}
+                                    title="View expected CSV format guide"
+                                    style={{
+                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                        width: '24px', height: '24px', borderRadius: '50%',
+                                        background: showCsvHelp ? 'var(--primary-500)' : 'var(--surface)',
+                                        color: showCsvHelp ? '#fff' : 'var(--text-muted)',
+                                        border: '1px solid var(--border)', cursor: 'pointer',
+                                        fontSize: 'var(--text-xs)', fontWeight: 700
+                                    }}
+                                >
+                                    ?
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Expandable CSV Help Tooltip Guide */}
+                        {showCsvHelp && (
+                            <div style={{
+                                padding: 'var(--space-md)', borderRadius: 'var(--radius-lg)',
+                                background: 'var(--surface)', border: '1px solid var(--primary-400)',
+                                marginBottom: 'var(--space-lg)', fontSize: 'var(--text-xs)', color: 'var(--text)'
+                            }}>
+                                <div style={{ fontWeight: 700, marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary-400)' }}>
+                                        <HelpCircle size={14} /> Expected CSV Format Guide
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            const text = `week_number,title,description,is_showcase,start_date,end_date,resource_url,resource_label\n1,Week 1: Setup & Overview,Environment setup and orientation,false,2026-08-01,2026-08-07,https://notion.so/w1,View Briefing\n2,Week 2: Frontend Architecture,Building core UI components,false,2026-08-08,2026-08-14,,\n4,Week 4: Mid Showcase,Mid-sprint project showcase demo,true,2026-08-22,2026-08-28,,`;
+                                            navigator.clipboard.writeText(text);
+                                            setCopiedFormat(true);
+                                            setTimeout(() => setCopiedFormat(false), 2000);
+                                        }}
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                            padding: '3px 8px', borderRadius: 'var(--radius-sm)',
+                                            background: 'var(--card)', border: '1px solid var(--border)',
+                                            color: copiedFormat ? '#22c55e' : 'var(--text)',
+                                            fontSize: '11px', fontWeight: 600, cursor: 'pointer'
+                                        }}
+                                    >
+                                        {copiedFormat ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy Format</>}
+                                    </button>
+                                </div>
+                                <p style={{ margin: '0 0 8px', color: 'var(--text-muted)' }}>
+                                    Upload a <code>.csv</code> file with the headers below. You can also click <strong>Export CSV</strong> above to download your current week configuration as a template!
+                                </p>
+                                <pre style={{
+                                    background: 'var(--card)', padding: '8px 12px', borderRadius: 'var(--radius-md)',
+                                    overflowX: 'auto', border: '1px solid var(--border)', fontFamily: 'monospace',
+                                    fontSize: '11px', lineHeight: 1.4
+                                }}>
+{`week_number,title,description,is_showcase,start_date,end_date,resource_url,resource_label
+1,Week 1: Setup & Overview,Environment setup and orientation,false,2026-08-01,2026-08-07,https://notion.so/w1,View Briefing
+2,Week 2: Frontend Architecture,Building core UI components,false,2026-08-08,2026-08-14,,
+4,Week 4: Mid Showcase,Mid-sprint project showcase demo,true,2026-08-22,2026-08-28,,`}
+                                </pre>
+                            </div>
+                        )}
+
+                        {/* Week rows */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                            {templateDraft.map((week, idx) => (
+                                <div key={idx} style={{
+                                    border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)',
+                                    background: week.is_showcase
+                                        ? 'color-mix(in srgb, var(--primary-500), transparent 94%)'
+                                        : 'var(--card)',
+                                    overflow: 'hidden'
+                                }}>
+                                    {/* Week header row */}
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
+                                        padding: 'var(--space-sm) var(--space-md)',
+                                        borderBottom: '1px solid var(--border)',
+                                        background: 'var(--surface)'
+                                    }}>
+                                        {/* Reorder arrows */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                            <button
+                                                onClick={() => moveDraftWeek(idx, -1)}
+                                                disabled={idx === 0}
+                                                title="Move up"
+                                                style={{
+                                                    background: 'none', border: 'none', cursor: idx === 0 ? 'default' : 'pointer',
+                                                    color: idx === 0 ? 'var(--border)' : 'var(--text-muted)',
+                                                    padding: '0 4px', lineHeight: 1
+                                                }}
+                                            >▲</button>
+                                            <button
+                                                onClick={() => moveDraftWeek(idx, 1)}
+                                                disabled={idx === templateDraft.length - 1}
+                                                title="Move down"
+                                                style={{
+                                                    background: 'none', border: 'none', cursor: idx === templateDraft.length - 1 ? 'default' : 'pointer',
+                                                    color: idx === templateDraft.length - 1 ? 'var(--border)' : 'var(--text-muted)',
+                                                    padding: '0 4px', lineHeight: 1
+                                                }}
+                                            >▼</button>
+                                        </div>
+
+                                        {/* Week badge */}
+                                        <span style={{
+                                            flexShrink: 0, fontWeight: 800, fontSize: 'var(--text-xs)',
+                                            padding: '3px 10px', borderRadius: '20px',
+                                            background: week.is_showcase ? 'var(--primary-500)' : 'var(--surface)',
+                                            color: week.is_showcase ? '#fff' : 'var(--text-muted)',
+                                            border: '1px solid var(--border)'
+                                        }}>
+                                            {week.is_showcase ? '🃏' : '📌'} W{idx + 1}
+                                        </span>
+
+                                        {/* Title input */}
+                                        <input
+                                            type="text"
+                                            value={week.title}
+                                            onChange={e => updateDraftWeek(idx, 'title', e.target.value)}
+                                            placeholder={`Week ${idx + 1} title`}
+                                            style={{
+                                                flex: 1, padding: '6px 12px', borderRadius: 'var(--radius-md)',
+                                                border: '1px solid var(--border)', background: 'var(--surface)',
+                                                color: 'var(--text)', fontSize: 'var(--text-sm)', fontWeight: 600,
+                                                minWidth: 0
+                                            }}
+                                        />
+
+                                        {/* Showcase toggle */}
+                                        <label style={{
+                                            display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0,
+                                            fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-muted)',
+                                            cursor: 'pointer', userSelect: 'none'
+                                        }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={week.is_showcase}
+                                                onChange={e => updateDraftWeek(idx, 'is_showcase', e.target.checked)}
+                                                style={{ accentColor: 'var(--primary-500)', width: '14px', height: '14px' }}
+                                            />
+                                            Showcase
+                                        </label>
+
+                                        {/* Delete button */}
+                                        <button
+                                            onClick={() => removeDraftWeek(idx)}
+                                            title="Remove this week"
+                                            style={{
+                                                flexShrink: 0, background: 'none', border: 'none',
+                                                color: 'var(--danger)', cursor: 'pointer',
+                                                padding: '4px', borderRadius: 'var(--radius-sm)', opacity: 0.8
+                                            }}
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
+                                    </div>
+
+                                    {/* Description + Dates */}
+                                    <div style={{ padding: 'var(--space-sm) var(--space-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                                        <textarea
+                                            value={week.description}
+                                            onChange={e => updateDraftWeek(idx, 'description', e.target.value)}
+                                            placeholder="Week description / goals (optional)"
+                                            rows={2}
+                                            style={{
+                                                width: '100%', padding: '8px 12px',
+                                                borderRadius: 'var(--radius-md)', border: '1px solid var(--border)',
+                                                background: 'var(--surface)', color: 'var(--text-muted)',
+                                                resize: 'vertical', fontFamily: 'inherit',
+                                                fontSize: 'var(--text-xs)', lineHeight: 1.5,
+                                                boxSizing: 'border-box'
+                                            }}
+                                        />
+                                        {/* Date range + Resource Link */}
+                                        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '1 1 160px' }}>
+                                                <Calendar size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                                <label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontWeight: 600 }}>Start</label>
+                                                <input
+                                                    type="date"
+                                                    value={week.start_date || ''}
+                                                    onChange={e => updateDraftWeek(idx, 'start_date', e.target.value)}
+                                                    style={{
+                                                        flex: 1, padding: '5px 10px', borderRadius: 'var(--radius-md)',
+                                                        border: '1px solid var(--border)', background: 'var(--surface)',
+                                                        color: 'var(--text)', fontSize: 'var(--text-xs)',
+                                                        minWidth: 0
+                                                    }}
+                                                />
+                                            </div>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>→</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '1 1 160px' }}>
+                                                <label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontWeight: 600 }}>End</label>
+                                                <input
+                                                    type="date"
+                                                    value={week.end_date || ''}
+                                                    onChange={e => updateDraftWeek(idx, 'end_date', e.target.value)}
+                                                    style={{
+                                                        flex: 1, padding: '5px 10px', borderRadius: 'var(--radius-md)',
+                                                        border: '1px solid var(--border)', background: 'var(--surface)',
+                                                        color: 'var(--text)', fontSize: 'var(--text-xs)',
+                                                        minWidth: 0
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Resource Link & Label */}
+                                        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '2 1 200px' }}>
+                                                <LinkIcon size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                                <input
+                                                    type="text"
+                                                    value={week.resource_url || ''}
+                                                    onChange={e => updateDraftWeek(idx, 'resource_url', e.target.value)}
+                                                    placeholder="Study Material / Announcement URL (e.g. /study-materials or https://...)"
+                                                    style={{
+                                                        flex: 1, padding: '5px 10px', borderRadius: 'var(--radius-md)',
+                                                        border: '1px solid var(--border)', background: 'var(--surface)',
+                                                        color: 'var(--text)', fontSize: 'var(--text-xs)',
+                                                        minWidth: 0
+                                                    }}
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '1 1 140px' }}>
+                                                <input
+                                                    type="text"
+                                                    value={week.resource_label || ''}
+                                                    onChange={e => updateDraftWeek(idx, 'resource_label', e.target.value)}
+                                                    placeholder="Link Button Label (optional)"
+                                                    style={{
+                                                        flex: 1, padding: '5px 10px', borderRadius: 'var(--radius-md)',
+                                                        border: '1px solid var(--border)', background: 'var(--surface)',
+                                                        color: 'var(--text)', fontSize: 'var(--text-xs)',
+                                                        minWidth: 0
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {templateDraft.length === 0 && (
+                                <div style={{
+                                    textAlign: 'center', padding: 'var(--space-xl)',
+                                    color: 'var(--text-muted)', border: '1px dashed var(--border)',
+                                    borderRadius: 'var(--radius-xl)'
+                                }}>
+                                    No weeks configured. Click <strong>Add Week</strong> to start building your sprint template.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 };

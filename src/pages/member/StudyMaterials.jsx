@@ -5,7 +5,8 @@ import {
     BookOpen, Plus, Trash2, Search, Edit3, Pin, PinOff,
     FolderOpen, Clock, Tag, Sparkles, Eye, ChevronDown, ChevronRight,
     BookMarked, StickyNote, Filter, X,
-    File, Link as LinkIcon, FileText, Download, ExternalLink
+    File, Link as LinkIcon, FileText, Download, ExternalLink,
+    Zap, Calendar, ArrowRight
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { useAuth } from '../../context/AuthContext';
@@ -24,12 +25,16 @@ const NOTE_COLORS = [
 ];
 
 const StudyMaterials = () => {
-    const { user } = useAuth();
+    const { user, isAdmin } = useAuth();
     const navigate = useNavigate();
     const { id: urlId } = useParams();
-    const [activeTab, setActiveTab] = useState('shared');
+    
+    // Default to sprint tab if tab=sprint in URL, otherwise sprint vault by default
+    const initialTab = new URLSearchParams(window.location.search).get('tab') || 'sprint';
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [sharedMaterials, setSharedMaterials] = useState([]);
     const [myNotes, setMyNotes] = useState([]);
+    const [sprintTemplates, setSprintTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
@@ -40,6 +45,37 @@ const StudyMaterials = () => {
     const [selectedTag, setSelectedTag] = useState(null);
     const [expandedCategories, setExpandedCategories] = useState({});
     const [noteForm, setNoteForm] = useState({ title: '', content: '', category: 'General', color: null, material_type: 'text', file: null, url: '' });
+
+    const [showAddSharedModal, setShowAddSharedModal] = useState(false);
+    const [sharedForm, setSharedForm] = useState({ title: '', content: '', subject: 'Week 1', material_type: 'file', file: null, url: '' });
+
+    const handleSaveSharedResource = async (e) => {
+        e.preventDefault();
+        if (!sharedForm.title) return;
+        setSaving(true);
+        try {
+            let file_url = sharedForm.url;
+            if (sharedForm.material_type === 'file' && sharedForm.file) {
+                file_url = await db.uploadStudyMaterial(sharedForm.file);
+            }
+            await db.addKnowledgeSnippet({
+                title: sharedForm.title,
+                content: sharedForm.content || 'Attached Shared Resource',
+                subject: sharedForm.subject || 'General',
+                classroom_id: user?.classroom_id,
+                material_type: sharedForm.material_type,
+                file_url: file_url
+            });
+            setShowAddSharedModal(false);
+            setSharedForm({ title: '', content: '', subject: 'Week 1', material_type: 'file', file: null, url: '' });
+            loadData(true);
+        } catch (err) {
+            console.error('Save resource error:', err);
+            alert('Failed to save resource: ' + (err.message || err));
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const handleTabChange = (tab) => {
         setActiveTab(tab);
@@ -52,15 +88,17 @@ const StudyMaterials = () => {
         try {
             if (!silent) setLoading(true);
             const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 10000));
-            const [shared, notes] = await Promise.race([
+            const [shared, notes, sprintRes] = await Promise.race([
                 Promise.all([
                     db.getKnowledgeBase(user?.classroom_id).catch(() => []),
-                    db.getStudyNotes(user.id).catch(() => [])
+                    db.getStudyNotes(user.id).catch(() => []),
+                    supabase.from('sprint_templates').select('*').eq('classroom_id', user.classroom_id).order('week_number', { ascending: true })
                 ]),
                 timeout
             ]);
             setSharedMaterials(shared || []);
             setMyNotes(notes || []);
+            setSprintTemplates(sprintRes?.data || []);
         } catch (e) {
             console.error('[StudyMaterials] Load error:', e);
         } finally {
@@ -221,25 +259,47 @@ const StudyMaterials = () => {
                 <div>
                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <BookMarked className="text-primary-400" />
-                        Study Materials
+                        Knowledge Hub
                     </h2>
                     <p style={{ color: 'var(--text-muted)', margin: 0 }}>
-                        {activeTab === 'shared'
-                            ? 'Resources shared by your instructor'
+                        {activeTab === 'sprint'
+                            ? 'Sprint Vault & weekly learning resources'
+                            : activeTab === 'shared'
+                            ? 'Shared reference documents & course material'
                             : 'Your personal study notes & categorized files'}
                     </p>
                 </div>
-                {activeTab === 'notes' && (
+                <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {isAdmin && activeTab === 'sprint' ? (
+                        <Button variant="secondary" icon={Plus} onClick={() => { setSharedForm({ title: '', content: '', subject: 'Week 1', material_type: 'file', file: null, url: '' }); setShowAddSharedModal(true); }}>
+                            ⚡ + Add Sprint Resource
+                        </Button>
+                    ) : isAdmin && (
+                        <Button variant="secondary" icon={Plus} onClick={() => { setShowAddSharedModal(true); }}>
+                            + Add Shared Resource
+                        </Button>
+                    )}
                     <Button variant="primary" icon={Plus} onClick={() => { setEditingNote(null); setNoteForm({ title: '', content: '', category: 'General', color: null, material_type: 'text', file: null, url: '' }); setShowAddModal(true); }}>
-                        New Note
+                        New Note / Doc
                     </Button>
-                )}
+                    {isAdmin && activeTab === 'sprint' && (
+                        <Button variant="outline" icon={Zap} onClick={() => navigate('/sprint-tracker')}>
+                            ⚙️ Configure Weeks
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Tabs */}
             <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)', flexWrap: 'wrap' }}>
+                <button onClick={() => handleTabChange('sprint')} style={tabStyle('sprint')}>
+                    <Zap size={16} /> ⚡ Sprint Vault
+                    <span style={{ background: 'rgba(255,255,255,0.2)', padding: '1px 8px', borderRadius: '10px', fontSize: '11px' }}>
+                        {sprintTemplates.length}
+                    </span>
+                </button>
                 <button onClick={() => handleTabChange('shared')} style={tabStyle('shared')}>
-                    <BookOpen size={16} /> Shared Materials
+                    <BookOpen size={16} /> Shared Resources
                     <span style={{ background: 'rgba(255,255,255,0.2)', padding: '1px 8px', borderRadius: '10px', fontSize: '11px' }}>
                         {sharedMaterials.length}
                     </span>
@@ -252,67 +312,227 @@ const StudyMaterials = () => {
                 </button>
             </div>
 
-            {/* Search + Filter */}
-            <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)', flexWrap: 'wrap' }}>
-                <div className="search-container-box" style={{ flex: 1, minWidth: '220px' }}>
-                    <Search className="text-muted" size={18} style={{ flexShrink: 0 }} />
-                    <input
-                        className="search-bar-input"
-                        placeholder={activeTab === 'shared' ? 'Search shared materials...' : 'Search your notes...'}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    {searchQuery && (
-                        <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <X size={14} />
-                        </button>
+            {/* Search + Filter for Shared and Notes */}
+            {activeTab !== 'sprint' && (
+                <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)', flexWrap: 'wrap' }}>
+                    <div className="search-container-box" style={{ flex: 1, minWidth: '220px' }}>
+                        <Search className="text-muted" size={18} style={{ flexShrink: 0 }} />
+                        <input
+                            className="search-bar-input"
+                            placeholder={activeTab === 'shared' ? 'Search shared materials...' : 'Search your notes...'}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
+                    {allCategories.length > 2 && (
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <Filter size={14} style={{ color: 'var(--text-muted)' }} />
+                            {allCategories.map(cat => (
+                                <button key={cat} onClick={() => setSelectedCategory(cat)} style={{
+                                    padding: '4px 12px',
+                                    borderRadius: 'var(--radius-full)',
+                                    border: selectedCategory === cat ? '1px solid var(--primary-500)' : '1px solid var(--border)',
+                                    background: selectedCategory === cat ? 'color-mix(in srgb, var(--primary-500), transparent 85%)' : 'transparent',
+                                    color: selectedCategory === cat ? 'var(--primary-500)' : 'var(--text-muted)',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                    fontWeight: 500,
+                                    transition: 'all 0.2s ease'
+                                }}>
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    {allTags.length > 0 && (
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
+                            <Tag size={14} style={{ color: 'var(--text-muted)' }} />
+                            {allTags.map(tag => (
+                                <button key={tag} onClick={() => setSelectedTag(selectedTag === tag ? null : tag)} style={{
+                                    padding: '2px 10px',
+                                    borderRadius: 'var(--radius-full)',
+                                    border: selectedTag === tag ? '1px dashed var(--border)' : '1px dashed var(--border)',
+                                    background: selectedTag === tag ? 'color-mix(in srgb, var(--primary-500), transparent 85%)' : 'transparent',
+                                    color: selectedTag === tag ? 'var(--primary-500)' : 'var(--text-muted)',
+                                    cursor: 'pointer',
+                                    fontSize: '11px',
+                                    fontWeight: 500,
+                                    transition: 'all 0.2s ease'
+                                }}>
+                                    #{tag}
+                                </button>
+                            ))}
+                        </div>
                     )}
                 </div>
-                {allCategories.length > 2 && (
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <Filter size={14} style={{ color: 'var(--text-muted)' }} />
-                        {allCategories.map(cat => (
-                            <button key={cat} onClick={() => setSelectedCategory(cat)} style={{
-                                padding: '4px 12px',
-                                borderRadius: 'var(--radius-full)',
-                                border: selectedCategory === cat ? '1px solid var(--primary-500)' : '1px solid var(--border)',
-                                background: selectedCategory === cat ? 'color-mix(in srgb, var(--primary-500), transparent 85%)' : 'transparent',
-                                color: selectedCategory === cat ? 'var(--primary-500)' : 'var(--text-muted)',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: 500,
-                                transition: 'all 0.2s ease'
-                            }}>
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
-                )}
-                {allTags.length > 0 && (
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
-                        <Tag size={14} style={{ color: 'var(--text-muted)' }} />
-                        {allTags.map(tag => (
-                            <button key={tag} onClick={() => setSelectedTag(selectedTag === tag ? null : tag)} style={{
-                                padding: '2px 10px',
-                                borderRadius: 'var(--radius-full)',
-                                border: selectedTag === tag ? '1px dashed var(--border)' : '1px dashed var(--border)',
-                                background: selectedTag === tag ? 'color-mix(in srgb, var(--primary-500), transparent 85%)' : 'transparent',
-                                color: selectedTag === tag ? 'var(--primary-500)' : 'var(--text-muted)',
-                                cursor: 'pointer',
-                                fontSize: '11px',
-                                fontWeight: 500,
-                                transition: 'all 0.2s ease'
-                            }}>
-                                #{tag}
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
+            )}
 
             {/* Content */}
             {loading ? (
                 <div className="flex items-center justify-center p-xl"><div className="loading-spinner" /></div>
+            ) : activeTab === 'sprint' ? (
+                /* Sprint Vault View */
+                <div>
+                    {sprintTemplates.length === 0 ? (
+                        <Card style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
+                            <Zap size={48} className="text-muted mb-md" />
+                            <h3>No Sprint Weeks Configured Yet</h3>
+                            <p className="text-muted mb-lg">
+                                {isAdmin
+                                    ? 'Click below to set up week titles, descriptions, dates, and resource links.'
+                                    : 'Your instructor has not published the sprint template yet. Check back soon!'}
+                            </p>
+                            {isAdmin && (
+                                <Button variant="primary" icon={Zap} onClick={() => navigate('/sprint-tracker')}>
+                                    Configure Sprint Template
+                                </Button>
+                            )}
+                        </Card>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-lg)' }}>
+                            {sprintTemplates.map(st => (
+                                <Card
+                                    key={st.id || st.week_number}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                                        position: 'relative', overflow: 'hidden',
+                                        border: st.is_showcase ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid var(--border)',
+                                        background: st.is_showcase
+                                            ? 'linear-gradient(135deg, rgba(168,85,247,0.08), rgba(126,34,206,0.03))'
+                                            : 'var(--card)'
+                                    }}
+                                >
+                                    <div>
+                                        <div className="flex justify-between items-center mb-xs">
+                                            <Badge variant={st.is_showcase ? 'accent' : 'primary'} size="xs">
+                                                {st.is_showcase ? '🃏 Showcase Week' : `📌 Week ${st.week_number}`}
+                                            </Badge>
+                                            {(st.start_date || st.end_date) && (
+                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <Calendar size={12} />
+                                                    {st.start_date ? new Date(st.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
+                                                    {' → '}
+                                                    {st.end_date ? new Date(st.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <h3 style={{ margin: 'var(--space-xs) 0 var(--space-sm)', fontSize: 'var(--text-lg)', fontWeight: 700 }}>
+                                            {st.title}
+                                        </h3>
+
+                                        {st.description && (
+                                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 'var(--space-md)' }}>
+                                                {st.description}
+                                            </p>
+                                        )}
+
+                                        {/* Attached Files & Notes matching this Sprint Week */}
+                                        {(() => {
+                                            const weekTarget = `week ${st.week_number}`;
+                                            const matchedDocs = [...sharedMaterials, ...myNotes].filter(item => {
+                                                const cat = (item.subject || item.category || '').toLowerCase();
+                                                return cat.includes(weekTarget) || cat === `w${st.week_number}` || (item.tags || []).some(t => t.toLowerCase().includes(weekTarget));
+                                            });
+                                            if (matchedDocs.length === 0) return null;
+                                            return (
+                                                <div style={{ marginTop: 'var(--space-xs)', marginBottom: 'var(--space-sm)' }}>
+                                                    <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px', letterSpacing: '0.05em' }}>
+                                                        Attached Documents & Notes ({matchedDocs.length})
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                        {matchedDocs.map(doc => (
+                                                            <div
+                                                                key={doc.id}
+                                                                onClick={() => setViewingItem(doc)}
+                                                                style={{
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                                    padding: '6px 10px', borderRadius: 'var(--radius-md)',
+                                                                    background: 'var(--surface)', border: '1px solid var(--border)',
+                                                                    fontSize: 'var(--text-xs)', cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                                                    {doc.material_type === 'file' && <File size={13} style={{ color: 'var(--primary-400)' }} />}
+                                                                    {doc.material_type === 'link' && <LinkIcon size={13} style={{ color: 'var(--primary-400)' }} />}
+                                                                    {doc.material_type === 'text' && <FileText size={13} style={{ color: 'var(--primary-400)' }} />}
+                                                                    <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                        {doc.title}
+                                                                    </span>
+                                                                </div>
+                                                                <Eye size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-sm)', borderTop: '1px solid var(--border)' }}>
+                                        {isAdmin && (
+                                            <button
+                                                onClick={() => {
+                                                    setSharedForm({ title: '', content: '', subject: `Week ${st.week_number}`, material_type: 'file', file: null, url: '' });
+                                                    setShowAddSharedModal(true);
+                                                }}
+                                                style={{
+                                                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                                                    padding: '6px 12px', borderRadius: 'var(--radius-md)',
+                                                    background: 'rgba(59, 130, 246, 0.08)', color: '#3b82f6',
+                                                    border: '1px dashed rgba(59, 130, 246, 0.3)', cursor: 'pointer',
+                                                    fontWeight: 600, fontSize: 'var(--text-xs)', marginBottom: 'var(--space-xs)'
+                                                }}
+                                            >
+                                                <Plus size={13} /> + Add Doc to Week {st.week_number}
+                                            </button>
+                                        )}
+
+                                        {st.resource_url && (
+                                            <a
+                                                href={st.resource_url}
+                                                target={st.resource_url.startsWith('http') ? '_blank' : '_self'}
+                                                rel="noopener noreferrer"
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                                    padding: '8px 14px', borderRadius: 'var(--radius-md)',
+                                                    background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6',
+                                                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                                                    textDecoration: 'none', fontWeight: 600, fontSize: 'var(--text-xs)',
+                                                    marginBottom: 'var(--space-sm)', transition: 'all 0.2s ease'
+                                                }}
+                                            >
+                                                <BookOpen size={14} />
+                                                {st.resource_label || 'View Week Briefing & Materials'}
+                                                <ExternalLink size={12} />
+                                            </a>
+                                        )}
+
+                                        <button
+                                            onClick={() => navigate(`/sprint-tracker?week=${st.week_number}`)}
+                                            style={{
+                                                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                                                padding: '8px 14px', borderRadius: 'var(--radius-md)',
+                                                background: 'var(--surface)', color: 'var(--text)',
+                                                border: '1px solid var(--border)', cursor: 'pointer',
+                                                fontWeight: 600, fontSize: 'var(--text-xs)'
+                                            }}
+                                        >
+                                            <Zap size={13} style={{ color: '#10b981' }} />
+                                            Go to Week {st.week_number} Evaluations
+                                            <ArrowRight size={13} />
+                                        </button>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                </div>
             ) : filtered.length === 0 ? (
                 <Card style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
                     {activeTab === 'shared' ? <BookOpen size={48} className="text-muted mb-md" /> : <StickyNote size={48} className="text-muted mb-md" />}
@@ -583,6 +803,82 @@ const StudyMaterials = () => {
                     <div className="flex gap-sm justify-end mt-md">
                         <Button variant="ghost" onClick={() => { setShowAddModal(false); setEditingNote(null); }}>Cancel</Button>
                         <Button variant="primary" type="submit" loading={saving}>{editingNote ? 'Save Changes' : 'Create Note'}</Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Add Shared Resource Modal (Admin) */}
+            <Modal isOpen={showAddSharedModal} onClose={() => setShowAddSharedModal(false)} title="Add Shared Resource">
+                <form onSubmit={handleSaveSharedResource} className="flex flex-col gap-md">
+                    {/* Material Type Selector */}
+                    <div style={{ display: 'flex', gap: '8px', background: 'var(--surface)', padding: '4px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
+                        <button type="button" onClick={() => setSharedForm({ ...sharedForm, material_type: 'file' })} style={{ flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: sharedForm.material_type === 'file' ? 'var(--primary-500)' : 'transparent', color: sharedForm.material_type === 'file' ? 'white' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <File size={16} /> File Upload
+                        </button>
+                        <button type="button" onClick={() => setSharedForm({ ...sharedForm, material_type: 'link' })} style={{ flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: sharedForm.material_type === 'link' ? 'var(--primary-500)' : 'transparent', color: sharedForm.material_type === 'link' ? 'white' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <LinkIcon size={16} /> Link / URL
+                        </button>
+                        <button type="button" onClick={() => setSharedForm({ ...sharedForm, material_type: 'text' })} style={{ flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', border: 'none', background: sharedForm.material_type === 'text' ? 'var(--primary-500)' : 'transparent', color: sharedForm.material_type === 'text' ? 'white' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <FileText size={16} /> Briefing / Doc
+                        </button>
+                    </div>
+
+                    <div>
+                        <label className="label">Title</label>
+                        <Input placeholder="e.g. Week 1 Handout or System Architecture PDF" value={sharedForm.title} onChange={(e) => setSharedForm({ ...sharedForm, title: e.target.value })} required />
+                    </div>
+
+                    <div>
+                        <label className="label">Category / Sprint Week</label>
+                        <Input
+                            list="shared-category-suggestions"
+                            placeholder="e.g. Week 1, Week 2, Sprint Briefings, React"
+                            value={sharedForm.subject}
+                            onChange={(e) => setSharedForm({ ...sharedForm, subject: e.target.value })}
+                            required
+                        />
+                        <datalist id="shared-category-suggestions">
+                            <option value="Week 1" />
+                            <option value="Week 2" />
+                            <option value="Week 3" />
+                            <option value="Week 4" />
+                            <option value="Week 5" />
+                            <option value="Week 6" />
+                            <option value="Week 7" />
+                            <option value="Week 8" />
+                            <option value="Sprint Briefings" />
+                            <option value="General" />
+                        </datalist>
+                    </div>
+
+                    {sharedForm.material_type === 'file' && (
+                        <div>
+                            <label className="label">Upload File (PDF, Image, Doc)</label>
+                            <Input type="file" onChange={(e) => setSharedForm({ ...sharedForm, file: e.target.files[0] })} required />
+                        </div>
+                    )}
+
+                    {sharedForm.material_type === 'link' && (
+                        <div>
+                            <label className="label">External URL (Notion, Figma, GitHub, Drive)</label>
+                            <Input type="url" placeholder="https://..." value={sharedForm.url} onChange={(e) => setSharedForm({ ...sharedForm, url: e.target.value })} required />
+                        </div>
+                    )}
+
+                    <div>
+                        <label className="label">Description / Summary (Optional)</label>
+                        <textarea
+                            className="input"
+                            rows={3}
+                            placeholder="Add brief details about this resource..."
+                            value={sharedForm.content}
+                            onChange={(e) => setSharedForm({ ...sharedForm, content: e.target.value })}
+                        />
+                    </div>
+
+                    <div className="flex gap-sm justify-end mt-md">
+                        <Button variant="ghost" onClick={() => setShowAddSharedModal(false)}>Cancel</Button>
+                        <Button variant="primary" type="submit" loading={saving}>Publish Resource</Button>
                     </div>
                 </form>
             </Modal>

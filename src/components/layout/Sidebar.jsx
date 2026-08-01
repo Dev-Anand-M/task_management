@@ -65,48 +65,70 @@ const Sidebar = ({ isOpen, onClose }) => {
     };
 
 
-    const adminLinks = [
-        { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-        { to: '/chat', icon: MessageSquare, label: 'Messages' },
-        { to: '/admin/tasks', icon: ListTodo, label: 'Tasks' },
-        { to: '/admin/quizzes', icon: HelpCircle, label: 'Quizzes' },
-        { to: '/admin/evaluations', icon: ClipboardCheck, label: 'Evaluations' },
-        { to: '/admin/team', icon: Users, label: 'Team' },
-        { to: '/admin/invite-codes', icon: Key, label: 'Invite Codes' },
-        { to: '/admin/classroom', icon: School, label: 'Classroom' },
-        { to: '/knowledge-base', icon: Database, label: 'Knowledge Base' },
-        { to: '/sprint-tracker', icon: Zap, label: 'Sprint Tracker' },
-        { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
-        { to: '/settings', icon: Settings, label: 'Settings' }
+    const memberNavGroups = [
+        {
+            label: 'Core',
+            links: [
+                { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+                { to: '/chat', icon: MessageSquare, label: 'Messages', badge: 'v2.0' },
+                { to: '/tasks', icon: ListTodo, label: 'Tasks' },
+                { to: '/quizzes', icon: HelpCircle, label: 'Quizzes' },
+            ]
+        },
+        {
+            label: 'Growth',
+            links: [
+                { to: '/study-materials', icon: Brain, label: 'Knowledge Hub' },
+                { to: '/sprint-tracker', icon: Zap, label: 'Sprint Tracker', sprintBadge: true },
+                { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+                { to: '/team', icon: Users, label: 'Team' },
+            ]
+        },
+        {
+            label: 'Personal',
+            links: [
+                { to: '/calendar', icon: Calendar, label: 'Calendar' },
+                { to: '/routines', icon: RefreshCw, label: 'Routines' },
+                { to: '/timetable', icon: ListTodo, label: 'AI Timetable' },
+                { to: '/diary', icon: Target, label: 'Learning Diary' },
+                { to: '/profile', icon: User, label: 'Profile' },
+                { to: '/settings', icon: Settings, label: 'Settings' },
+            ]
+        }
     ];
 
-    const memberLinks = [
-        { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-        { to: '/chat', icon: MessageSquare, label: 'Messages' },
-        { to: '/tasks', icon: ListTodo, label: 'Tasks' },
-        { to: '/quizzes', icon: HelpCircle, label: 'Quizzes' },
-        { to: '/study-materials', icon: Brain, label: 'Study Materials' },
-        { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
-        { to: '/team', icon: Users, label: 'Team' },
-        { to: '/sprint-tracker', icon: Zap, label: 'Sprint Tracker' },
-        { to: '/calendar', icon: Calendar, label: 'Calendar' },
-        { to: '/profile', icon: User, label: 'Profile' },
-        { to: '/settings', icon: Settings, label: 'Settings' }
+    const adminNavGroups = [
+        {
+            label: 'Manage',
+            links: [
+                { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+                { to: '/admin/tasks', icon: ListTodo, label: 'Tasks' },
+                { to: '/admin/quizzes', icon: HelpCircle, label: 'Quizzes' },
+                { to: '/admin/evaluations', icon: ClipboardCheck, label: 'Evaluations' },
+                { to: '/admin/team', icon: Users, label: 'Team' },
+                { to: '/admin/invite-codes', icon: Key, label: 'Invite Codes' },
+                { to: '/admin/classroom', icon: School, label: 'Classroom' },
+            ]
+        },
+        {
+            label: 'Tools',
+            links: [
+                { to: '/chat', icon: MessageSquare, label: 'Messages', badge: 'v2.0' },
+                { to: '/knowledge-base', icon: Database, label: 'Knowledge Base' },
+                { to: '/sprint-tracker', icon: Zap, label: 'Sprint Tracker', sprintBadge: true },
+                { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+            ]
+        },
+        {
+            label: 'System',
+            links: [
+                { to: '/settings', icon: Settings, label: 'Settings' },
+            ]
+        }
     ];
 
-    const consistencyLinks = [
-        { to: '/routines', icon: RefreshCw, label: 'Routines' },
-        { to: '/timetable', icon: ListTodo, label: 'AI Timetable' },
-        { to: '/diary', icon: Target, label: 'Learning Diary' }
-    ];
-
-    const aiLinks = [
-        { to: '/ai/code-review', icon: Code, label: 'Code Review' },
-        { to: '/ai/study-tools', icon: GraduationCap, label: 'Study Tools' },
-        { to: '/ai/quiz-generator', icon: Brain, label: 'Quiz Generator' }
-    ];
-
-    const links = isAdmin ? adminLinks : memberLinks;
+    const navGroups = isAdmin ? adminNavGroups : memberNavGroups;
+    const isSprintOpen = new Date().getDay() === 0; // Sunday = submissions open
 
     return (
         <>
@@ -279,113 +301,87 @@ const Sidebar = ({ isOpen, onClose }) => {
                         </div>
                     )}
 
-                    <div style={{
-                        fontSize: '10px',
-                        color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))',
-                        padding: '0 var(--space-sm) var(--space-xs)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.1em',
-                        fontWeight: 600
-                    }}>
-                        Navigation
-                    </div>
-                    <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        {links.map(link => (
-                            <li key={link.to}>
-                                <NavLink
-                                    to={link.to}
-                                    end={link.exact}
-                                    replace={true}
-                                    onClick={onClose}
-                                    style={({ isActive }) => ({
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 'var(--space-sm)',
-                                        padding: '0.625rem var(--space-md)',
-                                        borderRadius: 'var(--radius-md)',
-                                        color: isActive ? 'var(--sidebar-active-text, #fef3c7)' : 'var(--sidebar-text, rgba(255,255,255,0.8))',
-                                        background: isActive ? 'var(--sidebar-active-bg, rgba(255,255,255,0.2))' : 'transparent',
-                                        textDecoration: 'none',
-                                        fontSize: 'var(--text-sm)',
-                                        fontWeight: isActive ? 600 : 500,
-                                        transition: 'all var(--transition-fast)',
-                                        borderLeft: isActive ? '2px solid var(--sidebar-active-text, #fef3c7)' : '2px solid transparent',
-                                        marginLeft: '0'
-                                    })}
-                                >
-                                    <link.icon size={18} />
-                                    <span style={{ flex: 1 }}>{link.label}</span>
-                                    {link.to === '/chat' && (
-                                      <span style={{
-                                        fontSize: '9px', fontWeight: 700,
-                                        padding: '2px 6px',
-                                        background: 'rgba(99,102,241,0.3)',
-                                        color: '#a5b4fc',
-                                        borderRadius: '8px',
-                                        letterSpacing: '0.02em',
-                                      }}>v2.0</span>
-                                    )}
-                                </NavLink>
-                            </li>
-                        ))}
-                    </ul>
-
-                    {!isAdmin && (
-                        <>
+                    {/* Grouped Navigation */}
+                    {navGroups.map((group, groupIdx) => (
+                        <div key={group.label} style={{ marginBottom: groupIdx < navGroups.length - 1 ? 'var(--space-sm)' : 0 }}>
+                            {/* Group label */}
                             <div style={{
-                                fontSize: '10px',
-                                color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))',
-                                padding: 'var(--space-md) var(--space-sm) var(--space-xs)',
+                                fontSize: '9px',
+                                color: 'var(--sidebar-text-muted, rgba(255,255,255,0.45))',
+                                padding: `${groupIdx === 0 ? '4px' : 'var(--space-sm)'} var(--space-sm) var(--space-xs)`,
                                 textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                                fontWeight: 600
+                                letterSpacing: '0.12em',
+                                fontWeight: 700
                             }}>
-                                Consistency
+                                {group.label}
                             </div>
                             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                {consistencyLinks.map(link => (
+                                {group.links.map(link => (
                                     <li key={link.to}>
                                         <NavLink
                                             to={link.to}
+                                            end={link.exact}
                                             replace={true}
                                             onClick={onClose}
                                             style={({ isActive }) => ({
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 gap: 'var(--space-sm)',
-                                                padding: '0.625rem var(--space-md)',
+                                                padding: '0.6rem var(--space-md)',
                                                 borderRadius: 'var(--radius-md)',
-                                                color: isActive ? 'var(--sidebar-active-text, #fef3c7)' : 'var(--sidebar-text, rgba(255,255,255,0.8))',
-                                                background: isActive ? 'var(--sidebar-active-bg, rgba(255,255,255,0.2))' : 'transparent',
+                                                color: isActive ? 'var(--sidebar-active-text, #fef3c7)' : 'var(--sidebar-text, rgba(255,255,255,0.82))',
+                                                background: isActive ? 'var(--sidebar-active-bg, rgba(255,255,255,0.18))' : 'transparent',
                                                 textDecoration: 'none',
                                                 fontSize: 'var(--text-sm)',
-                                                fontWeight: isActive ? 600 : 500,
+                                                fontWeight: isActive ? 700 : 500,
                                                 transition: 'all var(--transition-fast)',
-                                                borderLeft: isActive ? 'var(--sidebar-active-text, #fef3c7)' : '2px solid transparent',
-                                                marginLeft: '0'
+                                                borderLeft: isActive ? '2px solid var(--sidebar-active-text, #fef3c7)' : '2px solid transparent',
                                             })}
                                         >
-                                            <link.icon size={18} />
+                                            <link.icon size={17} />
                                             <span style={{ flex: 1 }}>{link.label}</span>
+                                            {/* Version badge */}
+                                            {link.badge && (
+                                                <span style={{
+                                                    fontSize: '9px', fontWeight: 700,
+                                                    padding: '2px 6px',
+                                                    background: 'rgba(99,102,241,0.3)',
+                                                    color: '#a5b4fc',
+                                                    borderRadius: '8px',
+                                                    letterSpacing: '0.02em',
+                                                }}>{link.badge}</span>
+                                            )}
+                                            {/* Sprint open/active badge */}
+                                            {link.sprintBadge && isSprintOpen && (
+                                                <span style={{
+                                                    fontSize: '9px', fontWeight: 700,
+                                                    padding: '2px 7px',
+                                                    background: 'rgba(16,185,129,0.25)',
+                                                    color: '#34d399',
+                                                    borderRadius: '8px',
+                                                    letterSpacing: '0.02em',
+                                                    border: '1px solid rgba(16,185,129,0.3)'
+                                                }}>Open</span>
+                                            )}
                                         </NavLink>
                                     </li>
                                 ))}
                             </ul>
-                        </>
-                    )}
+                        </div>
+                    ))}
 
-                    {/* AI Tools Section - Only for Admins to manage or view advanced tools */}
+                    {/* Admin AI Tools — collapsible */}
                     {isAdmin && (
                         <>
                             <div
                                 onClick={() => setShowAiTools(!showAiTools)}
                                 style={{
-                                    fontSize: '10px',
-                                    color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))',
-                                    padding: 'var(--space-md) var(--space-sm) var(--space-xs)',
+                                    fontSize: '9px',
+                                    color: 'var(--sidebar-text-muted, rgba(255,255,255,0.45))',
+                                    padding: 'var(--space-sm) var(--space-sm) var(--space-xs)',
                                     textTransform: 'uppercase',
-                                    letterSpacing: '0.1em',
-                                    fontWeight: 600,
+                                    letterSpacing: '0.12em',
+                                    fontWeight: 700,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
@@ -393,59 +389,42 @@ const Sidebar = ({ isOpen, onClose }) => {
                                     userSelect: 'none'
                                 }}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
-                                    <Brain size={12} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <Brain size={11} />
                                     AI Tools
                                     <span style={{
                                         background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
-                                        color: 'white',
-                                        fontSize: '8px',
-                                        padding: '2px 6px',
-                                        borderRadius: '10px',
-                                        fontWeight: 700,
-                                        letterSpacing: '0.05em',
-                                        marginLeft: '4px'
-                                    }}>
-                                        BETA
-                                    </span>
+                                        color: 'white', fontSize: '7px',
+                                        padding: '1px 5px', borderRadius: '8px',
+                                        fontWeight: 700, letterSpacing: '0.05em', marginLeft: '2px'
+                                    }}>BETA</span>
                                 </div>
-                                <ChevronRight
-                                    size={14}
-                                    style={{
-                                        transform: showAiTools ? 'rotate(90deg)' : 'none',
-                                        transition: 'transform 0.2s'
-                                    }}
-                                />
+                                <ChevronRight size={12} style={{ transform: showAiTools ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
                             </div>
-
                             {showAiTools && (
-                                <ul className="animate-fade-in" style={{ 
-                                    listStyle: 'none', 
-                                    display: 'flex', 
-                                    flexDirection: 'column', 
-                                    gap: '4px',
-                                    padding: 'var(--space-xs) 0',
-                                    margin: '0 var(--space-xs)',
+                                <ul className="animate-fade-in" style={{
+                                    listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px',
+                                    padding: 'var(--space-xs) 0', margin: '0 var(--space-xs)',
                                     background: 'var(--sidebar-hover, rgba(167, 139, 250, 0.05))',
                                     borderRadius: 'var(--radius-lg)',
                                     border: '1px solid var(--sidebar-border, rgba(167, 139, 250, 0.1))'
                                 }}>
-                                    {aiLinks.map(link => (
+                                    {[
+                                        { to: '/ai/code-review', icon: Code, label: 'Code Review' },
+                                        { to: '/ai/study-tools', icon: GraduationCap, label: 'Study Tools' },
+                                        { to: '/ai/quiz-generator', icon: Brain, label: 'Quiz Generator' }
+                                    ].map(link => (
                                         <li key={link.to}>
                                             <NavLink
                                                 to={link.to}
                                                 replace={true}
                                                 onClick={onClose}
                                                 style={({ isActive }) => ({
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 'var(--space-sm)',
-                                                    padding: '0.75rem var(--space-md)',
-                                                    borderRadius: 'var(--radius-md)',
-                                                    color: isActive ? 'var(--sidebar-active-text, white)' : 'var(--sidebar-text-muted, rgba(255,255,255,0.7))',
-                                                    background: isActive ? 'var(--sidebar-active-bg, linear-gradient(135deg, #a78bfa, #8b5cf6))' : 'transparent',
-                                                    textDecoration: 'none',
-                                                    fontSize: 'var(--text-sm)',
+                                                    display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
+                                                    padding: '0.75rem var(--space-md)', borderRadius: 'var(--radius-md)',
+                                                    color: isActive ? 'white' : 'rgba(255,255,255,0.7)',
+                                                    background: isActive ? 'linear-gradient(135deg, #a78bfa, #8b5cf6)' : 'transparent',
+                                                    textDecoration: 'none', fontSize: 'var(--text-sm)',
                                                     fontWeight: isActive ? 600 : 500,
                                                     transition: 'all var(--transition-fast)',
                                                     boxShadow: isActive ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none'
