@@ -6,7 +6,7 @@ import packageJson from '../../package.json';
 const VERSION_CHECK_URL = typeof window !== 'undefined' && !Capacitor.isNativePlatform() 
   ? '/version.json' 
   : 'https://zenith-sable-alpha.vercel.app/version.json';
-const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.4.0.apk';
+const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.5.0.apk';
 
 export const updateChecker = {
   /**
