@@ -289,7 +289,7 @@ const TakeQuiz = ({ quizId, onBack, onComplete }) => {
             if (headerTitleEl) {
                 headerTitleEl.textContent = 'Take Quiz';
             }
-            document.title = 'Zenith - Skill Enhancement Platform';
+            document.title = 'Zenith OS';
         };
     }, [isComplete]);
 
