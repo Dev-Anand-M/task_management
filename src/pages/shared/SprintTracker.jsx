@@ -779,7 +779,7 @@ const SprintTracker = () => {
                     ) : (
                         <>
                             {/* Podium-style leaderboard */}
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+                            <div className="leaderboard-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
                                 {rankedMembers.map((member, idx) => (
                                     <div key={member.id} style={{
                                         flex: '1 1 180px', minWidth: '140px', padding: 'var(--space-md)',
@@ -967,7 +967,7 @@ const SprintTracker = () => {
                                 : null;
 
                             return (
-                                <div key={member.id} style={{
+                                <div key={member.id} className="eval-member-row" style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                     padding: 'var(--space-md)', borderRadius: 'var(--radius-lg)',
                                     border: evaluated ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid var(--border)',
@@ -1315,7 +1315,7 @@ const SprintTracker = () => {
                 >
                     <div>
                         {/* Info banner & CSV Toolbar */}
-                        <div style={{
+                        <div className="sprint-config-banner" style={{
                             padding: 'var(--space-md)', borderRadius: 'var(--radius-lg)',
                             background: 'color-mix(in srgb, var(--primary-500), transparent 90%)',
                             border: '1px solid color-mix(in srgb, var(--primary-500), transparent 60%)',
@@ -1370,7 +1370,7 @@ const SprintTracker = () => {
 
                         {/* Expandable CSV Help Tooltip Guide */}
                         {showCsvHelp && (
-                            <div style={{
+                            <div className="sprint-csv-guide" style={{
                                 padding: 'var(--space-md)', borderRadius: 'var(--radius-lg)',
                                 background: 'var(--surface)', border: '1px solid var(--primary-400)',
                                 marginBottom: 'var(--space-lg)', fontSize: 'var(--text-xs)', color: 'var(--text)'

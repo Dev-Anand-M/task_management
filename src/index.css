@@ -4098,3 +4098,52 @@ a img {
   padding-bottom: env(safe-area-inset-bottom, 0px) !important;
   box-sizing: border-box !important;
 }
+/* ---- v1.5.0 Mobile Fixes: Knowledge Hub, Sprint Vault, CSV Toolbar ---- */
+@media (max-width: 768px) {
+
+  /* Knowledge Hub header: stack title + buttons vertically */
+  .flex-mobile-col {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  /* Sprint Vault week card action row: stack vertically */
+  .eval-member-row {
+    flex-wrap: wrap !important;
+  }
+  .eval-member-row > div:last-child {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  /* Configure Sprint Weeks: CSV toolbar wraps on small screens */
+  .sprint-config-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  /* CSV guide pre block: scroll instead of overflow */
+  .sprint-csv-guide pre {
+    font-size: 10px !important;
+    overflow-x: auto !important;
+    max-width: calc(100vw - 80px) !important;
+  }
+
+  /* Sprint week tabs: horizontal scroll */
+  .sprint-week-tabs {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  /* Leaderboard: 2 per row on mobile */
+  .leaderboard-grid {
+    flex-wrap: wrap !important;
+  }
+  .leaderboard-grid > div {
+    flex: 1 1 calc(50% - 8px) !important;
+    min-width: 120px !important;
+  }
+}
