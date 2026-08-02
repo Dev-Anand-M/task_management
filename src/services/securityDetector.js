@@ -291,7 +291,14 @@ class SecurityDetectorService {
   }
 
   syncVpnStatus() {
-    this.isVpnDetected = this.nativeVpnDetected || this.serverVpnDetected || this.clientVpnDetected;
+    // Only block if at least 2 out of 3 detection methods agree (more lenient)
+    const detectionCount = [
+      this.nativeVpnDetected,
+      this.serverVpnDetected,
+      this.clientVpnDetected
+    ].filter(Boolean).length;
+    
+    this.isVpnDetected = detectionCount >= 2;
     this.updateReasons();
   }
 

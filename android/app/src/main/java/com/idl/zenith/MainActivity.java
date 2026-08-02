@@ -8,7 +8,8 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Register custom plugin
+        // Register custom plugins
         registerPlugin(DownloadPlugin.class);
+        registerPlugin(SecurityStatusPlugin.class);
     }
 }
