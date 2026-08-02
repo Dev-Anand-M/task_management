@@ -77,31 +77,75 @@ export const updateChecker = {
 
   /**
    * Directly download/open the update APK file
-   * For native apps, always open in external browser for reliable APK downloads
+   * Uses multiple fallback methods for maximum compatibility
    */
   async downloadUpdate(downloadUrl = APK_DOWNLOAD_URL) {
-    try {
-      if (Capacitor.isNativePlatform()) {
-        // Always use Browser.open for native apps - opens in default system browser
-        const { Browser } = await import('@capacitor/browser');
-        await Browser.open({ 
-          url: downloadUrl,
-          windowName: '_system' // Opens in external browser, not in-app browser
-        });
-      } else {
-        // Web fallback - create download link
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = downloadUrl.split('/').pop() || 'zenith-latest.apk';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    } catch (error) {
-      console.error('[UpdateChecker] Browser open failed:', error);
-      // Final fallback - direct window.open
-      window.open(downloadUrl, '_blank');
+    if (!Capacitor.isNativePlatform()) {
+      // Web: Simple download link
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = downloadUrl.split('/').pop() || 'zenith-latest.apk';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
     }
+
+    // Native Android: Try multiple methods
+    console.log('[UpdateChecker] Starting APK download:', downloadUrl);
+    
+    // Method 1: Capacitor Browser with _system (external browser)
+    try {
+      console.log('[UpdateChecker] Method 1: External browser (_system)');
+      const { Browser } = await import('@capacitor/browser');
+      await Browser.open({ 
+        url: downloadUrl,
+        windowName: '_system'
+      });
+      return;
+    } catch (e1) {
+      console.warn('[UpdateChecker] Method 1 failed:', e1);
+    }
+
+    // Method 2: Capacitor Browser with _blank
+    try {
+      console.log('[UpdateChecker] Method 2: External browser (_blank)');
+      const { Browser } = await import('@capacitor/browser');
+      await Browser.open({ 
+        url: downloadUrl,
+        windowName: '_blank'
+      });
+      return;
+    } catch (e2) {
+      console.warn('[UpdateChecker] Method 2 failed:', e2);
+    }
+
+    // Method 3: window.open with _system
+    try {
+      console.log('[UpdateChecker] Method 3: window.open(_system)');
+      window.open(downloadUrl, '_system');
+      return;
+    } catch (e3) {
+      console.warn('[UpdateChecker] Method 3 failed:', e3);
+    }
+
+    // Method 4: window.location (last resort)
+    try {
+      console.log('[UpdateChecker] Method 4: window.location redirect');
+      window.location.href = downloadUrl;
+      return;
+    } catch (e4) {
+      console.warn('[UpdateChecker] Method 4 failed:', e4);
+    }
+
+    // All methods failed
+    console.error('[UpdateChecker] All download methods failed');
+    alert(
+      'Unable to download automatically.\n\n' +
+      'Please open your browser and visit:\n' +
+      'zenith-sable-alpha.vercel.app\n\n' +
+      'Or go to Settings > About to copy the download link.'
+    );
   },
 
   /**
