@@ -3,6 +3,6 @@
   "maintenance": false,
   "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.5.2.apk",
   "releaseNotes": "🔧 Zenith v1.5.2 — SecurityGuard VPN false positive fix, Sprint Zone UI updates, Sprint Vault delete/edit buttons for file management.",
-  "mandatory": false,
+  "mandatory": true,
   "minSupportedVersion": "1.4.0"
 }
