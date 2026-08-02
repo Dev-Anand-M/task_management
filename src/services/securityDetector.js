@@ -310,14 +310,8 @@ class SecurityDetectorService {
       return;
     }
     
-    // For regular VPN detection: require at least 2 out of 3 detection methods to agree
-    const detectionCount = [
-      this.nativeVpnDetected,
-      this.serverVpnDetected,
-      this.clientVpnDetected
-    ].filter(Boolean).length;
-    
-    this.isVpnDetected = detectionCount >= 2;
+    // For VPN detection: require at least 1 out of 3 detection methods (aggressive)
+    this.isVpnDetected = this.nativeVpnDetected || this.serverVpnDetected || this.clientVpnDetected;
     this.updateReasons();
   }
 
