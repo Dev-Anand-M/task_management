@@ -77,7 +77,7 @@ export const updateChecker = {
 
   /**
    * Directly download/open the update APK file
-   * Opens in external system browser (not in-app)
+   * Uses native Android DownloadManager for reliable downloads
    */
   async downloadUpdate(downloadUrl = APK_DOWNLOAD_URL) {
     if (!Capacitor.isNativePlatform()) {
@@ -91,15 +91,24 @@ export const updateChecker = {
       return;
     }
 
-    // Native Android: Open in external browser using cordova InAppBrowser
-    console.log('[UpdateChecker] Opening APK in external browser:', downloadUrl);
+    // Native Android: Use native DownloadManager plugin
+    console.log('[UpdateChecker] Starting native download:', downloadUrl);
     
-    if (window.cordova && window.cordova.InAppBrowser) {
-      // Use cordova InAppBrowser with _system to open in external browser
-      window.cordova.InAppBrowser.open(downloadUrl, '_system');
-    } else {
-      // Fallback: Show alert with URL
-      alert('Please copy this link and open in your browser:\n\n' + downloadUrl);
+    try {
+      // @ts-ignore - Custom native plugin
+      const result = await Capacitor.Plugins.DownloadPlugin.downloadFile({ url: downloadUrl });
+      console.log('[UpdateChecker] Download started:', result);
+      
+      // Show success message
+      alert('Download started! Check your notifications.');
+    } catch (error) {
+      console.error('[UpdateChecker] Native download failed:', error);
+      // Fallback: Show manual instructions
+      alert(
+        'Unable to download automatically.\n\n' +
+        'Please copy this link and paste in your browser:\n\n' +
+        downloadUrl
+      );
     }
   },
 
