@@ -125,7 +125,20 @@ class SecurityDetectorService {
   }
 
   async checkNativeSecurity() {
-    if (!PlatformService.isNative() || PlatformService.getPlatformName() !== 'android') {
+    // Safely check if we're on native platform
+    let isNativePlatform = false;
+    let platformName = 'web';
+    
+    try {
+      isNativePlatform = PlatformService.isNative && PlatformService.isNative();
+      platformName = PlatformService.getPlatformName && PlatformService.getPlatformName();
+    } catch (err) {
+      console.warn('[SecurityDetector] PlatformService check failed:', err);
+      isNativePlatform = false;
+      platformName = 'web';
+    }
+    
+    if (!isNativePlatform || platformName !== 'android') {
       this.nativeVpnDetected = false;
       this.isDeveloperModeDetected = false;
       this.syncVpnStatus();
