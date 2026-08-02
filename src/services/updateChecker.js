@@ -76,8 +76,8 @@ export const updateChecker = {
   },
 
   /**
-   * Copy download URL to clipboard for manual download
-   * Most reliable method - avoids in-app browser issues
+   * Open download URL with Android Intent Chooser
+   * Shows "Open with..." dialog to let user pick browser app
    */
   async downloadUpdate(downloadUrl = APK_DOWNLOAD_URL) {
     if (!Capacitor.isNativePlatform()) {
@@ -91,31 +91,23 @@ export const updateChecker = {
       return;
     }
 
-    // Native Android: Copy to clipboard and show instructions
-    console.log('[UpdateChecker] Copying download URL to clipboard:', downloadUrl);
+    // Native Android: Use Intent Chooser to let user pick browser
+    console.log('[UpdateChecker] Opening URL with intent chooser:', downloadUrl);
     
     try {
-      // Use Capacitor Clipboard API
-      const { Clipboard } = await import('@capacitor/clipboard');
-      await Clipboard.write({ string: downloadUrl });
-      
-      alert(
-        '✅ Download link copied to clipboard!\n\n' +
-        'Steps:\n' +
-        '1. Open Chrome or your browser\n' +
-        '2. Paste the link in address bar\n' +
-        '3. Download will start automatically\n' +
-        '4. Install from Downloads folder\n\n' +
-        'Link: ' + downloadUrl
-      );
+      // @ts-ignore - Custom native plugin
+      const result = await Capacitor.Plugins.DownloadPlugin.openUrl({ url: downloadUrl });
+      console.log('[UpdateChecker] Intent chooser opened:', result);
     } catch (error) {
-      console.error('[UpdateChecker] Clipboard copy failed:', error);
-      // Fallback: Show URL to copy manually
-      alert(
-        '📋 Copy this link and open in your browser:\n\n' +
-        downloadUrl + '\n\n' +
-        'Then the download will start.'
-      );
+      console.error('[UpdateChecker] Intent chooser failed:', error);
+      // Fallback: Copy to clipboard
+      try {
+        const { Clipboard } = await import('@capacitor/clipboard');
+        await Clipboard.write({ string: downloadUrl });
+        alert('Link copied to clipboard!\nPaste in your browser to download.');
+      } catch (clipError) {
+        alert('Copy this link and open in browser:\n\n' + downloadUrl);
+      }
     }
   },
 
