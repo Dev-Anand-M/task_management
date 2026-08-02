@@ -77,7 +77,7 @@ export const updateChecker = {
 
   /**
    * Directly download/open the update APK file
-   * Forces actual browser opening, not Google search
+   * Redirects to default browser for APK download
    */
   async downloadUpdate(downloadUrl = APK_DOWNLOAD_URL) {
     if (!Capacitor.isNativePlatform()) {
@@ -91,55 +91,9 @@ export const updateChecker = {
       return;
     }
 
-    // Native Android: Open URL directly in browser (not in-app webview)
-    console.log('[UpdateChecker] Starting APK download:', downloadUrl);
-    
-    // Primary method: Use cordova InAppBrowser if available (most reliable)
-    if (window.cordova && window.cordova.InAppBrowser) {
-      console.log('[UpdateChecker] Using cordova InAppBrowser');
-      window.cordova.InAppBrowser.open(downloadUrl, '_system', 'location=yes');
-      return;
-    }
-    
-    // Fallback 1: Direct window.open to external browser
-    try {
-      console.log('[UpdateChecker] Using window.open with _system');
-      const opened = window.open(downloadUrl, '_system', 'location=yes');
-      if (opened) {
-        console.log('[UpdateChecker] Window opened successfully');
-        return;
-      }
-    } catch (e) {
-      console.warn('[UpdateChecker] window.open failed:', e);
-    }
-
-    // Fallback 2: Try direct location assignment
-    try {
-      console.log('[UpdateChecker] Using location.href');
-      window.location.href = downloadUrl;
-      return;
-    } catch (e) {
-      console.warn('[UpdateChecker] location.href failed:', e);
-    }
-
-    // Fallback 3: Try Capacitor Browser (might open in-app)
-    try {
-      console.log('[UpdateChecker] Using Capacitor Browser');
-      const { Browser } = await import('@capacitor/browser');
-      await Browser.open({ url: downloadUrl });
-      return;
-    } catch (e) {
-      console.warn('[UpdateChecker] Capacitor Browser failed:', e);
-    }
-
-    // All methods failed - show manual instructions
-    console.error('[UpdateChecker] All download methods failed');
-    alert(
-      'Unable to download automatically.\n\n' +
-      'Please copy this link and paste in your browser:\n\n' +
-      downloadUrl + '\n\n' +
-      'Or visit: zenith-sable-alpha.vercel.app'
-    );
+    // Native Android: Direct redirect to URL (opens in default browser)
+    console.log('[UpdateChecker] Redirecting to APK download:', downloadUrl);
+    window.location.href = downloadUrl;
   },
 
   /**
