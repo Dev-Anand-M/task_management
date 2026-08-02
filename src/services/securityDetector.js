@@ -182,11 +182,10 @@ class SecurityDetectorService {
   }
 
   async checkClientVpn() {
+    // Only use HTTPS providers to avoid mixed content errors
     const providers = [
       'https://ipwho.is/',
-      'http://ip-api.com/json/?fields=status,org,isp,as,proxy,hosting,query',
-      'https://api.db-ip.com/v2/free/self',
-      'https://ipinfo.io/json'
+      'https://ipapi.co/json/'
     ];
 
     let detected = false;
