@@ -100,14 +100,8 @@ export const updateChecker = {
       console.log('[UpdateChecker] Intent chooser opened:', result);
     } catch (error) {
       console.error('[UpdateChecker] Intent chooser failed:', error);
-      // Fallback: Copy to clipboard
-      try {
-        const { Clipboard } = await import('@capacitor/clipboard');
-        await Clipboard.write({ string: downloadUrl });
-        alert('Link copied to clipboard!\nPaste in your browser to download.');
-      } catch (clipError) {
-        alert('Copy this link and open in browser:\n\n' + downloadUrl);
-      }
+      // Fallback: Show URL to copy manually
+      alert('Copy this link and open in your browser:\n\n' + downloadUrl);
     }
   },
 
