@@ -77,7 +77,7 @@ export const updateChecker = {
 
   /**
    * Directly download/open the update APK file
-   * Uses multiple fallback methods for maximum compatibility
+   * Forces actual browser opening, not Google search
    */
   async downloadUpdate(downloadUrl = APK_DOWNLOAD_URL) {
     if (!Capacitor.isNativePlatform()) {
@@ -91,60 +91,54 @@ export const updateChecker = {
       return;
     }
 
-    // Native Android: Try multiple methods
+    // Native Android: Open URL directly in browser (not in-app webview)
     console.log('[UpdateChecker] Starting APK download:', downloadUrl);
     
-    // Method 1: Capacitor Browser with _system (external browser)
-    try {
-      console.log('[UpdateChecker] Method 1: External browser (_system)');
-      const { Browser } = await import('@capacitor/browser');
-      await Browser.open({ 
-        url: downloadUrl,
-        windowName: '_system'
-      });
+    // Primary method: Use cordova InAppBrowser if available (most reliable)
+    if ((window as any).cordova && (window as any).cordova.InAppBrowser) {
+      console.log('[UpdateChecker] Using cordova InAppBrowser');
+      (window as any).cordova.InAppBrowser.open(downloadUrl, '_system', 'location=yes');
       return;
-    } catch (e1) {
-      console.warn('[UpdateChecker] Method 1 failed:', e1);
+    }
+    
+    // Fallback 1: Direct window.open to external browser
+    try {
+      console.log('[UpdateChecker] Using window.open with _system');
+      const opened = window.open(downloadUrl, '_system', 'location=yes');
+      if (opened) {
+        console.log('[UpdateChecker] Window opened successfully');
+        return;
+      }
+    } catch (e) {
+      console.warn('[UpdateChecker] window.open failed:', e);
     }
 
-    // Method 2: Capacitor Browser with _blank
+    // Fallback 2: Try direct location assignment
     try {
-      console.log('[UpdateChecker] Method 2: External browser (_blank)');
-      const { Browser } = await import('@capacitor/browser');
-      await Browser.open({ 
-        url: downloadUrl,
-        windowName: '_blank'
-      });
-      return;
-    } catch (e2) {
-      console.warn('[UpdateChecker] Method 2 failed:', e2);
-    }
-
-    // Method 3: window.open with _system
-    try {
-      console.log('[UpdateChecker] Method 3: window.open(_system)');
-      window.open(downloadUrl, '_system');
-      return;
-    } catch (e3) {
-      console.warn('[UpdateChecker] Method 3 failed:', e3);
-    }
-
-    // Method 4: window.location (last resort)
-    try {
-      console.log('[UpdateChecker] Method 4: window.location redirect');
+      console.log('[UpdateChecker] Using location.href');
       window.location.href = downloadUrl;
       return;
-    } catch (e4) {
-      console.warn('[UpdateChecker] Method 4 failed:', e4);
+    } catch (e) {
+      console.warn('[UpdateChecker] location.href failed:', e);
     }
 
-    // All methods failed
+    // Fallback 3: Try Capacitor Browser (might open in-app)
+    try {
+      console.log('[UpdateChecker] Using Capacitor Browser');
+      const { Browser } = await import('@capacitor/browser');
+      await Browser.open({ url: downloadUrl });
+      return;
+    } catch (e) {
+      console.warn('[UpdateChecker] Capacitor Browser failed:', e);
+    }
+
+    // All methods failed - show manual instructions
     console.error('[UpdateChecker] All download methods failed');
     alert(
       'Unable to download automatically.\n\n' +
-      'Please open your browser and visit:\n' +
-      'zenith-sable-alpha.vercel.app\n\n' +
-      'Or go to Settings > About to copy the download link.'
+      'Please copy this link and paste in your browser:\n\n' +
+      downloadUrl + '\n\n' +
+      'Or visit: zenith-sable-alpha.vercel.app'
     );
   },
 
