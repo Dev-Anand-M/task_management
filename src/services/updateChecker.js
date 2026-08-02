@@ -95,9 +95,9 @@ export const updateChecker = {
     console.log('[UpdateChecker] Starting APK download:', downloadUrl);
     
     // Primary method: Use cordova InAppBrowser if available (most reliable)
-    if ((window as any).cordova && (window as any).cordova.InAppBrowser) {
+    if (window.cordova && window.cordova.InAppBrowser) {
       console.log('[UpdateChecker] Using cordova InAppBrowser');
-      (window as any).cordova.InAppBrowser.open(downloadUrl, '_system', 'location=yes');
+      window.cordova.InAppBrowser.open(downloadUrl, '_system', 'location=yes');
       return;
     }
     
