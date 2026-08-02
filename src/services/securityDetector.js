@@ -290,7 +290,14 @@ class SecurityDetectorService {
   }
 
   syncVpnStatus() {
-    // Only block if at least 2 out of 3 detection methods agree (more lenient)
+    // TOR/IP blocking is always immediate - don't require 2/3 agreement
+    if (this.isTorOrIpBlocked) {
+      this.isVpnDetected = true;
+      this.updateReasons();
+      return;
+    }
+    
+    // For regular VPN detection: require at least 2 out of 3 detection methods to agree
     const detectionCount = [
       this.nativeVpnDetected,
       this.serverVpnDetected,
