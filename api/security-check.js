@@ -131,8 +131,7 @@ export default async function handler(req, res) {
 
   const providers = [
     `https://ipwho.is/${encodeURIComponent(ip)}`,
-    `https://ipapi.co/${encodeURIComponent(ip)}/json/`,
-    `https://ipinfo.io/${encodeURIComponent(ip)}/json`
+    `https://ipapi.co/${encodeURIComponent(ip)}/json/`
   ];
 
   let isVpnDetected = false;
