@@ -325,7 +325,7 @@ const UpdateDialog = ({ updateInfo, onDownload, onDismiss, onClose }) => {
 
           {/* Browser Link - Always visible */}
           <a
-            href="https://zenith-sable-alpha.vercel.app/zenith-v1.5.2.apk"
+            href="https://zenith-sable-alpha.vercel.app/zenith-v1.5.4.apk"
             target="_blank"
             rel="noopener noreferrer"
             style={{

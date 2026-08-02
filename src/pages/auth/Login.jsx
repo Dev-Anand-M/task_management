@@ -231,7 +231,7 @@ const Login = () => {
                                 </div>
                             </div>
                             <a 
-                                href="/zenith-v1.5.2.apk" 
+                                href="/zenith-v1.5.4.apk" 
                                 download 
                                 style={{
                                     display: 'inline-flex',
