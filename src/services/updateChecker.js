@@ -77,7 +77,7 @@ export const updateChecker = {
 
   /**
    * Directly download/open the update APK file
-   * Redirects to default browser for APK download
+   * Opens in external system browser (not in-app)
    */
   async downloadUpdate(downloadUrl = APK_DOWNLOAD_URL) {
     if (!Capacitor.isNativePlatform()) {
@@ -91,9 +91,16 @@ export const updateChecker = {
       return;
     }
 
-    // Native Android: Direct redirect to URL (opens in default browser)
-    console.log('[UpdateChecker] Redirecting to APK download:', downloadUrl);
-    window.location.href = downloadUrl;
+    // Native Android: Open in external browser using cordova InAppBrowser
+    console.log('[UpdateChecker] Opening APK in external browser:', downloadUrl);
+    
+    if (window.cordova && window.cordova.InAppBrowser) {
+      // Use cordova InAppBrowser with _system to open in external browser
+      window.cordova.InAppBrowser.open(downloadUrl, '_system');
+    } else {
+      // Fallback: Show alert with URL
+      alert('Please copy this link and open in your browser:\n\n' + downloadUrl);
+    }
   },
 
   /**
