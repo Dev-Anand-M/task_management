@@ -27,7 +27,8 @@ import {
     HelpCircle,
     Upload,
     Copy,
-    Check
+    Check,
+    FileText
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
@@ -78,6 +79,7 @@ const SprintTracker = () => {
     const [templateSaving, setTemplateSaving] = useState(false);
     const [showCsvHelp, setShowCsvHelp] = useState(false);
     const [copiedFormat, setCopiedFormat] = useState(false);
+    const [vaultDocs, setVaultDocs] = useState([]);
 
     const [classrooms, setClassrooms] = useState([]);
     const [selectedClassroomId, setSelectedClassroomId] = useState(user?.classroom_id || '');
@@ -171,6 +173,41 @@ const SprintTracker = () => {
                 setSprintTemplate(DEFAULT_TEMPLATE);
             }
 
+            // Fetch Sprint Vault docs from BOTH sprint_vault (new) and knowledge_base (old)
+            // This allows migration period where old docs still exist
+            const [vaultRes, kbRes] = await Promise.all([
+                supabase.from('sprint_vault').select('*').order('week_number', { ascending: true }),
+                supabase.from('knowledge_base').select('*').order('created_at', { ascending: false })
+            ]);
+            
+            if (vaultRes.error) console.error('[SprintTracker] Vault load error:', vaultRes.error);
+            if (kbRes.error) console.error('[SprintTracker] KB load error:', kbRes.error);
+            
+            // Merge docs from both tables
+            let newDocs = vaultRes?.data || [];
+            let oldDocs = kbRes?.data || [];
+            
+            // Map old knowledge_base docs to match sprint_vault structure
+            const mappedOldDocs = oldDocs.map(d => {
+                const weekMatch = (d.subject || '').match(/week\s*(\d+)/i);
+                return {
+                    ...d,
+                    week_number: weekMatch ? parseInt(weekMatch[1]) : null,
+                    file_type: d.material_type || 'file',
+                    uploaded_by: d.created_by || null,
+                    is_old_migration: true
+                };
+            }).filter(d => d.week_number !== null);
+            
+            let allVaultDocs = [...newDocs, ...mappedOldDocs];
+            
+            // Filter client-side to include null OR matching classroom_id
+            if (targetClassroomId) {
+                allVaultDocs = allVaultDocs.filter(d => !d.classroom_id || d.classroom_id === targetClassroomId);
+            }
+            console.log('[SprintTracker] Loaded Sprint Vault docs:', allVaultDocs);
+            setVaultDocs(allVaultDocs);
+
             clearTimeout(safetyTimeout);
         } catch (err) {
             console.error('[SprintTracker] Load error:', err);
@@ -189,6 +226,7 @@ const SprintTracker = () => {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'sprint_locks' }, () => loadData())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'sprint_participants' }, () => loadData())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'sprint_templates' }, () => loadData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'sprint_vault' }, () => loadData())
             .subscribe();
 
         return () => supabase.removeChannel(channel);
@@ -673,6 +711,32 @@ const SprintTracker = () => {
         document.body.removeChild(link);
     };
 
+    // Check if non-admin member is not enrolled in active sprint participants roster
+    const isCurrentUserParticipant = participantIds.has(user?.id);
+    if (!isAdmin && !loading && !isCurrentUserParticipant) {
+        return (
+            <div className="animate-fade-in" style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
+                <Card style={{ maxWidth: '480px', margin: '40px auto', padding: '40px 24px' }}>
+                    <div style={{
+                        width: '64px', height: '64px', borderRadius: '50%',
+                        background: 'rgba(245, 158, 11, 0.1)', color: '#fbbf24',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        margin: '0 auto 16px'
+                    }}>
+                        <Zap size={32} />
+                    </div>
+                    <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, margin: '0 0 8px' }}>Sprint Access Restricted</h2>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', lineHeight: 1.6, margin: '0 0 20px' }}>
+                        You are currently not enrolled in the active sprint roster for this classroom. Contact your administrator to join the active sprint.
+                    </p>
+                    <Button variant="primary" onClick={() => navigate('/dashboard')}>
+                        Return to Dashboard
+                    </Button>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="page-content" style={{ maxWidth: '1000px', margin: '0 auto' }}>
             {/* Header */}
@@ -920,26 +984,91 @@ const SprintTracker = () => {
                                         : '—'}
                                 </div>
                             )}
-                            <div style={{ marginTop: 'var(--space-xs)', marginBottom: 'var(--space-xs)' }}>
-                                <a
-                                    href={sprintTemplate[selectedWeek - 1]?.resource_url || `/study-materials?tab=sprint`}
-                                    target={sprintTemplate[selectedWeek - 1]?.resource_url?.startsWith('http') ? '_blank' : '_self'}
-                                    rel="noopener noreferrer"
-                                    style={{
-                                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                        fontSize: 'var(--text-xs)', fontWeight: 600,
-                                        color: '#3b82f6',
-                                        background: 'rgba(59, 130, 246, 0.1)',
-                                        padding: '4px 10px', borderRadius: 'var(--radius-md)',
-                                        border: '1px solid rgba(59, 130, 246, 0.25)',
-                                        textDecoration: 'none'
-                                    }}
-                                >
-                                    <BookOpen size={13} />
-                                    {sprintTemplate[selectedWeek - 1]?.resource_label || 'View Sprint Vault & Resources'}
-                                    <ExternalLink size={11} />
-                                </a>
-                            </div>
+
+                            {/* Attached Files & Resources for Week N */}
+                            {(() => {
+                                const currentWeekData = sprintTemplate[selectedWeek - 1];
+                                // Sprint Vault docs filtered by week_number (direct match, no string searching needed)
+                                const matchedVaultDocs = vaultDocs.filter(doc => doc.week_number === selectedWeek);
+                                console.log('[SprintTracker] Week', selectedWeek, '- Total vaultDocs:', vaultDocs.length, '- Matched:', matchedVaultDocs.length, '- Docs:', matchedVaultDocs);
+
+                                const hasPrimaryResource = Boolean(currentWeekData?.resource_url && currentWeekData.resource_url.trim().length > 0);
+                                const totalResourcesCount = (hasPrimaryResource ? 1 : 0) + matchedVaultDocs.length;
+
+                                return (
+                                    <div style={{ marginTop: 'var(--space-xs)', marginBottom: 'var(--space-xs)' }}>
+                                        <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px', letterSpacing: '0.05em' }}>
+                                            Week {selectedWeek} Resources & Files ({totalResourcesCount})
+                                        </div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                                            {/* Primary Template Resource URL */}
+                                            {hasPrimaryResource && (
+                                                <a
+                                                    href={currentWeekData.resource_url}
+                                                    target={currentWeekData.resource_url.startsWith('http') ? '_blank' : '_self'}
+                                                    rel="noopener noreferrer"
+                                                    style={{
+                                                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                                        fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                        color: '#3b82f6',
+                                                        background: 'rgba(59, 130, 246, 0.1)',
+                                                        padding: '5px 11px', borderRadius: 'var(--radius-md)',
+                                                        border: '1px solid rgba(59, 130, 246, 0.25)',
+                                                        textDecoration: 'none'
+                                                    }}
+                                                >
+                                                    <BookOpen size={13} />
+                                                    {currentWeekData.resource_label || `Week ${selectedWeek} Primary Resource`}
+                                                    <ExternalLink size={11} />
+                                                </a>
+                                            )}
+
+                                            {/* Uploaded Vault Documents for Week N */}
+                                            {matchedVaultDocs.map(doc => (
+                                                <a
+                                                    key={doc.id}
+                                                    href={doc.file_url || `/study-materials?tab=sprint`}
+                                                    target={doc.file_url?.startsWith('http') ? '_blank' : '_self'}
+                                                    rel="noopener noreferrer"
+                                                    style={{
+                                                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                                        fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                        color: '#10b981',
+                                                        background: 'rgba(16, 185, 129, 0.1)',
+                                                        padding: '5px 11px', borderRadius: 'var(--radius-md)',
+                                                        border: '1px solid rgba(16, 185, 129, 0.25)',
+                                                        textDecoration: 'none'
+                                                    }}
+                                                >
+                                                    <FileText size={13} />
+                                                    {doc.title || `Week ${selectedWeek} Document`}
+                                                    <ExternalLink size={11} />
+                                                </a>
+                                            ))}
+
+                                            {/* Fallback Link to Sprint Vault if no files attached */}
+                                            {totalResourcesCount === 0 && (
+                                                <a
+                                                    href={`/study-materials?tab=sprint`}
+                                                    style={{
+                                                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                                        fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                        color: 'var(--text-muted)',
+                                                        background: 'var(--surface)',
+                                                        padding: '5px 11px', borderRadius: 'var(--radius-md)',
+                                                        border: '1px solid var(--border)',
+                                                        textDecoration: 'none'
+                                                    }}
+                                                >
+                                                    <BookOpen size={13} />
+                                                    View Sprint Vault & Resources
+                                                    <ExternalLink size={11} />
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                             <div style={{ fontSize: 'var(--text-xs)', color: isWeekLocked(selectedWeek) ? 'var(--warning)' : 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 {isWeekLocked(selectedWeek) ? <><Lock size={13} /> Submissions Locked (Auto Schedule / Admin Lock)</> : <><Unlock size={13} /> Submissions Open</>}
                             </div>
@@ -1069,6 +1198,7 @@ const SprintTracker = () => {
                                         borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
                                         background: 'var(--card)'
                                     }}>
+                                        {/* Week Description & Resource URL */}
                                         {(week.description || week.resource_url) && (
                                             <div style={{
                                                 marginBottom: 'var(--space-md)', padding: 'var(--space-sm) var(--space-md)',
@@ -1098,6 +1228,45 @@ const SprintTracker = () => {
                                                 )}
                                             </div>
                                         )}
+
+                                        {/* Sprint Vault Documents for this Week */}
+                                        {(() => {
+                                            const weekVaultDocs = vaultDocs.filter(doc => doc.week_number === week.week);
+                                            if (weekVaultDocs.length > 0) {
+                                                return (
+                                                    <div style={{ marginBottom: 'var(--space-md)' }}>
+                                                        <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px', letterSpacing: '0.05em' }}>
+                                                            📚 Sprint Vault Resources ({weekVaultDocs.length})
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                            {weekVaultDocs.map(doc => (
+                                                                <a
+                                                                    key={doc.id}
+                                                                    href={doc.file_url || '#'}
+                                                                    target={doc.file_url?.startsWith('http') ? '_blank' : '_self'}
+                                                                    rel="noopener noreferrer"
+                                                                    style={{
+                                                                        display: 'flex', alignItems: 'center', gap: '8px',
+                                                                        padding: '10px 14px', borderRadius: 'var(--radius-lg)',
+                                                                        background: 'var(--surface)', border: '1px solid var(--border)',
+                                                                        fontSize: 'var(--text-sm)', color: '#10b981',
+                                                                        fontWeight: 600, textDecoration: 'none',
+                                                                        transition: 'all 0.2s ease'
+                                                                    }}
+                                                                >
+                                                                    <FileText size={16} style={{ flexShrink: 0 }} />
+                                                                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                        {doc.title}
+                                                                    </span>
+                                                                    <ExternalLink size={13} style={{ flexShrink: 0 }} />
+                                                                </a>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
                                         {teamMembers.map(member => {
                                             const weekEvals = evaluations.filter(e => e.subject_id === member.id && e.week_number === week.week);
                                             const avg = getWeeklyAvg(member.id, week.week);
@@ -1548,39 +1717,6 @@ const SprintTracker = () => {
                                                     type="date"
                                                     value={week.end_date || ''}
                                                     onChange={e => updateDraftWeek(idx, 'end_date', e.target.value)}
-                                                    style={{
-                                                        flex: 1, padding: '5px 10px', borderRadius: 'var(--radius-md)',
-                                                        border: '1px solid var(--border)', background: 'var(--surface)',
-                                                        color: 'var(--text)', fontSize: 'var(--text-xs)',
-                                                        minWidth: 0
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Resource Link & Label */}
-                                        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '2 1 200px' }}>
-                                                <LinkIcon size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                                                <input
-                                                    type="text"
-                                                    value={week.resource_url || ''}
-                                                    onChange={e => updateDraftWeek(idx, 'resource_url', e.target.value)}
-                                                    placeholder="Study Material / Announcement URL (e.g. /study-materials or https://...)"
-                                                    style={{
-                                                        flex: 1, padding: '5px 10px', borderRadius: 'var(--radius-md)',
-                                                        border: '1px solid var(--border)', background: 'var(--surface)',
-                                                        color: 'var(--text)', fontSize: 'var(--text-xs)',
-                                                        minWidth: 0
-                                                    }}
-                                                />
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '1 1 140px' }}>
-                                                <input
-                                                    type="text"
-                                                    value={week.resource_label || ''}
-                                                    onChange={e => updateDraftWeek(idx, 'resource_label', e.target.value)}
-                                                    placeholder="Link Button Label (optional)"
                                                     style={{
                                                         flex: 1, padding: '5px 10px', borderRadius: 'var(--radius-md)',
                                                         border: '1px solid var(--border)', background: 'var(--surface)',

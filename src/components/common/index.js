@@ -10,3 +10,4 @@ export { default as LoadingSpinner } from './LoadingSpinner';
 export { default as ErrorBoundary } from './ErrorBoundary';
 export { default as SplashScreen } from './SplashScreen';
 export { default as ImageCropper } from './ImageCropper';
+export { default as SecurityGuard } from './SecurityGuard';

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import * as db from '../../services/database';
+import { supabase } from '../../lib/supabase';
 import {
     LayoutDashboard,
     ListTodo,
@@ -36,6 +37,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     const { user, isAdmin, logout, forceRefresh } = useAuth();
     const [classrooms, setClassrooms] = useState([]);
     const [showClassroomMenu, setShowClassroomMenu] = useState(false);
+    const [showSprintZone, setShowSprintZone] = useState(true);
+    const [isSprintParticipant, setIsSprintParticipant] = useState(false);
     const [showAiTools, setShowAiTools] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -43,7 +46,19 @@ const Sidebar = ({ isOpen, onClose }) => {
         if (isAdmin) {
             db.getClassrooms().then(setClassrooms).catch(console.error);
         }
-    }, [isAdmin]);
+        if (user?.id) {
+            supabase
+                .from('sprint_participants')
+                .select('id')
+                .eq('user_id', user.id)
+                .then(({ data }) => {
+                    if (data && data.length > 0) {
+                        setIsSprintParticipant(true);
+                    }
+                })
+                .catch(() => {});
+        }
+    }, [isAdmin, user?.id]);
 
     const handleSwitchClassroom = async (classroomId) => {
         try {
@@ -78,8 +93,6 @@ const Sidebar = ({ isOpen, onClose }) => {
         {
             label: 'Growth',
             links: [
-                { to: '/study-materials', icon: Brain, label: 'Knowledge Hub' },
-                { to: '/sprint-tracker', icon: Zap, label: 'Sprint Tracker', sprintBadge: true },
                 { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
                 { to: '/team', icon: Users, label: 'Team' },
             ]
@@ -115,7 +128,6 @@ const Sidebar = ({ isOpen, onClose }) => {
             links: [
                 { to: '/chat', icon: MessageSquare, label: 'Messages', badge: 'v2.0' },
                 { to: '/knowledge-base', icon: Database, label: 'Knowledge Base' },
-                { to: '/sprint-tracker', icon: Zap, label: 'Sprint Tracker', sprintBadge: true },
                 { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
             ]
         },
@@ -205,7 +217,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 </div>
                             </div>
                             <a
-                                href="/zenith-v1.5.0.apk"
+                                href="/zenith-v1.5.2.apk"
                                 download
                                 style={{
                                     padding: '4px 10px',
@@ -297,6 +309,114 @@ const Sidebar = ({ isOpen, onClose }) => {
                                         </div>
                                     ))}
                                 </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Glowing Top-Placed Foldable SPRINT ZONE Category */}
+                    {(isAdmin || isSprintParticipant) && (
+                        <div style={{
+                            marginBottom: 'var(--space-md)',
+                            borderRadius: '16px',
+                            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.08) 100%)',
+                            border: '1px solid rgba(245, 158, 11, 0.4)',
+                            padding: '8px 6px',
+                            boxShadow: '0 4px 20px rgba(245, 158, 11, 0.2), inset 0 0 12px rgba(245, 158, 11, 0.1)',
+                        }}>
+                            {/* Collapsible Header */}
+                            <div
+                                onClick={() => setShowSprintZone(!showSprintZone)}
+                                style={{
+                                    fontSize: '10px',
+                                    color: '#d97706',
+                                    padding: '4px 10px 6px',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.12em',
+                                    fontWeight: 800,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    cursor: 'pointer',
+                                    userSelect: 'none'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Zap size={13} style={{ color: '#d97706', fill: 'rgba(217, 119, 6, 0.35)' }} />
+                                    <span>SPRINT ⚡</span>
+                                    
+                                    {/* Continuous Pulsating 🔴 LIVE Badge */}
+                                    <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        padding: '2px 7px',
+                                        borderRadius: '9999px',
+                                        background: 'rgba(239, 68, 68, 0.2)',
+                                        border: '1px solid rgba(239, 68, 68, 0.45)',
+                                        color: '#dc2626',
+                                        fontSize: '9px',
+                                        fontWeight: 800,
+                                        marginLeft: '4px',
+                                        letterSpacing: '0.05em'
+                                    }}>
+                                        <span style={{
+                                            width: '5px',
+                                            height: '5px',
+                                            borderRadius: '50%',
+                                            backgroundColor: '#ef4444',
+                                            boxShadow: '0 0 6px #ef4444',
+                                            animation: 'sprintLivePulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                                        }} />
+                                        LIVE
+                                    </span>
+                                </div>
+
+                                <ChevronRight 
+                                    size={13} 
+                                    style={{ 
+                                        color: '#d97706',
+                                        transform: showSprintZone ? 'rotate(90deg)' : 'none', 
+                                        transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)' 
+                                    }} 
+                                />
+                            </div>
+
+                            {/* Foldable Content Links */}
+                            {showSprintZone && (
+                                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '4px' }}>
+                                    {[
+                                        { to: '/sprint-tracker', icon: Zap, label: 'Sprint Tracker', exact: true },
+                                        { to: '/study-materials?tab=sprint', icon: Brain, label: 'Sprint Vault & Docs' }
+                                    ].map(link => (
+                                        <li key={link.to}>
+                                            <NavLink
+                                                to={link.to}
+                                                end={link.exact}
+                                                replace={true}
+                                                onClick={onClose}
+                                                className="sprint-nav-link"
+                                                style={({ isActive }) => ({
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 'var(--space-sm)',
+                                                    padding: '0.55rem var(--space-md)',
+                                                    borderRadius: '10px',
+                                                    color: isActive ? '' : 'var(--text)',
+                                                    background: isActive ? 'rgba(245, 158, 11, 0.28)' : 'transparent',
+                                                    textDecoration: 'none',
+                                                    fontSize: 'var(--text-sm)',
+                                                    fontWeight: isActive ? 700 : 500,
+                                                    transition: 'all 0.15s ease',
+                                                    borderLeft: isActive ? '2px solid #d97706' : '2px solid transparent',
+                                                    boxShadow: isActive ? '0 2px 10px rgba(245, 158, 11, 0.2)' : 'none'
+                                                })}
+                                            >
+                                                <link.icon size={16} style={{ color: '#d97706' }} />
+                                                <span style={{ flex: 1 }}>{link.label}</span>
+                                            </NavLink>
+                                        </li>
+                                    ))}
+                                </ul>
                             )}
                         </div>
                     )}

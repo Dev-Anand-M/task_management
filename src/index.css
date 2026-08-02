@@ -4122,6 +4122,15 @@ a img {
   padding-bottom: env(safe-area-inset-bottom, 0px) !important;
   box-sizing: border-box !important;
 }
+/* ---- Sprint Zone Active Text Colors (Theme-Adaptive) ---- */
+html[data-theme="dark"] .sprint-nav-link.active {
+  color: #fbbf24 !important; /* Bright amber for dark mode */
+}
+
+html[data-theme="light"] .sprint-nav-link.active {
+  color: #92400e !important; /* Dark brown for light mode */
+}
+
 /* ---- v1.5.0 Mobile Fixes: Knowledge Hub, Sprint Vault, CSV Toolbar ---- */
 @media (max-width: 768px) {
 

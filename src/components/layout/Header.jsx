@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import * as db from '../../services/database';
 import { Capacitor } from '@capacitor/core';
-import { Menu, Bell, Search, User, LogOut, Settings, Clock, Check, ChevronRight, LayoutDashboard, Database, HelpCircle, ArrowRight, ArrowLeft, Sun, Moon, CheckCircle, Award, AlertCircle, Info, X, RefreshCw } from 'lucide-react';
+import { Menu, Bell, Search, User, LogOut, Settings, Clock, Check, ChevronRight, LayoutDashboard, Database, HelpCircle, ArrowRight, ArrowLeft, Sun, Moon, CheckCircle, Award, AlertCircle, Info, X, RefreshCw, Zap } from 'lucide-react';
 import { Button, SearchBar, Avatar } from '../common';
 
 const Header = ({ onMenuClick, title }) => {
@@ -59,6 +59,14 @@ const Header = ({ onMenuClick, title }) => {
       const myTasks = tasks.filter(t => !t.assigned_to || t.assigned_to.length === 0 || t.assigned_to.includes(user.id));
       const actionItems = myTasks.filter(task => {
         const sub = submissions.find(s => s.task_id === task.id);
+        if (sub && (sub.status === 'approved' || sub.status === 'submitted' || sub.status === 'pending')) return false;
+
+        // Exclude overdue tasks (deadline in past is overdue, NOT active pending task)
+        if (task.deadline) {
+          const deadlineDate = new Date(task.deadline);
+          if (deadlineDate < now) return false;
+        }
+
         if (!sub) return true;
         return sub.status === 'rejected';
       });
@@ -230,8 +238,8 @@ const Header = ({ onMenuClick, title }) => {
                     ))
                   ) : (
                     <span className="ticker-item text-sm text-muted font-medium flex items-center gap-xs">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                      You completed everything! 🎉
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      You have nothing to do ✨
                     </span>
                   )}
                 </div>

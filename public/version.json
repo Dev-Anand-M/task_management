@@ -1,8 +1,8 @@
 {
-  "version": "1.5.0",
+  "version": "1.5.2",
   "maintenance": false,
-  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.5.0.apk",
-  "releaseNotes": "🚀 Zenith v1.5.0 — Dynamic Sprint Templates, Knowledge Hub Sprint Vault, Deadline Auto-Locking & Bulk CSV Import/Export.",
+  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.5.2.apk",
+  "releaseNotes": "🔧 Zenith v1.5.2 — SecurityGuard VPN false positive fix, Sprint Zone UI updates, Sprint Vault delete/edit buttons for file management.",
   "mandatory": false,
   "minSupportedVersion": "1.4.0"
 }

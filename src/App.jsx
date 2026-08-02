@@ -5,7 +5,7 @@ import { Routes, Route, Navigate, Outlet, useParams, useNavigate } from 'react-r
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/layout';
-import { ErrorBoundary, LoadingSpinner, SplashScreen } from './components/common';
+import { ErrorBoundary, LoadingSpinner, SplashScreen, SecurityGuard } from './components/common';
 import BackHandler from './components/layout/BackHandler';
 import GlobalAlarmListener from './components/layout/GlobalAlarmListener';
 import UpdateDialog from './components/common/UpdateDialog';
@@ -61,53 +61,85 @@ import DebugConnection from './pages/DebugConnection';
 const ComingSoonChat = () => {
   const navigate = useNavigate();
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+    <div style={{
+      position: 'relative',
+      width: 'calc(100% + (var(--space-lg) * 2))',
+      margin: 'calc(var(--space-lg) * -1)',
+      minHeight: 'calc(100vh - 72px)',
+      height: '100%',
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'radial-gradient(circle at 50% 30%, rgba(99, 102, 241, 0.18) 0%, rgba(15, 23, 42, 0.96) 100%)'
+    }}>
       {/* Blurred chat underneath as a teaser */}
-      <div style={{ filter: 'blur(8px)', pointerEvents: 'none', opacity: 0.3, height: '100%' }}>
+      <div style={{ filter: 'blur(12px)', pointerEvents: 'none', opacity: 0.2, width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
         <Chat />
       </div>
+
       {/* Overlay */}
       <div style={{
-        position: 'absolute', inset: 0,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+        position: 'relative',
         zIndex: 10,
+        textAlign: 'center',
+        padding: '48px 36px',
+        background: 'rgba(15, 23, 42, 0.75)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
+        borderRadius: '28px',
+        maxWidth: '440px',
+        width: '90%',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
       }}>
         <div style={{
-          textAlign: 'center', padding: '48px 32px',
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: '24px', maxWidth: '420px', width: '90%',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
-        }}>
-          <div style={{
-            width: '80px', height: '80px', margin: '0 auto 20px',
-            background: 'var(--gradient-primary)', borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '36px',
-          }}>💬</div>
-          <h2 style={{ margin: '0 0 8px', fontSize: '24px', fontWeight: 800 }}>Messages</h2>
-          <p style={{ margin: '0 0 20px', color: 'var(--text-muted)', fontSize: '15px', lineHeight: 1.5 }}>
-            Real-time messaging is coming soon.<br />Stay tuned!
-          </p>
-          <div style={{
-            display: 'inline-block', padding: '8px 20px',
-            background: 'var(--gradient-secondary)', borderRadius: '20px',
-            fontWeight: 700, fontSize: '14px', letterSpacing: '0.5px',
-            color: 'white', marginBottom: '20px',
+          width: '84px',
+          height: '84px',
+          margin: '0 auto 20px',
+          background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '38px',
+          boxShadow: '0 10px 30px rgba(99, 102, 241, 0.4)'
+        }}>💬</div>
+        <h2 style={{ margin: '0 0 10px', fontSize: '26px', fontWeight: 800, color: '#ffffff' }}>Messages</h2>
+        <p style={{ margin: '0 0 24px', color: 'rgba(255, 255, 255, 0.7)', fontSize: '15px', lineHeight: 1.6 }}>
+          Real-time end-to-end encrypted messaging is coming soon.<br />Stay tuned!
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+          <span style={{
+            padding: '7px 20px',
+            background: 'rgba(99, 102, 241, 0.2)',
+            border: '1px solid rgba(99, 102, 241, 0.4)',
+            color: '#a5b4fc',
+            borderRadius: '20px',
+            fontWeight: 700,
+            fontSize: '13px',
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase'
           }}>
             Coming in v2.0.0
-          </div>
-          <br />
+          </span>
           <button
             onClick={() => navigate(-1)}
             style={{
-              marginTop: '8px', padding: '12px 32px',
-              background: 'var(--primary-500)', color: 'white',
-              border: 'none', borderRadius: '12px',
-              fontWeight: 700, fontSize: '15px', cursor: 'pointer',
+              marginTop: '8px',
+              padding: '10px 28px',
+              background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '14px',
+              fontWeight: 700,
+              fontSize: '14px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 16px rgba(99, 102, 241, 0.3)',
+              transition: 'all 0.2s ease'
             }}
           >
-            Go Back
+            ← Go Back
           </button>
         </div>
       </div>
@@ -259,8 +291,6 @@ function AppRoutes() {
           <Route path="/quizzes" element={<Quizzes />} />
           <Route path="/quizzes/:quizId" element={<Quizzes />} />
           <Route path="/xp-history" element={<XPHistory />} />
-          <Route path="/study-materials" element={<StudyMaterials />} />
-          <Route path="/study-materials/:id" element={<StudyMaterials />} />
           <Route path="/calendar" element={<MemberCalendar />} />
           <Route path="/planner" element={<Planner />} />
           <Route path="/routines" element={<Routines />} />
@@ -273,6 +303,8 @@ function AppRoutes() {
         </Route>
 
         {/* Shared Routes */}
+        <Route path="/study-materials" element={<StudyMaterials />} />
+        <Route path="/study-materials/:id" element={<StudyMaterials />} />
         <Route path="/profile" element={<ProfileRouter />} />
         <Route path="/chat" element={<ComingSoonChat />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
@@ -384,7 +416,9 @@ function App() {
         <AuthProvider>
           <GlobalAlarmListener />
           <BackHandler />
-          <AppRoutes />
+          <SecurityGuard>
+            <AppRoutes />
+          </SecurityGuard>
           
           {/* Update Dialog */}
           {showUpdateDialog && updateInfo && (

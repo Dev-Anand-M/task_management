@@ -237,6 +237,19 @@ const StudyMaterials = () => {
         setExpandedCategories(prev => ({ ...prev, [cat]: prev[cat] === false ? true : false }));
     };
 
+    // Delete Sprint Vault document
+    const handleDeleteSprintDoc = async (docId, tableName) => {
+        if (!window.confirm('Delete this document?')) return;
+        try {
+            const { error } = await supabase.from(tableName).delete().eq('id', docId);
+            if (error) throw error;
+            loadData(true);
+        } catch (err) {
+            console.error('Delete error:', err);
+            alert('Failed to delete: ' + (err.message || err));
+        }
+    };
+
     const tabStyle = (tab) => ({
         padding: '10px 20px',
         background: activeTab === tab ? 'var(--primary-500)' : 'transparent',
@@ -270,22 +283,32 @@ const StudyMaterials = () => {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {isAdmin && activeTab === 'sprint' ? (
-                        <Button variant="secondary" icon={Plus} onClick={() => { setSharedForm({ title: '', content: '', subject: 'Week 1', material_type: 'file', file: null, url: '' }); setShowAddSharedModal(true); }}>
-                            ⚡ + Add Sprint Resource
+                    {activeTab === 'sprint' ? (
+                        <Button 
+                            variant="primary" 
+                            icon={Zap} 
+                            onClick={() => navigate('/sprint-tracker')}
+                            style={{
+                                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                                color: '#ffffff',
+                                border: 'none',
+                                fontWeight: 700,
+                                boxShadow: '0 4px 16px rgba(245, 158, 11, 0.3)'
+                            }}
+                        >
+                            ⚡ Open Sprint Tracker
                         </Button>
-                    ) : isAdmin && (
-                        <Button variant="secondary" icon={Plus} onClick={() => { setShowAddSharedModal(true); }}>
-                            + Add Shared Resource
-                        </Button>
-                    )}
-                    <Button variant="primary" icon={Plus} onClick={() => { setEditingNote(null); setNoteForm({ title: '', content: '', category: 'General', color: null, material_type: 'text', file: null, url: '' }); setShowAddModal(true); }}>
-                        New Note / Doc
-                    </Button>
-                    {isAdmin && activeTab === 'sprint' && (
-                        <Button variant="outline" icon={Zap} onClick={() => navigate('/sprint-tracker')}>
-                            ⚙️ Configure Weeks
-                        </Button>
+                    ) : (
+                        <>
+                            {isAdmin && (
+                                <Button variant="secondary" icon={Plus} onClick={() => { setShowAddSharedModal(true); }}>
+                                    + Add Shared Resource
+                                </Button>
+                            )}
+                            <Button variant="primary" icon={Plus} onClick={() => { setEditingNote(null); setNoteForm({ title: '', content: '', category: 'General', color: null, material_type: 'text', file: null, url: '' }); setShowAddModal(true); }}>
+                                New Note / Doc
+                            </Button>
+                        </>
                     )}
                 </div>
             </div>
@@ -446,10 +469,12 @@ const StudyMaterials = () => {
                                                         Attached Documents & Notes ({matchedDocs.length})
                                                     </div>
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                        {matchedDocs.map(doc => (
+                                                        {matchedDocs.map(doc => {
+                                                            // Determine which table this doc is from
+                                                            const docTable = sharedMaterials.some(m => m.id === doc.id) ? 'knowledge_base' : 'study_notes';
+                                                            return (
                                                             <div
                                                                 key={doc.id}
-                                                                onClick={() => setViewingItem(doc)}
                                                                 style={{
                                                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                                                     padding: '6px 10px', borderRadius: 'var(--radius-md)',
@@ -457,7 +482,10 @@ const StudyMaterials = () => {
                                                                     fontSize: 'var(--text-xs)', cursor: 'pointer'
                                                                 }}
                                                             >
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                                                <div 
+                                                                    onClick={() => setViewingItem(doc)}
+                                                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}
+                                                                >
                                                                     {doc.material_type === 'file' && <File size={13} style={{ color: 'var(--primary-400)' }} />}
                                                                     {doc.material_type === 'link' && <LinkIcon size={13} style={{ color: 'var(--primary-400)' }} />}
                                                                     {doc.material_type === 'text' && <FileText size={13} style={{ color: 'var(--primary-400)' }} />}
@@ -465,9 +493,42 @@ const StudyMaterials = () => {
                                                                         {doc.title}
                                                                     </span>
                                                                 </div>
-                                                                <Eye size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                                                                    <button
+                                                                        onClick={() => setViewingItem(doc)}
+                                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+                                                                        title="View"
+                                                                    >
+                                                                        <Eye size={12} />
+                                                                    </button>
+                                                                    {(isAdmin || doc.user_id === user?.id) && (
+                                                                        <>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    if (docTable === 'study_notes') {
+                                                                                        openEdit(doc);
+                                                                                    } else {
+                                                                                        alert('Editing shared resources coming soon!');
+                                                                                    }
+                                                                                }}
+                                                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--primary-500)', display: 'flex', alignItems: 'center' }}
+                                                                                title="Edit"
+                                                                            >
+                                                                                <Edit3 size={12} />
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleDeleteSprintDoc(doc.id, docTable)}
+                                                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--error-500)', display: 'flex', alignItems: 'center' }}
+                                                                                title="Delete"
+                                                                            >
+                                                                                <Trash2 size={12} />
+                                                                            </button>
+                                                                        </>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                        ))}
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             );
@@ -512,21 +573,6 @@ const StudyMaterials = () => {
                                                 <ExternalLink size={12} />
                                             </a>
                                         )}
-
-                                        <button
-                                            onClick={() => navigate(`/sprint-tracker?week=${st.week_number}`)}
-                                            style={{
-                                                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                                                padding: '8px 14px', borderRadius: 'var(--radius-md)',
-                                                background: 'var(--surface)', color: 'var(--text)',
-                                                border: '1px solid var(--border)', cursor: 'pointer',
-                                                fontWeight: 600, fontSize: 'var(--text-xs)'
-                                            }}
-                                        >
-                                            <Zap size={13} style={{ color: '#10b981' }} />
-                                            Go to Week {st.week_number} Evaluations
-                                            <ArrowRight size={13} />
-                                        </button>
                                     </div>
                                 </Card>
                             ))}

@@ -13,6 +13,7 @@ class SecurityDetectorService {
     this.isDevToolsOpen = false;
     this.isVpnDetected = false;
     this.isDeveloperModeDetected = false;
+    this.isTorOrIpBlocked = false;
     this.nativeVpnDetected = false;
     this.serverVpnDetected = false;
     this.clientVpnDetected = false;
@@ -20,9 +21,9 @@ class SecurityDetectorService {
     this.listeners = new Set();
     this.isChecking = false;
     this.checkInterval = null;
-    this.monitorIntervalMs = 30000; // Increased from 15s to 30s
-    this.vpnCheckTtlMs = 60000; // Increased from 30s to 60s (1 minute cache)
-    this.devToolsTrapIntervalMs = 30000; // Increased from 15s to 30s
+    this.monitorIntervalMs = 15000; // 15s lazy loop (zero app lag)
+    this.vpnCheckTtlMs = 5000; // 5s VPN cache TTL (faster re-check after VPN disconnect)
+    this.devToolsTrapIntervalMs = 15000; // 15s trap interval
     this.lastVpnCheckAt = 0;
     this.lastDevToolsTrapAt = 0;
 
@@ -60,10 +61,11 @@ class SecurityDetectorService {
 
   notifyListeners() {
     const status = {
-      isRestricted: this.isDevToolsOpen || this.isVpnDetected || this.isDeveloperModeDetected,
+      isRestricted: this.isDevToolsOpen || this.isVpnDetected || this.isDeveloperModeDetected || this.isTorOrIpBlocked,
       isDevToolsOpen: this.isDevToolsOpen,
       isVpnDetected: this.isVpnDetected,
       isDeveloperModeDetected: this.isDeveloperModeDetected,
+      isTorOrIpBlocked: this.isTorOrIpBlocked,
       reasons: this.reasons
     };
     this.listeners.forEach(fn => fn(status));
@@ -81,6 +83,7 @@ class SecurityDetectorService {
     this.isDevToolsOpen = false;
     this.isVpnDetected = false;
     this.isDeveloperModeDetected = false;
+    this.isTorOrIpBlocked = false;
     this.nativeVpnDetected = false;
     this.serverVpnDetected = false;
     this.clientVpnDetected = false;
@@ -136,7 +139,7 @@ class SecurityDetectorService {
         status?.isDeveloperOptionsEnabled || status?.isAdbEnabled
       );
     } catch (err) {
-      console.warn('[SecurityDetector] Native security status unavailable:', err);
+      // Native security status unavailable - silently fail
       this.nativeVpnDetected = false;
       this.isDeveloperModeDetected = false;
     }
@@ -153,98 +156,68 @@ class SecurityDetectorService {
 
     this.lastVpnCheckAt = now;
 
-    const serverChecked = await this.checkServerVpn();
-    if (serverChecked) {
-      this.clientVpnDetected = false;
-    } else {
-      await this.checkClientVpn();
-    }
+    // Run BOTH server and client checks in parallel
+    await Promise.all([
+      this.checkServerVpn(),
+      this.checkClientVpn()
+    ]);
+    
     this.syncVpnStatus();
   }
 
   async checkServerVpn() {
-    // Skip server check in development mode
-    if (import.meta.env.DEV) {
-      console.log('[SecurityDetector] ⏭️ Skipping server VPN check in development mode');
-      this.serverVpnDetected = false;
-      return true; // Return true to skip client check
-    }
-
     try {
       const baseUrl = PlatformService.getApiUrl().replace(/\/$/, '');
       const url = `${baseUrl}/api/security-check`;
-      console.log('[SecurityDetector] 🔍 Checking server VPN at:', url);
       
       const data = await this.fetchJsonWithTimeout(url, 3500);
-      console.log('[SecurityDetector] 📦 Server response:', data);
-      
-      if (!data) {
-        console.warn('[SecurityDetector] ⚠️ No data returned from server');
-        return false;
-      }
+      if (!data) return false;
       
       this.serverVpnDetected = Boolean(data?.isVpnDetected || data?.restricted);
-      console.log('[SecurityDetector] ✅ Server VPN detected:', this.serverVpnDetected);
       return true;
     } catch (err) {
-      console.error('[SecurityDetector] ❌ Server VPN check failed:', err);
       this.serverVpnDetected = false;
       return false;
     }
   }
 
   async checkClientVpn() {
-    // Skip client check in development mode
-    if (import.meta.env.DEV) {
-      console.log('[SecurityDetector] ⏭️ Skipping client VPN check in development mode');
-      this.clientVpnDetected = false;
-      return;
-    }
-
     const providers = [
       'https://ipwho.is/',
-      'https://ipapi.co/json/',
+      'http://ip-api.com/json/?fields=status,org,isp,as,proxy,hosting,query',
+      'https://api.db-ip.com/v2/free/self',
       'https://ipinfo.io/json'
     ];
 
-    console.log('[SecurityDetector] 🔍 Starting client-side VPN check...');
     let detected = false;
-    
-    // RTT check - VPNs usually add 50-200ms latency
-    const rttStart = performance.now();
-    try {
-      await fetch('https://www.google.com/favicon.ico', { cache: 'no-store', mode: 'no-cors' });
-      const rtt = performance.now() - rttStart;
-      console.log(`[SecurityDetector] ⏱️ RTT to Google: ${rtt.toFixed(0)}ms`);
-      
-      // Suspicious latency (might indicate VPN/proxy)
-      if (rtt > 150) {
-        console.log('[SecurityDetector] ⚠️ High latency detected - possible VPN/proxy');
-      }
-    } catch (err) {
-      console.log('[SecurityDetector] ⚠️ RTT check failed (might be blocked)');
-    }
-    
+    let successfulFetches = 0;
+
     for (const url of providers) {
       try {
-        console.log(`[SecurityDetector] 🌐 Fetching from: ${url}`);
-        const data = await this.fetchJsonWithTimeout(url, 3500);
-        console.log(`[SecurityDetector] 📦 Response from ${url}:`, data);
-        
-        if (this.inspectIpMetadata(data)) {
-          console.log(`[SecurityDetector] ⚠️ VPN detected by ${url}!`);
-          detected = true;
-          break;
-        } else {
-          console.log(`[SecurityDetector] ✅ No VPN detected by ${url}`);
+        const data = await this.fetchJsonWithTimeout(url, 3000);
+        if (data && typeof data === 'object') {
+          successfulFetches++;
+          if (this.inspectIpMetadata(data)) {
+            detected = true;
+            break;
+          }
         }
       } catch (err) {
-        console.error(`[SecurityDetector] ❌ Failed to fetch from ${url}:`, err);
+        // Silent fail for individual provider
       }
     }
 
+    // Check if user is in TOR browser or onion proxy or if ALL IP lookup providers failed/were blocked
+    const isTorBrowser = (typeof navigator !== 'undefined' && /TorBrowser|Onion/i.test(navigator.userAgent)) ||
+                         (typeof window !== 'undefined' && Boolean(window.TOR));
+
+    if (successfulFetches === 0 || isTorBrowser) {
+      this.isTorOrIpBlocked = true;
+    } else {
+      this.isTorOrIpBlocked = false;
+    }
+
     this.clientVpnDetected = detected;
-    console.log('[SecurityDetector] 🏁 Client VPN detection result:', detected);
   }
 
   async fetchJsonWithTimeout(url, timeoutMs) {
@@ -253,16 +226,12 @@ class SecurityDetectorService {
     try {
       const res = await fetch(url, { 
         cache: 'no-store', 
-        signal: controller.signal,
-        // Add priority hint for better browser scheduling
-        priority: 'low' 
+        signal: controller.signal
       });
       if (!res.ok) return null;
       return await res.json();
     } catch (err) {
-      if (err.name === 'AbortError') {
-        console.warn(`[SecurityDetector] Request timeout: ${url}`);
-      }
+      // Silent fail - timeout or network error
       return null;
     } finally {
       clearTimeout(timer);
@@ -270,196 +239,64 @@ class SecurityDetectorService {
   }
 
   inspectIpMetadata(data) {
-    if (!data || typeof data !== 'object') {
-      console.log('[SecurityDetector] ❌ Invalid metadata:', data);
-      return false;
-    }
+    if (!data || typeof data !== 'object') return false;
 
-    console.log('[SecurityDetector] 🔍 Full IP Metadata:', JSON.stringify(data, null, 2));
-
-    const keywords = [
-      'vpn', 'proxy', 'hosting', 'datacenter', 'data center',
-      'mullvad', 'expressvpn', 'nordvpn', 'surfshark',
-      'proton', 'protonvpn', 'proton ag', 'proton vpn',
-      'openvpn', 'wireguard', 'tunnel', 'anonymizer',
-      'cloudflare', 'digitalocean', 'linode', 'vultr',
-      'aws', 'amazon', 'google cloud', 'azure', 'microsoft',
-      'hetzner', 'ovh', 'fastly', 'akamai', 'leaseweb',
-      'privado', 'pia', 'private internet', 'cyberghost',
-      'ipvanish', 'torguard', 'hide.me', 'windscribe',
-      'purevpn', 'hotspot shield', 'strongvpn', 'vyprvpn',
-      'vpn unlimited', 'tunnelbear', 'hide my ass', 'hma',
-      'server', 'colo', 'colocation', 'anonymous', 'relay',
-      // Additional aggressive patterns
-      'virtual', 'virtual private', 'dedicated', 'vps',
-      'cloud', 'shared hosting', 'network solutions',
-      'residential proxy', 'rotating', 'mobile proxy',
-      // Specific ISP patterns that VPNs use
-      'M247', 'datacamp', 'fdcservers', 'psychz', 'quadranet',
-      'online sas', 'server hosting', 'tier.net', 'zenlayer'
-    ];
-
-    const matchesVpn = (value) => {
-      const str = String(value || '').toLowerCase();
-      const matched = keywords.some(keyword => str.includes(keyword));
-      if (matched) {
-        console.log(`[SecurityDetector] 🎯 Keyword match found: "${value}" matches VPN pattern`);
-      }
-      return matched;
-    };
-
+    // FIRST: Check boolean flags (proxy: false should NOT trigger detection)
     const security = data.security || data.privacy || {};
     const booleanFlags = [
-      data.vpn,
-      data.proxy,
-      data.tor,
-      data.hosting,
-      data.is_vpn,
-      data.is_proxy,
-      data.is_tor,
-      data.is_hosting,
-      security.vpn,
-      security.proxy,
-      security.tor,
-      security.hosting,
-      security.relay
+      data.vpn, data.proxy, data.tor, data.hosting,
+      data.is_vpn, data.is_proxy, data.is_tor, data.is_hosting,
+      security.vpn, security.proxy, security.tor, security.hosting, security.anonymous, security.relay
     ];
 
-    console.log('[SecurityDetector] 🔍 Checking boolean flags:', {
-      vpn: data.vpn,
-      proxy: data.proxy,
-      tor: data.tor,
-      hosting: data.hosting,
-      is_vpn: data.is_vpn,
-      security_vpn: security.vpn
-    });
-
-    if (booleanFlags.some(Boolean)) {
-      console.log('[SecurityDetector] ⚠️ VPN detected via boolean flag!');
+    if (booleanFlags.some(flag => flag === true)) {
       return true;
     }
 
-    const typedFields = [
-      data.type,
-      data.connection?.type,
-      data.company?.type,
-      security.type
-    ];
-
-    console.log('[SecurityDetector] 🔍 Checking type fields:', {
-      type: data.type,
-      connectionType: data.connection?.type,
-      companyType: data.company?.type
-    });
-
-    if (typedFields.some(type => ['vpn', 'proxy', 'tor', 'hosting', 'relay'].includes(String(type || '').toLowerCase()))) {
-      console.log('[SecurityDetector] ⚠️ VPN detected via type field!');
-      return true;
-    }
-
+    // SECOND: Check text fields only (ISP, ORG, AS description) for VPN provider names
     const textFields = [
-      data.org,
-      data.isp,
-      data.asn,
-      data.asn_org,
-      data.network,
-      data.hostname,
-      data.connection?.isp,
-      data.connection?.org,
-      data.connection?.domain,
-      data.company?.name,
-      data.company?.domain
+      data.isp, data.org, data.organization, data.as, data.asn,
+      data.company?.name, data.connection?.isp, data.connection?.org
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    const vpnProviderNames = [
+      'mullvad', 'expressvpn', 'nordvpn', 'surfshark',
+      'protonvpn', 'proton ag', 'proton vpn',
+      'openvpn', 'wireguard',
+      'privado', 'pia', 'private internet access', 'cyberghost',
+      'ipvanish', 'torguard', 'hide.me', 'windscribe',
+      'purevpn', 'hotspot shield', 'strongvpn', 'vyprvpn',
+      'hidemyass'
     ];
 
-    console.log('[SecurityDetector] 🔍 Checking text fields:', {
-      org: data.org,
-      isp: data.isp,
-      asn: data.asn,
-      hostname: data.hostname,
-      companyName: data.company?.name
-    });
-
-    const textMatch = textFields.some(matchesVpn);
-    if (textMatch) {
-      console.log('[SecurityDetector] ⚠️ VPN detected via text field keyword match!');
+    if (vpnProviderNames.some(kw => textFields.includes(kw))) {
       return true;
     }
 
-    // Additional heuristic checks for stealthy VPNs
-    
-    // 1. Check if timezone doesn't match IP location (common with VPNs)
-    if (data.timezone && data.timezone.id) {
-      const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const ipTz = data.timezone.id;
-      if (browserTz !== ipTz) {
-        console.log(`[SecurityDetector] ⚠️ Timezone mismatch! Browser: ${browserTz}, IP: ${ipTz}`);
-        // Don't return true yet, just suspicious
-      }
-    }
-
-    // 2. Check for suspicious ASN numbers (common VPN providers)
-    const vpnAsnNumbers = [
-      'AS396982', // Google Fiber (used by many VPNs)
-      'AS174', // Cogent (common VPN backbone)
-      'AS9009', // M247 (major VPN infrastructure)
-      'AS63949', // Linode
-      'AS14061', // DigitalOcean
-      'AS16276', // OVH
-      'AS24940', // Hetzner
-      'AS20473', // Vultr
-      'AS13335', // Cloudflare
-      'AS60068', // Datacamp
-      'AS40676', // Psychz
-      'AS8100', // QuadraNet
+    // THIRD: Check for datacenter/hosting keywords in ISP/ORG fields only
+    const datacenterKeywords = [
+      'datacenter', 'data center', 'hosting', 'cloudflare', 
+      'digitalocean', 'linode', 'vultr', 'aws', 'amazon web services',
+      'google cloud', 'azure', 'microsoft cloud',
+      'hetzner', 'ovh', 'fastly', 'akamai', 'leaseweb',
+      'm247', 'datacamp', 'fdcservers', 'psychz', 'quadranet',
+      'server hosting', 'colocation', 'dedicated server'
     ];
-    
-    const asn = String(data.asn || data.as || '').toUpperCase();
-    if (vpnAsnNumbers.some(vpnAsn => asn.includes(vpnAsn.replace('AS', '')))) {
-      console.log(`[SecurityDetector] ⚠️ Suspicious ASN detected: ${asn}`);
+
+    if (datacenterKeywords.some(kw => textFields.includes(kw))) {
       return true;
     }
 
-    // 3. Check if country code seems inconsistent
-    if (data.country_code && data.languages) {
-      const browserLang = navigator.language || navigator.userLanguage;
-      console.log(`[SecurityDetector] 🌍 Country: ${data.country_code}, Browser Language: ${browserLang}`);
-    }
-
-    // 4. DNS leak check - if reverse DNS doesn't match ISP, suspicious
-    if (data.hostname && data.isp) {
-      const hostname = String(data.hostname).toLowerCase();
-      const isp = String(data.isp).toLowerCase();
-      
-      // Hostname should usually contain ISP name
-      if (hostname && isp && !hostname.includes(isp.split(' ')[0].toLowerCase())) {
-        console.log(`[SecurityDetector] ⚠️ Hostname-ISP mismatch: ${hostname} vs ${isp}`);
-      }
-    }
-
-    // 5. Check for common VPN port patterns in the IP
-    // Some VPNs expose port info
-    if (data.port || data.protocols) {
-      const suspiciousPorts = [1194, 443, 8443, 1723, 500, 4500, 51820];
-      console.log('[SecurityDetector] 🔍 Checking ports...');
-    }
-    
     return false;
   }
 
   syncVpnStatus() {
     this.isVpnDetected = this.nativeVpnDetected || this.serverVpnDetected || this.clientVpnDetected;
-    console.log('[SecurityDetector] 🔄 VPN Status Synced:', {
-      native: this.nativeVpnDetected,
-      server: this.serverVpnDetected,
-      client: this.clientVpnDetected,
-      final: this.isVpnDetected
-    });
     this.updateReasons();
   }
 
   // Debug method - expose this on window for testing
   async forceVpnCheck() {
-    console.log('[SecurityDetector] 🚀 FORCE VPN CHECK INITIATED');
     await this.checkVpn(true);
     this.notifyListeners();
     return {
@@ -494,7 +331,10 @@ class SecurityDetectorService {
       list.push('Android Developer Options or USB debugging active');
     }
     if (this.isVpnDetected) {
-      list.push('VPN or Proxy connection active');
+      list.push('VPN, Proxy or Datacenter IP active (e.g. ProtonVPN)');
+    }
+    if (this.isTorOrIpBlocked) {
+      list.push('You may be in TOR or a network where IP is not detected. Please use a clearnet connection.');
     }
     this.reasons = list;
   }
@@ -536,8 +376,7 @@ class SecurityDetectorService {
 
 export const securityDetector = new SecurityDetectorService();
 
-// Expose for debugging in development
+// Expose for debugging in development only
 if (typeof window !== 'undefined' && import.meta.env.DEV) {
   window.securityDetector = securityDetector;
-  console.log('[SecurityDetector] 🐛 Debug mode enabled. Use window.securityDetector.forceVpnCheck() to test');
 }

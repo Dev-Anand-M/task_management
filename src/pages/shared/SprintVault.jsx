@@ -24,11 +24,15 @@ const DEFAULT_WEEKS = Array.from({ length: 8 }, (_, i) => ({
 }));
 
 function SprintVault() {
-    const { user, isAdmin } = useAuth();
+    const { user } = useAuth();
+    const isAdmin = user?.role === 'admin';
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [sprintTemplates, setSprintTemplates] = useState([]);
     const [vaultDocs, setVaultDocs] = useState([]);
+    
+    console.log('[SprintVault] Current user:', user);
+    console.log('[SprintVault] isAdmin:', isAdmin);
     
     // Add Doc Modal state
     const [showAddModal, setShowAddModal] = useState(false);
@@ -49,8 +53,9 @@ function SprintVault() {
             if (vaultDocs.length === 0) {
                 setLoading(true);
             }
-            const [tempRes, docsRes] = await Promise.all([
+            const [tempRes, vaultRes, kbRes] = await Promise.all([
                 supabase.from('sprint_templates').select('*').order('week_number', { ascending: true }),
+                supabase.from('sprint_vault').select('*').order('week_number', { ascending: true }),
                 supabase.from('knowledge_base').select('*').order('created_at', { ascending: false })
             ]);
 
@@ -60,11 +65,38 @@ function SprintVault() {
             }
             setSprintTemplates(templates.length > 0 ? templates : DEFAULT_WEEKS);
 
-            let docs = docsRes?.data || [];
+            // Merge docs from both sprint_vault (new) and knowledge_base (old migrated docs)
+            let newDocs = vaultRes?.data || [];
+            let oldDocs = kbRes?.data || [];
+            
+            console.log('[SprintVault] Raw sprint_vault docs:', newDocs);
+            console.log('[SprintVault] Raw knowledge_base docs:', oldDocs);
+            
+            // Map old knowledge_base docs to match sprint_vault structure
+            const mappedOldDocs = oldDocs.map(d => {
+                const weekMatch = (d.subject || '').match(/week\s*(\d+)/i);
+                const weekNum = weekMatch ? parseInt(weekMatch[1]) : null;
+                console.log(`[SprintVault] Mapping old doc "${d.title}" - subject: "${d.subject}" - extracted week: ${weekNum}`);
+                return {
+                    ...d,
+                    week_number: weekNum,
+                    file_type: d.material_type || 'file',
+                    file_url: d.url || d.file_url,
+                    uploaded_by: d.created_by || null,
+                    is_old_migration: true
+                };
+            }).filter(d => d.week_number !== null);
+            
+            console.log('[SprintVault] Mapped old docs:', mappedOldDocs);
+            
+            let allDocs = [...newDocs, ...mappedOldDocs];
+            
             if (cid) {
-                docs = docs.filter(d => !d.classroom_id || d.classroom_id === cid);
+                allDocs = allDocs.filter(d => !d.classroom_id || d.classroom_id === cid);
             }
-            setVaultDocs(docs);
+            
+            console.log('[SprintVault] Final merged docs:', allDocs);
+            setVaultDocs(allDocs);
         } catch (err) {
             console.error('[SprintVault] Load error:', err);
         } finally {
@@ -93,20 +125,18 @@ function SprintVault() {
                 file_url = await db.uploadStudyMaterial(docForm.file);
             }
 
-            const subjectTag = `Sprint Vault Week ${targetWeek}`;
-
-            // Save to knowledge_base strictly isolated as sprint_vault category
-            await db.addKnowledgeSnippet({
-                title: docForm.title,
-                content: docForm.content || `Sprint Vault Resource for Week ${targetWeek}`,
-                subject: subjectTag,
-                category: 'sprint_vault',
+            // Save directly to sprint_vault table (NOT knowledge_base)
+            await supabase.from('sprint_vault').insert({
                 classroom_id: user?.classroom_id,
-                material_type: docForm.material_type,
-                file_url: file_url
+                week_number: targetWeek,
+                title: docForm.title,
+                description: docForm.content || `Sprint Vault Resource for Week ${targetWeek}`,
+                file_url: file_url,
+                file_type: docForm.material_type,
+                uploaded_by: user?.id
             });
 
-            // Upsert into sprint_templates for Week N
+            // Also update sprint_templates resource_url for quick reference
             await supabase.from('sprint_templates').upsert({
                 classroom_id: user?.classroom_id,
                 week_number: targetWeek,
@@ -133,7 +163,15 @@ function SprintVault() {
                 await supabase.from('sprint_templates').update({ resource_url: null, resource_label: null }).eq('week_number', weekNum);
             } else {
                 const docId = typeof doc === 'object' ? doc.id : doc;
-                await supabase.from('knowledge_base').delete().eq('id', docId);
+                
+                // Try deleting from sprint_vault first
+                const { error: vaultErr } = await supabase.from('sprint_vault').delete().eq('id', docId);
+                
+                // If not found in sprint_vault, try knowledge_base (for old migrated docs)
+                if (vaultErr || vaultErr?.code === 'PGRST116') {
+                    const { error: kbErr } = await supabase.from('knowledge_base').delete().eq('id', docId);
+                    if (kbErr) throw kbErr;
+                }
             }
             loadVaultData();
         } catch (err) {
@@ -157,26 +195,11 @@ function SprintVault() {
             });
         }
 
-        // 2. Include knowledge_base documents for this week
-        const kbDocs = vaultDocs.filter(d => {
-            const sub = (d.subject || '').toLowerCase();
-            const cat = (d.category || '').toLowerCase();
-
-            const isVaultDoc = cat === 'sprint_vault' || sub.includes('sprint vault') || sub.includes('sprint_vault');
-            const isWeekTag = sub === `week ${weekNum}` || sub === `week${weekNum}` || sub === `w${weekNum}`;
-
-            if (!isVaultDoc && !isWeekTag) return false;
-
-            return (
-                sub.includes(`week ${weekNum}`) ||
-                sub.includes(`week${weekNum}`) ||
-                sub.includes(`w${weekNum}`) ||
-                sub === `week ${weekNum}`
-            );
-        });
+        // 2. Include sprint_vault documents for this week (direct week_number match)
+        const sprintDocs = vaultDocs.filter(d => d.week_number === weekNum);
 
         // Merge without duplicating file_urls
-        kbDocs.forEach(d => {
+        sprintDocs.forEach(d => {
             if (!list.some(existing => existing.file_url === d.file_url)) {
                 list.push(d);
             }
@@ -273,15 +296,36 @@ function SprintVault() {
                                                             <ExternalLink size={13} style={{ flexShrink: 0 }} />
                                                         </a>
 
-                                                        {isAdmin && (
+                                                        <div style={{ display: 'flex', gap: '4px' }}>
                                                             <button
                                                                 onClick={() => handleDeleteDoc(doc)}
                                                                 title="Delete Resource"
-                                                                style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px', opacity: 0.7 }}
+                                                                style={{ 
+                                                                    background: '#fee2e2', 
+                                                                    border: '1px solid #fecaca', 
+                                                                    color: '#dc2626', 
+                                                                    cursor: 'pointer', 
+                                                                    padding: '6px 10px',
+                                                                    borderRadius: 'var(--radius-md)',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '4px',
+                                                                    fontSize: 'var(--text-xs)',
+                                                                    fontWeight: 600,
+                                                                    transition: 'all 0.2s'
+                                                                }}
+                                                                onMouseEnter={e => {
+                                                                    e.currentTarget.style.background = '#fecaca';
+                                                                    e.currentTarget.style.borderColor = '#dc2626';
+                                                                }}
+                                                                onMouseLeave={e => {
+                                                                    e.currentTarget.style.background = '#fee2e2';
+                                                                    e.currentTarget.style.borderColor = '#fecaca';
+                                                                }}
                                                             >
-                                                                <Trash2 size={14} />
+                                                                <Trash2 size={14} /> Delete
                                                             </button>
-                                                        )}
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>

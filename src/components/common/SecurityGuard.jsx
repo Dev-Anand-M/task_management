@@ -8,6 +8,7 @@ export const SecurityGuard = ({ children }) => {
     isDevToolsOpen: false,
     isVpnDetected: false,
     isDeveloperModeDetected: false,
+    isTorOrIpBlocked: false,
     reasons: []
   });
 
@@ -16,6 +17,7 @@ export const SecurityGuard = ({ children }) => {
     const unsubscribe = securityDetector.subscribe((status) => {
       setSecurityStatus(status);
     });
+    
     return () => {
       unsubscribe();
       securityDetector.stopMonitoring();
@@ -23,16 +25,68 @@ export const SecurityGuard = ({ children }) => {
   }, []);
 
   const handleRetry = () => {
-    // Modern hard reload - clears cache and re-checks security
-    caches.keys().then(names => {
-      names.forEach(name => caches.delete(name));
-    }).finally(() => {
-      // Force full page reload with cache bypass
-      window.location.href = window.location.href;
-    });
+    // Hard reload: clear service worker cache and force reload
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      });
+    }
+    
+    // Force hard reload with cache bypass (Ctrl+F5 equivalent)
+    window.location.reload(true);
   };
 
   if (!securityStatus.isRestricted) return children;
+
+  // Determine primary issue and customize messaging
+  const getPrimaryIssue = () => {
+    if (securityStatus.isDevToolsOpen) {
+      return {
+        icon: <MonitorOff size={48} strokeWidth={1.5} />,
+        title: 'Developer Tools Detected',
+        subtitle: 'Browser inspection tools are currently active and must be closed to continue.',
+        instruction: 'Close Developer Tools (F12, DevTools panel) and reload the page.',
+        iconColor: '#f59e0b' // orange
+      };
+    }
+    if (securityStatus.isDeveloperModeDetected) {
+      return {
+        icon: <ShieldAlert size={48} strokeWidth={1.5} />,
+        title: 'Android Developer Mode Active',
+        subtitle: 'USB debugging or developer options are enabled on your device.',
+        instruction: 'Disable Developer Options and USB Debugging in your Android settings, then reload.',
+        iconColor: '#f59e0b' // orange
+      };
+    }
+    if (securityStatus.isVpnDetected) {
+      return {
+        icon: <WifiOff size={48} strokeWidth={1.5} />,
+        title: 'VPN or Proxy Detected',
+        subtitle: 'Your connection is routed through a VPN, proxy, or datacenter network.',
+        instruction: 'Disconnect your VPN or proxy service, then reload the page.',
+        iconColor: '#ef4444' // red
+      };
+    }
+    if (securityStatus.isTorOrIpBlocked) {
+      return {
+        icon: <WifiOff size={48} strokeWidth={1.5} />,
+        title: 'Network Connection Issue',
+        subtitle: 'Your IP address cannot be verified. This may occur with TOR browser, extreme privacy tools, or network blocks.',
+        instruction: 'Switch to a standard network connection without anonymization tools, then reload.',
+        iconColor: '#8b5cf6' // purple
+      };
+    }
+    // Fallback for multiple issues
+    return {
+      icon: <ShieldAlert size={48} strokeWidth={1.5} />,
+      title: 'Access Restricted',
+      subtitle: 'Multiple security concerns detected with your connection or browser environment.',
+      instruction: 'Review the issues below, resolve them, and reload the page.',
+      iconColor: '#ef4444' // red
+    };
+  };
+
+  const issue = getPrimaryIssue();
 
   return (
     <div style={{
@@ -93,17 +147,17 @@ export const SecurityGuard = ({ children }) => {
           width: '96px',
           height: '96px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle at 40% 35%, rgba(239,68,68,0.22), rgba(239,68,68,0.06))',
-          border: '1.5px solid rgba(239,68,68,0.3)',
+          background: `radial-gradient(circle at 40% 35%, ${issue.iconColor}33, ${issue.iconColor}11)`,
+          border: `1.5px solid ${issue.iconColor}55`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#f87171',
-          boxShadow: '0 0 48px rgba(239,68,68,0.2), 0 0 100px rgba(239,68,68,0.08)',
+          color: issue.iconColor,
+          boxShadow: `0 0 48px ${issue.iconColor}33, 0 0 100px ${issue.iconColor}15`,
           marginBottom: '32px',
           animation: 'sgPulse 3s ease-in-out infinite',
         }}>
-          <ShieldAlert size={48} strokeWidth={1.5} />
+          {issue.icon}
         </div>
 
         {/* Title */}
@@ -116,7 +170,7 @@ export const SecurityGuard = ({ children }) => {
           lineHeight: 1.1,
           textAlign: 'center',
         }}>
-          Access Restricted
+          {issue.title}
         </h1>
 
         {/* Subtitle */}
@@ -128,12 +182,7 @@ export const SecurityGuard = ({ children }) => {
           maxWidth: '480px',
           textAlign: 'center',
         }}>
-          To ensure platform integrity and maintain essential security
-          standards, access is temporarily disabled while a{' '}
-          <span style={{ color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>
-            VPN, Proxy, or Developer / Inspection tool
-          </span>{' '}
-          is active.
+          {issue.subtitle}
         </p>
 
         {/* Reason pills */}
@@ -175,10 +224,10 @@ export const SecurityGuard = ({ children }) => {
           color: 'rgba(255,255,255,0.3)',
           margin: '0 0 28px 0',
           textAlign: 'center',
-          maxWidth: '360px',
+          maxWidth: '480px',
           lineHeight: 1.6,
         }}>
-          Disable your VPN / Proxy or close Developer Tools, then reload.
+          {issue.instruction}
         </p>
 
         {/* Retry button */}
@@ -217,8 +266,8 @@ export const SecurityGuard = ({ children }) => {
 
       <style>{`
         @keyframes sgPulse {
-          0%, 100% { box-shadow: 0 0 48px rgba(239,68,68,0.2), 0 0 100px rgba(239,68,68,0.08); }
-          50% { box-shadow: 0 0 64px rgba(239,68,68,0.35), 0 0 120px rgba(239,68,68,0.15); }
+          0%, 100% { box-shadow: 0 0 48px ${issue.iconColor}33, 0 0 100px ${issue.iconColor}15; }
+          50% { box-shadow: 0 0 64px ${issue.iconColor}55, 0 0 120px ${issue.iconColor}25; }
         }
       `}</style>
     </div>
