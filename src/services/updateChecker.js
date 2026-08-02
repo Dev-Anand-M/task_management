@@ -77,13 +77,19 @@ export const updateChecker = {
 
   /**
    * Directly download/open the update APK file
+   * For native apps, always open in external browser for reliable APK downloads
    */
   async downloadUpdate(downloadUrl = APK_DOWNLOAD_URL) {
     try {
       if (Capacitor.isNativePlatform()) {
+        // Always use Browser.open for native apps - opens in default system browser
         const { Browser } = await import('@capacitor/browser');
-        await Browser.open({ url: downloadUrl });
+        await Browser.open({ 
+          url: downloadUrl,
+          windowName: '_system' // Opens in external browser, not in-app browser
+        });
       } else {
+        // Web fallback - create download link
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.download = downloadUrl.split('/').pop() || 'zenith-latest.apk';
@@ -92,6 +98,8 @@ export const updateChecker = {
         document.body.removeChild(link);
       }
     } catch (error) {
+      console.error('[UpdateChecker] Browser open failed:', error);
+      // Final fallback - direct window.open
       window.open(downloadUrl, '_blank');
     }
   },
