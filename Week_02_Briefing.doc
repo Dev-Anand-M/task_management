@@ -1,0 +1,95 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>LEVEL 2 QUEST: FRONTEND CITADEL</title>
+<style>
+  body { font-family: 'Segoe UI', 'Trebuchet MS', Arial, sans-serif; margin: 30px; color: #f8fafc; background-color: #0f172a; line-height: 1.6; }
+  .poster-card { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 3px solid #06b6d4; border-radius: 12px; padding: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+  .title-banner { text-align: center; background: linear-gradient(90deg, #0284c7, #06b6d4); color: #ffffff; padding: 15px; border-radius: 8px; text-transform: uppercase; letter-spacing: 2px; }
+  h1 { font-size: 26pt; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.6); }
+  .sub-title { font-size: 14pt; color: #bae6fd; font-weight: bold; margin-top: 5px; }
+  .badge-grid { margin: 20px 0; text-align: center; }
+  .badge { display: inline-block; padding: 8px 16px; background: #334155; border: 1px solid #64748b; border-radius: 20px; color: #f1f5f9; font-weight: bold; font-size: 11pt; margin: 5px; }
+  .gold-badge { background: #78350f; border-color: #f59e0b; color: #fbbf24; }
+  h2 { color: #38bdf8; border-bottom: 2px solid #334155; padding-bottom: 6px; font-size: 16pt; text-transform: uppercase; margin-top: 25px; }
+  table { border-collapse: collapse; width: 100%; margin: 15px 0; background: #1e293b; }
+  th, td { border: 1px solid #334155; padding: 12px; text-align: left; color: #e2e8f0; }
+  th { background-color: #0369a1; color: #ffffff; font-weight: bold; text-transform: uppercase; font-size: 10pt; }
+  .quest-box { background: #064e3b; border-left: 5px solid #10b981; padding: 15px; border-radius: 4px; margin-top: 20px; }
+  .quest-title { font-weight: bold; color: #6ee7b7; font-size: 13pt; }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 8px; color: #cbd5e1; }
+</style>
+</head>
+<body>
+
+<div class="poster-card">
+  <div class="title-banner">
+    <h1>🎨 LEVEL 2: FRONTEND CITADEL 🎨</h1>
+    <div class="sub-title">ANNIVERSARY SPRINT QUEST #02</div>
+  </div>
+
+  <div class="badge-grid">
+    <span class="badge gold-badge">⏳ CAMPAIGN DATES: 2026-08-08 ➔ 2026-08-14</span>
+    <span class="badge">🎮 MODE: UI & LAYOUT ARCHITECTURE</span>
+    <span class="badge">💎 QUEST REWARD: 40 MAX EXP</span>
+  </div>
+
+  <h2>📜 MAIN MISSION OVERVIEW</h2>
+  <p>Challengers! Level 2 calls for crafting an ultra-sleek, pixel-perfect user interface. Forge responsive navigation layouts, assemble reusable component libraries, and master client-side state flow!</p>
+
+  <h2>🛡️ SQUAD ROLES & BATTLE RESPONSIBILITIES</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Class / Role</th>
+        <th>Primary Mission</th>
+        <th>Battle Tactics</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>UI Architect</strong></td>
+        <td>Layout Framework & Navigation</td>
+        <td>Construct responsive <code>Sidebar</code>, <code>Header</code>, and <code>Modal</code> container wrappers.</td>
+      </tr>
+      <tr>
+        <td><strong>Style Specialist</strong></td>
+        <td>Design Tokens & Responsiveness</td>
+        <td>Apply color tokens, dark mode gradients, and fluid mobile drawer layouts.</td>
+      </tr>
+      <tr>
+        <td><strong>State Guardian</strong></td>
+        <td>Client State Flow</td>
+        <td>Deploy React Context & Zustand stores for global auth & session management.</td>
+      </tr>
+      <tr>
+        <td><strong>Viewport Auditor</strong></td>
+        <td>Cross-Device Quality Check</td>
+        <td>Audit layout rendering across Mobile, Tablet, and Ultra-wide viewports.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>🎯 SQUAD DELIVERABLES (LEVEL 2 CLEAR OBJECTIVES)</h2>
+  <ul>
+    <li>🎨 Complete layout shell deployed (<code>Sidebar.jsx</code>, <code>Header.jsx</code>, <code>Layout.jsx</code>).</li>
+    <li>🎨 Modular UI widget library established (Buttons, Badges, Inputs, Modals).</li>
+    <li>🎨 Protected client-side routing active with security route guards.</li>
+    <li>🎨 Mobile-responsive navigation verified across all device sizes.</li>
+  </ul>
+
+  <h2>🏆 SCORECARD & EXP EVALUATION RUBRIC</h2>
+  <div class="quest-box">
+    <div class="quest-title">⭐ QUEST REWARD BREAKDOWN (40 PTS TOTAL)</div>
+    <ul>
+      <li><strong>Task Ownership (10 EXP):</strong> High-speed delivery of component mockups.</li>
+      <li><strong>Code Quality (10 EXP):</strong> Modular components, clean props, zero duplicate CSS.</li>
+      <li><strong>Demo & Mastery (10 EXP):</strong> Crisp presentation of client state architecture.</li>
+      <li><strong>Autonomy (10 EXP):</strong> Self-guided resolution of layout and responsive bugs.</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

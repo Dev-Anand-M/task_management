@@ -174,10 +174,40 @@ const StudyMaterials = () => {
 
     const handleDeleteNote = async (id) => {
         if (!window.confirm('Delete this note?')) return;
+        setMyNotes(prev => prev.filter(n => n.id !== id));
         try {
             await db.deleteStudyNote(id);
             loadData(true);
-        } catch (err) { console.error(err); }
+        } catch (err) {
+            console.warn('Note delete network notice:', err);
+        }
+    };
+
+    // Delete Sprint Vault / Knowledge Base document
+    const handleDeleteSprintDoc = async (docId, tableName = 'knowledge_base') => {
+        if (!window.confirm('Delete this document?')) return;
+
+        // Optimistically remove from local state immediately
+        setSharedMaterials(prev => prev.filter(m => m.id !== docId));
+        setMyNotes(prev => prev.filter(n => n.id !== docId));
+
+        try {
+            const targetTable = tableName || 'knowledge_base';
+            const { error } = await supabase.from(targetTable).delete().eq('id', docId);
+            if (error) {
+                // Secondary fallback delete if table might be in knowledge_base or study_notes
+                if (targetTable === 'knowledge_base') {
+                    await supabase.from('study_notes').delete().eq('id', docId).catch(() => {});
+                } else {
+                    await supabase.from('knowledge_base').delete().eq('id', docId).catch(() => {});
+                }
+            }
+            loadData(true);
+        } catch (err) {
+            console.warn('Delete network notice:', err);
+            // Re-sync data after brief delay if network fetch failed
+            setTimeout(() => loadData(true), 1200);
+        }
     };
 
     const handleTogglePin = async (note) => {
@@ -235,19 +265,6 @@ const StudyMaterials = () => {
 
     const toggleCategory = (cat) => {
         setExpandedCategories(prev => ({ ...prev, [cat]: prev[cat] === false ? true : false }));
-    };
-
-    // Delete Sprint Vault document
-    const handleDeleteSprintDoc = async (docId, tableName) => {
-        if (!window.confirm('Delete this document?')) return;
-        try {
-            const { error } = await supabase.from(tableName).delete().eq('id', docId);
-            if (error) throw error;
-            loadData(true);
-        } catch (err) {
-            console.error('Delete error:', err);
-            alert('Failed to delete: ' + (err.message || err));
-        }
     };
 
     const tabStyle = (tab) => ({

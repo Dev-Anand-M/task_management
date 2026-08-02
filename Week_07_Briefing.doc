@@ -1,0 +1,86 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>Week 7 Briefing: Security & Hardening</title>
+<style>
+  body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; margin: 40px; color: #1e293b; line-height: 1.6; }
+  h1 { color: #0f172a; border-bottom: 3px solid #2563eb; padding-bottom: 10px; font-size: 24pt; }
+  h2 { color: #1e40af; margin-top: 24px; font-size: 16pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+  .badge-container { margin: 15px 0; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; }
+  .badge { display: inline-block; padding: 4px 12px; margin-right: 15px; font-weight: bold; border-radius: 4px; }
+  .info { background: #dbeafe; color: #1e40af; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+  th, td { border: 1px solid #cbd5e1; padding: 10px 14px; text-align: left; font-size: 11pt; }
+  th { background-color: #f1f5f9; color: #0f172a; font-weight: bold; }
+  tr:nth-child(even) { background-color: #f8fafc; }
+  ul { margin-top: 8px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  .rubric-box { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 12px; margin-top: 15px; }
+</style>
+</head>
+<body>
+
+<h1>🔒 Week 7 Briefing: Security & Hardening</h1>
+
+<div class="badge-container">
+  <span class="badge info">📅 Duration: 2026-09-12 to 2026-09-18</span>
+  <span class="badge info">🏷️ Type: Security, Audit & Performance</span>
+  <span class="badge info">🌟 Showcase: No</span>
+</div>
+
+<h2>🎯 Objective</h2>
+<p>Conduct full security vulnerability sweeps, enforce strict access policies, optimize asset bundle sizes, and run pre-release stress tests.</p>
+
+<h2>👥 Roles & Responsibilities</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 25%;">Role</th>
+      <th style="width: 35%;">Primary Responsibility</th>
+      <th style="width: 40%;">Key Tasks</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Security Lead</strong></td>
+      <td>RBAC & Route Audit</td>
+      <td>Audit route access guards, non-participant locks, token storage.</td>
+    </tr>
+    <tr>
+      <td><strong>Performance Engineer</strong></td>
+      <td>Asset & Network Tuning</td>
+      <td>Implement code-splitting, lazy loading, database query indexing.</td>
+    </tr>
+    <tr>
+      <td><strong>Maintenance Engineer</strong></td>
+      <td>Remote Config & Versioning</td>
+      <td>Deploy mandatory maintenance dialogs (<code>version.json</code>) and kill switches.</td>
+    </tr>
+    <tr>
+      <td><strong>QA Auditor</strong></td>
+      <td>E2E Testing & Bug Cleanup</td>
+      <td>Perform full regression testing sweep and log system validation report.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>📋 Key Deliverables</h2>
+<ul>
+  <li>Passing audit on non-participant access lockout controls.</li>
+  <li>Remote Maintenance Mode popup tested and verified.</li>
+  <li>Production web bundle optimized with zero critical console errors.</li>
+  <li>Signed off <code>system_validation_report.md</code> artifact.</li>
+</ul>
+
+<h2>⭐ Evaluation Focus (Week 7 Rubric)</h2>
+<div class="rubric-box">
+  <ul>
+    <li><strong>Task Ownership (10 pts):</strong> Resolving security and edge-case vulnerabilities.</li>
+    <li><strong>Code Quality (10 pts):</strong> Clean error handling, no leaked API secrets.</li>
+    <li><strong>Demo & Understanding (10 pts):</strong> Explaining security posture and access controls.</li>
+    <li><strong>Autonomy (10 pts):</strong> Independent execution of hardening fixes.</li>
+  </ul>
+</div>
+
+</body>
+</html>

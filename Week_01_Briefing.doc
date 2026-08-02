@@ -1,0 +1,96 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>LEVEL 1 QUEST: THE IGNITION</title>
+<style>
+  body { font-family: 'Segoe UI', 'Trebuchet MS', Arial, sans-serif; margin: 30px; color: #f8fafc; background-color: #0f172a; line-height: 1.6; }
+  .poster-card { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 3px solid #3b82f6; border-radius: 12px; padding: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+  .title-banner { text-align: center; background: linear-gradient(90deg, #1d4ed8, #3b82f6); color: #ffffff; padding: 15px; border-radius: 8px; text-transform: uppercase; letter-spacing: 2px; }
+  h1 { font-size: 26pt; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.6); }
+  .sub-title { font-size: 14pt; color: #93c5fd; font-weight: bold; margin-top: 5px; }
+  .badge-grid { margin: 20px 0; text-align: center; }
+  .badge { display: inline-block; padding: 8px 16px; background: #334155; border: 1px solid #64748b; border-radius: 20px; color: #f1f5f9; font-weight: bold; font-size: 11pt; margin: 5px; }
+  .gold-badge { background: #78350f; border-color: #f59e0b; color: #fbbf24; }
+  h2 { color: #60a5fa; border-bottom: 2px solid #334155; padding-bottom: 6px; font-size: 16pt; text-transform: uppercase; margin-top: 25px; }
+  table { border-collapse: collapse; width: 100%; margin: 15px 0; background: #1e293b; }
+  th, td { border: 1px solid #334155; padding: 12px; text-align: left; color: #e2e8f0; }
+  th { background-color: #1e3a8a; color: #ffffff; font-weight: bold; text-transform: uppercase; font-size: 10pt; }
+  .quest-box { background: #064e3b; border-left: 5px solid #10b981; padding: 15px; border-radius: 4px; margin-top: 20px; }
+  .quest-title { font-weight: bold; color: #6ee7b7; font-size: 13pt; }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 8px; color: #cbd5e1; }
+</style>
+</head>
+<body>
+
+<div class="poster-card">
+  <div class="title-banner">
+    <h1>⚔️ LEVEL 1: THE IGNITION ⚔️</h1>
+    <div class="sub-title">ANNIVERSARY SPRINT QUEST #01</div>
+  </div>
+
+  <div class="badge-grid">
+    <span class="badge gold-badge">⏳ CAMPAIGN DATES: 2026-08-01 ➔ 2026-08-07</span>
+    <span class="badge">🎮 MODE: ENVIRONMENT INITIALIZATION</span>
+    <span class="badge">💎 QUEST REWARD: 40 MAX EXP</span>
+  </div>
+
+  <h2>📜 MAIN MISSION OVERVIEW</h2>
+  <p>Welcome, Challengers! Level 1 demands the assembly of your core dev stack. Prepare your weapons, initialize your repositories, calibrate environment secrets, and establish zero-error workspace sync across your squad!</p>
+
+  <h2>🛡️ SQUAD ROLES & BATTLE RESPONSIBILITIES</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Class / Role</th>
+        <th>Primary Mission</th>
+        <th>Battle Tactics</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Squad Leader</strong></td>
+        <td>Repo Governance & Pipeline Setup</td>
+        <td>Forge central repository, enforce strict branch rules, deploy squad access keys.</td>
+      </tr>
+      <tr>
+        <td><strong>Frontend Sorcerer</strong></td>
+        <td>UI Framework Summoning</td>
+        <td>Bootstrap React + Vite engine, inject component hierarchy & routing structure.</td>
+      </tr>
+      <tr>
+        <td><strong>Database Alchemist</strong></td>
+        <td>Vault & Secret Calibration</td>
+        <td>Configure Supabase cloud vaults, securely store <code>.env</code> master tokens.</td>
+      </tr>
+      <tr>
+        <td><strong>Vulnerability Scout</strong></td>
+        <td>Docs & Dependency Verification</td>
+        <td>Conduct Node/NPM version compatibility audits and write setup manuals.</td>
+      </tr>
+    </tbody>
+  </tbody>
+  </table>
+
+  <h2>🎯 SQUAD DELIVERABLES (LEVEL 1 CLEAR OBJECTIVES)</h2>
+  <ul>
+    <li>⚡ Zero-error squad repository launch running via <code>npm run dev</code>.</li>
+    <li>⚡ Verified cloud database connectivity across all operative machines.</li>
+    <li>⚡ Base folder framework established (<code>/src/components</code>, <code>/src/pages</code>, <code>/src/services</code>).</li>
+    <li>⚡ Strategic alignment briefing completed and initial task backlog locked.</li>
+  </ul>
+
+  <h2>🏆 SCORECARD & EXP EVALUATION RUBRIC</h2>
+  <div class="quest-box">
+    <div class="quest-title">⭐ QUEST REWARD BREAKDOWN (40 PTS TOTAL)</div>
+    <ul>
+      <li><strong>Task Ownership (10 EXP):</strong> Lightning speed in setup & environment execution.</li>
+      <li><strong>Code Quality (10 EXP):</strong> Clean architecture setup & zero dirty commits.</li>
+      <li><strong>Demo & Mastery (10 EXP):</strong> Ability to present and defend local system layout.</li>
+      <li><strong>Autonomy (10 EXP):</strong> Self-driven resolution of dependency & environment bugs.</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

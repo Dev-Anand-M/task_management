@@ -1726,6 +1726,39 @@ const SprintTracker = () => {
                                                 />
                                             </div>
                                         </div>
+
+                                        {/* Resource Link URL & Label Input Fields */}
+                                        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '2 1 200px' }}>
+                                                <LinkIcon size={13} style={{ color: 'var(--primary-400)', flexShrink: 0 }} />
+                                                <input
+                                                    type="url"
+                                                    value={week.resource_url || ''}
+                                                    onChange={e => updateDraftWeek(idx, 'resource_url', e.target.value)}
+                                                    placeholder="Resource URL (e.g. https://notion.so/week1-briefing)"
+                                                    style={{
+                                                        flex: 1, padding: '5px 10px', borderRadius: 'var(--radius-md)',
+                                                        border: '1px solid var(--border)', background: 'var(--surface)',
+                                                        color: 'var(--text)', fontSize: 'var(--text-xs)',
+                                                        minWidth: 0
+                                                    }}
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '1 1 140px' }}>
+                                                <input
+                                                    type="text"
+                                                    value={week.resource_label || ''}
+                                                    onChange={e => updateDraftWeek(idx, 'resource_label', e.target.value)}
+                                                    placeholder="Button Label (optional)"
+                                                    style={{
+                                                        flex: 1, padding: '5px 10px', borderRadius: 'var(--radius-md)',
+                                                        border: '1px solid var(--border)', background: 'var(--surface)',
+                                                        color: 'var(--text)', fontSize: 'var(--text-xs)',
+                                                        minWidth: 0
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}

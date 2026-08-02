@@ -1,0 +1,86 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>Week 6 Briefing: Mobile & Native Build</title>
+<style>
+  body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; margin: 40px; color: #1e293b; line-height: 1.6; }
+  h1 { color: #0f172a; border-bottom: 3px solid #2563eb; padding-bottom: 10px; font-size: 24pt; }
+  h2 { color: #1e40af; margin-top: 24px; font-size: 16pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+  .badge-container { margin: 15px 0; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; }
+  .badge { display: inline-block; padding: 4px 12px; margin-right: 15px; font-weight: bold; border-radius: 4px; }
+  .info { background: #dbeafe; color: #1e40af; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+  th, td { border: 1px solid #cbd5e1; padding: 10px 14px; text-align: left; font-size: 11pt; }
+  th { background-color: #f1f5f9; color: #0f172a; font-weight: bold; }
+  tr:nth-child(even) { background-color: #f8fafc; }
+  ul { margin-top: 8px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  .rubric-box { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 12px; margin-top: 15px; }
+</style>
+</head>
+<body>
+
+<h1>📱 Week 6 Briefing: Mobile & Native Build</h1>
+
+<div class="badge-container">
+  <span class="badge info">📅 Duration: 2026-09-05 to 2026-09-11</span>
+  <span class="badge info">🏷️ Type: Cross-Platform Mobile</span>
+  <span class="badge info">🌟 Showcase: No</span>
+</div>
+
+<h2>🎯 Objective</h2>
+<p>Package the application using Capacitor, optimize bundle assets for mobile performance, configure native plugins, and generate optimized Android APKs.</p>
+
+<h2>👥 Roles & Responsibilities</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 25%;">Role</th>
+      <th style="width: 35%;">Primary Responsibility</th>
+      <th style="width: 40%;">Key Tasks</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Mobile Lead</strong></td>
+      <td>Capacitor Configuration</td>
+      <td>Maintain <code>capacitor.config.json</code>, build targets, native sync scripts.</td>
+    </tr>
+    <tr>
+      <td><strong>Android Specialist</strong></td>
+      <td>Gradle & Build Pipeline</td>
+      <td>Optimize <code>build.gradle</code>, manage APK asset exclusions, compile output APK.</td>
+    </tr>
+    <tr>
+      <td><strong>UX Mobile Specialist</strong></td>
+      <td>Touch & Native UX</td>
+      <td>Add native splash screens, status bar formatting, touch feedback.</td>
+    </tr>
+    <tr>
+      <td><strong>Performance Tester</strong></td>
+      <td>APK Size & Memory Audit</td>
+      <td>Audit APK binary size target (&lt; 30 MB) and test on physical devices.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>📋 Key Deliverables</h2>
+<ul>
+  <li>Clean Android Gradle build producing working <code>.apk</code> output.</li>
+  <li>Total debug APK file size optimized below 30 MB benchmark.</li>
+  <li>Native hardware integration verified (Back button, exit dialogs).</li>
+  <li>Cross-device screen scaling and touch performance verified.</li>
+</ul>
+
+<h2>⭐ Evaluation Focus (Week 6 Rubric)</h2>
+<div class="rubric-box">
+  <ul>
+    <li><strong>Task Ownership (10 pts):</strong> Successfully shipping installable APK.</li>
+    <li><strong>Code Quality (10 pts):</strong> Native bridge setup and minimal binary footprint.</li>
+    <li><strong>Demo & Understanding (10 pts):</strong> Demonstrating live APK execution on device/emulator.</li>
+    <li><strong>Autonomy (10 pts):</strong> Resolving Android SDK / Gradle configuration errors.</li>
+  </ul>
+</div>
+
+</body>
+</html>

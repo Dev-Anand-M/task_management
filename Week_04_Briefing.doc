@@ -1,0 +1,87 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>Week 4 Briefing: Mid Showcase</title>
+<style>
+  body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; margin: 40px; color: #1e293b; line-height: 1.6; }
+  h1 { color: #0f172a; border-bottom: 3px solid #2563eb; padding-bottom: 10px; font-size: 24pt; }
+  h2 { color: #1e40af; margin-top: 24px; font-size: 16pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+  .badge-container { margin: 15px 0; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; }
+  .badge { display: inline-block; padding: 4px 12px; margin-right: 15px; font-weight: bold; border-radius: 4px; }
+  .info { background: #dbeafe; color: #1e40af; }
+  .highlight { background: #fef3c7; color: #92400e; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+  th, td { border: 1px solid #cbd5e1; padding: 10px 14px; text-align: left; font-size: 11pt; }
+  th { background-color: #f1f5f9; color: #0f172a; font-weight: bold; }
+  tr:nth-child(even) { background-color: #f8fafc; }
+  ul { margin-top: 8px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  .rubric-box { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 12px; margin-top: 15px; }
+</style>
+</head>
+<body>
+
+<h1>🌟 Week 4 Briefing: Mid Showcase</h1>
+
+<div class="badge-container">
+  <span class="badge info">📅 Duration: 2026-08-22 to 2026-08-28</span>
+  <span class="badge info">🏷️ Type: Milestone & Demo</span>
+  <span class="badge highlight">🌟 Showcase: Yes (Mid-Sprint Review)</span>
+</div>
+
+<h2>🎯 Objective</h2>
+<p>Assemble a fully functional end-to-end prototype, lock mid-sprint feature sets, perform live peer demos, and gather feedback for the second half of the sprint.</p>
+
+<h2>👥 Roles & Responsibilities</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 25%;">Role</th>
+      <th style="width: 35%;">Primary Responsibility</th>
+      <th style="width: 40%;">Key Tasks</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Presenter / Lead</strong></td>
+      <td>Showcase Pitch & Walkthrough</td>
+      <td>Prepare live demo deck, host project presentation to evaluators.</td>
+    </tr>
+    <tr>
+      <td><strong>Integration Lead</strong></td>
+      <td>Feature Lock & Bug Bash</td>
+      <td>Resolve blocking bugs, ensure smooth end-to-end user journey.</td>
+    </tr>
+    <tr>
+      <td><strong>Demo Data Specialist</strong></td>
+      <td>Seed Data & Test Content</td>
+      <td>Populate database with realistic demo accounts, items, and metrics.</td>
+    </tr>
+    <tr>
+      <td><strong>Peer Evaluator</strong></td>
+      <td>Peer Scoring & Feedback</td>
+      <td>Review partner team projects and fill out evaluation scorecards.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>📋 Key Deliverables</h2>
+<ul>
+  <li>Mid-sprint live working demonstration (No breaking crashes).</li>
+  <li>Prepared 5-minute presentation & slide deck.</li>
+  <li>Mid-sprint Peer Evaluation entries submitted in Sprint Tracker.</li>
+  <li>Mid-sprint retrospective summary logged.</li>
+</ul>
+
+<h2>⭐ Evaluation Focus (Week 4 Rubric - 40 Pts Total)</h2>
+<div class="rubric-box">
+  <ul>
+    <li><strong>Task Ownership (10 pts):</strong> Feature completeness against Week 1-3 roadmap.</li>
+    <li><strong>Code Quality (10 pts):</strong> Clean integration without regression bugs.</li>
+    <li><strong>Demo & Understanding (10 pts):</strong> Poise, clarity, and depth in live Q&A.</li>
+    <li><strong>Autonomy (10 pts):</strong> Cross-functional team coordination during demo build.</li>
+  </ul>
+</div>
+
+</body>
+</html>

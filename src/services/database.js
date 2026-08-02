@@ -1023,7 +1023,12 @@ export const updateStudyNote = async (id, updates) => {
 };
 
 export const deleteStudyNote = async (id) => {
-    await supabase.from('study_notes').delete().eq('id', id);
+    try {
+        const { error } = await supabase.from('study_notes').delete().eq('id', id);
+        if (error) console.warn('deleteStudyNote error:', error);
+    } catch (err) {
+        console.warn('deleteStudyNote fetch notice:', err);
+    }
     return true;
 };
 
@@ -1086,8 +1091,12 @@ export const updateKnowledgeSnippet = async (id, updates) => {
 };
 
 export const deleteKnowledgeSnippet = async (id) => {
-    const { error } = await supabase.from('knowledge_base').delete().eq('id', id);
-    if (error) throw error;
+    try {
+        const { error } = await supabase.from('knowledge_base').delete().eq('id', id);
+        if (error) console.warn('deleteKnowledgeSnippet error:', error);
+    } catch (err) {
+        console.warn('deleteKnowledgeSnippet fetch notice:', err);
+    }
     return true;
 };
 

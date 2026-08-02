@@ -1,0 +1,87 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>Week 8 Briefing: Final Tarothon Showcase</title>
+<style>
+  body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; margin: 40px; color: #1e293b; line-height: 1.6; }
+  h1 { color: #0f172a; border-bottom: 3px solid #2563eb; padding-bottom: 10px; font-size: 24pt; }
+  h2 { color: #1e40af; margin-top: 24px; font-size: 16pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+  .badge-container { margin: 15px 0; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; }
+  .badge { display: inline-block; padding: 4px 12px; margin-right: 15px; font-weight: bold; border-radius: 4px; }
+  .info { background: #dbeafe; color: #1e40af; }
+  .highlight { background: #fef3c7; color: #92400e; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+  th, td { border: 1px solid #cbd5e1; padding: 10px 14px; text-align: left; font-size: 11pt; }
+  th { background-color: #f1f5f9; color: #0f172a; font-weight: bold; }
+  tr:nth-child(even) { background-color: #f8fafc; }
+  ul { margin-top: 8px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  .rubric-box { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 12px; margin-top: 15px; }
+</style>
+</head>
+<body>
+
+<h1>🏆 Week 8 Briefing: Final Tarothon Showcase</h1>
+
+<div class="badge-container">
+  <span class="badge info">📅 Duration: 2026-09-19 to 2026-09-25</span>
+  <span class="badge info">🏷️ Type: Final Release & Evaluation</span>
+  <span class="badge highlight">🌟 Showcase: Yes (Grand Finale)</span>
+</div>
+
+<h2>🎯 Objective</h2>
+<p>Deliver the final production release, conduct the grand Tarothon project showcase, complete 360° peer evaluations, and export final scoreboard rankings.</p>
+
+<h2>👥 Roles & Responsibilities</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 25%;">Role</th>
+      <th style="width: 35%;">Primary Responsibility</th>
+      <th style="width: 40%;">Key Tasks</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Team Lead</strong></td>
+      <td>Final Pitch & Demo</td>
+      <td>Deliver the grand final presentation and live product demo.</td>
+    </tr>
+    <tr>
+      <td><strong>Release Engineer</strong></td>
+      <td>Production Deployment</td>
+      <td>Deploy live Vercel web release and attach final APK release binaries.</td>
+    </tr>
+    <tr>
+      <td><strong>Documentation Lead</strong></td>
+      <td>Final Wind-up & Archival</td>
+      <td>Compile master verification guide and project showcase markdown.</td>
+    </tr>
+    <tr>
+      <td><strong>Peer Evaluator</strong></td>
+      <td>Final Scorecard Completion</td>
+      <td>Complete 4-pillar evaluations for all teammates across all 8 weeks.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>📋 Key Deliverables</h2>
+<ul>
+  <li>Deployed production web app + downloadable release APK.</li>
+  <li>Live Grand Tarothon presentation & Q&A defense.</li>
+  <li>100% peer evaluations completed and locked in Sprint Tracker.</li>
+  <li>Exported CSV evaluation report (<code>Zenith_Sprint_Evaluations_Summary.csv</code>).</li>
+</ul>
+
+<h2>⭐ Evaluation Focus (Final Grand Rubric - 40 Pts Total)</h2>
+<div class="rubric-box">
+  <ul>
+    <li><strong>Task Ownership (10 pts):</strong> 8-week consistent contribution & milestone completion.</li>
+    <li><strong>Code Quality (10 pts):</strong> Production readiness, architecture, and reliability.</li>
+    <li><strong>Demo & Understanding (10 pts):</strong> Final presentation impact & technical mastery.</li>
+    <li><strong>Autonomy (10 pts):</strong> End-to-end self-driven problem solving and teamwork.</li>
+  </ul>
+</div>
+
+</body>
+</html>
