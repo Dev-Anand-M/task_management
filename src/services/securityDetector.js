@@ -21,9 +21,9 @@ class SecurityDetectorService {
     this.listeners = new Set();
     this.isChecking = false;
     this.checkInterval = null;
-    this.monitorIntervalMs = 15000; // 15s lazy loop (zero app lag)
-    this.vpnCheckTtlMs = 5000; // 5s VPN cache TTL (faster re-check after VPN disconnect)
-    this.devToolsTrapIntervalMs = 15000; // 15s trap interval
+    this.monitorIntervalMs = 30000; // 30s lazy loop (optimized for performance)
+    this.vpnCheckTtlMs = 10000; // 10s VPN cache TTL (less aggressive polling)
+    this.devToolsTrapIntervalMs = 30000; // 30s trap interval (reduced overhead)
     this.lastVpnCheckAt = 0;
     this.lastDevToolsTrapAt = 0;
 
