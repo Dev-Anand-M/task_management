@@ -76,8 +76,8 @@ export const updateChecker = {
   },
 
   /**
-   * Directly download/open the update APK file
-   * Uses native Android DownloadManager for reliable downloads
+   * Copy download URL to clipboard for manual download
+   * Most reliable method - avoids in-app browser issues
    */
   async downloadUpdate(downloadUrl = APK_DOWNLOAD_URL) {
     if (!Capacitor.isNativePlatform()) {
@@ -91,23 +91,30 @@ export const updateChecker = {
       return;
     }
 
-    // Native Android: Use native DownloadManager plugin
-    console.log('[UpdateChecker] Starting native download:', downloadUrl);
+    // Native Android: Copy to clipboard and show instructions
+    console.log('[UpdateChecker] Copying download URL to clipboard:', downloadUrl);
     
     try {
-      // @ts-ignore - Custom native plugin
-      const result = await Capacitor.Plugins.DownloadPlugin.downloadFile({ url: downloadUrl });
-      console.log('[UpdateChecker] Download started:', result);
+      // Use Capacitor Clipboard API
+      const { Clipboard } = await import('@capacitor/clipboard');
+      await Clipboard.write({ string: downloadUrl });
       
-      // Show success message
-      alert('Download started! Check your notifications.');
-    } catch (error) {
-      console.error('[UpdateChecker] Native download failed:', error);
-      // Fallback: Show manual instructions
       alert(
-        'Unable to download automatically.\n\n' +
-        'Please copy this link and paste in your browser:\n\n' +
-        downloadUrl
+        '✅ Download link copied to clipboard!\n\n' +
+        'Steps:\n' +
+        '1. Open Chrome or your browser\n' +
+        '2. Paste the link in address bar\n' +
+        '3. Download will start automatically\n' +
+        '4. Install from Downloads folder\n\n' +
+        'Link: ' + downloadUrl
+      );
+    } catch (error) {
+      console.error('[UpdateChecker] Clipboard copy failed:', error);
+      // Fallback: Show URL to copy manually
+      alert(
+        '📋 Copy this link and open in your browser:\n\n' +
+        downloadUrl + '\n\n' +
+        'Then the download will start.'
       );
     }
   },
