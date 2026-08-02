@@ -277,49 +277,76 @@ const UpdateDialog = ({ updateInfo, onDownload, onDismiss, onClose }) => {
         )}
 
         {/* Buttons */}
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button
-            onClick={onDownload}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={onDownload}
+              style={{
+                flex: 1,
+                padding: '16px',
+                borderRadius: '12px',
+                border: 'none',
+                background: 'var(--primary-500)',
+                color: 'white',
+                fontWeight: '800',
+                fontSize: '16px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 15px rgba(99,102,241,0.3)',
+              }}
+              className="hover:opacity-90 active:scale-95"
+            >
+              <Download size={20} />
+              Download Update
+            </button>
+
+            {!mandatory && (
+              <button
+                onClick={onDismiss}
+                style={{
+                  padding: '16px 24px',
+                  borderRadius: '12px',
+                  border: '1px solid var(--border)',
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                  fontWeight: '600',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                }}
+                className="hover:bg-gray-800"
+              >
+                Later
+              </button>
+            )}
+          </div>
+
+          {/* Browser Link - Always visible */}
+          <a
+            href="https://zenith-sable-alpha.vercel.app/zenith-v1.5.2.apk"
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
-              flex: 1,
-              padding: '16px',
-              borderRadius: '12px',
-              border: 'none',
-              background: 'var(--primary-500)',
-              color: 'white',
-              fontWeight: '800',
-              fontSize: '16px',
-              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              boxShadow: '0 4px 15px rgba(99,102,241,0.3)',
+              padding: '12px',
+              borderRadius: '10px',
+              border: '1px solid var(--border)',
+              background: 'var(--background)',
+              color: 'var(--primary-400)',
+              fontSize: '14px',
+              fontWeight: '600',
+              textDecoration: 'none',
+              transition: 'all 0.15s ease'
             }}
-            className="hover:opacity-90 active:scale-95"
+            className="hover:bg-gray-800"
           >
-            <Download size={20} />
-            Download Update
-          </button>
-
-          {!mandatory && (
-            <button
-              onClick={onDismiss}
-              style={{
-                padding: '16px 24px',
-                borderRadius: '12px',
-                border: '1px solid var(--border)',
-                background: 'transparent',
-                color: 'var(--text-muted)',
-                fontWeight: '600',
-                fontSize: '16px',
-                cursor: 'pointer',
-              }}
-              className="hover:bg-gray-800"
-            >
-              Later
-            </button>
-          )}
+            🌐 Open Download Link in Browser
+          </a>
         </div>
       </div>
     </div>
