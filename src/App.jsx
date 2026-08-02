@@ -340,6 +340,10 @@ function App() {
   // Check for updates on app start
   useEffect(() => {
     const checkUpdates = async () => {
+      // Only check for updates on native Android app, web auto-updates via Vercel
+      const isNative = await PlatformService.isNativePlatform();
+      if (!isNative) return;
+
       const result = await updateChecker.checkForUpdates();
       
       if (result.updateAvailable) {
