@@ -242,11 +242,6 @@ function SprintVault() {
                         Weekly sprint briefs, documentation & learning resources for Tarothon
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                    <Button variant="outline" icon={Zap} onClick={() => navigate('/sprint-tracker')}>
-                        Go to Sprint Tracker <ArrowRight size={14} />
-                    </Button>
-                </div>
             </div>
 
             {loading ? (

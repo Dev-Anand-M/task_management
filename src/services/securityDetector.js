@@ -97,12 +97,15 @@ class SecurityDetectorService {
   checkDevTools() {
     let devToolsFound = false;
 
-    const threshold = 160;
-    const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-    const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+    const zoom = window.devicePixelRatio || 1;
+    const threshold = 280; // Docked DevTools pane is at least 280px
+    const widthDiff = window.outerWidth - (window.innerWidth * zoom);
+    const heightDiff = window.outerHeight - (window.innerHeight * zoom);
 
-    if (widthThreshold || heightThreshold) {
-      devToolsFound = true;
+    if (window.outerWidth > 0 && window.outerHeight > 0) {
+      if (widthDiff > threshold || heightDiff > threshold) {
+        devToolsFound = true;
+      }
     }
 
     const now = Date.now();
