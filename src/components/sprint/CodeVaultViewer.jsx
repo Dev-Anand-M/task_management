@@ -18,7 +18,11 @@ import {
     Sparkles,
     ZoomIn,
     ZoomOut,
-    RotateCcw
+    RotateCcw,
+    Presentation,
+    Image as ImageIcon,
+    FileSpreadsheet,
+    File
 } from 'lucide-react';
 import { Modal, Button, Badge } from '../common';
 
@@ -49,6 +53,18 @@ const getFileMeta = (filename = '') => {
             return { icon: FileCode, color: '#00599c', label: 'C/C++' };
         case 'java':
             return { icon: FileCode, color: '#b07219', label: 'Java' };
+        case 'pptx':
+        case 'ppt':
+            return { icon: Presentation, color: '#f97316', label: 'PowerPoint' };
+        case 'png':
+        case 'jpg':
+        case 'jpeg':
+        case 'gif':
+        case 'svg':
+        case 'webp':
+            return { icon: ImageIcon, color: '#38bdf8', label: 'Image' };
+        case 'pdf':
+            return { icon: FileText, color: '#ef4444', label: 'PDF Document' };
         default:
             return { icon: FileText, color: 'var(--text-muted)', label: ext.toUpperCase() || 'FILE' };
     }
@@ -135,6 +151,9 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
     const [fileTree, setFileTree] = useState([]);
     const [selectedFile, setSelectedFile] = useState(null);
     const [fileContent, setFileContent] = useState('');
+    const [fileMode, setFileMode] = useState('text'); // 'text', 'pptx', 'image', 'pdf', 'binary'
+    const [pptxSlides, setPptxSlides] = useState([]);
+    const [mediaBlobUrl, setMediaBlobUrl] = useState(null);
     const [contentLoading, setContentLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [copied, setCopied] = useState(false);
@@ -165,6 +184,7 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
             setFileTree([]);
             setSelectedFile(null);
             setFileContent('');
+            setPptxSlides([]);
 
             try {
                 const url = doc.file_url;
@@ -174,7 +194,6 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
                     return;
                 }
 
-                // Check if file is a zip archive
                 const isZip = url.toLowerCase().includes('.zip') || doc.file_type === 'zip';
 
                 if (isZip) {
@@ -183,7 +202,6 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
                     const arrayBuffer = await response.arrayBuffer();
                     const zip = await JSZip.loadAsync(arrayBuffer);
 
-                    // Build nested tree structure
                     const rootNodes = {};
                     const entries = Object.keys(zip.files);
 
@@ -217,12 +235,10 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
                         });
                     }
 
-                    // Convert map tree to array recursive helper
                     const convertMapToArray = (map) => {
                         return Object.values(map).map(node => {
                             if (node.isFolder && node.childrenMap) {
                                 const childrenArr = convertMapToArray(node.childrenMap);
-                                // Sort folders first, then files
                                 childrenArr.sort((a, b) => {
                                     if (a.isFolder === b.isFolder) return a.name.localeCompare(b.name);
                                     return a.isFolder ? -1 : 1;
@@ -241,7 +257,6 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
 
                     setFileTree(treeArray);
 
-                    // Auto-select first non-folder file
                     const findFirstFile = (nodes) => {
                         for (const n of nodes) {
                             if (!n.isFolder) return n;
@@ -258,10 +273,9 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
                         handleSelectFile(firstFile);
                     }
                 } else {
-                    // Direct single file view (e.g. .js, .txt, .md, .py)
                     const node = {
-                        name: doc.title || 'Code File',
-                        path: doc.title || 'file',
+                        name: doc.title || doc.file_name || 'Sprint Document',
+                        path: doc.title || doc.file_name || 'file',
                         isFolder: false,
                         directUrl: url
                     };
@@ -283,17 +297,132 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
         setSelectedFile(node);
         setContentLoading(true);
         setFileContent('');
+        setPptxSlides([]);
+        if (mediaBlobUrl) {
+            URL.revokeObjectURL(mediaBlobUrl);
+            setMediaBlobUrl(null);
+        }
+
+        const ext = node.name.split('.').pop()?.toLowerCase() || '';
 
         try {
-            if (node.zipEntry) {
-                const text = await node.zipEntry.async('string');
-                setFileContent(text);
-            } else if (node.directUrl) {
-                const res = await fetch(node.directUrl);
-                const text = await res.text();
-                setFileContent(text);
+            if (ext === 'pptx') {
+                setFileMode('pptx');
+                let arrayBuffer;
+                if (node.zipEntry) {
+                    arrayBuffer = await node.zipEntry.async('arraybuffer');
+                } else if (node.directUrl) {
+                    const res = await fetch(node.directUrl);
+                    arrayBuffer = await res.arrayBuffer();
+                }
+
+                if (arrayBuffer) {
+                    const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+                    const blobUrl = URL.createObjectURL(blob);
+                    setMediaBlobUrl(blobUrl);
+
+                    try {
+                        const pptxZip = await JSZip.loadAsync(arrayBuffer);
+                        const slideFiles = Object.keys(pptxZip.files)
+                            .filter(f => /^ppt\/slides\/slide\d+\.xml$/i.test(f))
+                            .sort((a, b) => {
+                                const numA = parseInt(a.match(/slide(\d+)\.xml/i)?.[1] || 0, 10);
+                                const numB = parseInt(b.match(/slide(\d+)\.xml/i)?.[1] || 0, 10);
+                                return numA - numB;
+                            });
+
+                        const extracted = [];
+                        for (let i = 0; i < slideFiles.length; i++) {
+                            const slideFile = slideFiles[i];
+                            const xmlText = await pptxZip.files[slideFile].async('string');
+                            
+                            let textParts = [];
+                            try {
+                                const parser = new DOMParser();
+                                const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                                const nodes = xmlDoc.getElementsByTagName('*');
+                                for (let j = 0; j < nodes.length; j++) {
+                                    const node = nodes[j];
+                                    if (node.nodeName === 'a:t' || node.nodeName.endsWith(':t') || node.nodeName === 't') {
+                                        const txt = node.textContent?.trim();
+                                        if (txt && !txt.startsWith('<') && !txt.startsWith('AutoShape')) {
+                                            textParts.push(txt);
+                                        }
+                                    }
+                                }
+                            } catch (e) {}
+
+                            if (textParts.length === 0) {
+                                const matches = Array.from(xmlText.matchAll(/<a:t[^>]*>([^<]+)<\/a:t>/gi))
+                                    .map(m => m[1].replace(/<[^>]+>/g, '').trim())
+                                    .filter(Boolean);
+                                textParts = matches;
+                            }
+
+                            const cleanTextParts = textParts
+                                .map(t => t.replace(/<[^>]+>/g, '').trim())
+                                .filter(t => t.length > 0 && !t.startsWith('<') && !t.startsWith('AutoShape'));
+
+                            extracted.push({
+                                slideNum: i + 1,
+                                title: cleanTextParts[0] || `Slide ${i + 1}`,
+                                text: cleanTextParts.join(' ')
+                            });
+                        }
+                        setPptxSlides(extracted);
+                    } catch (e) {
+                        console.warn('PPTX slide text extraction warning:', e);
+                    }
+                }
+            } else if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) {
+                setFileMode('image');
+                let blob;
+                if (node.zipEntry) {
+                    blob = await node.zipEntry.async('blob');
+                } else if (node.directUrl) {
+                    const res = await fetch(node.directUrl);
+                    blob = await res.blob();
+                }
+                if (blob) {
+                    setMediaBlobUrl(URL.createObjectURL(blob));
+                }
+            } else if (ext === 'pdf') {
+                setFileMode('pdf');
+                let blob;
+                if (node.zipEntry) {
+                    blob = await node.zipEntry.async('blob');
+                } else if (node.directUrl) {
+                    const res = await fetch(node.directUrl);
+                    blob = await res.blob();
+                }
+                if (blob) {
+                    setMediaBlobUrl(URL.createObjectURL(blob));
+                }
+            } else if (ext === 'ppt') {
+                setFileMode('binary');
+                let blob;
+                if (node.zipEntry) {
+                    blob = await node.zipEntry.async('blob');
+                } else if (node.directUrl) {
+                    const res = await fetch(node.directUrl);
+                    blob = await res.blob();
+                }
+                if (blob) {
+                    setMediaBlobUrl(URL.createObjectURL(blob));
+                }
+            } else {
+                setFileMode('text');
+                if (node.zipEntry) {
+                    const text = await node.zipEntry.async('string');
+                    setFileContent(text);
+                } else if (node.directUrl) {
+                    const res = await fetch(node.directUrl);
+                    const text = await res.text();
+                    setFileContent(text);
+                }
             }
         } catch (err) {
+            setFileMode('text');
             setFileContent(`// Error loading content for ${node.name}: ${err.message}`);
         } finally {
             setContentLoading(false);
@@ -301,6 +430,13 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
     };
 
     const handleCopy = () => {
+        if (fileMode === 'pptx' && pptxSlides.length > 0) {
+            const fullText = pptxSlides.map(s => `--- SLIDE ${s.slideNum} ---\n${s.text}`).join('\n\n');
+            navigator.clipboard.writeText(fullText);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+            return;
+        }
         if (!fileContent) return;
         navigator.clipboard.writeText(fileContent);
         setCopied(true);
@@ -309,7 +445,6 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
 
     if (!isOpen || !doc) return null;
 
-    // Filter tree helper
     const filterTree = (nodes, query) => {
         if (!query.trim()) return nodes;
         const q = query.toLowerCase();
@@ -328,7 +463,7 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
     };
 
     const displayedTree = filterTree(fileTree, searchQuery);
-    const lineCount = fileContent.split('\n').length;
+    const lineCount = fileContent ? fileContent.split('\n').length : 0;
 
     return (
         <Modal
@@ -370,11 +505,10 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
                     overflow: 'hidden'
                 }}
             >
-                {/* Explorer Top Toolbar */}
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justify: 'space-between',
+                    justifyContent: 'space-between',
                     padding: '8px 14px',
                     background: '#1e293b',
                     borderBottom: '1px solid #334155',
@@ -384,7 +518,7 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span style={{ fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Sparkles size={14} style={{ color: '#f59e0b' }} />
-                            Vault Code Browser
+                            Vault Explorer
                         </span>
                         {selectedFile && (
                             <span style={{ color: '#38bdf8', fontFamily: 'monospace', fontSize: '11px' }}>
@@ -394,38 +528,39 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {/* Zoom / Font Size Controls */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', background: '#0f172a', padding: '3px 7px', borderRadius: '6px', border: '1px solid #334155' }}>
-                            <button
-                                onClick={() => setFontSize(s => Math.min(s + 2, 26))}
-                                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                                title="Zoom In (Increase Font Size)"
-                                className="hover:text-white"
-                            >
-                                <ZoomIn size={14} />
-                            </button>
-                            <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 600, minWidth: '32px', textAlign: 'center', fontFamily: 'monospace' }}>
-                                {fontSize}px
-                            </span>
-                            <button
-                                onClick={() => setFontSize(s => Math.max(s - 2, 9))}
-                                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                                title="Zoom Out (Decrease Font Size)"
-                                className="hover:text-white"
-                            >
-                                <ZoomOut size={14} />
-                            </button>
-                            <button
-                                onClick={() => setFontSize(13)}
-                                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', marginLeft: '2px' }}
-                                title="Reset Font Size to 13px"
-                                className="hover:text-white"
-                            >
-                                <RotateCcw size={12} />
-                            </button>
-                        </div>
+                        {fileMode === 'text' && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', background: '#0f172a', padding: '3px 7px', borderRadius: '6px', border: '1px solid #334155' }}>
+                                <button
+                                    onClick={() => setFontSize(s => Math.min(s + 2, 26))}
+                                    style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                    title="Zoom In (Increase Font Size)"
+                                    className="hover:text-white"
+                                >
+                                    <ZoomIn size={14} />
+                                </button>
+                                <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 600, minWidth: '32px', textAlign: 'center', fontFamily: 'monospace' }}>
+                                    {fontSize}px
+                                </span>
+                                <button
+                                    onClick={() => setFontSize(s => Math.max(s - 2, 9))}
+                                    style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                    title="Zoom Out (Decrease Font Size)"
+                                    className="hover:text-white"
+                                >
+                                    <ZoomOut size={14} />
+                                </button>
+                                <button
+                                    onClick={() => setFontSize(13)}
+                                    style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', marginLeft: '2px' }}
+                                    title="Reset Font Size to 13px"
+                                    className="hover:text-white"
+                                >
+                                    <RotateCcw size={12} />
+                                </button>
+                            </div>
+                        )}
 
-                        {selectedFile && (
+                        {selectedFile && (fileContent || pptxSlides.length > 0) && (
                             <button
                                 onClick={handleCopy}
                                 style={{
@@ -435,41 +570,41 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
                                     color: '#f8fafc', cursor: 'pointer', fontSize: '11px', fontWeight: 600
                                 }}
                             >
-                                {copied ? <><Check size={12} style={{ color: '#4ade80' }} /> Copied!</> : <><Copy size={12} /> Copy Code</>}
+                                {copied ? <><Check size={12} style={{ color: '#4ade80' }} /> Copied!</> : <><Copy size={12} /> Copy {fileMode === 'pptx' ? 'Slide Text' : 'Code'}</>}
                             </button>
                         )}
 
-                        <a
-                            href={doc.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            download
-                            style={{
-                                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                padding: '4px 10px', borderRadius: '6px',
-                                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', border: 'none',
-                                color: '#ffffff', textDecoration: 'none', fontSize: '11px', fontWeight: 700
-                            }}
-                        >
-                            <Download size={12} /> Download Zip
-                        </a>
+                        {mediaBlobUrl && (
+                            <a
+                                href={mediaBlobUrl}
+                                download={selectedFile?.name || 'file.pptx'}
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                    padding: '4px 10px', borderRadius: '6px',
+                                    background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', border: 'none',
+                                    color: 'white', textDecoration: 'none', fontSize: '11px', fontWeight: 700
+                                }}
+                            >
+                                <Download size={12} /> Download File
+                            </a>
+                        )}
 
                         <button
                             onClick={toggleFullScreen}
                             style={{
-                                background: 'none', border: 'none', color: '#94a3b8',
-                                cursor: 'pointer', padding: '4px'
+                                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                padding: '4px 10px', borderRadius: '6px',
+                                background: 'rgba(255,255,255,0.1)', border: 'none',
+                                color: '#f8fafc', cursor: 'pointer', fontSize: '11px', fontWeight: 600
                             }}
-                            title={isFullScreen ? "Exit Fullscreen" : "Fullscreen"}
+                            title="Toggle Fullscreen"
                         >
-                            {isFullScreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                            {isFullScreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
                         </button>
                     </div>
                 </div>
 
-                {/* Main Body: Tree Sidebar + Code Viewer Area */}
                 <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                    {/* Left File Tree Sidebar */}
                     <div style={{
                         width: '240px',
                         background: '#0f172a',
@@ -478,7 +613,6 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
                         flexDirection: 'column',
                         flexShrink: 0
                     }}>
-                        {/* Search Input */}
                         <div style={{ padding: '8px', borderBottom: '1px solid #1e293b' }}>
                             <div style={{
                                 display: 'flex', alignItems: 'center', gap: '6px',
@@ -499,7 +633,6 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
                             </div>
                         </div>
 
-                        {/* File Tree List */}
                         <div style={{ flex: 1, overflowY: 'auto', padding: '6px 4px' }}>
                             {loading ? (
                                 <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
@@ -526,17 +659,110 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
                         </div>
                     </div>
 
-                    {/* Right Code Content Viewer */}
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#090d16', overflow: 'hidden' }}>
                         {selectedFile ? (
                             <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'auto', position: 'relative' }}>
                                 {contentLoading ? (
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', color: '#64748b', fontSize: '13px' }}>
-                                        Loading file content...
+                                        Reading presentation & file contents...
                                     </div>
+                                ) : fileMode === 'pptx' ? (
+                                    <div style={{ flex: 1, padding: '20px', overflowY: 'auto', color: '#e2e8f0' }}>
+                                        <div style={{
+                                            background: 'linear-gradient(135deg, rgba(249,115,22,0.15) 0%, rgba(234,88,12,0.05) 100%)',
+                                            border: '1px solid rgba(249,115,22,0.3)',
+                                            borderRadius: '12px',
+                                            padding: '16px 20px',
+                                            marginBottom: '20px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                                <div style={{
+                                                    width: '44px', height: '44px', borderRadius: '10px',
+                                                    background: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    color: 'white', boxShadow: '0 4px 12px rgba(249,115,22,0.4)'
+                                                }}>
+                                                    <Presentation size={24} />
+                                                </div>
+                                                <div>
+                                                    <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>
+                                                        {selectedFile.name}
+                                                    </h4>
+                                                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#fdba74' }}>
+                                                        PowerPoint Presentation • {pptxSlides.length > 0 ? `${pptxSlides.length} Extracted Slides` : 'Ready to View & Download'}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {mediaBlobUrl && (
+                                                <a
+                                                    href={mediaBlobUrl}
+                                                    download={selectedFile.name}
+                                                    style={{
+                                                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                                        padding: '10px 18px', borderRadius: '10px',
+                                                        background: '#f97316', color: 'white', fontWeight: 700,
+                                                        fontSize: '13px', textDecoration: 'none',
+                                                        boxShadow: '0 4px 15px rgba(249,115,22,0.3)'
+                                                    }}
+                                                    className="hover:opacity-90 active:scale-95"
+                                                >
+                                                    <Download size={16} /> Download PPTX File
+                                                </a>
+                                            )}
+                                        </div>
+
+                                        {pptxSlides.length > 0 ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                                <h5 style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                    📊 Presentation Slide Outline
+                                                </h5>
+                                                {pptxSlides.map(s => (
+                                                    <div key={s.slideNum} style={{
+                                                        background: '#0f172a',
+                                                        border: '1px solid #1e293b',
+                                                        borderRadius: '10px',
+                                                        padding: '14px 16px'
+                                                    }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                                            <span style={{
+                                                                background: '#334155', color: '#38bdf8', padding: '2px 8px',
+                                                                borderRadius: '12px', fontSize: '11px', fontWeight: 700
+                                                            }}>
+                                                                Slide {s.slideNum}
+                                                            </span>
+                                                        </div>
+                                                        <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, color: '#cbd5e1' }}>
+                                                            {s.text || <i style={{ color: '#64748b' }}>No text content found on this slide (Images/Shapes).</i>}
+                                                        </p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8' }}>
+                                                <Presentation size={48} style={{ opacity: 0.4, marginBottom: '12px' }} />
+                                                <p style={{ margin: 0, fontSize: '14px' }}>This PowerPoint presentation can be downloaded directly using the button above.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : fileMode === 'image' && mediaBlobUrl ? (
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', background: '#090d16' }}>
+                                        <img
+                                            src={mediaBlobUrl}
+                                            alt={selectedFile.name}
+                                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 8px 30px rgba(0,0,0,0.5)' }}
+                                        />
+                                    </div>
+                                ) : fileMode === 'pdf' && mediaBlobUrl ? (
+                                    <iframe
+                                        src={mediaBlobUrl}
+                                        title={selectedFile.name}
+                                        style={{ width: '100%', height: '100%', border: 'none' }}
+                                    />
                                 ) : (
                                     <div style={{ display: 'flex', width: '100%', fontFamily: 'Consolas, Monaco, "Fira Code", monospace', fontSize: `${fontSize}px`, lineHeight: 1.6 }}>
-                                        {/* Line numbers column */}
                                         <div style={{
                                             padding: '12px 8px',
                                             background: '#0b0f19',
@@ -550,8 +776,6 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
                                                 <div key={i + 1}>{i + 1}</div>
                                             ))}
                                         </div>
-
-                                        {/* Code lines container */}
                                         <pre style={{
                                             flex: 1,
                                             margin: 0,
@@ -569,7 +793,7 @@ export const CodeVaultViewer = ({ isOpen, onClose, doc }) => {
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b' }}>
                                 <FileCode size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
-                                <p style={{ margin: 0, fontSize: '13px' }}>Select a file from the repository tree on the left to view code.</p>
+                                <p style={{ margin: 0, fontSize: '13px' }}>Select a file or presentation from the repository tree on the left to view.</p>
                             </div>
                         )}
                     </div>
