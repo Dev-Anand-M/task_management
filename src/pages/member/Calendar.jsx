@@ -17,6 +17,7 @@ import {
     Zap
 } from 'lucide-react';
 import * as db from '../../services/database';
+import { supabase } from '../../lib/supabase';
 import { formatDate, formatDeadline, getDifficultyColor } from '../../utils/constants';
 import { format12h } from '../../utils/timeFormat';
 import { useMiniReload } from '../../hooks/useMiniReload';
@@ -33,6 +34,8 @@ const toLocalISO = (date) => {
 };
 
 const getEventStatusLabel = (type, status, isAnonymous) => {
+    if (type === 'sprint-start') return 'Sprint Kickoff';
+    if (type === 'sprint-end') return 'Sprint Evaluation';
     if (type === 'routine') {
         if (status === 'done') return 'Completed';
         if (status === 'missed') return isAnonymous ? 'Expired' : 'Missed';
@@ -51,6 +54,8 @@ const getEventStatusLabel = (type, status, isAnonymous) => {
 };
 
 const getEventBadgeVariant = (type, status, isAnonymous) => {
+    if (type === 'sprint-start') return 'warning';
+    if (type === 'sprint-end') return 'accent';
     if (type === 'routine') {
         if (status === 'done') return 'success';
         if (status === 'missed') return 'error';
@@ -80,21 +85,57 @@ const Calendar = () => {
         if (!user?.id) return;
         try {
             if (!silent) setLoading(true);
-            const [tasks, submissions, quizzes, quizAttempts, routines, routineLogs] = await Promise.race([
+            const [tasks, submissions, quizzes, quizAttempts, routines, routineLogs, sprintTemplatesRes] = await Promise.race([
                 Promise.all([
                     db.getTasks().catch(() => []),
                     db.getSubmissionsByUser(user.id).catch(() => []),
                     db.getQuizzes().catch(() => []),
                     db.getQuizAttemptsByUser(user.id).catch(() => []),
                     routineService.getAllRoutinesForHistory().catch(() => []),
-                    routineService.getAllLogs().catch(() => [])
+                    routineService.getAllLogs().catch(() => []),
+                    supabase.from('sprint_templates').select('*').order('week_number', { ascending: true }).catch(() => ({ data: [] }))
                 ]),
                 new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 10000))
             ]);
 
+            const sprintTemplates = sprintTemplatesRes?.data || [];
             const allEvents = [];
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
+
+            // Format Sprint Weeks / Milestones as events
+            (sprintTemplates || []).forEach(st => {
+                if (st.start_date) {
+                    const startDateObj = new Date(`${st.start_date}T09:00:00`);
+                    if (!isNaN(startDateObj.getTime())) {
+                        allEvents.push({
+                            id: `sprint-start-${st.id || st.week_number}`,
+                            title: `${st.is_showcase ? '🃏' : '⚡'} Sprint W${st.week_number}: ${st.title}`,
+                            date: startDateObj,
+                            type: 'sprint-start',
+                            status: 'active',
+                            weekNumber: st.week_number,
+                            isShowcase: !!st.is_showcase,
+                            link: `/sprint-tracker?week=${st.week_number}`
+                        });
+                    }
+                }
+                if (st.end_date) {
+                    const endDateObj = new Date(`${st.end_date}T23:59:59`);
+                    if (!isNaN(endDateObj.getTime())) {
+                        allEvents.push({
+                            id: `sprint-end-${st.id || st.week_number}`,
+                            title: `🏁 W${st.week_number} Eval Due: ${st.title}`,
+                            date: endDateObj,
+                            type: 'sprint-end',
+                            status: 'deadline',
+                            weekNumber: st.week_number,
+                            isShowcase: !!st.is_showcase,
+                            link: `/sprint-tracker?week=${st.week_number}`
+                        });
+                    }
+                }
+            });
 
             // Format submissions & tasks as events
             (submissions || []).forEach(s => {
@@ -266,6 +307,8 @@ const Calendar = () => {
     const navigate = (dir) => setCurrentDate(new Date(year, month + dir, 1));
 
     const getEventColor = (type, status, isAnonymous) => {
+        if (type === 'sprint-start') return '#f59e0b'; // Amber Gold
+        if (type === 'sprint-end') return '#a855f7'; // Purple Accent
         if (type === 'task' && status === 'approved') return '#10b981'; // Green
         if (type === 'task' && status === 'pending') return '#f59e0b'; // Amber
         if (type === 'task') return '#f59e0b'; // Amber
@@ -307,7 +350,7 @@ const Calendar = () => {
                         <CalendarIcon className="text-primary-400" size={24} />
                         Activity Calendar
                     </h2>
-                    <p style={{ color: 'var(--text-muted)', margin: '4px 0 0 0', fontSize: 'var(--text-sm)' }}>Tasks, quizzes, and milestones at a glance</p>
+                    <p style={{ color: 'var(--text-muted)', margin: '4px 0 0 0', fontSize: 'var(--text-sm)' }}>Tasks, quizzes, sprint milestones, and routines at a glance</p>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-start' }}>
                     <button onClick={() => setView('month')} style={{
@@ -391,6 +434,8 @@ const Calendar = () => {
                         {/* Legend */}
                         <div className="flex flex-wrap gap-md" style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-sm)', borderTop: '1px solid var(--border)' }}>
                             {[
+                                { label: 'Sprint Kickoff', color: '#f59e0b' },
+                                { label: 'Sprint Eval Due', color: '#a855f7' },
                                 { label: 'Task Due', color: '#f59e0b' },
                                 { label: 'Quiz', color: '#8b5cf6' },
                                 { label: 'Routine Done', color: '#10b981' },
@@ -436,7 +481,7 @@ const Calendar = () => {
                                         transition: 'all 0.15s'
                                     }}>
                                         <div className="flex items-center gap-sm">
-                                            {e.type === 'routine' ? <Zap size={14} className={e.status === 'done' ? "text-success-500" : "text-primary-500"} /> : (e.type.startsWith('task') ? <ListTodo size={14} /> : <HelpCircle size={14} />)}
+                                            {e.type.startsWith('sprint') ? <Zap size={14} style={{ color: e.type === 'sprint-start' ? '#f59e0b' : '#a855f7' }} /> : e.type === 'routine' ? <Zap size={14} className={e.status === 'done' ? "text-success-500" : "text-primary-500"} /> : (e.type.startsWith('task') ? <ListTodo size={14} /> : <HelpCircle size={14} />)}
                                             <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, flex: 1 }}>{e.title}</span>
                                             {e.type === 'routine' && e.startTime && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{format12h(e.startTime)}</span>}
                                             {e.type === 'routine' && e.status === 'done' && (

@@ -111,7 +111,7 @@ const Timetable = () => {
                 todayLogs
             );
 
-            // Robust Split: Find metadata marker anywhere or try to extract JSON
+            // Robust Split: Find metadata marker anywhere or try to extract JSON block
             let text = response;
             let metadataStr = '';
             
@@ -119,12 +119,17 @@ const Timetable = () => {
                 const parts = response.split('---METADATA---');
                 text = parts[0];
                 metadataStr = parts[1];
-            } else if (response.includes('{"routines":') || response.includes('[{"day":') || response.includes('[ { "day":')) {
-                const match = response.match(/(\{|\[)[\s\S]*(\}|\])/);
-                if (match) {
-                    const jsonStart = response.indexOf(match[0]);
-                    text = response.substring(0, jsonStart);
-                    metadataStr = match[0];
+            } else {
+                const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+                if (jsonMatch) {
+                    metadataStr = jsonMatch[1];
+                    text = response.replace(jsonMatch[0], '');
+                } else {
+                    const objectMatch = response.match(/\{[\s\S]*?"routines"[\s\S]*?\}/i);
+                    if (objectMatch) {
+                        metadataStr = objectMatch[0];
+                        text = response.replace(objectMatch[0], '');
+                    }
                 }
             }
             
@@ -143,17 +148,19 @@ const Timetable = () => {
                     
                     // 1. Sync Timetable (Routines)
                     const routinesList = metadata.routines || (Array.isArray(metadata) ? metadata : null);
-                    if (routinesList) {
+                    if (routinesList && Array.isArray(routinesList)) {
                         await routineService.replaceAllRoutines(routinesList);
                     }
                     
                     // 2. Perform Log Actions (Today's instances)
-                    if (metadata.logUpdates) {
+                    if (metadata.logUpdates && Array.isArray(metadata.logUpdates)) {
                         for (const update of metadata.logUpdates) {
-                            await routineService.logRoutineProgress(update.routine_id, {
-                                status: update.status,
-                                learning_notes: update.notes || `Updated via AI: ${userMsg}`
-                            });
+                            if (update.routine_id) {
+                                await routineService.logRoutineProgress(update.routine_id, {
+                                    status: update.status || 'done',
+                                    learning_notes: update.notes || `Updated via AI: ${userMsg}`
+                                });
+                            }
                         }
                     }
 
@@ -164,14 +171,21 @@ const Timetable = () => {
                 }
             }
 
-            let displayText = text.replace(/```json[\s\S]*?```/gi, '').replace(/[\{\[\"]+day[\s\S]*/gi, '').trim();
-            if (!displayText) {
-                displayText = "I've processed your request and updated your AI Timetable schedule!";
+            let displayText = text
+                .replace(/```(?:json)?[\s\S]*?```/gi, '')
+                .replace(/\{[\s\S]*?\}/gi, '')
+                .replace(/\[[\s\S]*?\]/gi, '')
+                .replace(/["']?(?:title|start_time|end_time|category|routines|logUpdates)["']?\s*:[\s\S]*/gi, '')
+                .trim();
+
+            if (!displayText || displayText.length < 3) {
+                displayText = "I've processed your request and updated your schedule on the grid!";
             }
 
             setMessages(prev => [...prev, { role: 'assistant', content: displayText }]);
         } catch (err) {
-            setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I encountered an error while updating your schedule. " + err.message }]);
+            console.error('[Timetable] Error:', err);
+            setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I encountered an error while updating your schedule. " + (err.message || '') }]);
         } finally {
             setSending(false);
         }
@@ -211,33 +225,38 @@ const Timetable = () => {
                 flexDirection: isMobile ? 'column' : 'row', 
                 gap: 'var(--space-md)', 
                 flex: 1, 
-                minHeight: 0
+                minHeight: 0,
+                alignItems: 'flex-start'
             }}>
-                {/* Chat Column */}
-                <Card style={{ 
+                {/* Chat Column Container */}
+                <div style={{ 
                     display: 'flex', 
                     flexDirection: 'column', 
                     padding: 0, 
                     overflow: 'hidden', 
+                    background: 'var(--card)',
                     border: '1px solid var(--border)',
-                    width: isMobile ? '100%' : '340px',
-                    height: isMobile ? '380px' : 'auto',
-                    minHeight: isMobile ? '350px' : '500px',
+                    width: isMobile ? '100%' : '360px',
+                    height: isMobile ? '460px' : 'calc(100vh - 180px)',
+                    maxHeight: isMobile ? '500px' : '680px',
+                    minHeight: isMobile ? '380px' : '520px',
+                    position: isMobile ? 'static' : 'sticky',
+                    top: isMobile ? 'auto' : '80px',
                     flexShrink: 0,
                     boxShadow: 'var(--shadow-md)',
                     borderRadius: 'var(--radius-xl)'
                 }}>
-                    <div style={{ padding: 'var(--space-sm) var(--space-md)', borderBottom: '1px solid var(--border)', background: 'rgba(99, 102, 241, 0.05)' }}>
+                    <div style={{ padding: 'var(--space-sm) var(--space-md)', borderBottom: '1px solid var(--border)', background: 'rgba(99, 102, 241, 0.05)', flexShrink: 0 }}>
                         <h3 style={{ margin: 0, fontSize: 'var(--text-xs)', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary-500)', fontWeight: 800 }}>
                             <Sparkles size={14} /> AI TIMETABLE ASSISTANT
                         </h3>
                     </div>
                     
-                    <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', minHeight: 0 }}>
                         {messages.map((msg, i) => (
                             <div key={i} style={{ 
                                 alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                                maxWidth: '90%',
+                                maxWidth: '92%',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '2px'
@@ -252,6 +271,8 @@ const Timetable = () => {
                                     boxShadow: 'var(--shadow-sm)',
                                     border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
                                     wordBreak: 'break-word',
+                                    overflowWrap: 'anywhere',
+                                    whiteSpace: 'pre-wrap',
                                     lineHeight: '1.4'
                                 }}>
                                     {msg.content}
@@ -269,21 +290,23 @@ const Timetable = () => {
                         <div ref={chatEndRef} />
                     </div>
 
-                    <form onSubmit={handleSendMessage} style={{ padding: 'var(--space-sm)', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
-                        <div className="flex gap-xs">
-                            <Input 
-                                placeholder="e.g. Add 2h study every Mon" 
-                                value={userInput} 
-                                onChange={e => setUserInput(e.target.value)}
-                                disabled={sending}
-                                style={{ margin: 0, borderRadius: 'var(--radius-full)', fontSize: 'var(--text-xs)' }}
-                            />
+                    <form onSubmit={handleSendMessage} style={{ padding: 'var(--space-sm)', borderTop: '1px solid var(--border)', background: 'var(--surface)', width: '100%', boxSizing: 'border-box', flexShrink: 0, marginTop: 'auto' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <Input 
+                                    placeholder="e.g. Add 2h study every Mon" 
+                                    value={userInput} 
+                                    onChange={e => setUserInput(e.target.value)}
+                                    disabled={sending}
+                                    style={{ margin: 0, borderRadius: 'var(--radius-full)', fontSize: 'var(--text-xs)', width: '100%' }}
+                                />
+                            </div>
                             <Button variant="primary" type="submit" disabled={sending || !userInput.trim()} style={{ borderRadius: 'var(--radius-full)', width: '38px', height: '38px', padding: 0, flexShrink: 0 }}>
                                 <Send size={16} />
                             </Button>
                         </div>
                     </form>
-                </Card>
+                </div>
 
                 {/* Timetable View */}
                 <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
@@ -300,8 +323,10 @@ const Timetable = () => {
                             </div>
                             <Button variant="primary" size="sm" onClick={() => {
                                 const link = routineService.getCalendarSyncLink(user.id);
-                                navigator.clipboard.writeText(link);
-                                alert('Sync Link Copied! \n\nPaste this into Google Calendar -> "Add by URL" to sync Zenith with your phone.');
+                                if (navigator.clipboard && navigator.clipboard.writeText) {
+                                    navigator.clipboard.writeText(link).catch(() => {});
+                                }
+                                alert(`Sync Link:\n\n${link}\n\nPaste this into Google Calendar -> "Add by URL" to sync Zenith with your phone!`);
                             }}>Copy Sync Link</Button>
                         </div>
                     </Card>
@@ -312,8 +337,9 @@ const Timetable = () => {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 'var(--space-md)' }}>
                             {days.map(day => {
                                 const dayNum = daysMap[day];
-                                const dayRoutines = routines.filter(r => r.days_of_week.includes(dayNum))
-                                    .sort((a,b) => a.start_time.localeCompare(b.start_time));
+                                const dayRoutines = (routines || [])
+                                    .filter(r => r.days_of_week && Array.isArray(r.days_of_week) && r.days_of_week.includes(dayNum))
+                                    .sort((a,b) => (a.start_time || '00:00').localeCompare(b.start_time || '00:00'));
 
                                 return (
                                     <Card key={day} style={{ display: 'flex', flexDirection: 'column', minHeight: '140px', padding: 'var(--space-sm)' }}>

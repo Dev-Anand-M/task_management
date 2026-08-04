@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import * as db from '../../services/database';
 import { Capacitor } from '@capacitor/core';
-import { Menu, Bell, Search, User, LogOut, Settings, Clock, Check, ChevronRight, LayoutDashboard, Database, HelpCircle, ArrowRight, ArrowLeft, Sun, Moon, CheckCircle, Award, AlertCircle, Info, X, RefreshCw, Zap } from 'lucide-react';
+import { Menu, Bell, Search, User, LogOut, Settings, Clock, Check, ChevronRight, LayoutDashboard, Database, HelpCircle, ArrowRight, ArrowLeft, Sun, Moon, CheckCircle, Award, AlertCircle, Info, X, RefreshCw, Zap, Sparkles } from 'lucide-react';
 import { Button, SearchBar, Avatar } from '../common';
 
 const Header = ({ onMenuClick, title }) => {
@@ -48,42 +48,56 @@ const Header = ({ onMenuClick, title }) => {
 
   const loadTickerData = async () => {
     try {
-      const [tasks, submissions, quizzes, attempts] = await Promise.all([
-        db.getTasks(),
-        db.getSubmissionsByUser(user.id),
-        db.getQuizzes(),
-        db.getQuizAttemptsByUser(user.id)
+      const classroomId = user?.classroom_id;
+      const [tasks, submissions, quizzes, attempts, sprintRes] = await Promise.all([
+        db.getTasks().catch(() => []),
+        user?.id ? db.getSubmissionsByUser(user.id).catch(() => []) : Promise.resolve([]),
+        db.getQuizzes().catch(() => []),
+        user?.id ? db.getQuizAttemptsByUser(user.id).catch(() => []) : Promise.resolve([]),
+        classroomId 
+          ? supabase.from('sprint_templates').select('*').eq('classroom_id', classroomId).order('week_number', { ascending: true })
+          : supabase.from('sprint_templates').select('*').order('week_number', { ascending: true })
       ]);
 
       const now = new Date();
-      const myTasks = tasks.filter(t => !t.assigned_to || t.assigned_to.length === 0 || t.assigned_to.includes(user.id));
-      const actionItems = myTasks.filter(task => {
-        const sub = submissions.find(s => s.task_id === task.id);
-        if (sub && (sub.status === 'approved' || sub.status === 'submitted' || sub.status === 'pending')) return false;
+      const todayStr = now.toISOString().split('T')[0];
+      const items = [];
 
-        // Exclude overdue tasks (deadline in past is overdue, NOT active pending task)
-        if (task.deadline) {
-          const deadlineDate = new Date(task.deadline);
-          if (deadlineDate < now) return false;
+      // 1. Include Active & Upcoming Sprint Weeks in Marquee
+      const sprintWeeks = sprintRes?.data || [];
+      sprintWeeks.forEach(w => {
+        const startStr = w.start_date ? w.start_date.split('T')[0] : null;
+        const endStr = w.end_date ? w.end_date.split('T')[0] : null;
+        const title = w.title || `Week ${w.week_number}`;
+
+        if (startStr && endStr && todayStr >= startStr && todayStr <= endStr) {
+          items.push(`⚡ Week ${w.week_number}: ${title} is Active!`);
+        } else if (startStr && todayStr < startStr) {
+          const startDt = new Date(startStr);
+          const diffDays = Math.ceil((startDt - now) / (1000 * 60 * 60 * 24));
+          if (diffDays >= 0 && diffDays <= 7) {
+            items.push(`🚀 Week ${w.week_number}: ${title} starts in ${diffDays} day${diffDays === 1 ? '' : 's'}!`);
+          }
         }
-
-        if (!sub) return true;
-        return sub.status === 'rejected';
       });
 
-      const pendingTasksCount = actionItems.length;
-      const pendingQuizzesCount = quizzes.filter(q => !attempts.some(a => a.quiz_id === q.id)).length;
-      const upcomingDeadlines = actionItems.filter(t => {
-        if (!t.deadline) return false;
-        const d = new Date(t.deadline);
-        const diffDays = (d - now) / (1000 * 60 * 60 * 24);
-        return diffDays >= 0 && diffDays <= 3;
-      }).length;
+      // 2. Include Pending Tasks and Quizzes for member
+      if (user?.id) {
+        const myTasks = tasks.filter(t => !t.assigned_to || t.assigned_to.length === 0 || t.assigned_to.includes(user.id));
+        const actionItems = myTasks.filter(task => {
+          const sub = submissions.find(s => s.task_id === task.id);
+          if (sub && (sub.status === 'approved' || sub.status === 'submitted' || sub.status === 'pending')) return false;
+          if (task.deadline && new Date(task.deadline) < now) return false;
+          if (!sub) return true;
+          return sub.status === 'rejected';
+        });
 
-      const items = [];
-      if (pendingTasksCount > 0) items.push(`${pendingTasksCount} Pending Task${pendingTasksCount === 1 ? '' : 's'}`);
-      if (pendingQuizzesCount > 0) items.push(`${pendingQuizzesCount} Pending Quiz${pendingQuizzesCount === 1 ? '' : 'zes'}`);
-      if (upcomingDeadlines > 0) items.push(`${upcomingDeadlines} Deadline${upcomingDeadlines === 1 ? '' : 's'} Soon`);
+        const pendingTasksCount = actionItems.length;
+        const pendingQuizzesCount = quizzes.filter(q => !attempts.some(a => a.quiz_id === q.id)).length;
+
+        if (pendingTasksCount > 0) items.push(`📋 ${pendingTasksCount} Pending Task${pendingTasksCount === 1 ? '' : 's'}`);
+        if (pendingQuizzesCount > 0) items.push(`📝 ${pendingQuizzesCount} Pending Quiz${pendingQuizzesCount === 1 ? '' : 'zes'}`);
+      }
 
       setTickerItems(items);
     } catch (e) {
@@ -94,7 +108,7 @@ const Header = ({ onMenuClick, title }) => {
   useEffect(() => {
     if (user) {
       loadNotificationData();
-      if (!isAdmin) loadTickerData();
+      loadTickerData();
       
       const channel = supabase
           .channel(`header-updates-${user.id}`)
@@ -183,32 +197,19 @@ const Header = ({ onMenuClick, title }) => {
           onClick={(e) => {
             if (onMenuClick) onMenuClick(e);
           }}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '8px',
-            cursor: 'pointer',
-            color: 'var(--text)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 'var(--radius-md)',
-            transition: 'background 0.2s'
-          }}
-          className="hover:bg-surface active:scale-95 visible-mobile hidden-desktop"
+          className="sandwich-menu-btn visible-mobile hidden-desktop"
           aria-label="Toggle Sidebar Mobile"
         >
-          <Menu size={24} />
+          <Menu size={22} />
         </button>
 
         {/* Desktop Menu Button */}
         <button
           onClick={onMenuClick}
-          className="hidden-mobile visible-desktop p-2 rounded-xl text-muted hover:text-text hover:bg-surface transition-all"
-          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+          className="sandwich-menu-btn hidden-mobile visible-desktop"
           aria-label="Toggle Sidebar Desktop"
         >
-          <Menu size={24} />
+          <Menu size={22} />
         </button>
 
 
@@ -226,25 +227,25 @@ const Header = ({ onMenuClick, title }) => {
           </h1>
 
           {!isAdmin && (
-            <div className="header-ticker hidden-mobile visible-desktop" style={{ height: '40px', marginLeft: '1rem' }}>
-              <div className="ticker-container">
-                <div className="ticker-wrapper">
-                  {tickerItems.length > 0 ? (
-                    tickerItems.map((item, i) => (
-                      <span key={i} className="ticker-item text-sm text-muted font-medium flex items-center gap-xs">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
-                        {item}
+            <div className="header-ticker hidden-mobile visible-desktop" style={{ height: '36px', marginLeft: '1rem', overflow: 'hidden', flexShrink: 1 }}>
+              <div className="ticker-container" style={{ width: '280px', overflow: 'hidden' }}>
+                  <div className="ticker-wrapper">
+                    {tickerItems.length > 0 ? (
+                      tickerItems.map((item, i) => (
+                        <span key={i} className="ticker-item text-sm text-muted font-medium flex items-center gap-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
+                          {item}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="ticker-item text-xs text-muted font-medium flex items-center gap-xs" style={{ whiteSpace: 'nowrap' }}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                        All clear for now ✨
                       </span>
-                    ))
-                  ) : (
-                    <span className="ticker-item text-sm text-muted font-medium flex items-center gap-xs">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                      You have nothing to do ✨
-                    </span>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
           )}
         </div>
       </div>
@@ -279,7 +280,7 @@ const Header = ({ onMenuClick, title }) => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search platform..."
-            className="w-64"
+            className="w-72 lg:w-[380px]"
             isAdmin={isAdmin}
           />
         </div>
@@ -402,7 +403,7 @@ const Header = ({ onMenuClick, title }) => {
                             transition: 'all var(--transition-fast)',
                             position: 'relative'
                           }}
-                          className="hover:bg-primary-500/5"
+                          className="dropdown-hover-item"
                         >
                           <div style={{
                             width: '40px',
@@ -453,7 +454,7 @@ const Header = ({ onMenuClick, title }) => {
                     <button
                       onClick={() => {
                         setShowNotifications(false);
-                        navigate('/notifications', { replace: true });
+                        navigate('/notifications');
                       }}
                       style={{
                         background: 'var(--primary-500)',
@@ -519,7 +520,11 @@ const Header = ({ onMenuClick, title }) => {
               border: 'none',
               padding: 0,
               cursor: 'pointer',
-              borderRadius: 'var(--radius-lg)',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               transition: 'transform var(--transition-fast)'
             }}
             className="hover:scale-105 active:scale-95"
@@ -591,7 +596,7 @@ const Header = ({ onMenuClick, title }) => {
                   <div style={{ padding: 'var(--space-sm)', background: 'var(--card)', flex: 1, overflowY: 'auto' }}>
                     <button
                       onClick={() => {
-                        navigate('/profile', { replace: true });
+                        navigate('/profile');
                         setShowProfileMenu(false);
                       }}
                       style={{
@@ -609,13 +614,13 @@ const Header = ({ onMenuClick, title }) => {
                         fontWeight: 600,
                         textAlign: 'left'
                       }}
-                      className="hover:bg-surface"
+                      className="dropdown-hover-item"
                     >
                       <User size={18} /> My Profile
                     </button>
                     <button
                       onClick={() => {
-                        navigate(isAdmin ? '/admin' : '/dashboard', { replace: true });
+                        navigate(isAdmin ? '/admin' : '/dashboard');
                         setShowProfileMenu(false);
                       }}
                       style={{
@@ -633,13 +638,13 @@ const Header = ({ onMenuClick, title }) => {
                         fontWeight: 600,
                         textAlign: 'left'
                       }}
-                      className="hover:bg-surface"
+                      className="dropdown-hover-item"
                     >
                       <LayoutDashboard size={18} /> Dashboard
                     </button>
                     <button
                       onClick={() => {
-                        navigate('/settings', { replace: true });
+                        navigate('/settings');
                         setShowProfileMenu(false);
                       }}
                       style={{
@@ -657,7 +662,7 @@ const Header = ({ onMenuClick, title }) => {
                         fontWeight: 600,
                         textAlign: 'left'
                       }}
-                      className="hover:bg-surface"
+                      className="dropdown-hover-item"
                     >
                       <Settings size={18} /> Settings
                     </button>
@@ -681,7 +686,7 @@ const Header = ({ onMenuClick, title }) => {
                           fontWeight: 600,
                           textAlign: 'left'
                         }}
-                        className="hover:bg-surface"
+                        className="dropdown-hover-item"
                       >
                         <RefreshCw size={18} /> Reload App
                       </button>
@@ -709,7 +714,7 @@ const Header = ({ onMenuClick, title }) => {
                         fontWeight: 600,
                         textAlign: 'left'
                       }}
-                      className="hover:bg-error-50/10"
+                      className="dropdown-hover-item hover:bg-error-50/10"
                     >
                       <LogOut size={18} /> Sign Out
                     </button>
@@ -735,6 +740,59 @@ const Header = ({ onMenuClick, title }) => {
           )}
         </div>
       </div>
+
+      <style>{`
+        .sandwich-menu-btn {
+          background: transparent;
+          border: none;
+          padding: 8px;
+          cursor: pointer;
+          color: var(--text);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: var(--radius-md, 10px);
+          transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        .sandwich-menu-btn:hover {
+          background: var(--surface-hover, rgba(255, 255, 255, 0.1)) !important;
+          color: var(--primary-500, #6366f1) !important;
+        }
+
+        .sandwich-menu-btn:active {
+          opacity: 0.8;
+        }
+
+        html[data-theme="light"] .sandwich-menu-btn:hover {
+          background: rgba(15, 23, 42, 0.06) !important;
+          color: var(--primary-600, #4f46e5) !important;
+        }
+
+        /* Dropdown Hover Effects (Quick Access, Notifications, Profile) */
+        .dropdown-hover-item {
+          transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+
+        .dropdown-hover-item:hover {
+          transform: translateX(4px) !important;
+          background: color-mix(in srgb, var(--primary-500, #f59e0b) 14%, transparent) !important;
+        }
+
+        .dropdown-hover-item:hover svg {
+          transform: scale(1.12) rotate(3deg) !important;
+          color: var(--primary-500, #f59e0b) !important;
+          transition: transform 0.2s ease, color 0.2s ease !important;
+        }
+
+        html[data-theme="light"] .dropdown-hover-item:hover {
+          background: color-mix(in srgb, var(--primary-500, #f59e0b) 10%, transparent) !important;
+        }
+
+        html[data-theme="light"] .dropdown-hover-item:hover svg {
+          color: var(--primary-600, #d97706) !important;
+        }
+      `}</style>
     </header>
   );
 };

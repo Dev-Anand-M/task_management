@@ -14,13 +14,13 @@ const Avatar = ({ name, image, size = 'md', className = '' }) => {
                 src={image}
                 alt={name}
                 className={`avatar ${sizeClasses[size]} ${className}`}
-                style={{ objectFit: 'cover' }}
+                style={{ objectFit: 'cover', borderRadius: '50%', aspectRatio: '1 / 1' }}
             />
         );
     }
 
     return (
-        <div className={`avatar ${sizeClasses[size]} ${className}`}>
+        <div className={`avatar ${sizeClasses[size]} ${className}`} style={{ borderRadius: '50%', aspectRatio: '1 / 1' }}>
             {getInitials(name || 'U')}
         </div>
     );

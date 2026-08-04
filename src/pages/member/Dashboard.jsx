@@ -172,7 +172,6 @@ const MemberDashboard = () => {
                         }
 
                         if (activeWeek) {
-                            // Check lock status
                             const { data: lockRow } = await supabase
                                 .from('sprint_locks')
                                 .select('is_locked')
@@ -180,16 +179,66 @@ const MemberDashboard = () => {
                                 .eq('week_number', activeWeek.week_number)
                                 .maybeSingle();
 
-                            const dayOfWeek = today.getDay(); // 0=Sun
-                            const autoLocked = dayOfWeek !== 0; // locked Mon-Sat
-                            const isLocked = lockRow ? lockRow.is_locked : autoLocked;
+                            const startIso = activeWeek.start_date ? (activeWeek.start_date.includes('T') ? activeWeek.start_date : `${activeWeek.start_date}T00:00:00`) : null;
+                            const endIso = activeWeek.end_date ? (activeWeek.end_date.includes('T') ? activeWeek.end_date : `${activeWeek.end_date}T23:59:59`) : null;
+                            const now = new Date();
+                            const startDt = startIso ? new Date(startIso) : null;
+                            const endDt = endIso ? new Date(endIso) : null;
+
+                            let isStarted = false;
+                            let isEnded = false;
+                            let timerText = '';
+                            let statusLabel = 'INACTIVE';
+
+                            if (startDt && now < startDt) {
+                                isStarted = false;
+                                isEnded = false;
+                                statusLabel = 'INACTIVE';
+                                const diff = startDt - now;
+                                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                                const parts = [];
+                                if (days > 0) parts.push(`${days}d`);
+                                if (hours > 0 || days > 0) parts.push(`${hours}h`);
+                                parts.push(`${minutes}m`);
+                                timerText = `Will start in ${parts.join(' ')}`;
+                            } else if (endDt && now > endDt) {
+                                isStarted = true;
+                                isEnded = true;
+                                statusLabel = 'ENDED';
+                                timerText = 'Time Ended';
+                            } else if (endDt && now <= endDt) {
+                                isStarted = true;
+                                isEnded = false;
+                                statusLabel = 'ACTIVE';
+                                const diff = endDt - now;
+                                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                                const parts = [];
+                                if (days > 0) parts.push(`${days}d`);
+                                if (hours > 0 || days > 0) parts.push(`${hours}h`);
+                                parts.push(`${minutes}m`);
+                                timerText = `Will end in ${parts.join(' ')}`;
+                            }
+
+                            if (isStarted && !isEnded) {
+                                db.notifySprintWeekStart(user.classroom_id, activeWeek.week_number, activeWeek.title);
+                            }
+
+                            const isLocked = lockRow ? lockRow.is_locked : (!isStarted || isEnded);
 
                             setSprintWeek({
                                 weekNum: activeWeek.week_number,
                                 title: activeWeek.title,
                                 start_date: activeWeek.start_date,
                                 end_date: activeWeek.end_date,
-                                isLocked
+                                isLocked,
+                                isStarted,
+                                isEnded,
+                                timerText,
+                                statusLabel
                             });
                         }
                     }
@@ -312,11 +361,13 @@ const MemberDashboard = () => {
                                 🏆
                             </div>
                             <div style={{ textAlign: 'center' }}>
-                                <p style={{ margin: 0, fontSize: 'var(--text-lg)', opacity: 0.9 }}>Total XP Earned</p>
-                                <h2 style={{ margin: 0, fontSize: 'var(--text-5xl)', fontWeight: 800 }}>
+                                <p style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 700, color: '#ffffff', letterSpacing: '0.02em' }}>
+                                    Total XP Earned
+                                </p>
+                                <h2 style={{ margin: '4px 0 0', fontSize: 'var(--text-5xl)', fontWeight: 900, color: '#ffffff', textShadow: '0 2px 12px rgba(0,0,0,0.25)' }}>
                                     {user?.xp || 0} XP
                                 </h2>
-                                <p style={{ margin: 'var(--space-xs) 0 0', fontSize: 'var(--text-xs)', opacity: 0.8 }}>
+                                <p style={{ margin: 'var(--space-xs) 0 0', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'rgba(255, 255, 255, 0.95)', textShadow: '0 1px 4px rgba(0,0,0,0.2)' }}>
                                     Click to view history →
                                 </p>
                             </div>
@@ -335,8 +386,8 @@ const MemberDashboard = () => {
                         borderRadius: 'var(--radius-xl)',
                         background: sprintWeek.isLocked
                             ? 'linear-gradient(135deg, rgba(100,116,139,0.15), rgba(71,85,105,0.1))'
-                            : 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(5,150,105,0.08))',
-                        border: `1px solid ${sprintWeek.isLocked ? 'rgba(100,116,139,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                            : 'linear-gradient(135deg, rgba(16,185,129,0.14), rgba(5,150,105,0.08))',
+                        border: `1px solid ${sprintWeek.isLocked ? 'rgba(100,116,139,0.3)' : 'rgba(16,185,129,0.35)'}`,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -360,20 +411,78 @@ const MemberDashboard = () => {
                         </div>
                         {/* Text */}
                         <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: sprintWeek.isLocked ? 'var(--text-muted)' : '#10b981', marginBottom: '2px' }}>
-                                This Week's Sprint · W{sprintWeek.weekNum}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                                <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: sprintWeek.isStarted && !sprintWeek.isEnded ? '#10b981' : 'var(--text-muted)' }}>
+                                    Sprint · Week {sprintWeek.weekNum}
+                                </span>
+                                {sprintWeek.isStarted && !sprintWeek.isEnded && (
+                                    <span style={{
+                                        padding: '1px 6px',
+                                        borderRadius: '999px',
+                                        background: 'rgba(16, 185, 129, 0.2)',
+                                        color: '#10b981',
+                                        fontSize: '9px',
+                                        fontWeight: 800,
+                                        letterSpacing: '0.04em'
+                                    }}>
+                                        🟢 ACTIVE
+                                    </span>
+                                )}
+                                {!sprintWeek.isStarted && (
+                                    <span style={{
+                                        padding: '1px 6px',
+                                        borderRadius: '999px',
+                                        background: 'rgba(245, 158, 11, 0.2)',
+                                        color: '#f59e0b',
+                                        fontSize: '9px',
+                                        fontWeight: 800,
+                                        letterSpacing: '0.04em'
+                                    }}>
+                                        ⏳ INACTIVE
+                                    </span>
+                                )}
+                                {sprintWeek.isEnded && (
+                                    <span style={{
+                                        padding: '1px 6px',
+                                        borderRadius: '999px',
+                                        background: 'rgba(100, 116, 139, 0.2)',
+                                        color: 'var(--text-muted)',
+                                        fontSize: '9px',
+                                        fontWeight: 700
+                                    }}>
+                                        🔒 ENDED
+                                    </span>
+                                )}
                             </div>
                             <div style={{ fontWeight: 700, fontSize: 'var(--text-base)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {sprintWeek.title}
                             </div>
-                            {(sprintWeek.start_date || sprintWeek.end_date) && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                    <Calendar size={11} />
-                                    {sprintWeek.start_date ? new Date(sprintWeek.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
-                                    {' → '}
-                                    {sprintWeek.end_date ? new Date(sprintWeek.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
-                                </div>
-                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px', flexWrap: 'wrap' }}>
+                                {(sprintWeek.start_date || sprintWeek.end_date) && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <Calendar size={11} />
+                                        <span>{sprintWeek.start_date ? new Date(sprintWeek.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</span>
+                                        <span>→</span>
+                                        <span>{sprintWeek.end_date ? new Date(sprintWeek.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</span>
+                                    </div>
+                                )}
+                                {sprintWeek.timerText && !sprintWeek.isEnded && (
+                                    <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        padding: '1px 7px',
+                                        borderRadius: '6px',
+                                        background: sprintWeek.isStarted ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                                        color: sprintWeek.isStarted ? '#10b981' : '#f59e0b',
+                                        fontSize: '11px',
+                                        fontWeight: 700
+                                    }}>
+                                        <Clock size={11} className="animate-spin-slow" />
+                                        ⏳ {sprintWeek.timerText}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                     {/* Status + Arrow */}
@@ -391,6 +500,7 @@ const MemberDashboard = () => {
                     </div>
                 </div>
             )}
+
             {/* Quick Stats */}
             <div className="stat-card-grid mb-xl">
                 {[

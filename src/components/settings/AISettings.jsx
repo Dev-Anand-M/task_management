@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Card, Button, Badge } from '../common';
-import { Brain, Key, ExternalLink } from 'lucide-react';
+import { Brain, Key, ExternalLink, Trash2 } from 'lucide-react';
 import { PROVIDERS } from '../../services/aiService';
 
 const AISettings = () => {
@@ -16,6 +16,7 @@ const AISettings = () => {
     const [validationMessage, setValidationMessage] = useState({ type: '', text: '' }); // type: 'success', 'error', 'warning'
     const [availableModels, setAvailableModels] = useState([]); // Dynamic models from API
     const [providerPriority, setProviderPriority] = useState(['sambanova', 'groq', 'gemini', 'hcnsec', 'openai', 'anthropic', 'perplexity']);
+    const [customModels, setCustomModels] = useState([]);
 
     // Load AI settings when provider changes or on mount
     useEffect(() => {
@@ -27,7 +28,8 @@ const AISettings = () => {
                     getAPIKey,
                     isAPIKeyConfigured,
                     getSelectedModel,
-                    getUsageStats
+                    getUsageStats,
+                    getCustomModels
                 } = await import('../../services/aiService');
 
                 // Load from DB first
@@ -46,11 +48,12 @@ const AISettings = () => {
                     setAvailableModels([]);
                 }
 
-                // Load saved model and usage
+                // Load saved model, usage, and custom models
                 const savedModel = getSelectedModel();
                 if (savedModel) setSelectedModel(savedModel);
                 const stats = getUsageStats();
                 setUsageStats(stats);
+                setCustomModels(getCustomModels());
                 
                 // Load provider priority
                 const { getProviderPriority } = await import('../../services/aiService');
@@ -185,13 +188,13 @@ const AISettings = () => {
                         <button
                             key={pid}
                             onClick={async () => {
-                                const { getAPIKey, isAPIKeyConfigured, AVAILABLE_MODELS } = await import('../../services/aiService');
+                                const { getAPIKey, isAPIKeyConfigured, getAllAvailableModels } = await import('../../services/aiService');
                                 setSelectedProvider(pid);
                                 const key = getAPIKey(pid);
                                 setAiApiKey(key);
                                 setAiKeyStatus(isAPIKeyConfigured(pid) ? 'configured' : 'unconfigured');
                                 setValidationMessage({ type: '', text: '' });
-                                setAvailableModels(AVAILABLE_MODELS.filter(m => m.provider === pid));
+                                setAvailableModels(getAllAvailableModels().filter(m => m.provider === pid));
                             }}
                             style={{
                                 padding: 'var(--space-sm) var(--space-md)',
@@ -566,7 +569,7 @@ const AISettings = () => {
                 )}
             </div>
 
-            {/* Custom Model Addition */}
+            {/* Custom Model Addition & Management */}
             {aiKeyStatus === 'configured' && (
                 <div style={{ marginTop: 'var(--space-lg)', paddingTop: 'var(--space-lg)', borderTop: '1px solid var(--border)' }}>
                     <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-sm)', color: 'var(--text-muted)' }}>
@@ -575,7 +578,7 @@ const AISettings = () => {
                     <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)' }}>
                         If your API key supports a model not listed above (like specific experimental versions), add its ID here.
                     </p>
-                    <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                    <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
                         <input
                             placeholder="e.g. gemini-2.5-flash"
                             id="custom-model-input"
@@ -601,21 +604,71 @@ const AISettings = () => {
                                         name: `${modelId} (Custom)`,
                                         description: 'Custom added model'
                                     };
-                                    if (!availableModels.some(m => m.id === modelId)) {
-                                        setAvailableModels([newModel, ...availableModels]);
-                                    }
-                                    const { addCustomModel } = await import('../../services/aiService');
+                                    const { addCustomModel, getCustomModels, getAllAvailableModels } = await import('../../services/aiService');
                                     await addCustomModel(newModel);
                                     await handleModelChange(modelId);
+                                    const updatedCustom = getCustomModels();
+                                    setCustomModels(updatedCustom);
+                                    setAvailableModels(getAllAvailableModels().filter(m => m.provider === selectedProvider));
                                     input.value = '';
-
-                                    alert(`Added and saved custom model ${modelId} to account!`);
                                 }
                             }}
                         >
-                            Add
+                            Add Model
                         </Button>
                     </div>
+
+                    {/* Existing Added Custom Models List for Active Provider */}
+                    {(() => {
+                        const providerCustomModels = customModels.filter(m => m.provider === selectedProvider);
+                        const pConfig = Object.values(PROVIDERS).find(p => p.id === selectedProvider);
+                        const pName = pConfig ? pConfig.name : selectedProvider;
+
+                        if (providerCustomModels.length === 0) return null;
+
+                        return (
+                            <div style={{ marginTop: 'var(--space-md)' }}>
+                                <h5 style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 'var(--space-xs)', textTransform: 'uppercase' }}>
+                                    Saved Custom Models for {pName} ({providerCustomModels.length})
+                                </h5>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {providerCustomModels.map(m => (
+                                        <div key={m.id} style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            padding: '10px 14px',
+                                            background: 'var(--surface)',
+                                            border: '1px solid var(--border)',
+                                            borderRadius: 'var(--radius-md)'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                <Badge variant="primary" size="xs">{m.provider.toUpperCase()}</Badge>
+                                                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text)' }}>{m.name}</span>
+                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>({m.id})</span>
+                                            </div>
+                                            <Button
+                                                size="xs"
+                                                variant="secondary"
+                                                onClick={async () => {
+                                                    if (confirm(`Remove custom model ${m.id}?`)) {
+                                                        const { removeCustomModel, getCustomModels, getAllAvailableModels } = await import('../../services/aiService');
+                                                        await removeCustomModel(m.id);
+                                                        const updatedCustom = getCustomModels();
+                                                        setCustomModels(updatedCustom);
+                                                        setAvailableModels(getAllAvailableModels().filter(model => model.provider === selectedProvider));
+                                                    }
+                                                }}
+                                                style={{ color: 'var(--error-500)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                            >
+                                                <Trash2 size={12} /> Remove
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
 

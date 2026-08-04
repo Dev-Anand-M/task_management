@@ -61,6 +61,14 @@ export const addCustomModel = async (modelObj) => {
     }
 };
 
+// Remove custom model per user account
+export const removeCustomModel = async (modelId) => {
+    const existing = getCustomModels();
+    const updated = existing.filter(m => m.id !== modelId);
+    localStorage.setItem(getStorageKeyName('custom_ai_models'), JSON.stringify(updated));
+    await syncToDatabase();
+};
+
 // Dynamically fetch static + custom user added models
 export const getAllAvailableModels = () => {
     try {
@@ -450,16 +458,18 @@ export const validateAPIKey = async (providerId, key) => {
     }
 
     try {
+        const allModels = getAllAvailableModels();
+
         if (providerId === 'gemini') {
             const endpoint = '/v1beta/models';
             await callAIProxy('gemini', endpoint, trimmedKey, null);
-            return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'gemini') };
+            return { valid: true, models: allModels.filter(m => m.provider === 'gemini') };
         }
 
         if (providerId === 'openai') {
             const endpoint = '/v1/models';
             await callAIProxy('openai', endpoint, trimmedKey, null);
-            return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'openai') };
+            return { valid: true, models: allModels.filter(m => m.provider === 'openai') };
         }
 
         if (providerId === 'anthropic') {
@@ -470,13 +480,13 @@ export const validateAPIKey = async (providerId, key) => {
                 messages: [{ role: 'user', content: 'Hi' }]
             };
             await callAIProxy('anthropic', endpoint, trimmedKey, body);
-            return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'anthropic') };
+            return { valid: true, models: allModels.filter(m => m.provider === 'anthropic') };
         }
 
         if (providerId === 'perplexity') {
             const endpoint = '/models';
             await callAIProxy('perplexity', endpoint, trimmedKey, null);
-            return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'perplexity') };
+            return { valid: true, models: allModels.filter(m => m.provider === 'perplexity') };
         }
         
         if (providerId === 'sambanova') {
@@ -487,7 +497,7 @@ export const validateAPIKey = async (providerId, key) => {
                 max_tokens: 1
             };
             await callAIProxy('sambanova', endpoint, trimmedKey, body);
-            return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'sambanova') };
+            return { valid: true, models: allModels.filter(m => m.provider === 'sambanova') };
         }
         
         if (providerId === 'groq') {
@@ -498,18 +508,19 @@ export const validateAPIKey = async (providerId, key) => {
                 max_tokens: 1
             };
             await callAIProxy('groq', endpoint, trimmedKey, body);
-            return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'groq') };
+            return { valid: true, models: allModels.filter(m => m.provider === 'groq') };
         }
         
         if (providerId === 'hcnsec') {
             const endpoint = '/v1/models';
             await callAIProxy('hcnsec', endpoint, trimmedKey, null);
-            return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === 'hcnsec') };
+            return { valid: true, models: allModels.filter(m => m.provider === 'hcnsec') };
         }
 
         return { valid: false, error: 'Unknown provider' };
     } catch (err) {
         const msg = err.message || 'Validation failed';
+        const allModels = getAllAvailableModels();
         if (msg.includes('402') || msg.toLowerCase().includes('payment') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('credit') || msg.toLowerCase().includes('balance')) {
             return { valid: false, error: 'Payment Required: Your API key is valid, but the account has run out of credits or quota.' };
         }
@@ -517,7 +528,7 @@ export const validateAPIKey = async (providerId, key) => {
             return { valid: false, error: 'Invalid API key. Please double-check and try again.' };
         }
         if (msg.includes('429')) {
-            return { valid: true, models: AVAILABLE_MODELS.filter(m => m.provider === providerId), warning: 'Key is valid but rate-limited. Try again later.' };
+            return { valid: true, models: allModels.filter(m => m.provider === providerId), warning: 'Key is valid but rate-limited. Try again later.' };
         }
         if (msg.includes('fetch') || msg.includes('network') || msg.includes('TIMEOUT')) {
             return { valid: false, error: 'Network error. Please check your connection and try again.' };
@@ -676,7 +687,7 @@ const generateContent = async (prompt, systemPrompt = '', modelId = null, signal
             if (!getAPIKey(fallbackProviderId)) continue;
             
             attemptedProviders.add(fallbackProviderId);
-            const fallbackModel = AVAILABLE_MODELS.find(m => m.provider === fallbackProviderId);
+            const fallbackModel = getAllAvailableModels().find(m => m.provider === fallbackProviderId);
             
             if (fallbackModel) {
                 try {
@@ -803,6 +814,24 @@ const attemptProviderGeneration = async (providerId, modelId, prompt, systemProm
         return data.choices?.[0]?.message?.content || '';
     }
 
+    // --- HCNSEC ---
+    if (provider.id === 'hcnsec') {
+        const endpoint = '/v1/chat/completions';
+        const body = {
+            model: modelId,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: prompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 8192
+        };
+        
+        const data = await callAIProxy('hcnsec', endpoint, apiKey, body, signal, options);
+        await incrementUsage('hcnsec');
+        return data.choices?.[0]?.message?.content || '';
+    }
+
     throw new Error('Provider not implemented');
 };
 
@@ -891,7 +920,7 @@ export const generateChat = async (messages, systemPrompt = '', modelId = null, 
             if (!getAPIKey(fallbackId)) continue;
             
             attemptedProviders.add(fallbackId);
-            const fallbackModel = AVAILABLE_MODELS.find(m => m.provider === fallbackId);
+            const fallbackModel = getAllAvailableModels().find(m => m.provider === fallbackId);
             if (fallbackModel) {
                 try {
                     return await attemptChat(fallbackId, fallbackModel.id);
@@ -1445,6 +1474,7 @@ ${JSON.stringify(contextData.broadcast_history || [], null, 2)}
 CURRENT USER PLATFORM STATE:
 - Today's Date: ${dateString}
 - Current Time: ${timeString}
+- Current Active Page: ${contextData.current_page || '/'}
 - Today's Dispatch Plan (Start-of-Day Schedule): ${JSON.stringify(contextData.today_dispatch_plan || {}, null, 2)}
 - User Profile: ${JSON.stringify(contextData.user || {}, null, 2)}
 - Active Routines: ${JSON.stringify(contextData.routines || [], null, 2)}
@@ -1453,10 +1483,15 @@ CURRENT USER PLATFORM STATE:
 - Classrooms: ${JSON.stringify(contextData.classrooms || [], null, 2)}
 - Quiz Attempt History: ${JSON.stringify(contextData.quiz_attempts || [], null, 2)}
 - Study Notes List: ${JSON.stringify(contextData.study_notes || [], null, 2)}
+- Knowledge Base Materials: ${JSON.stringify(contextData.knowledge_base || [], null, 2)}
+- Available Quizzes: ${JSON.stringify(contextData.quizzes || [], null, 2)}
+- Sprint Vault Code Submissions: ${JSON.stringify(contextData.sprint_vault || [], null, 2)}
+- Sprint Weeks Configuration: ${JSON.stringify(contextData.sprint_templates || [], null, 2)}
+- Sprint Peer & Admin Ratings: ${JSON.stringify(contextData.sprint_evaluations || [], null, 2)}
 - Unread Notifications: ${JSON.stringify(contextData.notifications || [], null, 2)}
 - Class Announcements: ${JSON.stringify(contextData.announcements || [], null, 2)}
 
-ZENITH v1.5.0 PLATFORM & SPRINT TRACKER KNOWLEDGE:
+ZENITH v1.6.0 PLATFORM & SPRINT TRACKER KNOWLEDGE:
 - Sprint Tracker (/sprint-tracker): An 8-week evaluation scoreboard for the Tarothon sprint program.
   - Evaluation Pillars (40 pts max per week):
     1. Task Ownership (10 pts) — Active contribution, code reading, testing, and implementation.
@@ -1466,7 +1501,7 @@ ZENITH v1.5.0 PLATFORM & SPRINT TRACKER KNOWLEDGE:
   - Evaluators: Teammates, Tech Lead (Dev Anand M), and Admins.
   - Master Scoreboard: Top-3 podium (🥇 🥈 🥉), cumulative points, weekly breakdown accordions, and multi-evaluator score averaging.
   - Admin Mode: Admins (Dev Anand / Tech Lead) can rate any teammate for any week, edit ratings, delete ratings, toggle week submission locks (sprint_locks), and manage classroom sprint rosters (sprint_participants).
-  - Navigation: You can navigate users to '/sprint-tracker' whenever they ask about sprint scores, team evaluation, Tarothon leaderboard, or weekly ratings!`;
+  - Navigation: You can navigate users to '/sprint-tracker', '/study-materials', '/routines', '/quizzes', '/dashboard', or '/settings' whenever requested!`;
 
     let systemPrompt;
 
@@ -1766,6 +1801,8 @@ export default {
     getHistory,
     deleteHistoryItem,
     updateHistory,
-    zenChat,
+    getCustomModels,
+    addCustomModel,
+    removeCustomModel,
     generateAdminSentientNotification
 };

@@ -299,28 +299,38 @@ const AdminProfile = () => {
             </div>
 
             {/* Avatar Zoom Modal */}
-            <Modal isOpen={isZoomed} onClose={() => setIsZoomed(false)} title="Profile Picture">
+            {isZoomed && (
                 <div 
                     onClick={() => setIsZoomed(false)}
-                    style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 'var(--space-md)', cursor: 'pointer' }}
-                    title="Click or tap anywhere to close"
+                    style={{
+                        position: 'fixed', inset: 0,
+                        background: 'rgba(0, 0, 0, 0.88)',
+                        backdropFilter: 'blur(16px)',
+                        WebkitBackdropFilter: 'blur(16px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        zIndex: 99999,
+                        cursor: 'pointer',
+                        padding: '20px'
+                    }}
+                    title="Click anywhere to close"
                 >
                     {profileData?.avatar_url ? (
                         <img 
                             src={profileData.avatar_url} 
                             alt={profileData.name} 
                             style={{ 
-                                maxWidth: '100%', 
-                                maxHeight: '70vh', 
-                                borderRadius: 'var(--radius-lg)',
-                                objectFit: 'contain',
-                                boxShadow: 'var(--shadow-xl)'
+                                width: 'min(320px, 80vw)', 
+                                height: 'min(320px, 80vw)', 
+                                borderRadius: '50%',
+                                objectFit: 'cover',
+                                boxShadow: '0 20px 60px rgba(0,0,0,0.9), 0 0 0 4px #10b981, 0 0 35px rgba(16,185,129,0.5)',
+                                border: '4px solid #10b981'
                             }} 
                         />
                     ) : (
                         <div style={{
-                            width: '250px',
-                            height: '250px',
+                            width: '260px',
+                            height: '260px',
                             background: 'var(--gradient-primary)',
                             color: 'white',
                             display: 'flex',
@@ -329,13 +339,13 @@ const AdminProfile = () => {
                             fontSize: '6rem',
                             fontWeight: 700,
                             borderRadius: '50%',
-                            boxShadow: 'var(--shadow-xl)'
+                            boxShadow: '0 20px 60px rgba(0,0,0,0.9), 0 0 0 4px #10b981'
                         }}>
                             {profileData?.name?.charAt(0)?.toUpperCase() || 'A'}
                         </div>
                     )}
                 </div>
-            </Modal>
+            )}
 
             {/* Image Cropper Modal */}
             {cropImageSrc && (

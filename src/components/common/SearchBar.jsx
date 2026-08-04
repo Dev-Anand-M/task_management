@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, X, TrendingUp, Clock, FileText, HelpCircle, Users, Trophy } from 'lucide-react';
+import { Search, X, TrendingUp, Clock, FileText, HelpCircle, Users, Trophy, Sparkles, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const SearchBar = ({
@@ -20,25 +20,38 @@ const SearchBar = ({
 
     // Default recommendations when search is empty
     const defaultRecommendations = [
+        { icon: Sparkles, label: "🎲 I'm Feeling Lucky!", action: 'lucky' },
+        { icon: RefreshCw, label: "🌀 Do a barrel roll!", action: 'barrel_roll' },
         { icon: FileText, label: 'Tasks', path: isAdmin ? '/admin/tasks' : '/tasks', type: 'page' },
         { icon: HelpCircle, label: 'Quizzes', path: isAdmin ? '/admin/quizzes' : '/quizzes', type: 'page' },
         { icon: Trophy, label: 'Leaderboard', path: '/leaderboard', type: 'page' },
         { icon: Users, label: 'Team', path: '/admin/team', type: 'page', adminOnly: true },
     ];
 
-    // Search suggestions based on common actions
+    // Search suggestions covering all sections, tools, features & pages across Zenith
     const searchSuggestions = [
-        { label: 'View tasks', path: isAdmin ? '/admin/tasks' : '/tasks', keywords: ['task', 'assignment', 'work', 'todo'] },
-        { label: 'Take/View quizzes', path: isAdmin ? '/admin/quizzes' : '/quizzes', keywords: ['quiz', 'test', 'exam', 'questions'] },
-        { label: 'Check leaderboard', path: '/leaderboard', keywords: ['leaderboard', 'rank', 'score', 'top', 'players'] },
-        { label: 'My profile', path: '/profile', keywords: ['profile', 'me', 'account', 'user'] },
-        { label: 'Settings', path: '/settings', keywords: ['settings', 'preferences', 'config', 'theme', 'api'] },
-        { label: 'Dashboard', path: isAdmin ? '/admin' : '/dashboard', keywords: ['dashboard', 'home', 'overview', 'main'] },
-        { label: 'Notifications', path: '/notifications', keywords: ['notifications', 'alerts', 'updates', 'messages'] },
-        { label: 'AI Assistant', path: '/ai/assistant', keywords: ['ai', 'assistant', 'help', 'chat', 'bot'] },
-        { label: 'Code Review', path: '/ai/code-review', keywords: ['code', 'review', 'feedback', 'audit'] },
-        { label: 'Study Tools', path: '/ai/study-tools', keywords: ['study', 'learn', 'flashcard', 'summary'] },
-        { label: 'Quiz Generator', path: '/ai/quiz-generator', keywords: ['generator', 'create', 'ai quiz', 'build'] }
+        { label: '🌀 Do a barrel roll!', action: 'barrel_roll', keywords: ['barrel roll', 'do a barrel roll', 'spin', 'rotate', 'easter egg', 'trick', 'roll'] },
+        { label: '🎲 I\'m Feeling Lucky!', action: 'lucky', keywords: ['feeling lucky', 'i feel lucky', 'lucky', 'random', 'surprise', 'pick for me'] },
+        { label: 'Dashboard Overview', path: isAdmin ? '/admin' : '/dashboard', keywords: ['dashboard', 'home', 'overview', 'main', 'stats', 'analytics'] },
+        { label: 'Messages & Chat (v2.0)', path: '/chat', keywords: ['messages', 'chat', 'direct message', 'classroom chat', 'conversation', 'v2', 'inbox'] },
+        { label: 'Tasks & Assignments', path: isAdmin ? '/admin/tasks' : '/tasks', keywords: ['task', 'tasks', 'assignment', 'work', 'todo', 'deadline', 'projects'] },
+        { label: 'Quizzes & Practice', path: isAdmin ? '/admin/quizzes' : '/quizzes', keywords: ['quiz', 'quizzes', 'test', 'exam', 'questions', 'practice', 'mcq'] },
+        { label: 'Sprint Tracker (Live Evaluation)', path: '/sprint-tracker', keywords: ['sprint', 'tracker', 'milestones', 'evaluation', 'kickoff', 'sprint week', 'submissions'] },
+        { label: 'Sprint Vault & Docs', path: '/study-materials?tab=sprint', keywords: ['sprint vault', 'vault', 'sprint docs', 'code project', 'zip upload', 'templates'] },
+        { label: 'Leaderboard & Rankings', path: '/leaderboard', keywords: ['leaderboard', 'rank', 'score', 'top', 'players', 'xp', 'level', 'gamification'] },
+        { label: 'Team Members & Roster', path: isAdmin ? '/admin/team' : '/team', keywords: ['team', 'members', 'students', 'classmates', 'roster', 'directory'] },
+        { label: 'Activity Calendar & Milestones', path: '/calendar', keywords: ['calendar', 'events', 'schedule', 'milestones', 'kickoff', 'deadlines', 'dates'] },
+        { label: 'AI Timetable Architect', path: '/timetable', keywords: ['timetable', 'ai timetable', 'schedule architect', 'routine planner', 'weekly schedule', 'ical'] },
+        { label: 'Consistency Diary & History', path: '/diary', keywords: ['diary', 'routine logs', 'history', 'streak', 'habits', 'progress'] },
+        { label: 'Routines & Habit Tracker', path: '/routines', keywords: ['routines', 'habits', 'recurring tasks', 'alarms', 'routine manager'] },
+        { label: 'Study Lab & AI Assistant', path: '/study-lab', keywords: ['study lab', 'ai assistant', 'chat bot', 'query solver', 'ai tutor', 'help'] },
+        { label: 'AI Code Review', path: '/ai/code-review', keywords: ['code review', 'ai code', 'audit', 'syntax', 'feedback', 'debug'] },
+        { label: 'AI Study Tools & Flashcards', path: '/ai/study-tools', keywords: ['study tools', 'flashcards', 'summarizer', 'ai summary', 'notes generator'] },
+        { label: 'AI Quiz Generator', path: '/ai/quiz-generator', keywords: ['quiz generator', 'create quiz', 'ai quiz', 'test generator', 'build quiz'] },
+        { label: 'Study Materials & Vault', path: '/study-materials', keywords: ['study materials', 'vault', 'docs', 'notes', 'pdfs', 'resources', 'files'] },
+        { label: 'Notifications & Alerts', path: '/notifications', keywords: ['notifications', 'alerts', 'announcements', 'updates', 'messages'] },
+        { label: 'My Profile & Account', path: '/profile', keywords: ['profile', 'account', 'me', 'avatar', 'user info'] },
+        { label: 'Settings & Customization', path: '/settings', keywords: ['settings', 'preferences', 'theme', 'dark mode', 'light mode', 'config', 'api key'] }
     ];
 
     // Filter results based on search query
@@ -54,7 +67,7 @@ const SearchBar = ({
                    suggestion.keywords.some(keyword => keyword.includes(query));
         });
 
-        setFilteredResults(results.slice(0, 5)); // Limit to 5 results
+        setFilteredResults(results.slice(0, 8)); // Limit to 8 results
     }, [value]);
 
     // Close dropdown when clicking outside
@@ -69,16 +82,46 @@ const SearchBar = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleSelect = (path) => {
-        navigate(path);
+    const handleSelect = (item) => {
         setIsFocused(false);
         onChange({ target: { value: '' } });
         if (onClear) onClear();
+
+        if (typeof item === 'string') {
+            navigate(item);
+            return;
+        }
+
+        if (item?.action === 'barrel_roll') {
+            // Trigger 360-degree screen roll!
+            const rootEl = document.getElementById('root') || document.body;
+            rootEl.style.transition = 'transform 1.2s cubic-bezier(0.4, 0, 0.2, 1)';
+            rootEl.style.transform = 'rotate(360deg)';
+            setTimeout(() => {
+                rootEl.style.transition = 'none';
+                rootEl.style.transform = 'none';
+            }, 1250);
+            return;
+        }
+
+        if (item?.action === 'lucky') {
+            // Pick a random surprise page!
+            const realPages = searchSuggestions.filter(s => s.path);
+            const randomPage = realPages[Math.floor(Math.random() * realPages.length)];
+            if (randomPage?.path) {
+                navigate(randomPage.path);
+            }
+            return;
+        }
+
+        if (item?.path) {
+            navigate(item.path);
+        }
     };
 
     const handleKeyDown = (e) => {
         if (e.key === 'Enter' && filteredResults.length > 0) {
-            handleSelect(filteredResults[0].path);
+            handleSelect(filteredResults[0]);
         }
     };
 
@@ -87,7 +130,16 @@ const SearchBar = ({
     return (
         <div ref={searchRef} className={`relative group flex items-center ${className}`}>
             <input
-                type="text"
+                type="search"
+                name="zenith_quick_search_no_autofill"
+                id="zenith_quick_search_input"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                data-form-type="other"
                 placeholder={placeholder}
                 className={`
                     w-full pl-11 pr-10 py-2.5 
@@ -122,6 +174,7 @@ const SearchBar = ({
 
             {value && (
                 <button
+                    type="button"
                     onClick={() => {
                         onChange({ target: { value: '' } });
                         if (onClear) onClear();
@@ -147,7 +200,7 @@ const SearchBar = ({
                         zIndex: 1000,
                         overflow: 'hidden',
                         animation: 'slideInUp 0.2s ease-out',
-                        minWidth: '300px'
+                        minWidth: '320px'
                     }}
                 >
                     {/* Show filtered results if searching */}
@@ -161,12 +214,12 @@ const SearchBar = ({
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.05em'
                             }}>
-                                Search Results
+                                Search Results ({filteredResults.length})
                             </div>
                             {filteredResults.map((result, index) => (
                                 <button
                                     key={index}
-                                    onClick={() => handleSelect(result.path)}
+                                    onClick={() => handleSelect(result)}
                                     style={{
                                         width: '100%',
                                         padding: 'var(--space-sm) var(--space-md)',
@@ -179,13 +232,12 @@ const SearchBar = ({
                                         borderRadius: 'var(--radius-md)',
                                         cursor: 'pointer',
                                         fontSize: 'var(--text-sm)',
-                                        textAlign: 'left',
-                                        transition: 'all 0.2s'
+                                        textAlign: 'left'
                                     }}
-                                    className="hover:bg-primary-500/10"
+                                    className="dropdown-hover-item"
                                 >
-                                    <Search size={16} style={{ color: 'var(--primary-500)', opacity: 0.7 }} />
-                                    <span>{result.label}</span>
+                                    <Search size={16} style={{ color: 'var(--primary-500)', flexShrink: 0 }} />
+                                    <span style={{ fontWeight: 600 }}>{result.label}</span>
                                 </button>
                             ))}
                         </div>
@@ -220,7 +272,7 @@ const SearchBar = ({
                                 .map((rec, index) => (
                                     <button
                                         key={index}
-                                        onClick={() => handleSelect(rec.path)}
+                                        onClick={() => handleSelect(rec)}
                                         style={{
                                             width: '100%',
                                             padding: 'var(--space-sm) var(--space-md)',
@@ -233,13 +285,12 @@ const SearchBar = ({
                                             borderRadius: 'var(--radius-md)',
                                             cursor: 'pointer',
                                             fontSize: 'var(--text-sm)',
-                                            textAlign: 'left',
-                                            transition: 'all 0.2s'
+                                            textAlign: 'left'
                                         }}
-                                        className="hover:bg-primary-500/10"
+                                        className="dropdown-hover-item"
                                     >
-                                        <rec.icon size={16} style={{ color: 'var(--primary-500)', opacity: 0.7 }} />
-                                        <span>{rec.label}</span>
+                                        <rec.icon size={16} style={{ color: 'var(--primary-500)', flexShrink: 0 }} />
+                                        <span style={{ fontWeight: 600 }}>{rec.label}</span>
                                     </button>
                                 ))}
                         </div>

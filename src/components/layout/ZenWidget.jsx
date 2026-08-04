@@ -171,7 +171,7 @@ const ZenWidget = () => {
         const isAdmin = user?.role === 'admin';
         try {
             const basePromises = [
-                routineService.getAllRoutinesForHistory().catch(() => []),
+                routineService.getRoutines().catch(() => []),
                 db.getTasks().catch(() => []),
                 db.getClassrooms().catch(() => []),
                 routineService.getAllLogs().catch(() => []),
@@ -179,7 +179,12 @@ const ZenWidget = () => {
                 db.getStudyNotes(user.id).catch(() => []),
                 db.getProfiles().catch(() => []),
                 db.getNotifications(user.id).catch(() => []),
-                db.getAnnouncements().catch(() => [])
+                db.getAnnouncements().catch(() => []),
+                supabase.from('sprint_vault').select('id, title, file_type, file_name, week_number, uploaded_by, uploader_name, created_at').catch(() => ({ data: [] })),
+                supabase.from('sprint_templates').select('*').catch(() => ({ data: [] })),
+                supabase.from('sprint_evaluations').select('*').catch(() => ({ data: [] })),
+                supabase.from('knowledge_base').select('id, title, type, category').catch(() => ({ data: [] })),
+                db.getQuizzes().catch(() => [])
             ];
 
             const adminPromises = isAdmin ? [
@@ -190,6 +195,7 @@ const ZenWidget = () => {
 
             const [
                 routines, tasks, classrooms, logs, quizAttempts, studyNotes, profiles, notifications, announcements,
+                sprintVaultRes, sprintTemplatesRes, sprintEvalsRes, kbRes, quizzes,
                 ...adminData
             ] = await Promise.all([...basePromises, ...adminPromises]);
 
@@ -212,6 +218,7 @@ const ZenWidget = () => {
             const broadcastHistory = sentientBroadcastService.getBroadcastHistory(user?.id);
 
             const context = {
+                current_page: window.location.pathname,
                 user: { 
                     id: user?.id, 
                     email: user?.email, 
@@ -231,7 +238,12 @@ const ZenWidget = () => {
                 announcements: (announcements || []).slice(0, 10),
                 notifications: (notifications || []).filter(n => !n.is_read).slice(0, 10),
                 broadcast_history: broadcastHistory,
-                today_dispatch_plan: todayDispatchPlan
+                today_dispatch_plan: todayDispatchPlan,
+                sprint_vault: (sprintVaultRes?.data || []).slice(0, 25),
+                sprint_templates: (sprintTemplatesRes?.data || []).slice(0, 10),
+                sprint_evaluations: (sprintEvalsRes?.data || []).slice(0, 30),
+                knowledge_base: (kbRes?.data || []).slice(0, 20),
+                quizzes: (quizzes || []).slice(0, 15)
             };
 
             if (isAdmin && adminData.length === 3) {
@@ -415,7 +427,7 @@ const ZenWidget = () => {
                 <div style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'radial-gradient(circle at 50% 0%, var(--primary-500-alpha, rgba(99, 102, 241, 0.15)) 0%, transparent 70%)',
+                    background: 'radial-gradient(circle at 50% 0%, var(--primary-500-alpha, rgba(99, 102, 241, 0.04)) 0%, transparent 70%)',
                     pointerEvents: 'none'
                 }} />
 

@@ -6,7 +6,7 @@ import packageJson from '../../package.json';
 const VERSION_CHECK_URL = typeof window !== 'undefined' && !Capacitor.isNativePlatform() 
   ? '/version.json' 
   : 'https://zenith-sable-alpha.vercel.app/version.json';
-const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.5.4.apk';
+const APK_DOWNLOAD_URL = 'https://zenith-sable-alpha.vercel.app/zenith-v1.6.0.apk';
 
 export const updateChecker = {
   /**
@@ -15,7 +15,7 @@ export const updateChecker = {
    */
   async checkForUpdates() {
     try {
-      let currentVersion = packageJson.version || '1.2.0';
+      let currentVersion = packageJson.version || '1.6.0';
 
       if (Capacitor.isNativePlatform()) {
         try {
@@ -31,12 +31,16 @@ export const updateChecker = {
       if (!response.ok) throw new Error('Unable to fetch version metadata');
       
       const versionData = await response.json();
-      const latestVersion = versionData.version || '1.4.0';
+      const latestVersion = versionData.version || '1.6.0';
       const downloadUrl = versionData.downloadUrl || APK_DOWNLOAD_URL;
       const isMaintenance = Boolean(versionData.maintenance);
+      const minSupported = versionData.minSupportedVersion || '1.6.0';
 
-      // If maintenance mode is active on server, show popup on all client versions
-      const updateAvailable = isMaintenance || this.compareVersions(currentVersion, latestVersion) < 0;
+      // Mandatory if maintenance, explicit mandatory flag, or client version is less than minSupported / latestVersion
+      const isOutdated = this.compareVersions(currentVersion, latestVersion) < 0;
+      const isLesserThanMin = this.compareVersions(currentVersion, minSupported) < 0;
+      const updateAvailable = isMaintenance || isOutdated;
+      const isMandatory = isMaintenance || isLesserThanMin || versionData.mandatory || isOutdated;
 
       return {
         updateAvailable,
@@ -46,7 +50,7 @@ export const updateChecker = {
         latestVersion,
         downloadUrl,
         releaseNotes: versionData.releaseNotes || '',
-        mandatory: isMaintenance ? true : (versionData.mandatory || false),
+        mandatory: isMandatory,
       };
     } catch (error) {
       console.error('[UpdateChecker] Check failed:', error);

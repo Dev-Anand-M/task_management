@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, Modal } from '../../components/common';
+import { CodeVaultViewer } from '../../components/sprint/CodeVaultViewer';
 import { 
     Zap, 
     Plus, 
@@ -11,7 +12,9 @@ import {
     Upload, 
     Link as LinkIcon,
     ArrowRight,
-    Check
+    Check,
+    Code,
+    Lock
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -53,11 +56,13 @@ function SprintVault() {
             if (vaultDocs.length === 0) {
                 setLoading(true);
             }
-            const [tempRes, vaultRes, kbRes] = await Promise.all([
+            const [tempRes, vaultRes, profilesRes] = await Promise.all([
                 supabase.from('sprint_templates').select('*').order('week_number', { ascending: true }),
-                supabase.from('sprint_vault').select('*').order('week_number', { ascending: true }),
-                supabase.from('knowledge_base').select('*').order('created_at', { ascending: false })
+                supabase.from('sprint_vault').select('*').order('created_at', { ascending: false }),
+                supabase.from('profiles').select('id, name, email, avatar_url')
             ]);
+            const profilesMap = {};
+            (profilesRes?.data || []).forEach(p => { profilesMap[p.id] = p; });
 
             let templates = tempRes?.data || [];
             if (cid) {
@@ -65,38 +70,27 @@ function SprintVault() {
             }
             setSprintTemplates(templates.length > 0 ? templates : DEFAULT_WEEKS);
 
-            // Merge docs from both sprint_vault (new) and knowledge_base (old migrated docs)
-            let newDocs = vaultRes?.data || [];
-            let oldDocs = kbRes?.data || [];
-            
-            console.log('[SprintVault] Raw sprint_vault docs:', newDocs);
-            console.log('[SprintVault] Raw knowledge_base docs:', oldDocs);
-            
-            // Map old knowledge_base docs to match sprint_vault structure
-            const mappedOldDocs = oldDocs.map(d => {
-                const weekMatch = (d.subject || '').match(/week\s*(\d+)/i);
-                const weekNum = weekMatch ? parseInt(weekMatch[1]) : null;
-                console.log(`[SprintVault] Mapping old doc "${d.title}" - subject: "${d.subject}" - extracted week: ${weekNum}`);
-                return {
-                    ...d,
-                    week_number: weekNum,
-                    file_type: d.material_type || 'file',
-                    file_url: d.url || d.file_url,
-                    uploaded_by: d.created_by || null,
-                    is_old_migration: true
-                };
-            }).filter(d => d.week_number !== null);
-            
-            console.log('[SprintVault] Mapped old docs:', mappedOldDocs);
-            
-            let allDocs = [...newDocs, ...mappedOldDocs];
-            
-            if (cid) {
-                allDocs = allDocs.filter(d => !d.classroom_id || d.classroom_id === cid);
+            let rawVaultDocs = vaultRes?.data || [];
+            if (vaultRes.error) {
+                console.error('[SprintVault] Error loading sprint_vault docs:', vaultRes.error);
             }
             
-            console.log('[SprintVault] Final merged docs:', allDocs);
-            setVaultDocs(allDocs);
+            // Map sprint_vault docs with integer week_number and uploader profile details
+            const mappedDocs = rawVaultDocs.map(d => {
+                const uploader = profilesMap[d.uploaded_by] || null;
+                const formattedDate = d.created_at ? new Date(d.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
+                
+                return {
+                    ...d,
+                    week_number: parseInt(d.week_number, 10) || 1,
+                    uploader_name: uploader?.name || uploader?.email?.split('@')[0] || (d.uploaded_by ? 'Team Member' : 'Classroom Lead'),
+                    uploader_avatar: uploader?.avatar_url || null,
+                    formatted_date: formattedDate
+                };
+            });
+            
+            console.log('[SprintVault] Loaded vault docs:', mappedDocs);
+            setVaultDocs(mappedDocs);
         } catch (err) {
             console.error('[SprintVault] Load error:', err);
         } finally {
@@ -114,6 +108,8 @@ function SprintVault() {
         setShowAddModal(true);
     };
 
+    const [viewingCodeDoc, setViewingCodeDoc] = useState(null);
+
     const handleSaveDoc = async (e) => {
         e.preventDefault();
         if (!docForm.title) return;
@@ -125,8 +121,8 @@ function SprintVault() {
                 file_url = await db.uploadStudyMaterial(docForm.file);
             }
 
-            // Save directly to sprint_vault table (NOT knowledge_base)
-            await supabase.from('sprint_vault').insert({
+            // Save exclusively to sprint_vault table
+            const { error: vaultErr } = await supabase.from('sprint_vault').insert({
                 classroom_id: user?.classroom_id,
                 week_number: targetWeek,
                 title: docForm.title,
@@ -136,14 +132,25 @@ function SprintVault() {
                 uploaded_by: user?.id
             });
 
-            // Also update sprint_templates resource_url for quick reference
-            await supabase.from('sprint_templates').upsert({
-                classroom_id: user?.classroom_id,
-                week_number: targetWeek,
-                title: sprintTemplates.find(t => t.week_number === targetWeek)?.title || `Week ${targetWeek}`,
-                resource_url: file_url || `/sprint-vault`,
-                resource_label: docForm.title
-            }, { onConflict: 'classroom_id,week_number' });
+            if (vaultErr) {
+                console.error('[SprintVault] sprint_vault insert error:', vaultErr);
+                throw new Error(vaultErr.message || 'Failed to save to sprint_vault');
+            }
+
+            // Update sprint_templates primary resource for quick reference (Admin capability or safe try-catch)
+            if (isAdmin) {
+                try {
+                    await supabase.from('sprint_templates').upsert({
+                        classroom_id: user?.classroom_id,
+                        week_number: targetWeek,
+                        title: sprintTemplates.find(t => t.week_number === targetWeek)?.title || `Week ${targetWeek}`,
+                        resource_url: file_url || `/sprint-vault`,
+                        resource_label: docForm.title
+                    }, { onConflict: 'classroom_id,week_number' });
+                } catch (tmplErr) {
+                    console.warn('[SprintVault] Template upsert non-critical warning:', tmplErr);
+                }
+            }
 
             setShowAddModal(false);
             loadVaultData();
@@ -196,16 +203,30 @@ function SprintVault() {
         }
 
         // 2. Include sprint_vault documents for this week (direct week_number match)
-        const sprintDocs = vaultDocs.filter(d => d.week_number === weekNum);
+        const sprintDocs = vaultDocs.filter(d => Number(d.week_number) === Number(weekNum));
 
-        // Merge without duplicating file_urls
+        // Merge without duplicating
         sprintDocs.forEach(d => {
-            if (!list.some(existing => existing.file_url === d.file_url)) {
+            const isDuplicate = list.some(existing => 
+                existing.id === d.id || (d.file_url && existing.file_url === d.file_url)
+            );
+            if (!isDuplicate) {
                 list.push(d);
             }
         });
 
         return list;
+    };
+
+    const isWeekLocked = (weekNum) => {
+        const template = sprintTemplates.find(t => Number(t.week_number) === Number(weekNum));
+        if (!template || !template.start_date || !template.end_date) return false;
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        const startStr = template.start_date.split('T')[0];
+        const endStr = template.end_date.split('T')[0];
+
+        return todayStr < startStr || todayStr > endStr;
     };
 
     return (
@@ -266,76 +287,190 @@ function SprintVault() {
 
                                     {/* Attached Documents List */}
                                     <div style={{ marginTop: 'var(--space-md)' }}>
-                                        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>
-                                            Attached Resources ({docs.length})
-                                        </div>
+                                        {(() => {
+                                            const officialBriefings = docs.filter(d => d.is_template_resource);
+                                            const teamSubmissions = docs.filter(d => !d.is_template_resource);
 
-                                        {docs.length === 0 ? (
-                                            <div style={{ padding: 'var(--space-md)', textAlign: 'center', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                                                No documents attached yet for Week {weekNum}
-                                            </div>
-                                        ) : (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                {docs.map(doc => (
-                                                    <div key={doc.id} style={{
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                        padding: '10px 14px', borderRadius: 'var(--radius-lg)',
-                                                        background: 'var(--surface)', border: '1px solid var(--border)',
-                                                        fontSize: 'var(--text-sm)'
-                                                    }}>
-                                                        <a
-                                                            href={doc.file_url || doc.url || '#'}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none', minWidth: 0, flex: 1 }}
-                                                        >
-                                                            <FileText size={16} style={{ flexShrink: 0 }} />
-                                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                                {doc.title}
-                                                            </span>
-                                                            <ExternalLink size={13} style={{ flexShrink: 0 }} />
-                                                        </a>
-
-                                                        <div style={{ display: 'flex', gap: '4px' }}>
-                                                            <button
-                                                                onClick={() => handleDeleteDoc(doc)}
-                                                                title="Delete Resource"
-                                                                style={{ 
-                                                                    background: '#fee2e2', 
-                                                                    border: '1px solid #fecaca', 
-                                                                    color: '#dc2626', 
-                                                                    cursor: 'pointer', 
-                                                                    padding: '6px 10px',
-                                                                    borderRadius: 'var(--radius-md)',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: '4px',
-                                                                    fontSize: 'var(--text-xs)',
-                                                                    fontWeight: 600,
-                                                                    transition: 'all 0.2s'
-                                                                }}
-                                                                onMouseEnter={e => {
-                                                                    e.currentTarget.style.background = '#fecaca';
-                                                                    e.currentTarget.style.borderColor = '#dc2626';
-                                                                }}
-                                                                onMouseLeave={e => {
-                                                                    e.currentTarget.style.background = '#fee2e2';
-                                                                    e.currentTarget.style.borderColor = '#fecaca';
-                                                                }}
-                                                            >
-                                                                <Trash2 size={14} /> Delete
-                                                            </button>
-                                                        </div>
+                                            if (docs.length === 0) {
+                                                return (
+                                                    <div style={{ padding: 'var(--space-md)', textAlign: 'center', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                                        No uploads or briefings yet for Week {weekNum}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                                );
+                                            }
+
+                                            const renderDocItem = (doc, isOfficial = false) => {
+                                                const uploadedAt = doc.created_at ? new Date(doc.created_at) : null;
+                                                const timeAgo = uploadedAt ? (() => {
+                                                    const diff = Date.now() - uploadedAt.getTime();
+                                                    const mins = Math.floor(diff / 60000);
+                                                    const hrs = Math.floor(mins / 60);
+                                                    const days = Math.floor(hrs / 24);
+                                                    if (days > 0) return `${days}d ago`;
+                                                    if (hrs > 0) return `${hrs}h ago`;
+                                                    if (mins > 0) return `${mins}m ago`;
+                                                    return 'just now';
+                                                })() : null;
+
+                                                const urlLower = (doc.file_url || doc.url || '').toLowerCase();
+                                                const typeLower = (doc.file_type || doc.material_type || '').toLowerCase();
+                                                const isZip = urlLower.includes('.zip') || typeLower === 'zip';
+                                                const isLink = typeLower === 'link' || (!isZip && urlLower.startsWith('http') && (urlLower.includes('notion.so') || urlLower.includes('figma.com') || urlLower.includes('google.com')));
+
+                                                // Tree-suitable: zip files, code files, text, markdown, json, py, js, etc.
+                                                const codeExts = ['.js', '.jsx', '.ts', '.tsx', '.py', '.html', '.css', '.json', '.cpp', '.c', '.h', '.java', '.md', '.txt', '.xml', '.yaml', '.yml'];
+                                                const isTreeSuitable = !isOfficial && (isZip || codeExts.some(ext => urlLower.endsWith(ext)) || (typeLower === 'file' && !isLink));
+
+                                                return (
+                                                    <div key={doc.id} style={{
+                                                        borderRadius: 'var(--radius-lg)',
+                                                        background: isOfficial ? 'color-mix(in srgb, var(--primary-500), transparent 93%)' : 'var(--surface)',
+                                                        border: isOfficial ? '1px solid color-mix(in srgb, var(--primary-500), transparent 70%)' : '1px solid var(--border)',
+                                                        overflow: 'hidden',
+                                                        transition: 'border-color 0.2s ease'
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary-400)'}
+                                                    onMouseLeave={e => e.currentTarget.style.borderColor = isOfficial ? 'color-mix(in srgb, var(--primary-500), transparent 70%)' : 'var(--border)'}
+                                                    >
+                                                        {/* Top row: icon + title + uploader info + actions */}
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px' }}>
+                                                            <div style={{
+                                                                width: '34px', height: '34px', borderRadius: '8px', flexShrink: 0,
+                                                                background: isOfficial ? 'rgba(59,130,246,0.2)' : isZip ? 'rgba(245,158,11,0.15)' : isLink ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                            }}>
+                                                                {isOfficial ? <BookOpen size={16} style={{ color: '#3b82f6' }} />
+                                                                       : isZip ? <span style={{ fontSize: '16px' }}>🗜️</span>
+                                                                       : isLink ? <ExternalLink size={16} style={{ color: '#3b82f6' }} />
+                                                                       : <FileText size={16} style={{ color: '#10b981' }} />}
+                                                            </div>
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                                <a
+                                                                    href={doc.file_url || doc.url || '#'}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    style={{ display: 'block', fontWeight: 700, fontSize: 'var(--text-sm)', color: isOfficial ? '#3b82f6' : 'var(--text)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                                                >
+                                                                    {doc.title}
+                                                                </a>
+                                                                {/* Uploader name & Upload timestamp */}
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                                                                    {isOfficial ? (
+                                                                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', background: 'rgba(59,130,246,0.15)', color: '#3b82f6' }}>
+                                                                            📜 Official Briefing
+                                                                        </span>
+                                                                    ) : (
+                                                                        <>
+                                                                            {doc.uploader_avatar ? (
+                                                                                <img src={doc.uploader_avatar} alt="" style={{ width: '14px', height: '14px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                                            ) : (
+                                                                                <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: 'var(--primary-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', color: '#fff', fontWeight: 700, flexShrink: 0 }}>
+                                                                                    {(doc.uploader_name || '?')[0].toUpperCase()}
+                                                                                </div>
+                                                                            )}
+                                                                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                                                                Uploaded by <strong style={{ color: 'var(--text)' }}>{doc.uploader_name || 'Team Member'}</strong>
+                                                                            </span>
+                                                                        </>
+                                                                    )}
+                                                                    {timeAgo && (
+                                                                        <>
+                                                                            <span style={{ fontSize: '10px', color: 'var(--border)' }}>·</span>
+                                                                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{timeAgo}</span>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            {/* Actions: Browse Tree only when suitable */}
+                                                            <div style={{ display: 'flex', gap: '5px', flexShrink: 0 }}>
+                                                                {isTreeSuitable && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setViewingCodeDoc(doc)}
+                                                                        title="Browse Code Tree & File Explorer"
+                                                                        style={{
+                                                                            background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.3)',
+                                                                            color: '#38bdf8', cursor: 'pointer', padding: '4px 9px',
+                                                                            borderRadius: '6px', display: 'inline-flex', alignItems: 'center',
+                                                                            gap: '4px', fontSize: '11px', fontWeight: 700
+                                                                        }}
+                                                                    >
+                                                                        <Code size={12} /> Browse Tree
+                                                                    </button>
+                                                                )}
+                                                                {(isAdmin || !doc.uploaded_by || doc.uploaded_by === user?.id) && (
+                                                                    <button
+                                                                        onClick={() => handleDeleteDoc(doc)}
+                                                                        title="Delete Resource"
+                                                                        style={{
+                                                                            background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)',
+                                                                            color: '#dc2626', cursor: 'pointer', padding: '4px 7px',
+                                                                            borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '3px',
+                                                                            fontSize: '11px', fontWeight: 600
+                                                                        }}
+                                                                    >
+                                                                        <Trash2 size={12} />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        {/* Description strip if present */}
+                                                        {(doc.description || doc.content) && (
+                                                            <div style={{ padding: '0 14px 10px', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '8px' }}>
+                                                                {(doc.description || doc.content).slice(0, 120)}{(doc.description || doc.content).length > 120 ? '…' : ''}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            };
+
+                                            return (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                    {/* Official Briefings Section */}
+                                                    {officialBriefings.length > 0 && (
+                                                        <div>
+                                                            <div style={{ fontSize: '10px', fontWeight: 800, color: '#3b82f6', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                                <BookOpen size={12} /> Official Briefing & Documentation ({officialBriefings.length})
+                                                            </div>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                                {officialBriefings.map(d => renderDocItem(d, true))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Section Divider Line */}
+                                                    {officialBriefings.length > 0 && teamSubmissions.length > 0 && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0 2px' }}>
+                                                            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+                                                            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                                Team Submissions ({teamSubmissions.length})
+                                                            </span>
+                                                            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+                                                        </div>
+                                                    )}
+
+                                                    {/* Team Submissions Section */}
+                                                    {teamSubmissions.length > 0 && (
+                                                        <div>
+                                                            {officialBriefings.length === 0 && (
+                                                                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.05em' }}>
+                                                                    Team Submissions ({teamSubmissions.length})
+                                                                </div>
+                                                            )}
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                {teamSubmissions.map(d => renderDocItem(d, false))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
 
-                                {/* Card Footer for Admin */}
-                                {isAdmin && (
-                                    <div style={{ padding: 'var(--space-md) var(--space-xl)', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+                                {/* Card Footer for Members & Admins */}
+                                <div style={{ padding: 'var(--space-md) var(--space-xl)', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    {!isWeekLocked(weekNum) || isAdmin ? (
                                         <button
                                             onClick={() => handleOpenAddModal(weekNum)}
                                             style={{
@@ -343,13 +478,20 @@ function SprintVault() {
                                                 padding: '10px 18px', borderRadius: 'var(--radius-lg)',
                                                 background: 'var(--primary-500)', color: '#fff',
                                                 border: 'none', fontSize: 'var(--text-sm)', fontWeight: 700, cursor: 'pointer',
-                                                transition: 'all 0.2s ease', boxShadow: '0 2px 8px rgba(59, 130, 246, 0.25)'
+                                                transition: 'all 0.2s ease', boxShadow: '0 2px 8px rgba(59, 130, 246, 0.25)', marginLeft: 'auto'
                                             }}
                                         >
                                             <Plus size={16} /> Add Doc to Week {weekNum}
                                         </button>
-                                    </div>
-                                )}
+                                    ) : (
+                                        <span style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                            fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-muted)'
+                                        }}>
+                                            <Lock size={13} style={{ color: '#ef4444' }} /> Upload Locked (Starts {template.start_date ? new Date(template.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Soon'})
+                                        </span>
+                                    )}
+                                </div>
                             </Card>
                         );
                     })}
@@ -477,6 +619,13 @@ function SprintVault() {
                     </div>
                 </form>
             </Modal>
+
+            {/* Embedded Code Tree & File Explorer Modal */}
+            <CodeVaultViewer
+                isOpen={!!viewingCodeDoc}
+                onClose={() => setViewingCodeDoc(null)}
+                doc={viewingCodeDoc}
+            />
         </div>
     );
 }

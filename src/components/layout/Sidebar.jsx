@@ -197,18 +197,22 @@ const Sidebar = ({ isOpen, onClose }) => {
 
                 <nav style={{ flex: 1, padding: 'var(--space-sm)', overflowY: 'auto' }}>
                     {/* Get Mobile App promo - Only on web */}
+                    {/* Get Mobile App promo - Only on web */}
                     {!PlatformService.isNative() && (
-                        <div style={{
-                            margin: '0 var(--space-xs) var(--space-md)',
-                            padding: 'var(--space-sm) var(--space-md)',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px dashed rgba(255, 255, 255, 0.15)',
-                            borderRadius: 'var(--radius-lg)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: 'var(--space-sm)'
-                        }}>
+                        <div 
+                            className="sidebar-promo-card"
+                            style={{
+                                margin: '0 var(--space-xs) var(--space-md)',
+                                padding: 'var(--space-sm) var(--space-md)',
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                border: '1px dashed rgba(255, 255, 255, 0.15)',
+                                borderRadius: 'var(--radius-lg)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 'var(--space-sm)'
+                            }}
+                        >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '18px' }}>🤖</span>
                                 <div style={{ textAlign: 'left' }}>
@@ -217,7 +221,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 </div>
                             </div>
                             <a
-                                href="/zenith-v1.5.4.apk"
+                                href="/zenith-v1.6.0.apk"
                                 download
                                 style={{
                                     padding: '4px 10px',
@@ -249,7 +253,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                     cursor: 'pointer',
                                     transition: 'background var(--transition-fast)'
                                 }}
-                                className="classroom-selector"
+                                className="classroom-selector-card"
                             >
                                 <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--sidebar-text-muted, rgba(255,255,255,0.6))', letterSpacing: '0.05em', marginBottom: '4px' }}>
                                     Current Classroom
@@ -315,14 +319,17 @@ const Sidebar = ({ isOpen, onClose }) => {
 
                     {/* Glowing Top-Placed Foldable SPRINT ZONE Category */}
                     {(isAdmin || isSprintParticipant) && (
-                        <div style={{
-                            marginBottom: 'var(--space-md)',
-                            borderRadius: '16px',
-                            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.08) 100%)',
-                            border: '1px solid rgba(245, 158, 11, 0.4)',
-                            padding: '8px 6px',
-                            boxShadow: '0 4px 20px rgba(245, 158, 11, 0.2), inset 0 0 12px rgba(245, 158, 11, 0.1)',
-                        }}>
+                        <div 
+                            className="sprint-zone-card"
+                            style={{
+                                marginBottom: 'var(--space-md)',
+                                borderRadius: '16px',
+                                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.08) 100%)',
+                                border: '1px solid rgba(245, 158, 11, 0.4)',
+                                padding: '8px 6px',
+                                boxShadow: '0 4px 20px rgba(245, 158, 11, 0.2), inset 0 0 12px rgba(245, 158, 11, 0.1)',
+                            }}
+                        >
                             {/* Collapsible Header */}
                             <div
                                 onClick={() => setShowSprintZone(!showSprintZone)}
@@ -392,9 +399,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                                             <NavLink
                                                 to={link.to}
                                                 end={link.exact}
-                                                replace={true}
                                                 onClick={onClose}
-                                                className="sprint-nav-link"
+                                                className="sprint-nav-link sidebar-nav-item"
                                                 style={({ isActive }) => ({
                                                     display: 'flex',
                                                     alignItems: 'center',
@@ -441,8 +447,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                                         <NavLink
                                             to={link.to}
                                             end={link.exact}
-                                            replace={true}
                                             onClick={onClose}
+                                            className="sidebar-nav-item"
                                             style={({ isActive }) => ({
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -462,14 +468,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                                             <span style={{ flex: 1 }}>{link.label}</span>
                                             {/* Version badge */}
                                             {link.badge && (
-                                                <span style={{
-                                                    fontSize: '9px', fontWeight: 700,
-                                                    padding: '2px 6px',
-                                                    background: 'rgba(99,102,241,0.3)',
-                                                    color: '#a5b4fc',
-                                                    borderRadius: '8px',
-                                                    letterSpacing: '0.02em',
-                                                }}>{link.badge}</span>
+                                                <span className="sidebar-version-badge">
+                                                    {link.badge}
+                                                </span>
                                             )}
                                             {/* Sprint open/active badge */}
                                             {link.sprintBadge && isSprintOpen && (
@@ -537,7 +538,6 @@ const Sidebar = ({ isOpen, onClose }) => {
                                         <li key={link.to}>
                                             <NavLink
                                                 to={link.to}
-                                                replace={true}
                                                 onClick={onClose}
                                                 style={({ isActive }) => ({
                                                     display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
@@ -644,6 +644,101 @@ const Sidebar = ({ isOpen, onClose }) => {
           .sidebar-overlay {
             display: block !important;
           }
+        }
+
+        /* Sidebar Clean & Minimal Hover Effects */
+
+        .sidebar-nav-item {
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+
+        .sidebar-nav-item:hover {
+            transform: translateX(4px) !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+        }
+
+        .sidebar-nav-item:hover svg {
+            transform: scale(1.12) rotate(3deg) !important;
+            transition: transform 0.2s ease !important;
+        }
+
+        /* --- SPRINT ZONE (Exclusive Glowing Top Card) --- */
+        .sprint-zone-card {
+            transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1) !important;
+        }
+
+        .sprint-zone-card:hover {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%) !important;
+            border-color: rgba(245, 158, 11, 0.6) !important;
+            box-shadow: 0 6px 24px rgba(245, 158, 11, 0.25) !important;
+            transform: translateY(-2px) !important;
+        }
+
+        .sidebar-version-badge {
+            padding: 2px 7px;
+            background: rgba(99, 102, 241, 0.25);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+        }
+
+        .sidebar-promo-card, .classroom-selector-card {
+            transition: all 0.25s cubic-bezier(0.32, 0.72, 0, 1) !important;
+        }
+
+        .sidebar-promo-card:hover, .classroom-selector-card:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+            border-color: rgba(255, 255, 255, 0.28) !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25) !important;
+        }
+
+        /* --- LIGHT MODE OVERRIDES (html[data-theme="light"]) --- */
+        html[data-theme="light"] .sidebar-nav-item:hover {
+            background: rgba(15, 23, 42, 0.06) !important;
+            color: #0f172a !important;
+        }
+
+        html[data-theme="light"] .sidebar-nav-item:hover svg {
+            color: #4338ca !important;
+        }
+
+        /* Light Mode SPRINT Zone */
+        html[data-theme="light"] .sprint-zone-card {
+            background: linear-gradient(135deg, rgba(254, 243, 199, 0.9) 0%, rgba(254, 215, 170, 0.7) 100%) !important;
+            border: 1px solid rgba(245, 158, 11, 0.5) !important;
+        }
+
+        html[data-theme="light"] .sprint-zone-card:hover {
+            background: linear-gradient(135deg, rgba(244, 235, 190, 1) 0%, rgba(254, 215, 170, 0.9) 100%) !important;
+            border-color: #f59e0b !important;
+            box-shadow: 0 6px 20px rgba(217, 119, 6, 0.2) !important;
+        }
+
+        html[data-theme="light"] .sprint-nav-link:hover {
+            background: rgba(245, 158, 11, 0.25) !important;
+            color: #78350f !important;
+        }
+
+        html[data-theme="light"] .sprint-nav-link:hover svg {
+            color: #d97706 !important;
+        }
+
+        html[data-theme="light"] .sidebar-version-badge {
+            background: rgba(99, 102, 241, 0.15) !important;
+            color: #4338ca !important;
+            border: 1px solid rgba(99, 102, 241, 0.35) !important;
+        }
+
+        html[data-theme="light"] .sidebar-promo-card:hover, 
+        html[data-theme="light"] .classroom-selector-card:hover {
+            background: rgba(15, 23, 42, 0.06) !important;
+            border-color: rgba(15, 23, 42, 0.18) !important;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08) !important;
         }
       `}</style>
             {showLogoutConfirm && createPortal(

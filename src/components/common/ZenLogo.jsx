@@ -66,20 +66,20 @@ export const ZenLogo = ({ size = 28, glow = true, className = '', style = {} }) 
                 ...style
             }}
         >
-            {/* Ambient Aura Background */}
+            {/* Subtle Ambient Aura Background */}
             {glow && (
                 <div 
                     style={{
                         position: 'absolute',
-                        inset: '-10%',
+                        inset: '0%',
                         borderRadius: '50%',
                         background: isLiquidGlass 
-                            ? 'radial-gradient(circle, #ef4444 0%, #10b981 40%, #22c55e 75%, transparent 100%)' 
-                            : 'radial-gradient(circle, var(--primary-500, #9333ea) 0%, var(--accent-500, #ec4899) 60%, transparent 90%)',
-                        filter: 'blur(3px)',
-                        animation: isLiquidGlass ? 'liquid-glass-aura-shimmer 3s ease-in-out infinite alternate' : 'standard-orb-aura 4s ease-in-out infinite alternate',
+                            ? 'radial-gradient(circle, #ef4444 0%, #10b981 50%, transparent 100%)' 
+                            : 'radial-gradient(circle, var(--primary-500, #9333ea) 0%, transparent 80%)',
+                        filter: 'blur(2px)',
+                        animation: isLiquidGlass ? 'liquid-glass-aura-shimmer 4s ease-in-out infinite alternate' : 'standard-orb-aura 5s ease-in-out infinite alternate',
                         pointerEvents: 'none',
-                        opacity: isLiquidGlass ? 0.25 : 0.12
+                        opacity: isLiquidGlass ? 0.10 : 0.04
                     }} 
                 />
             )}

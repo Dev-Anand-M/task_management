@@ -1,8 +1,8 @@
 {
-  "version": "1.5.2",
+  "version": "1.6.0",
   "maintenance": false,
-  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.5.2.apk",
-  "releaseNotes": "🔧 Zenith v1.5.2 — SecurityGuard VPN false positive fix, Sprint Zone UI updates, Sprint Vault delete/edit buttons for file management.",
+  "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.6.0.apk",
+  "releaseNotes": "🚀 Zenith v1.6.0 — Major Release! Website-wide Custom AI Model Integration, Full 360° ZEN AI Platform Context, Isolated Custom Models per Provider, and Sprint Vault Upgrades.",
   "mandatory": true,
-  "minSupportedVersion": "1.4.0"
+  "minSupportedVersion": "1.6.0"
 }

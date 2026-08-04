@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 /**
- * ImageCropper — zero-dependency canvas-based square profile cropper.
- * Outputs a clean full-bleed 512x512 square image without baked-in black circular borders.
+ * ImageCropper — zero-dependency canvas-based responsive profile cropper.
+ * Outputs a clean full-bleed 512x512 square profile image.
+ * Perfectly square 1:1 aspect ratio on laptops, tablets, and mobile screens without distortion or stretching.
  * Props:
  *   imageSrc   — object URL of the selected image
  *   onCrop     — callback(blob) called with the cropped image blob
@@ -20,10 +21,9 @@ const ImageCropper = ({ imageSrc, onCrop, onCancel }) => {
     const [imgLoaded, setImgLoaded] = useState(false);
     const [uploading, setUploading] = useState(false);
 
-    const CROP_W = 310;
-    const CROP_H = 310;
-    const CANVAS_W = 330;
-    const CANVAS_H = 330;
+    // Internal canvas resolution
+    const CANVAS_SIZE = 400;
+    const CROP_SIZE = 400; // circular crop frame area (full bleed inside circular container)
 
     const draw = useCallback(() => {
         const canvas = canvasRef.current;
@@ -35,49 +35,47 @@ const ImageCropper = ({ imageSrc, onCrop, onCancel }) => {
         const H = canvas.height;
         const cx = W / 2;
         const cy = H / 2;
-        const rw = CROP_W;
-        const rh = CROP_H;
-        const rx = cx - rw / 2;
-        const ry = cy - rh / 2;
-        const radius = 16;
+        const radius = CROP_SIZE / 2;
 
         ctx.clearRect(0, 0, W, H);
 
-        // 1. Draw image
+        // 1. Draw scaled & offset image
         const iw = img.naturalWidth * scale;
         const ih = img.naturalHeight * scale;
         const ix = cx - iw / 2 + offset.x;
         const iy = cy - ih / 2 + offset.y;
+
         ctx.drawImage(img, ix, iy, iw, ih);
 
-        // 2. Dim outside crop box (evenodd rule: keeps square area 100% bright & visible)
+        // 2. Dim backdrop outside circle crop mask
         ctx.save();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
         ctx.beginPath();
         ctx.rect(0, 0, W, H);
-        if (ctx.roundRect) {
-            ctx.roundRect(rx, ry, rw, rh, radius);
-        } else {
-            ctx.rect(rx, ry, rw, rh);
-        }
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2, true); // Counter-clockwise for evenodd hole
         ctx.fill('evenodd');
         ctx.restore();
 
-        // 3. Green guide border
+        // 3. Glowing Emerald circular guide border
         ctx.save();
         ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 3.5;
         ctx.beginPath();
-        if (ctx.roundRect) {
-            ctx.roundRect(rx, ry, rw, rh, radius);
-        } else {
-            ctx.rect(rx, ry, rw, rh);
-        }
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Grid lines (rule of thirds)
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+        // 4. Rule-of-thirds grid lines (clipped inside circle)
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.clip();
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
         ctx.lineWidth = 1;
+        const rx = cx - radius;
+        const ry = cy - radius;
+        const rw = CROP_SIZE;
+        const rh = CROP_SIZE;
+
         ctx.beginPath();
         ctx.moveTo(rx + rw / 3, ry); ctx.lineTo(rx + rw / 3, ry + rh);
         ctx.moveTo(rx + (rw * 2) / 3, ry); ctx.lineTo(rx + (rw * 2) / 3, ry + rh);
@@ -94,7 +92,7 @@ const ImageCropper = ({ imageSrc, onCrop, onCancel }) => {
     useEffect(() => {
         if (!imgLoaded || !imgRef.current) return;
         const img = imgRef.current;
-        const coverScale = Math.max(CROP_W / (img.naturalWidth || 1), CROP_H / (img.naturalHeight || 1));
+        const coverScale = Math.max(CROP_SIZE / (img.naturalWidth || 1), CROP_SIZE / (img.naturalHeight || 1));
         setScale(coverScale);
         setOffset({ x: 0, y: 0 });
     }, [imgLoaded]);
@@ -135,7 +133,7 @@ const ImageCropper = ({ imageSrc, onCrop, onCancel }) => {
             const dist = Math.hypot(dx, dy);
             const delta = dist / (pinchRef.current.lastDist || 1);
             pinchRef.current.lastDist = dist;
-            setScale(s => Math.min(5, Math.max(0.3, s * delta)));
+            setScale(s => Math.min(6, Math.max(0.2, s * delta)));
         }
     };
     const onTouchEnd = () => {
@@ -144,8 +142,9 @@ const ImageCropper = ({ imageSrc, onCrop, onCancel }) => {
     };
 
     const onWheel = (e) => {
+        e.preventDefault();
         const delta = e.deltaY > 0 ? 0.92 : 1.08;
-        setScale(s => Math.min(5, Math.max(0.3, s * delta)));
+        setScale(s => Math.min(6, Math.max(0.2, s * delta)));
     };
 
     const handleCrop = () => {
@@ -158,8 +157,12 @@ const ImageCropper = ({ imageSrc, onCrop, onCancel }) => {
         out.height = size;
         const ctx = out.getContext('2d');
 
-        // Output full square image WITHOUT clipping to circle or adding black padding
-        const ratio = size / CROP_W;
+        // Clip output canvas to a clean 1:1 circle with 100% transparency outside
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+        ctx.clip();
+
+        const ratio = size / CROP_SIZE;
         const iw = img.naturalWidth * scale * ratio;
         const ih = img.naturalHeight * scale * ratio;
         const x = size / 2 - iw / 2 + offset.x * ratio;
@@ -169,19 +172,20 @@ const ImageCropper = ({ imageSrc, onCrop, onCancel }) => {
         out.toBlob((blob) => {
             setUploading(false);
             onCrop(blob);
-        }, 'image/jpeg', 0.95);
+        }, 'image/png');
     };
 
     return (
         <div style={{
             position: 'fixed', inset: 0,
-            background: 'rgba(0,0,0,0.88)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
+            background: 'rgba(0, 0, 0, 0.88)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
             display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center',
             zIndex: 99999,
-            padding: '16px'
+            padding: '20px',
+            boxSizing: 'border-box'
         }}>
             <img
                 ref={imgRef}
@@ -192,22 +196,34 @@ const ImageCropper = ({ imageSrc, onCrop, onCancel }) => {
                 alt=""
             />
 
-            <div style={{ marginBottom: '14px', textAlign: 'center' }}>
-                <p style={{ color: 'white', fontWeight: 700, fontSize: '18px', margin: '0 0 4px' }}>Crop Profile Picture</p>
-                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px', margin: 0 }}>
-                    Drag to align · Pinch / scroll to zoom
+            <div style={{ marginBottom: '16px', textAlign: 'center' }}>
+                <h3 style={{ color: 'white', fontWeight: 800, fontSize: '20px', margin: '0 0 6px', letterSpacing: '-0.02em' }}>
+                    Crop Profile Picture
+                </h3>
+                <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '13px', margin: 0, fontWeight: 500 }}>
+                    Drag to align · Pinch or scroll mouse wheel to zoom
                 </p>
             </div>
 
+            {/* Responsive Circular Canvas Frame Box */}
             <div
                 style={{
                     cursor: 'grab',
-                    borderRadius: '20px',
+                    borderRadius: '50%',
                     overflow: 'hidden',
-                    background: '#0d1117',
+                    background: '#0a0d12',
                     touchAction: 'none',
                     userSelect: 'none',
-                    boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 0 2px rgba(16,185,129,0.4)'
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.9), 0 0 0 3.5px #10b981, 0 0 30px rgba(16,185,129,0.45)',
+                    width: 'min(300px, 75vw)',
+                    height: 'min(300px, 75vw)',
+                    maxWidth: '300px',
+                    maxHeight: '300px',
+                    aspectRatio: '1 / 1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative'
                 }}
                 onMouseDown={onMouseDown}
                 onMouseMove={onMouseMove}
@@ -220,54 +236,75 @@ const ImageCropper = ({ imageSrc, onCrop, onCancel }) => {
             >
                 <canvas
                     ref={canvasRef}
-                    width={CANVAS_W}
-                    height={CANVAS_H}
-                    style={{ display: 'block', maxWidth: 'min(330px, calc(100vw - 32px))' }}
+                    width={CANVAS_SIZE}
+                    height={CANVAS_SIZE}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        aspectRatio: '1 / 1',
+                        display: 'block'
+                    }}
                 />
             </div>
 
-            {/* Zoom slider */}
-            <div style={{ marginTop: '14px', width: 'min(280px, calc(100vw - 64px))', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>−</span>
+            {/* Zoom Slider Controls */}
+            <div style={{
+                marginTop: '18px',
+                width: 'min(300px, 80vw)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                background: 'rgba(255,255,255,0.06)',
+                padding: '8px 16px',
+                borderRadius: '16px',
+                border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '16px', fontWeight: 700, userSelect: 'none' }}>−</span>
                 <input
                     type="range"
-                    min="0.3" max="5" step="0.01"
+                    min="0.2" max="6" step="0.01"
                     value={scale}
                     onChange={e => setScale(Number(e.target.value))}
-                    style={{ flex: 1, accentColor: '#10b981' }}
+                    style={{ flex: 1, accentColor: '#10b981', cursor: 'pointer' }}
                 />
-                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>+</span>
+                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '16px', fontWeight: 700, userSelect: 'none' }}>+</span>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', marginTop: '18px' }}>
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: '14px', marginTop: '22px' }}>
                 <button
+                    type="button"
                     onClick={onCancel}
                     style={{
-                        padding: '10px 22px',
+                        padding: '11px 24px',
                         background: 'rgba(255,255,255,0.1)',
                         color: 'white',
                         border: '1px solid rgba(255,255,255,0.2)',
-                        borderRadius: '10px',
+                        borderRadius: '14px',
                         cursor: 'pointer',
                         fontSize: '14px',
-                        fontWeight: 600
+                        fontWeight: 700,
+                        transition: 'all 0.15s ease'
                     }}
                 >
                     Cancel
                 </button>
                 <button
+                    type="button"
                     onClick={handleCrop}
                     disabled={!imgLoaded || uploading}
                     style={{
-                        padding: '10px 26px',
+                        padding: '11px 28px',
                         background: uploading ? 'rgba(16,185,129,0.5)' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '10px',
+                        borderRadius: '14px',
                         cursor: 'pointer',
                         fontSize: '14px',
-                        fontWeight: 700,
-                        boxShadow: '0 4px 16px rgba(16,185,129,0.4)'
+                        fontWeight: 800,
+                        boxShadow: '0 6px 20px rgba(16,185,129,0.45)',
+                        transition: 'all 0.15s ease'
                     }}
                 >
                     {uploading ? 'Processing…' : '✓ Save Photo'}

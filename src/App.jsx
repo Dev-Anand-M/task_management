@@ -71,7 +71,7 @@ const ComingSoonChat = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'radial-gradient(circle at 50% 30%, rgba(99, 102, 241, 0.18) 0%, rgba(15, 23, 42, 0.96) 100%)'
+      background: 'var(--bg-main, radial-gradient(circle at 50% 30%, rgba(99, 102, 241, 0.18) 0%, rgba(15, 23, 42, 0.96) 100%))'
     }}>
       {/* Blurred chat underneath as a teaser */}
       <div style={{ filter: 'blur(12px)', pointerEvents: 'none', opacity: 0.2, width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
@@ -84,14 +84,14 @@ const ComingSoonChat = () => {
         zIndex: 10,
         textAlign: 'center',
         padding: '48px 36px',
-        background: 'rgba(15, 23, 42, 0.75)',
+        background: 'var(--card, rgba(15, 23, 42, 0.85))',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255, 255, 255, 0.12)',
+        border: '1px solid var(--border, rgba(255, 255, 255, 0.12))',
         borderRadius: '28px',
         maxWidth: '440px',
         width: '90%',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
       }}>
         <div style={{
           width: '84px',
@@ -105,18 +105,18 @@ const ComingSoonChat = () => {
           fontSize: '38px',
           boxShadow: '0 10px 30px rgba(99, 102, 241, 0.4)'
         }}>💬</div>
-        <h2 style={{ margin: '0 0 10px', fontSize: '26px', fontWeight: 800, color: '#ffffff' }}>Messages</h2>
-        <p style={{ margin: '0 0 24px', color: 'rgba(255, 255, 255, 0.7)', fontSize: '15px', lineHeight: 1.6 }}>
+        <h2 style={{ margin: '0 0 10px', fontSize: '26px', fontWeight: 800, color: 'var(--text, #ffffff)' }}>Messages</h2>
+        <p style={{ margin: '0 0 24px', color: 'var(--text-muted, rgba(255, 255, 255, 0.7))', fontSize: '15px', lineHeight: 1.6 }}>
           Real-time end-to-end encrypted messaging is coming soon.<br />Stay tuned!
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
           <span style={{
             padding: '7px 20px',
-            background: 'rgba(99, 102, 241, 0.2)',
-            border: '1px solid rgba(99, 102, 241, 0.4)',
-            color: '#a5b4fc',
+            background: 'color-mix(in srgb, var(--primary-500, #6366f1) 18%, transparent)',
+            border: '1px solid var(--primary-500, #6366f1)',
+            color: 'var(--primary-500, #6366f1)',
             borderRadius: '20px',
-            fontWeight: 700,
+            fontWeight: 800,
             fontSize: '13px',
             letterSpacing: '0.05em',
             textTransform: 'uppercase'
@@ -139,7 +139,7 @@ const ComingSoonChat = () => {
               transition: 'all 0.2s ease'
             }}
           >
-            ← Go Back
+            ← Back
           </button>
         </div>
       </div>

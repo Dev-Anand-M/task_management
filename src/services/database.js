@@ -823,6 +823,58 @@ export const notifyAdmins = async (classroomId, notification) => {
     }).catch(() => {});
 };
 
+export const notifySprintWeekStart = async (classroomId, weekNumber, weekTitle) => {
+    const storageKey = `zenith_sprint_start_notified_${classroomId || 'default'}_W${weekNumber}`;
+    if (localStorage.getItem(storageKey)) return;
+
+    try {
+        // 1. Get all sprint contestants (participants)
+        let partQuery = supabase.from('sprint_participants').select('user_id');
+        if (classroomId) partQuery = partQuery.eq('classroom_id', classroomId);
+        const { data: parts } = await partQuery;
+        const contestantIds = (parts || []).map(p => p.user_id);
+
+        // 2. Get all classroom admins
+        let adminQuery = supabase.from('profiles').select('id').eq('role', 'admin');
+        if (classroomId) adminQuery = adminQuery.eq('classroom_id', classroomId);
+        const { data: admins } = await adminQuery;
+        const adminIds = (admins || []).map(a => a.id);
+
+        // Combine unique recipients (contestants + admins)
+        const recipientIds = Array.from(new Set([...contestantIds, ...adminIds]));
+        if (recipientIds.length === 0) return;
+
+        const notifRows = recipientIds.map(uid => ({
+            user_id: uid,
+            classroom_id: classroomId || null,
+            title: `🚀 Sprint Week ${weekNumber} is NOW LIVE!`,
+            message: `Week ${weekNumber}: "${weekTitle}" has officially started! Check your tasks, resources & submit team evaluations in Sprint Tracker.`,
+            type: 'success',
+            link: '/sprint-tracker',
+            is_read: false
+        }));
+
+        const { error } = await supabase.from('notifications').insert(notifRows);
+        if (error) console.error('[notifySprintWeekStart] DB Insert error:', error);
+
+        // Send push notification
+        _sendPush({
+            user_ids: recipientIds,
+            classroom_id: classroomId,
+            title: `🚀 Sprint Week ${weekNumber} is NOW LIVE!`,
+            body: `Week ${weekNumber}: "${weekTitle}" has officially started!`,
+            url: '/sprint-tracker',
+            type: 'success',
+            channelId: 'sprint'
+        }).catch(() => {});
+
+        localStorage.setItem(storageKey, new Date().toISOString());
+        console.log(`[notifySprintWeekStart] Sent week ${weekNumber} start notifications to ${recipientIds.length} users.`);
+    } catch (err) {
+        console.error('[notifySprintWeekStart] Error:', err);
+    }
+};
+
 export const checkDeadlines = async (userId) => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);

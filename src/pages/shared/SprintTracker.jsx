@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Button, Badge, Modal, Input } from '../../components/common';
+import { CodeVaultViewer } from '../../components/sprint/CodeVaultViewer';
 import {
     Trophy,
     Star,
@@ -28,7 +29,9 @@ import {
     Upload,
     Copy,
     Check,
-    FileText
+    FileText,
+    Clock,
+    Code
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
@@ -73,6 +76,16 @@ const SprintTracker = () => {
     const [saving, setSaving] = useState(false);
     const [expandedWeek, setExpandedWeek] = useState(null);
 
+    // Live Countdown Timer ticker state
+    const [nowTime, setNowTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setNowTime(new Date());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
     // Sprint template state
     const [sprintTemplate, setSprintTemplate] = useState(DEFAULT_TEMPLATE);
     const [templateDraft, setTemplateDraft] = useState([]);
@@ -80,9 +93,181 @@ const SprintTracker = () => {
     const [showCsvHelp, setShowCsvHelp] = useState(false);
     const [copiedFormat, setCopiedFormat] = useState(false);
     const [vaultDocs, setVaultDocs] = useState([]);
+    const [viewingCodeDoc, setViewingCodeDoc] = useState(null);
+
+    // Direct Sprint Vault Upload Modal state
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [uploadSaving, setUploadSaving] = useState(false);
+    const [uploadForm, setUploadForm] = useState({
+        title: '',
+        description: '',
+        material_type: 'file',
+        file: null,
+        url: ''
+    });
+
+    const handleSaveUploadDoc = async (e) => {
+        e.preventDefault();
+        if (!uploadForm.title) {
+            alert('Please provide a title for your resource or code file.');
+            return;
+        }
+        setUploadSaving(true);
+        try {
+            let file_url = uploadForm.url;
+            if (uploadForm.material_type === 'file' && uploadForm.file) {
+                file_url = await db.uploadStudyMaterial(uploadForm.file);
+            }
+
+            if (!file_url) {
+                alert('Please select a file or enter a valid URL.');
+                setUploadSaving(false);
+                return;
+            }
+
+            // Save exclusively to sprint_vault table
+            const { error: vaultErr } = await supabase.from('sprint_vault').insert({
+                classroom_id: user?.classroom_id,
+                week_number: selectedWeek,
+                title: uploadForm.title,
+                description: uploadForm.description || `Sprint Code / Resource for Week ${selectedWeek}`,
+                file_url: file_url,
+                file_type: uploadForm.material_type,
+                uploaded_by: user?.id
+            });
+
+            if (vaultErr) {
+                console.error('[SprintTracker] sprint_vault insert error:', vaultErr);
+                throw new Error(vaultErr.message || 'Failed to upload to sprint_vault');
+            }
+
+            setShowUploadModal(false);
+            setUploadForm({ title: '', description: '', material_type: 'file', file: null, url: '' });
+            loadData();
+        } catch (err) {
+            console.error('[SprintTracker] Upload error:', err);
+            alert('Failed to upload file: ' + (err.message || err));
+        } finally {
+            setUploadSaving(false);
+        }
+    };
 
     const [classrooms, setClassrooms] = useState([]);
     const [selectedClassroomId, setSelectedClassroomId] = useState(user?.classroom_id || '');
+
+    // Active Week determination
+    const getActiveWeekNumber = useCallback(() => {
+        const todayStr = nowTime.toISOString().split('T')[0];
+        const dateMatch = sprintTemplate.find(w => w.start_date && w.end_date && todayStr >= w.start_date && todayStr <= w.end_date);
+        if (dateMatch) return dateMatch.week;
+
+        const activeOrPast = sprintTemplate.filter(w => w.start_date && w.start_date <= todayStr);
+        if (activeOrPast.length > 0) return activeOrPast[activeOrPast.length - 1].week;
+
+        return 1;
+    }, [sprintTemplate, nowTime]);
+
+    const activeWeekNum = getActiveWeekNumber();
+
+    // Comprehensive Week Status & Live Countdown Timer helper
+    const getWeekCountdown = (weekData) => {
+        if (!weekData) return { status: 'INACTIVE', text: 'Inactive', isStarted: false, isExpired: false };
+
+        const startIso = weekData.start_date ? (weekData.start_date.includes('T') ? weekData.start_date : `${weekData.start_date}T00:00:00`) : null;
+        const endIso = weekData.end_date ? (weekData.end_date.includes('T') ? weekData.end_date : `${weekData.end_date}T23:59:59`) : null;
+
+        const startDt = startIso ? new Date(startIso) : null;
+        const endDt = endIso ? new Date(endIso) : null;
+
+        // 1. Not started yet (now < startDt) -> INACTIVE
+        if (startDt && nowTime < startDt) {
+            const diff = startDt - nowTime;
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            const parts = [];
+            if (days > 0) parts.push(`${days}d`);
+            if (hours > 0 || days > 0) parts.push(`${hours}h`);
+            parts.push(`${minutes}m`, `${seconds}s`);
+
+            return {
+                status: 'INACTIVE',
+                isStarted: false,
+                isExpired: false,
+                label: 'Inactive',
+                text: `Will start in ${parts.join(' ')}`
+            };
+        }
+
+        // 2. Ended (now > endDt) -> ENDED
+        if (endDt && nowTime > endDt) {
+            return {
+                status: 'ENDED',
+                isStarted: true,
+                isExpired: true,
+                label: 'Ended',
+                text: 'Time Ended'
+            };
+        }
+
+        // 3. Active / Running (now >= startDt and now <= endDt) -> ACTIVE
+        if (endDt && nowTime <= endDt) {
+            const diff = endDt - nowTime;
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            const parts = [];
+            if (days > 0) parts.push(`${days}d`);
+            if (hours > 0 || days > 0) parts.push(`${hours}h`);
+            parts.push(`${minutes}m`, `${seconds}s`);
+
+            return {
+                status: 'ACTIVE',
+                isStarted: true,
+                isExpired: false,
+                label: 'Active',
+                text: `Will end in ${parts.join(' ')}`
+            };
+        }
+
+        return {
+            status: 'INACTIVE',
+            isStarted: false,
+            isExpired: false,
+            label: 'Inactive',
+            text: 'Inactive'
+        };
+    };
+
+    // Upload is unlocked if:
+    // 1) Admin manually set is_unlocked === true / sprintLocks[week] === false
+    // 2) OR current date is between start_date and end_date (ACTIVE)
+    const isWeekLocked = (weekNum) => {
+        // 1. Manual Admin Lock Override check first
+        if (sprintLocks[weekNum] === false) return false; // Explicitly unlocked by admin
+        if (sprintLocks[weekNum] === true) return true;  // Explicitly locked by admin
+
+        // 2. Schedule Check based on template start_date and end_date
+        const weekData = sprintTemplate.find(w => Number(w.week || w.week_number) === Number(weekNum));
+        if (!weekData || !weekData.start_date || !weekData.end_date) {
+            return false; // Default unlocked if no dates set
+        }
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        const startStr = weekData.start_date.split('T')[0];
+        const endStr = weekData.end_date.split('T')[0];
+
+        // If today is BEFORE start_date (event hasn't started yet) OR AFTER end_date => LOCKED!
+        if (todayStr < startStr || todayStr > endStr) {
+            return true;
+        }
+
+        return false;
+    };
 
     const loadData = useCallback(async () => {
         try {
@@ -168,44 +353,35 @@ const SprintTracker = () => {
                     resource_label: r.resource_label || ''
                 }));
                 setSprintTemplate(mapped);
+
+                // Check if any week has started and trigger automatic notification to contestants & admins
+                const todayStr = new Date().toISOString().split('T')[0];
+                mapped.forEach(w => {
+                    if (w.start_date && todayStr >= w.start_date && (!w.end_date || todayStr <= w.end_date)) {
+                        db.notifySprintWeekStart(targetClassroomId, w.week, w.title);
+                    }
+                });
             } else {
                 // Fall back to default template
                 setSprintTemplate(DEFAULT_TEMPLATE);
             }
 
-            // Fetch Sprint Vault docs from BOTH sprint_vault (new) and knowledge_base (old)
-            // This allows migration period where old docs still exist
-            const [vaultRes, kbRes] = await Promise.all([
-                supabase.from('sprint_vault').select('*').order('week_number', { ascending: true }),
-                supabase.from('knowledge_base').select('*').order('created_at', { ascending: false })
-            ]);
+            // Fetch Sprint Vault docs strictly from sprint_vault table
+            const { data: vaultDocsData, error: vaultErr } = await supabase
+                .from('sprint_vault')
+                .select('*')
+                .order('week_number', { ascending: true });
             
-            if (vaultRes.error) console.error('[SprintTracker] Vault load error:', vaultRes.error);
-            if (kbRes.error) console.error('[SprintTracker] KB load error:', kbRes.error);
+            if (vaultErr) console.error('[SprintTracker] Vault load error:', vaultErr);
             
-            // Merge docs from both tables
-            let newDocs = vaultRes?.data || [];
-            let oldDocs = kbRes?.data || [];
+            let allVaultDocs = (vaultDocsData || []).map(d => ({
+                ...d,
+                week_number: parseInt(d.week_number, 10) || 1
+            }));
             
-            // Map old knowledge_base docs to match sprint_vault structure
-            const mappedOldDocs = oldDocs.map(d => {
-                const weekMatch = (d.subject || '').match(/week\s*(\d+)/i);
-                return {
-                    ...d,
-                    week_number: weekMatch ? parseInt(weekMatch[1]) : null,
-                    file_type: d.material_type || 'file',
-                    uploaded_by: d.created_by || null,
-                    is_old_migration: true
-                };
-            }).filter(d => d.week_number !== null);
-            
-            let allVaultDocs = [...newDocs, ...mappedOldDocs];
-            
-            // Filter client-side to include null OR matching classroom_id
             if (targetClassroomId) {
                 allVaultDocs = allVaultDocs.filter(d => !d.classroom_id || d.classroom_id === targetClassroomId);
             }
-            console.log('[SprintTracker] Loaded Sprint Vault docs:', allVaultDocs);
             setVaultDocs(allVaultDocs);
 
             clearTimeout(safetyTimeout);
@@ -232,7 +408,7 @@ const SprintTracker = () => {
         return () => supabase.removeChannel(channel);
     }, [loadData]);
 
-    // Admin Toggle Participant (Add or Remove member to/from sprint)
+    // Admin Toggle Participant
     const handleToggleParticipant = async (targetUserId) => {
         const isParticipant = participantIds.has(targetUserId);
         const classroomId = user?.classroom_id || null;
@@ -257,26 +433,9 @@ const SprintTracker = () => {
         }
     };
 
-    // Check if a week is locked (manual DB override > deadline > automatic day-of-week schedule)
-    const isWeekLocked = (weekNum) => {
-        // 1. Manual admin override takes priority
-        if (sprintLocks[weekNum] !== undefined) {
-            return sprintLocks[weekNum];
-        }
-        // 2. Auto-lock if today is past the week's end_date
-        const weekData = sprintTemplate[weekNum - 1];
-        if (weekData?.end_date) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const deadline = new Date(weekData.end_date);
-            deadline.setHours(23, 59, 59, 999); // lock after end of deadline day
-            if (today > deadline) return true;
-        }
-        // 3. Default: lock all weeks except week 1, unless it's Sunday (demo day)
-        return weekNum > 1 && new Date().getDay() !== 0;
-    };
 
-    // Manual Admin Lock Toggle
+
+    // Manual Admin Lock Toggle (Revert / Unlock / Lock)
     const handleToggleLock = async (weekNum) => {
         const currentlyLocked = isWeekLocked(weekNum);
         const newLockState = !currentlyLocked;
@@ -866,8 +1025,8 @@ const SprintTracker = () => {
                                         <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', marginBottom: 'var(--space-xs)', wordBreak: 'break-word' }}>
                                             {member.name || member.email?.split('@')[0]}
                                         </div>
-                                        <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--primary-400)', marginBottom: 'var(--space-xs)' }}>
-                                            {member.cumulative.total}
+                                        <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: member.cumulative.weeksScored > 0 ? 'var(--primary-400)' : 'var(--text-muted)', marginBottom: 'var(--space-xs)' }}>
+                                            {member.cumulative.weeksScored > 0 ? member.cumulative.total : '—'}
                                         </div>
                                         <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                                             / {member.cumulative.weeksScored * 40} pts ({member.cumulative.weeksScored} wks)
@@ -936,23 +1095,62 @@ const SprintTracker = () => {
 
                     {/* Week selector */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)', marginBottom: 'var(--space-lg)' }}>
-                        {sprintTemplate.map(week => (
-                            <button
-                                key={week.week}
-                                onClick={() => setSelectedWeek(week.week)}
-                                style={{
-                                    padding: 'var(--space-sm) var(--space-md)',
-                                    borderRadius: 'var(--radius-lg)',
-                                    border: selectedWeek === week.week ? '1px solid var(--primary-500)' : '1px solid var(--border)',
-                                    background: selectedWeek === week.week ? 'var(--primary-500)' : 'var(--card)',
-                                    color: selectedWeek === week.week ? '#ffffff' : 'var(--text)',
-                                    cursor: 'pointer', fontWeight: selectedWeek === week.week ? 700 : 400,
-                                    fontSize: 'var(--text-sm)', transition: 'all 0.15s ease'
-                                }}
-                            >
-                                W{week.week}
-                            </button>
-                        ))}
+                        {sprintTemplate.map(week => {
+                            const cd = getWeekCountdown(week);
+                            const isSelected = selectedWeek === week.week;
+                            const isLocked = isWeekLocked(week.week);
+
+                            return (
+                                <button
+                                    key={week.week}
+                                    onClick={() => setSelectedWeek(week.week)}
+                                    style={{
+                                        padding: 'var(--space-sm) var(--space-md)',
+                                        borderRadius: 'var(--radius-lg)',
+                                        border: isSelected ? '1px solid var(--primary-500)' : '1px solid var(--border)',
+                                        background: isSelected ? 'var(--primary-500)' : 'var(--card)',
+                                        color: isSelected ? '#ffffff' : 'var(--text)',
+                                        cursor: 'pointer',
+                                        fontWeight: isSelected ? 700 : 500,
+                                        fontSize: 'var(--text-sm)',
+                                        transition: 'all 0.15s ease',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}
+                                >
+                                    <span>W{week.week}</span>
+                                    {cd.status === 'ACTIVE' && (
+                                        <span style={{
+                                            padding: '1px 6px',
+                                            borderRadius: '999px',
+                                            background: isSelected ? 'rgba(255,255,255,0.25)' : 'rgba(16,185,129,0.15)',
+                                            color: isSelected ? '#ffffff' : '#10b981',
+                                            fontSize: '10px',
+                                            fontWeight: 800,
+                                            letterSpacing: '0.04em'
+                                        }}>
+                                            ACTIVE
+                                        </span>
+                                    )}
+                                    {cd.status === 'INACTIVE' && (
+                                        <span style={{
+                                            padding: '1px 6px',
+                                            borderRadius: '999px',
+                                            background: isSelected ? 'rgba(255,255,255,0.2)' : 'rgba(148,163,184,0.15)',
+                                            color: isSelected ? '#ffffff' : 'var(--text-muted)',
+                                            fontSize: '10px',
+                                            fontWeight: 700
+                                        }}>
+                                            INACTIVE
+                                        </span>
+                                    )}
+                                    {isLocked && cd.status === 'ENDED' && (
+                                        <Lock size={11} style={{ opacity: 0.6 }} />
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     {/* Selected week info with Lock status & Admin toggle */}
@@ -963,34 +1161,108 @@ const SprintTracker = () => {
                         alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-sm)'
                     }}>
                         <div>
-                            <div style={{ fontWeight: 700, fontSize: 'var(--text-base)', marginBottom: 'var(--space-xs)' }}>
-                                {sprintTemplate[selectedWeek - 1]?.is_showcase ? '🃏 ' : '📌 '}
-                                Week {selectedWeek}: {sprintTemplate[selectedWeek - 1]?.title}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: 'var(--space-xs)' }}>
+                                <div style={{ fontWeight: 700, fontSize: 'var(--text-base)' }}>
+                                    {sprintTemplate[selectedWeek - 1]?.is_showcase ? '🃏 ' : '📌 '}
+                                    Week {selectedWeek}: {sprintTemplate[selectedWeek - 1]?.title}
+                                </div>
+                                {(() => {
+                                    const currWeek = sprintTemplate[selectedWeek - 1];
+                                    const cd = getWeekCountdown(currWeek);
+
+                                    if (cd.status === 'ACTIVE') {
+                                        return (
+                                            <span style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                                padding: '2px 8px', borderRadius: '999px',
+                                                background: 'rgba(16, 185, 129, 0.15)',
+                                                border: '1px solid rgba(16, 185, 129, 0.3)',
+                                                color: '#10b981', fontSize: '11px', fontWeight: 800
+                                            }}>
+                                                🟢 ACTIVE WEEK
+                                            </span>
+                                        );
+                                    }
+                                    if (cd.status === 'INACTIVE') {
+                                        return (
+                                            <span style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                                padding: '2px 8px', borderRadius: '999px',
+                                                background: 'rgba(245, 158, 11, 0.15)',
+                                                border: '1px solid rgba(245, 158, 11, 0.3)',
+                                                color: '#f59e0b', fontSize: '11px', fontWeight: 800
+                                            }}>
+                                                ⏳ INACTIVE (NOT STARTED)
+                                            </span>
+                                        );
+                                    }
+                                    return (
+                                        <span style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                            padding: '2px 8px', borderRadius: '999px',
+                                            background: 'rgba(100, 116, 139, 0.15)',
+                                            border: '1px solid rgba(100, 116, 139, 0.3)',
+                                            color: 'var(--text-muted)', fontSize: '11px', fontWeight: 700
+                                        }}>
+                                            🔒 ENDED
+                                        </span>
+                                    );
+                                })()}
                             </div>
+
                             {sprintTemplate[selectedWeek - 1]?.description && (
                                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-xs)', lineHeight: 1.4 }}>
                                     {sprintTemplate[selectedWeek - 1].description}
                                 </div>
                             )}
-                            {(sprintTemplate[selectedWeek - 1]?.start_date || sprintTemplate[selectedWeek - 1]?.end_date) && (
-                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: 'var(--space-xs)' }}>
-                                    <Calendar size={12} />
-                                    {sprintTemplate[selectedWeek - 1]?.start_date
-                                        ? new Date(sprintTemplate[selectedWeek - 1].start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                                        : '—'}
-                                    {' → '}
-                                    {sprintTemplate[selectedWeek - 1]?.end_date
-                                        ? new Date(sprintTemplate[selectedWeek - 1].end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                                        : '—'}
-                                </div>
-                            )}
+
+                            {/* Start/End Time & Live Countdown Timer */}
+                            {(() => {
+                                const currWeek = sprintTemplate[selectedWeek - 1];
+                                const cd = getWeekCountdown(currWeek);
+
+                                return (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-xs)' }}>
+                                        {(currWeek?.start_date || currWeek?.end_date) && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <Calendar size={12} />
+                                                <span>Start: {currWeek?.start_date ? new Date(currWeek.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</span>
+                                                <span>→</span>
+                                                <span>End: {currWeek?.end_date ? new Date(currWeek.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</span>
+                                            </div>
+                                        )}
+
+                                        {cd.text && cd.status !== 'ENDED' && (
+                                            <div style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                padding: '3px 10px',
+                                                borderRadius: '8px',
+                                                background: cd.status === 'ACTIVE'
+                                                    ? 'color-mix(in srgb, var(--primary-500) 14%, transparent)'
+                                                    : 'rgba(245, 158, 11, 0.12)',
+                                                border: cd.status === 'ACTIVE'
+                                                    ? '1px solid color-mix(in srgb, var(--primary-500) 30%, transparent)'
+                                                    : '1px solid rgba(245, 158, 11, 0.3)',
+                                                color: cd.status === 'ACTIVE' ? 'var(--primary-500)' : '#f59e0b',
+                                                fontWeight: 700,
+                                                fontSize: '11px'
+                                            }}>
+                                                <Clock size={12} className="animate-spin-slow" />
+                                                <span>⏳ {cd.text}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
 
                             {/* Attached Files & Resources for Week N */}
                             {(() => {
                                 const currentWeekData = sprintTemplate[selectedWeek - 1];
-                                // Sprint Vault docs filtered by week_number (direct match, no string searching needed)
-                                const matchedVaultDocs = vaultDocs.filter(doc => doc.week_number === selectedWeek);
-                                console.log('[SprintTracker] Week', selectedWeek, '- Total vaultDocs:', vaultDocs.length, '- Matched:', matchedVaultDocs.length, '- Docs:', matchedVaultDocs);
+                                // Sprint Vault docs filtered by week_number (coerce both to Number for safe comparison)
+                                const matchedVaultDocs = vaultDocs.filter(doc => Number(doc.week_number) === Number(selectedWeek));
+                                console.log('[SprintTracker] Week', selectedWeek, '- Total vaultDocs:', vaultDocs.length, '- Matched:', matchedVaultDocs.length);
 
                                 const hasPrimaryResource = Boolean(currentWeekData?.resource_url && currentWeekData.resource_url.trim().length > 0);
                                 const totalResourcesCount = (hasPrimaryResource ? 1 : 0) + matchedVaultDocs.length;
@@ -1027,7 +1299,7 @@ const SprintTracker = () => {
                                             {matchedVaultDocs.map(doc => (
                                                 <a
                                                     key={doc.id}
-                                                    href={doc.file_url || `/study-materials?tab=sprint`}
+                                                    href={doc.file_url || `/sprint-vault`}
                                                     target={doc.file_url?.startsWith('http') ? '_blank' : '_self'}
                                                     rel="noopener noreferrer"
                                                     style={{
@@ -1046,24 +1318,38 @@ const SprintTracker = () => {
                                                 </a>
                                             ))}
 
-                                            {/* Fallback Link to Sprint Vault if no files attached */}
-                                            {totalResourcesCount === 0 && (
-                                                <a
-                                                    href={`/study-materials?tab=sprint`}
+                                            {/* Direct Upload button for Sprint Code / Files */}
+                                            {!isWeekLocked(selectedWeek) || isAdmin ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setUploadForm({ title: '', description: '', material_type: 'file', file: null, url: '' });
+                                                        setShowUploadModal(true);
+                                                    }}
                                                     style={{
                                                         display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                                        fontSize: 'var(--text-xs)', fontWeight: 600,
-                                                        color: 'var(--text-muted)',
-                                                        background: 'var(--surface)',
-                                                        padding: '5px 11px', borderRadius: 'var(--radius-md)',
-                                                        border: '1px solid var(--border)',
-                                                        textDecoration: 'none'
+                                                        fontSize: 'var(--text-xs)', fontWeight: 700,
+                                                        color: 'white',
+                                                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                                        padding: '5px 12px', borderRadius: 'var(--radius-md)',
+                                                        border: 'none', cursor: 'pointer',
+                                                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.35)',
+                                                        transition: 'all 0.15s ease'
                                                     }}
                                                 >
-                                                    <BookOpen size={13} />
-                                                    View Sprint Vault & Resources
-                                                    <ExternalLink size={11} />
-                                                </a>
+                                                    <PlusCircle size={13} />
+                                                    Upload Code / File
+                                                </button>
+                                            ) : (
+                                                <span style={{
+                                                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                                    fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-muted)',
+                                                    padding: '4px 10px', borderRadius: 'var(--radius-md)',
+                                                    background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border)'
+                                                }}>
+                                                    <Lock size={12} style={{ color: '#ef4444' }} />
+                                                    Upload Locked
+                                                </span>
                                             )}
                                         </div>
                                     </div>
@@ -1211,27 +1497,29 @@ const SprintTracker = () => {
                                                     </div>
                                                 )}
                                                 {week.resource_url && (
-                                                    <a
-                                                        href={week.resource_url}
-                                                        target={week.resource_url.startsWith('http') ? '_blank' : '_self'}
-                                                        rel="noopener noreferrer"
-                                                        style={{
-                                                            display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                                            fontSize: 'var(--text-xs)', fontWeight: 600,
-                                                            color: '#3b82f6', textDecoration: 'none'
-                                                        }}
-                                                    >
-                                                        <BookOpen size={13} />
-                                                        {week.resource_label || 'View Study Material / Resource'}
-                                                        <ExternalLink size={11} />
-                                                    </a>
+                                                    <div style={{ marginTop: 'var(--space-xs)' }}>
+                                                        <a
+                                                            href={week.resource_url}
+                                                            target={week.resource_url.startsWith('http') ? '_blank' : '_self'}
+                                                            rel="noopener noreferrer"
+                                                            style={{
+                                                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                                                fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                                color: '#3b82f6', textDecoration: 'none'
+                                                            }}
+                                                        >
+                                                            <BookOpen size={13} />
+                                                            {week.resource_label || 'View Study Material / Resource'}
+                                                            <ExternalLink size={11} />
+                                                        </a>
+                                                    </div>
                                                 )}
                                             </div>
                                         )}
 
                                         {/* Sprint Vault Documents for this Week */}
                                         {(() => {
-                                            const weekVaultDocs = vaultDocs.filter(doc => doc.week_number === week.week);
+                                            const weekVaultDocs = vaultDocs.filter(doc => Number(doc.week_number) === Number(week.week));
                                             if (weekVaultDocs.length > 0) {
                                                 return (
                                                     <div style={{ marginBottom: 'var(--space-md)' }}>
@@ -1267,54 +1555,143 @@ const SprintTracker = () => {
                                             }
                                             return null;
                                         })()}
-                                        {teamMembers.map(member => {
-                                            const weekEvals = evaluations.filter(e => e.subject_id === member.id && e.week_number === week.week);
-                                            const avg = getWeeklyAvg(member.id, week.week);
+                                        {/* Sprint Week Overview Stats */}
+                                        {(() => {
+                                            const ratedCount = teamMembers.filter(m => getWeeklyAvg(m.id, week.week) !== null).length;
+                                            const totalMembers = teamMembers.length;
+                                            const ratedPct = totalMembers > 0 ? Math.round((ratedCount / totalMembers) * 100) : 0;
+                                            
+                                            // Find top performer
+                                            let topMember = null;
+                                            let topAvg = -1;
+                                            teamMembers.forEach(m => {
+                                                const avg = getWeeklyAvg(m.id, week.week);
+                                                if (avg !== null && avg > topAvg) {
+                                                    topAvg = avg;
+                                                    topMember = m;
+                                                }
+                                            });
 
                                             return (
-                                                <div key={member.id} style={{
-                                                    padding: 'var(--space-md) 0',
-                                                    borderBottom: '1px solid var(--border)'
+                                                <div style={{
+                                                    display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between',
+                                                    padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface)',
+                                                    border: '1px solid var(--border)', marginBottom: 'var(--space-md)'
                                                 }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-                                                        <span style={{ fontWeight: 600 }}>
-                                                            {member.name || member.email?.split('@')[0]}
-                                                        </span>
-                                                        <span style={{ fontWeight: 700, color: avg !== null ? 'var(--primary-400)' : 'var(--text-muted)' }}>
-                                                            {avg !== null ? `${avg}/40 avg` : 'Not rated'}
-                                                        </span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: 'var(--text-xs)' }}>
+                                                        <span style={{ color: 'var(--text-muted)' }}>Evaluation Progress:</span>
+                                                        <span style={{ fontWeight: 700, color: 'var(--text)' }}>{ratedCount} / {totalMembers} Rated ({ratedPct}%)</span>
+                                                        <div style={{ width: '80px', height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                                                            <div style={{ width: `${ratedPct}%`, height: '100%', background: 'var(--primary-400)', transition: 'width 0.3s ease' }} />
+                                                        </div>
                                                     </div>
-                                                    {weekEvals.length > 0 && (
-                                                        <div style={{ marginTop: 'var(--space-sm)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                                                            {weekEvals.map((ev, idx) => {
-                                                                const evaluator = teamMembers.find(m => m.id === ev.evaluator_id);
-                                                                const total = ev.task_ownership + ev.code_quality + ev.demo_understanding + ev.autonomy;
-                                                                return (
-                                                                    <div key={idx} style={{ marginTop: 'var(--space-xs)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                                        <span>
-                                                                            Rated by {evaluator?.name || 'Unknown'}: <strong>{total}/40</strong>
-                                                                            {ev.notes && <span> — "{ev.notes}"</span>}
-                                                                        </span>
-                                                                        {isAdmin && (
-                                                                            <button
-                                                                                onClick={() => handleDeleteEval(ev.id)}
-                                                                                title="Admin: Delete this rating entry"
-                                                                                style={{
-                                                                                    background: 'none', border: 'none', color: 'var(--danger)',
-                                                                                    cursor: 'pointer', padding: '2px 4px', opacity: 0.8
-                                                                                }}
-                                                                            >
-                                                                                <Trash2 size={14} />
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                );
-                                                            })}
+                                                    {topMember && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--text-xs)' }}>
+                                                            <span style={{ color: '#f59e0b', fontWeight: 700 }}>🏆 Week Top Performer:</span>
+                                                            <strong style={{ color: 'var(--text)' }}>{topMember.name || topMember.email?.split('@')[0]}</strong>
+                                                            <span style={{ color: 'var(--primary-400)', fontWeight: 700 }}>({topAvg}/40)</span>
                                                         </div>
                                                     )}
                                                 </div>
                                             );
-                                        })}
+                                        })()}
+
+                                        {/* Member Submissions & Evaluation Cards */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            {teamMembers.map(member => {
+                                                const weekEvals = evaluations.filter(e => e.subject_id === member.id && e.week_number === week.week);
+                                                const avg = getWeeklyAvg(member.id, week.week);
+                                                const memberSubmissions = vaultDocs.filter(d => Number(d.week_number) === Number(week.week) && (d.uploaded_by === member.id || d.uploader_name === member.name));
+
+                                                return (
+                                                    <div key={member.id} style={{
+                                                        padding: '12px 16px',
+                                                        borderRadius: 'var(--radius-lg)',
+                                                        background: 'var(--surface)',
+                                                        border: '1px solid var(--border)',
+                                                        transition: 'all 0.15s ease'
+                                                    }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                {member.avatar_url ? (
+                                                                    <img src={member.avatar_url} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                                ) : (
+                                                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: '#fff', fontWeight: 700 }}>
+                                                                        {(member.name || member.email || '?')[0].toUpperCase()}
+                                                                    </div>
+                                                                )}
+                                                                <div>
+                                                                    <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text)' }}>
+                                                                        {member.name || member.email?.split('@')[0]}
+                                                                    </div>
+                                                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>
+                                                                        {memberSubmissions.length > 0 ? (
+                                                                            <span style={{ color: '#10b981', fontWeight: 600 }}>🟢 {memberSubmissions.length} code file{memberSubmissions.length > 1 ? 's' : ''} submitted</span>
+                                                                        ) : (
+                                                                            <span style={{ color: 'var(--text-muted)' }}>⏳ No code submission yet</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                                <span style={{
+                                                                    fontSize: 'var(--text-xs)', fontWeight: 700, padding: '4px 10px', borderRadius: '12px',
+                                                                    background: avg !== null ? 'rgba(59, 130, 246, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                                                                    color: avg !== null ? '#3b82f6' : 'var(--text-muted)',
+                                                                    border: avg !== null ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid var(--border)'
+                                                                }}>
+                                                                    {avg !== null ? `Score: ${avg}/40` : 'Not Rated'}
+                                                                </span>
+                                                                {isAdmin && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setSelectedSubjectId(member.id);
+                                                                            setSelectedWeek(week.week);
+                                                                            setShowModal(true);
+                                                                        }}
+                                                                        style={{
+                                                                            fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '6px',
+                                                                            background: 'var(--primary-500)', color: '#fff', border: 'none', cursor: 'pointer'
+                                                                        }}
+                                                                    >
+                                                                        {avg !== null ? 'Re-rate' : '+ Rate'}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Ratings history details if available */}
+                                                        {weekEvals.length > 0 && (
+                                                            <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                                                {weekEvals.map((ev, idx) => {
+                                                                    const evaluator = teamMembers.find(m => m.id === ev.evaluator_id);
+                                                                    const total = ev.task_ownership + ev.code_quality + ev.demo_understanding + ev.autonomy;
+                                                                    return (
+                                                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
+                                                                            <span>
+                                                                                Evaluated by <strong>{evaluator?.name || 'Peer/Admin'}</strong>: Ownership: {ev.task_ownership}/10 · Quality: {ev.code_quality}/10 · Demo: {ev.demo_understanding}/10 · Autonomy: {ev.autonomy}/10
+                                                                                {ev.notes && <span style={{ fontStyle: 'italic', display: 'block', color: 'var(--text)' }}>"{ev.notes}"</span>}
+                                                                            </span>
+                                                                            {isAdmin && (
+                                                                                <button
+                                                                                    onClick={() => handleDeleteEval(ev.id)}
+                                                                                    title="Delete rating entry"
+                                                                                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '2px 4px' }}
+                                                                                >
+                                                                                    <Trash2 size={12} />
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -1776,6 +2153,132 @@ const SprintTracker = () => {
                     </div>
                 </Modal>
             )}
+
+            {/* Direct Sprint Code / File Upload Modal */}
+            {showUploadModal && (
+                <Modal
+                    isOpen={showUploadModal}
+                    onClose={() => setShowUploadModal(false)}
+                    title={`📤 Upload Sprint Code / Resource — Week ${selectedWeek}`}
+                >
+                    <form onSubmit={handleSaveUploadDoc} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                        <div>
+                            <label style={{ display: 'block', fontWeight: 600, fontSize: 'var(--text-sm)', marginBottom: '4px' }}>
+                                Resource / Project Title *
+                            </label>
+                            <input
+                                type="text"
+                                placeholder='e.g. "Week 1 Frontend Source Code.zip" or "GitHub Repository"'
+                                value={uploadForm.title}
+                                onChange={e => setUploadForm(f => ({ ...f, title: e.target.value }))}
+                                required
+                                style={{
+                                    width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)',
+                                    border: '1px solid var(--border)', background: 'var(--surface)',
+                                    color: 'var(--text)', fontSize: 'var(--text-sm)'
+                                }}
+                            />
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', fontWeight: 600, fontSize: 'var(--text-sm)', marginBottom: '6px' }}>
+                                Upload Type
+                            </label>
+                            <div style={{ display: 'flex', gap: 'var(--space-lg)', flexWrap: 'wrap' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
+                                    <input
+                                        type="radio"
+                                        name="sprint_upload_type"
+                                        value="file"
+                                        checked={uploadForm.material_type === 'file'}
+                                        onChange={() => setUploadForm(f => ({ ...f, material_type: 'file' }))}
+                                    />
+                                    📁 File (Zip, PDF, Code, Doc)
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
+                                    <input
+                                        type="radio"
+                                        name="sprint_upload_type"
+                                        value="link"
+                                        checked={uploadForm.material_type === 'link'}
+                                        onChange={() => setUploadForm(f => ({ ...f, material_type: 'link' }))}
+                                    />
+                                    🔗 Web Link (GitHub, Figma, Demo)
+                                </label>
+                            </div>
+                        </div>
+
+                        {uploadForm.material_type === 'file' ? (
+                            <div>
+                                <label style={{ display: 'block', fontWeight: 600, fontSize: 'var(--text-sm)', marginBottom: '4px' }}>
+                                    Select File *
+                                </label>
+                                <input
+                                    type="file"
+                                    onChange={e => setUploadForm(f => ({ ...f, file: e.target.files[0] }))}
+                                    required
+                                    style={{
+                                        width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)',
+                                        border: '1px solid var(--border)', background: 'var(--surface)',
+                                        color: 'var(--text)', fontSize: 'var(--text-sm)'
+                                    }}
+                                />
+                            </div>
+                        ) : (
+                            <div>
+                                <label style={{ display: 'block', fontWeight: 600, fontSize: 'var(--text-sm)', marginBottom: '4px' }}>
+                                    URL / Repository Link *
+                                </label>
+                                <input
+                                    type="url"
+                                    placeholder="https://github.com/username/repository"
+                                    value={uploadForm.url}
+                                    onChange={e => setUploadForm(f => ({ ...f, url: e.target.value }))}
+                                    required
+                                    style={{
+                                        width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)',
+                                        border: '1px solid var(--border)', background: 'var(--surface)',
+                                        color: 'var(--text)', fontSize: 'var(--text-sm)'
+                                    }}
+                                />
+                            </div>
+                        )}
+
+                        <div>
+                            <label style={{ display: 'block', fontWeight: 600, fontSize: 'var(--text-sm)', marginBottom: '4px' }}>
+                                Notes / Description (Optional)
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Brief description of what's included..."
+                                value={uploadForm.description}
+                                onChange={e => setUploadForm(f => ({ ...f, description: e.target.value }))}
+                                style={{
+                                    width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)',
+                                    border: '1px solid var(--border)', background: 'var(--surface)',
+                                    color: 'var(--text)', fontSize: 'var(--text-sm)'
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-md)', marginTop: 'var(--space-sm)' }}>
+                            <Button type="button" variant="ghost" onClick={() => setShowUploadModal(false)}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" variant="primary" disabled={uploadSaving}>
+                                {uploadSaving ? 'Uploading...' : '✓ Upload to Sprint Vault'}
+                            </Button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+
+            {/* Embedded Code Tree & File Explorer Modal */}
+            <CodeVaultViewer
+                isOpen={!!viewingCodeDoc}
+                onClose={() => setViewingCodeDoc(null)}
+                doc={viewingCodeDoc}
+            />
         </div>
     );
 };
