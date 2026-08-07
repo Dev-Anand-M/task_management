@@ -6,14 +6,13 @@ import {
     FolderOpen, Clock, Tag, Sparkles, Eye, ChevronDown, ChevronRight,
     BookMarked, StickyNote, Filter, X,
     File, Link as LinkIcon, FileText, Download, ExternalLink,
-    Zap, Calendar, ArrowRight
+    Zap, Calendar, ArrowRight, Database
 } from 'lucide-react';
 import * as db from '../../services/database';
 import { useAuth } from '../../context/AuthContext';
 import { formatDate, formatRelativeTime } from '../../utils/constants';
 import { supabase } from '../../lib/supabase';
 import { useMiniReload } from '../../hooks/useMiniReload';
-import SprintVault from '../shared/SprintVault';
 
 const NOTE_COLORS = [
     { name: 'Default', value: null },
@@ -30,9 +29,21 @@ const StudyMaterials = () => {
     const navigate = useNavigate();
     const { id: urlId } = useParams();
     
-    // Default to sprint tab if tab=sprint in URL, otherwise sprint vault by default
-    const initialTab = new URLSearchParams(window.location.search).get('tab') || 'sprint';
+    const initialTabParam = new URLSearchParams(window.location.search).get('tab');
+    const initialTab = initialTabParam === 'notes' ? 'notes' : 'shared';
     const [activeTab, setActiveTab] = useState(initialTab);
+
+    useEffect(() => {
+        if (initialTabParam === 'sprint') {
+            navigate('/sprint-vault', { replace: true });
+        }
+    }, [initialTabParam, navigate]);
+
+    useEffect(() => {
+        if (initialTabParam && initialTabParam !== 'sprint') {
+            setActiveTab(initialTabParam);
+        }
+    }, [initialTabParam]);
     const [sharedMaterials, setSharedMaterials] = useState([]);
     const [myNotes, setMyNotes] = useState([]);
     const [sprintTemplates, setSprintTemplates] = useState([]);
@@ -289,56 +300,29 @@ const StudyMaterials = () => {
             <div className="flex flex-mobile-col justify-between items-center mb-lg" style={{ gap: 'var(--space-md)' }}>
                 <div>
                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <BookMarked className="text-primary-400" />
-                        Knowledge Hub
+                        <Database className="text-primary-400" />
+                        Repository
                     </h2>
                     <p style={{ color: 'var(--text-muted)', margin: 0 }}>
-                        {activeTab === 'sprint'
-                            ? 'Sprint Vault & weekly learning resources'
-                            : activeTab === 'shared'
-                            ? 'Shared reference documents & course material'
+                        {activeTab === 'shared'
+                            ? 'Shared reference documents, blueprints & course materials'
                             : 'Your personal study notes & categorized files'}
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {activeTab === 'sprint' ? (
-                        <Button 
-                            variant="primary" 
-                            icon={Zap} 
-                            onClick={() => navigate('/sprint-tracker')}
-                            style={{
-                                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                                color: '#ffffff',
-                                border: 'none',
-                                fontWeight: 700,
-                                boxShadow: '0 4px 16px rgba(245, 158, 11, 0.3)'
-                            }}
-                        >
-                            ⚡ Open Sprint Tracker
+                    {isAdmin && (
+                        <Button variant="secondary" icon={Plus} onClick={() => { setShowAddSharedModal(true); }}>
+                            + Add Shared Resource
                         </Button>
-                    ) : (
-                        <>
-                            {isAdmin && (
-                                <Button variant="secondary" icon={Plus} onClick={() => { setShowAddSharedModal(true); }}>
-                                    + Add Shared Resource
-                                </Button>
-                            )}
-                            <Button variant="primary" icon={Plus} onClick={() => { setEditingNote(null); setNoteForm({ title: '', content: '', category: 'General', color: null, material_type: 'text', file: null, url: '' }); setShowAddModal(true); }}>
-                                New Note / Doc
-                            </Button>
-                        </>
                     )}
+                    <Button variant="primary" icon={Plus} onClick={() => { setEditingNote(null); setNoteForm({ title: '', content: '', category: 'General', color: null, material_type: 'text', file: null, url: '' }); setShowAddModal(true); }}>
+                        New Note / Doc
+                    </Button>
                 </div>
             </div>
 
             {/* Tabs */}
             <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)', flexWrap: 'wrap' }}>
-                <button onClick={() => handleTabChange('sprint')} style={tabStyle('sprint')}>
-                    <Zap size={16} /> ⚡ Sprint Vault
-                    <span style={{ background: 'rgba(255,255,255,0.2)', padding: '1px 8px', borderRadius: '10px', fontSize: '11px' }}>
-                        {sprintTemplates.length}
-                    </span>
-                </button>
                 <button onClick={() => handleTabChange('shared')} style={tabStyle('shared')}>
                     <BookOpen size={16} /> Shared Resources
                     <span style={{ background: 'rgba(255,255,255,0.2)', padding: '1px 8px', borderRadius: '10px', fontSize: '11px' }}>

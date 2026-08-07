@@ -17,6 +17,7 @@ const Header = ({ onMenuClick, title }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notifTab, setNotifTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const notifRef = useRef(null);
   const profileRef = useRef(null);
@@ -159,13 +160,34 @@ const Header = ({ onMenuClick, title }) => {
     }
   };
 
+  const markAllAsRead = async () => {
+    if (!user) return;
+    try {
+      await db.markAllNotificationsRead(user.id);
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error marking all read:', error);
+    }
+  };
+
   const getNotificationIcon = (type) => {
     switch (type) {
-      case 'success': return <CheckCircle size={16} style={{ color: 'var(--success-500)' }} />;
-      case 'award': return <Award size={16} style={{ color: 'var(--primary-500)' }} />;
-      case 'warning': return <AlertCircle size={16} style={{ color: 'var(--warning-500)' }} />;
-      case 'error': return <AlertCircle size={16} style={{ color: 'var(--error-500)' }} />;
-      default: return <Info size={16} style={{ color: 'var(--primary-500)' }} />;
+      case 'eval':
+      case 'award':
+        return <Trophy size={16} style={{ color: '#f59e0b' }} />;
+      case 'vault':
+      case 'code':
+        return <Code size={16} style={{ color: '#3b82f6' }} />;
+      case 'sprint':
+        return <Zap size={16} style={{ color: '#ec4899' }} />;
+      case 'success':
+        return <CheckCircle size={16} style={{ color: 'var(--success-500)' }} />;
+      case 'warning':
+      case 'error':
+        return <AlertCircle size={16} style={{ color: 'var(--error-500)' }} />;
+      default:
+        return <Info size={16} style={{ color: 'var(--primary-500)' }} />;
     }
   };
 
@@ -226,51 +248,64 @@ const Header = ({ onMenuClick, title }) => {
             {title}
           </h1>
 
-          {!isAdmin && (
-            <div className="header-ticker hidden-mobile visible-desktop" style={{ height: '36px', marginLeft: '1rem', overflow: 'hidden', flexShrink: 1 }}>
-              <div className="ticker-container" style={{ width: '280px', overflow: 'hidden' }}>
-                  <div className="ticker-wrapper">
-                    {tickerItems.length > 0 ? (
-                      tickerItems.map((item, i) => (
-                        <span key={i} className="ticker-item text-sm text-muted font-medium flex items-center gap-xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
-                          {item}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="ticker-item text-xs text-muted font-medium flex items-center gap-xs" style={{ whiteSpace: 'nowrap' }}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                        All clear for now ✨
-                      </span>
-                    )}
-                  </div>
-                </div>
+          <div className="header-ticker hidden-mobile visible-desktop" style={{ height: '36px', marginLeft: '1.25rem', overflow: 'hidden', flexShrink: 1 }}>
+            <div className="ticker-container" style={{ width: 'min(480px, 35vw)', overflow: 'hidden' }}>
+              <div className="ticker-wrapper">
+                {tickerItems.length > 0 ? (
+                  // Repeat items 4x to guarantee a long seamless scrolling track with zero blank gaps
+                  [...tickerItems, ...tickerItems, ...tickerItems, ...tickerItems].map((item, i) => (
+                    <span 
+                      key={i} 
+                      onClick={() => {
+                        if (item.includes('Sprint') || item.includes('Week')) navigate('/sprint-tracker');
+                        else if (item.includes('Task')) navigate('/tasks');
+                        else if (item.includes('Quiz')) navigate('/quizzes');
+                      }}
+                      className="ticker-item text-xs font-medium flex items-center gap-xs cursor-pointer hover:text-primary-400"
+                      style={{ whiteSpace: 'nowrap', cursor: 'pointer', color: 'var(--text-muted)' }}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary-500 flex-shrink-0" />
+                      {item}
+                    </span>
+                  ))
+                ) : (
+                  <span className="ticker-item text-xs text-muted font-medium flex items-center gap-xs" style={{ whiteSpace: 'nowrap' }}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                    All clear for now ✨
+                  </span>
+                )}
               </div>
-          )}
+            </div>
+          </div>
         </div>
       </div>
 
       <style>{`
         .ticker-container {
-          width: 300px;
+          width: min(480px, 35vw);
           overflow: hidden;
           position: relative;
-          mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+          mask-image: linear-gradient(to right, transparent, black 8px, black calc(100% - 8px), transparent);
+          -webkit-mask-image: linear-gradient(to right, transparent, black 8px, black calc(100% - 8px), transparent);
         }
         .ticker-wrapper {
           display: flex;
           align-items: center;
           white-space: nowrap;
-          animation: marquee 20s linear infinite;
+          animation: marquee 12s linear infinite;
+        }
+        .ticker-wrapper:hover {
+          animation-play-state: paused;
         }
         .ticker-item {
           display: inline-flex;
           align-items: center;
-          padding: 0 16px;
+          padding: 0 20px;
+          transition: color 0.2s ease;
         }
         @keyframes marquee {
-          0% { transform: translateX(100%); }
-          100% { transform: translateX(-100%); }
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
         }
       `}</style>
 
@@ -343,7 +378,27 @@ const Header = ({ onMenuClick, title }) => {
                     backdropFilter: 'blur(10px)',
                     flexShrink: 0
                   }}>
-                    <h4 style={{ margin: 0, fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base)' }}>Notifications</h4>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <h4 style={{ margin: 0, fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base)' }}>Notifications</h4>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllAsRead}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--primary-400)',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            padding: '2px 6px',
+                            borderRadius: '4px'
+                          }}
+                          className="hover:underline"
+                        >
+                          Mark all as read
+                        </button>
+                      )}
+                    </div>
                     <button
                       onClick={() => setShowNotifications(false)}
                       style={{
@@ -365,19 +420,62 @@ const Header = ({ onMenuClick, title }) => {
                     </button>
                   </div>
 
+                  {/* Category Filter Tabs */}
+                  <div style={{
+                    display: 'flex',
+                    gap: '4px',
+                    padding: '8px 16px',
+                    borderBottom: '1px solid var(--border)',
+                    background: 'var(--surface-hover)'
+                  }}>
+                    {[
+                      { id: 'all', label: 'All' },
+                      { id: 'sprint', label: '🏆 Sprints & Vault' },
+                      { id: 'system', label: '🔔 System' }
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setNotifTab(tab.id)}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: notifTab === tab.id ? 'var(--primary-500)' : 'transparent',
+                          color: notifTab === tab.id ? '#ffffff' : 'var(--text-muted)'
+                        }}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
                   <div style={{ 
                     flex: 1,
                     overflowY: 'auto',
                     minHeight: '100px',
                     paddingBottom: 'var(--space-xl)'
                   }}>
-                    {notifications.length === 0 ? (
-                      <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        <Bell size={48} style={{ opacity: 0.2, marginBottom: 'var(--space-md)' }} />
-                        <p style={{ margin: 0, fontWeight: 500 }}>No notifications yet</p>
-                      </div>
-                    ) : (
-                      notifications.map((notif) => (
+                    {(() => {
+                      const filteredNotifs = notifications.filter(n => {
+                        const isSprintRelated = ['sprint', 'eval', 'vault'].includes(n.type) || (n.title && n.title.toLowerCase().includes('sprint'));
+                        if (notifTab === 'sprint') return isSprintRelated;
+                        if (notifTab === 'system') return !isSprintRelated;
+                        return true;
+                      });
+
+                      if (filteredNotifs.length === 0) {
+                        return (
+                          <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <Bell size={48} style={{ opacity: 0.2, marginBottom: 'var(--space-md)' }} />
+                            <p style={{ margin: 0, fontWeight: 500 }}>No {notifTab === 'all' ? '' : notifTab} notifications</p>
+                          </div>
+                        );
+                      }
+
+                      return filteredNotifs.map((notif) => (
                         <div
                           key={notif.id}
                           onClick={(e) => {
@@ -439,8 +537,8 @@ const Header = ({ onMenuClick, title }) => {
                             }} />
                           )}
                         </div>
-                      ))
-                    )}
+                      ));
+                    })()}
                   </div>
 
                   <div style={{

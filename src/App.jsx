@@ -27,6 +27,7 @@ import ClassroomSettings from './pages/admin/ClassroomSettings';
 import ClassroomDetail from './pages/admin/ClassroomDetail';
 import KnowledgeBase from './pages/shared/KnowledgeBase';
 import SprintTracker from './pages/shared/SprintTracker';
+import SprintVault from './pages/shared/SprintVault';
 import AdminProfile from './pages/admin/AdminProfile';
 
 // Member Pages
@@ -303,6 +304,8 @@ function AppRoutes() {
         </Route>
 
         {/* Shared Routes */}
+        <Route path="/sprint-vault" element={<SprintVault />} />
+        <Route path="/repository" element={<StudyMaterials />} />
         <Route path="/study-materials" element={<StudyMaterials />} />
         <Route path="/study-materials/:id" element={<StudyMaterials />} />
         <Route path="/profile" element={<ProfileRouter />} />

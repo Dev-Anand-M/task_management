@@ -27,7 +27,8 @@ import {
     Calendar,
     Target,
     RefreshCw,
-    Power
+    Power,
+    FolderOpen
 } from 'lucide-react';
 import Avatar from '../common/Avatar';
 import { PlatformService } from '../../services/infrastructure/PlatformService';
@@ -63,15 +64,12 @@ const Sidebar = ({ isOpen, onClose }) => {
     const handleSwitchClassroom = async (classroomId) => {
         try {
             await db.switchClassroom(classroomId);
-            // Force refresh auth context instead of full page reload
             await forceRefresh();
-            // Reload classrooms list
             if (isAdmin) {
                 const updatedClassrooms = await db.getClassrooms();
                 setClassrooms(updatedClassrooms);
             }
             setShowClassroomMenu(false);
-            // Trigger micro-reload so all pages re-fetch data for the new classroom
             window.dispatchEvent(new CustomEvent('zenith-refresh'));
         } catch (error) {
             console.error('Failed to switch classroom:', error);
@@ -85,6 +83,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             label: 'Core',
             links: [
                 { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+                { to: '/repository', icon: Database, label: 'Repository' },
                 { to: '/chat', icon: MessageSquare, label: 'Messages', badge: 'v2.0' },
                 { to: '/tasks', icon: ListTodo, label: 'Tasks' },
                 { to: '/quizzes', icon: HelpCircle, label: 'Quizzes' },
@@ -126,6 +125,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         {
             label: 'Tools',
             links: [
+                { to: '/repository', icon: Database, label: 'Repository' },
                 { to: '/chat', icon: MessageSquare, label: 'Messages', badge: 'v2.0' },
                 { to: '/knowledge-base', icon: Database, label: 'Knowledge Base' },
                 { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
@@ -393,7 +393,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '4px' }}>
                                     {[
                                         { to: '/sprint-tracker', icon: Zap, label: 'Sprint Tracker', exact: true },
-                                        { to: '/study-materials?tab=sprint', icon: Brain, label: 'Sprint Vault & Docs' }
+                                        { to: '/sprint-vault', icon: FolderOpen, label: 'Sprint Vault' }
                                     ].map(link => (
                                         <li key={link.to}>
                                             <NavLink

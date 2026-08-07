@@ -450,6 +450,20 @@ const SprintTracker = () => {
 
             if (error) throw error;
             setSprintLocks(prev => ({ ...prev, [weekNum]: newLockState }));
+
+            // Notify classroom of lock status change
+            try {
+                if (classroomId) {
+                    await db.notifyClassroom(classroomId, {
+                        title: newLockState ? `🔒 Week ${weekNum} Sprint Locked` : `🔓 Week ${weekNum} Sprint Unlocked`,
+                        message: `Submissions & evaluations for Week ${weekNum} are now ${newLockState ? 'locked' : 'open'}.`,
+                        type: 'sprint',
+                        link: '/sprint-tracker'
+                    });
+                }
+            } catch (notifErr) {
+                console.error('[SprintTracker] Lock toggle notification error:', notifErr);
+            }
         } catch (err) {
             console.error('[SprintTracker] Lock toggle error:', err);
             alert('Failed to update submission lock: ' + err.message);
@@ -743,19 +757,19 @@ const SprintTracker = () => {
             } else {
                 const { error } = await supabase.from('sprint_evaluations').insert(evalData);
                 if (error) throw error;
+            }
 
-                // Send notification to the evaluated person
-                try {
-                    await db.createNotification({
-                        user_id: evalTarget.member.id,
-                        title: '📊 Sprint Evaluation Received',
-                        message: `${user.name || 'A teammate'} submitted a Week ${evalTarget.week} evaluation for you.`,
-                        type: 'info',
-                        link: '/sprint-tracker'
-                    });
-                } catch (notifErr) {
-                    console.error('[SprintTracker] Notification error:', notifErr);
-                }
+            // Send notification to the evaluated person
+            try {
+                await db.createNotification({
+                    user_id: evalTarget.member.id,
+                    title: `🏆 Sprint Evaluation ${existing ? 'Updated' : 'Received'}`,
+                    message: `${user.name || 'A teammate'} evaluated your Week ${evalTarget.week} performance.`,
+                    type: 'eval',
+                    link: '/sprint-tracker'
+                });
+            } catch (notifErr) {
+                console.error('[SprintTracker] Notification error:', notifErr);
             }
 
             setShowEvalModal(false);
@@ -905,7 +919,7 @@ const SprintTracker = () => {
                     Sprint Tracker
                 </h1>
                 <p style={{ color: 'var(--text-muted)', marginTop: 'var(--space-xs)' }}>
-                    {classrooms.find(c => c.id === selectedClassroomId)?.name || 'Classroom'} — 8-Week Milestone Scoreboard & Peer Evaluations
+                    {classrooms.find(c => c.id === selectedClassroomId)?.name || 'Classroom'} — {sprintTemplate.length || 8}-Week Milestone Scoreboard & Peer Evaluations
                 </p>
                 {isAdmin && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: 'var(--space-md)' }}>

@@ -137,6 +137,20 @@ function SprintVault() {
                 throw new Error(vaultErr.message || 'Failed to save to sprint_vault');
             }
 
+            // Notify classroom of new Sprint Vault upload
+            try {
+                if (user?.classroom_id) {
+                    await db.notifyClassroom(user.classroom_id, {
+                        title: `📁 New Sprint Vault Upload (Week ${targetWeek})`,
+                        message: `${user.name || 'A teammate'} uploaded "${docForm.title}" for Week ${targetWeek}.`,
+                        type: 'vault',
+                        link: '/sprint-vault'
+                    });
+                }
+            } catch (notifErr) {
+                console.error('[SprintVault] Notification error:', notifErr);
+            }
+
             // Update sprint_templates primary resource for quick reference (Admin capability or safe try-catch)
             if (isAdmin) {
                 try {
@@ -163,6 +177,12 @@ function SprintVault() {
     };
 
     const handleDeleteDoc = async (doc) => {
+        const canDelete = isAdmin || (typeof doc === 'object' && !doc.is_template_resource && doc.uploaded_by && doc.uploaded_by === user?.id);
+        if (!canDelete) {
+            alert('Permission denied: Only admins or the uploader can delete this resource.');
+            return;
+        }
+
         if (!confirm('Are you sure you want to delete this resource?')) return;
         try {
             if (typeof doc === 'object' && doc.is_template_resource) {
@@ -250,8 +270,9 @@ function SprintVault() {
                 </div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 460px), 1fr))', gap: 'var(--space-xl)' }}>
-                    {Array.from({ length: 8 }, (_, i) => i + 1).map(weekNum => {
-                        const template = sprintTemplates.find(t => t.week_number === weekNum) || { title: `Week ${weekNum}` };
+                    {(sprintTemplates && sprintTemplates.length > 0 ? sprintTemplates : DEFAULT_WEEKS).map(tmpl => {
+                        const weekNum = Number(tmpl.week_number || tmpl.week || 1);
+                        const template = tmpl;
                         const docs = getDocsForWeek(weekNum);
 
                         return (
@@ -393,7 +414,7 @@ function SprintVault() {
                                                                         <Code size={12} /> Browse Tree
                                                                     </button>
                                                                 )}
-                                                                {(isAdmin || !doc.uploaded_by || doc.uploaded_by === user?.id) && (
+                                                                {(isAdmin || (!doc.is_template_resource && doc.uploaded_by && doc.uploaded_by === user?.id)) && (
                                                                     <button
                                                                         onClick={() => handleDeleteDoc(doc)}
                                                                         title="Delete Resource"

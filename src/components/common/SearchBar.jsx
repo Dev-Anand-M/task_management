@@ -37,7 +37,7 @@ const SearchBar = ({
         { label: 'Tasks & Assignments', path: isAdmin ? '/admin/tasks' : '/tasks', keywords: ['task', 'tasks', 'assignment', 'work', 'todo', 'deadline', 'projects'] },
         { label: 'Quizzes & Practice', path: isAdmin ? '/admin/quizzes' : '/quizzes', keywords: ['quiz', 'quizzes', 'test', 'exam', 'questions', 'practice', 'mcq'] },
         { label: 'Sprint Tracker (Live Evaluation)', path: '/sprint-tracker', keywords: ['sprint', 'tracker', 'milestones', 'evaluation', 'kickoff', 'sprint week', 'submissions'] },
-        { label: 'Sprint Vault & Docs', path: '/study-materials?tab=sprint', keywords: ['sprint vault', 'vault', 'sprint docs', 'code project', 'zip upload', 'templates'] },
+        { label: 'Sprint Vault', path: '/sprint-vault', keywords: ['sprint vault', 'vault', 'sprint docs', 'code project', 'zip upload', 'templates', 'briefings'] },
         { label: 'Leaderboard & Rankings', path: '/leaderboard', keywords: ['leaderboard', 'rank', 'score', 'top', 'players', 'xp', 'level', 'gamification'] },
         { label: 'Team Members & Roster', path: isAdmin ? '/admin/team' : '/team', keywords: ['team', 'members', 'students', 'classmates', 'roster', 'directory'] },
         { label: 'Activity Calendar & Milestones', path: '/calendar', keywords: ['calendar', 'events', 'schedule', 'milestones', 'kickoff', 'deadlines', 'dates'] },
@@ -48,7 +48,7 @@ const SearchBar = ({
         { label: 'AI Code Review', path: '/ai/code-review', keywords: ['code review', 'ai code', 'audit', 'syntax', 'feedback', 'debug'] },
         { label: 'AI Study Tools & Flashcards', path: '/ai/study-tools', keywords: ['study tools', 'flashcards', 'summarizer', 'ai summary', 'notes generator'] },
         { label: 'AI Quiz Generator', path: '/ai/quiz-generator', keywords: ['quiz generator', 'create quiz', 'ai quiz', 'test generator', 'build quiz'] },
-        { label: 'Study Materials & Vault', path: '/study-materials', keywords: ['study materials', 'vault', 'docs', 'notes', 'pdfs', 'resources', 'files'] },
+        { label: 'Repository (Shared Resources & Notes)', path: '/repository', keywords: ['repository', 'study materials', 'docs', 'notes', 'pdfs', 'resources', 'files', 'shared materials'] },
         { label: 'Notifications & Alerts', path: '/notifications', keywords: ['notifications', 'alerts', 'announcements', 'updates', 'messages'] },
         { label: 'My Profile & Account', path: '/profile', keywords: ['profile', 'account', 'me', 'avatar', 'user info'] },
         { label: 'Settings & Customization', path: '/settings', keywords: ['settings', 'preferences', 'theme', 'dark mode', 'light mode', 'config', 'api key'] }
