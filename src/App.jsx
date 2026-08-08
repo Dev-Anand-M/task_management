@@ -341,9 +341,17 @@ function App() {
   const [updateInfo, setUpdateInfo] = useState(null);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
 
-  // Check for updates & maintenance mode on app start
+  // Check for updates & maintenance mode on app start (App only, not Website)
   useEffect(() => {
     const checkUpdates = async () => {
+      // Maintenance and version update popups apply strictly to Native Mobile App
+      const isNative = PlatformService.isNative();
+      if (!isNative) {
+        setUpdateInfo(null);
+        setShowUpdateDialog(false);
+        return;
+      }
+
       const result = await updateChecker.checkForUpdates();
       
       if (result.updateAvailable || result.isMaintenance) {
