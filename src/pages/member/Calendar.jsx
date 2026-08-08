@@ -85,7 +85,18 @@ const Calendar = () => {
         if (!user?.id) return;
         try {
             if (!silent) setLoading(true);
-            const [tasks, submissions, quizzes, quizAttempts, routines, routineLogs, sprintTemplatesRes] = await Promise.race([
+
+            // Fetch sprint templates safely
+            const fetchTemplates = async () => {
+                try {
+                    const { data } = await supabase.from('sprint_templates').select('*').order('week_number', { ascending: true });
+                    return data || [];
+                } catch {
+                    return [];
+                }
+            };
+
+            const [tasks, submissions, quizzes, quizAttempts, routines, routineLogs, sprintTemplates] = await Promise.race([
                 Promise.all([
                     db.getTasks().catch(() => []),
                     db.getSubmissionsByUser(user.id).catch(() => []),
@@ -93,21 +104,28 @@ const Calendar = () => {
                     db.getQuizAttemptsByUser(user.id).catch(() => []),
                     routineService.getAllRoutinesForHistory().catch(() => []),
                     routineService.getAllLogs().catch(() => []),
-                    supabase.from('sprint_templates').select('*').order('week_number', { ascending: true }).catch(() => ({ data: [] }))
+                    fetchTemplates()
                 ]),
                 new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 10000))
             ]);
 
-            const sprintTemplates = sprintTemplatesRes?.data || [];
             const allEvents = [];
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
 
+            const parseCalendarDate = (dateVal, defaultTime = '09:00:00') => {
+                if (!dateVal) return null;
+                const str = String(dateVal).trim();
+                const formattedStr = str.includes('T') ? str : `${str}T${defaultTime}`;
+                const d = new Date(formattedStr);
+                return isNaN(d.getTime()) ? null : d;
+            };
+
             // Format Sprint Weeks / Milestones as events
             (sprintTemplates || []).forEach(st => {
                 if (st.start_date) {
-                    const startDateObj = new Date(`${st.start_date}T09:00:00`);
-                    if (!isNaN(startDateObj.getTime())) {
+                    const startDateObj = parseCalendarDate(st.start_date, '09:00:00');
+                    if (startDateObj) {
                         allEvents.push({
                             id: `sprint-start-${st.id || st.week_number}`,
                             title: `${st.is_showcase ? '🃏' : '⚡'} Sprint W${st.week_number}: ${st.title}`,
@@ -121,8 +139,8 @@ const Calendar = () => {
                     }
                 }
                 if (st.end_date) {
-                    const endDateObj = new Date(`${st.end_date}T23:59:59`);
-                    if (!isNaN(endDateObj.getTime())) {
+                    const endDateObj = parseCalendarDate(st.end_date, '23:59:59');
+                    if (endDateObj) {
                         allEvents.push({
                             id: `sprint-end-${st.id || st.week_number}`,
                             title: `🏁 W${st.week_number} Eval Due: ${st.title}`,
@@ -196,6 +214,7 @@ const Calendar = () => {
             const todayStr = toLocalISO(new Date());
 
             (routines || []).forEach(r => {
+                if (!r || !r.days_of_week || !Array.isArray(r.days_of_week)) return;
                 let iter = new Date(calendarStart);
                 while (iter <= calendarEnd) {
                     const dayNum = iter.getDay() === 0 ? 7 : iter.getDay(); // 1=Mon, 7=Sun
