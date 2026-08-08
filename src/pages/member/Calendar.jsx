@@ -86,10 +86,14 @@ const Calendar = () => {
         try {
             if (!silent) setLoading(true);
 
-            // Fetch sprint templates safely
+            // Fetch sprint templates safely filtered by active user classroom
             const fetchTemplates = async () => {
                 try {
                     const { data } = await supabase.from('sprint_templates').select('*').order('week_number', { ascending: true });
+                    const cid = user?.classroom_id;
+                    if (cid) {
+                        return (data || []).filter(t => !t.classroom_id || t.classroom_id === cid);
+                    }
                     return data || [];
                 } catch {
                     return [];
