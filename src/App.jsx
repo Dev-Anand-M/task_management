@@ -9,6 +9,7 @@ import { ErrorBoundary, LoadingSpinner, SplashScreen, SecurityGuard } from './co
 import BackHandler from './components/layout/BackHandler';
 import GlobalAlarmListener from './components/layout/GlobalAlarmListener';
 import UpdateDialog from './components/common/UpdateDialog';
+import MaintenanceOverlay from './components/common/MaintenanceOverlay';
 import { updateChecker } from './services/updateChecker';
 import PendingWorkPopup from './components/common/PendingWorkPopup';
 
@@ -340,32 +341,35 @@ function App() {
   const [updateInfo, setUpdateInfo] = useState(null);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
 
-  // Check for updates on app start
+  // Check for updates & maintenance mode on app start
   useEffect(() => {
     const checkUpdates = async () => {
-      // Only check for updates on native Android app, web auto-updates via Vercel
-      const isNative = PlatformService.isNative();
-      if (!isNative) return;
-
       const result = await updateChecker.checkForUpdates();
       
-      if (result.updateAvailable) {
-        // Don't show if user dismissed this version (unless mandatory)
-        if (!result.mandatory && updateChecker.hasUserDismissedVersion(result.latestVersion)) {
+      if (result.updateAvailable || result.isMaintenance) {
+        // Don't show if user dismissed this version (unless mandatory or maintenance)
+        if (!result.mandatory && !result.isMaintenance && updateChecker.hasUserDismissedVersion(result.latestVersion)) {
           return;
         }
         
         setUpdateInfo(result);
         setShowUpdateDialog(true);
+      } else {
+        setUpdateInfo(null);
+        setShowUpdateDialog(false);
       }
     };
 
-    // Check on app start (with a small delay to not block initial render)
-    setTimeout(checkUpdates, 2000);
+    // Check immediately on mount and after small delay
+    checkUpdates();
+    const timer = setTimeout(checkUpdates, 1500);
 
-    // Check every hour
-    const interval = setInterval(checkUpdates, 60 * 60 * 1000);
-    return () => clearInterval(interval);
+    // Check every 30 seconds for live maintenance mode toggles
+    const interval = setInterval(checkUpdates, 30 * 1000);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, []);
 
   const handleDownloadUpdate = async () => {
@@ -427,8 +431,21 @@ function App() {
             <AppRoutes />
           </SecurityGuard>
           
-          {/* Update Dialog */}
-          {showUpdateDialog && updateInfo && (
+          {/* Maintenance Overlay (Mandatory & Non-Bypassable for regular users) */}
+          {showUpdateDialog && updateInfo?.isMaintenance ? (
+            <MaintenanceOverlay
+              maintenanceMessage={updateInfo.maintenanceMessage}
+              onRefresh={async () => {
+                const res = await updateChecker.checkForUpdates();
+                if (!res.isMaintenance && !res.updateAvailable) {
+                  setShowUpdateDialog(false);
+                  setUpdateInfo(null);
+                } else {
+                  setUpdateInfo(res);
+                }
+              }}
+            />
+          ) : showUpdateDialog && updateInfo && (
             <UpdateDialog
               updateInfo={updateInfo}
               onDownload={handleDownloadUpdate}

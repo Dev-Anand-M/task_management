@@ -1,8 +1,9 @@
 {
   "version": "1.6.0",
-  "maintenance": false,
+  "maintenance": true,
+  "maintenanceMessage": "🛠️ Zenith OS is currently undergoing scheduled platform maintenance & server upgrades.\n\nAccess is temporarily restricted to protect data integrity. Please check back shortly!",
   "downloadUrl": "https://zenith-sable-alpha.vercel.app/zenith-v1.6.0.apk",
-  "releaseNotes": "🚀 Zenith v1.6.0 — Major Release! Website-wide Custom AI Model Integration, Full 360° ZEN AI Platform Context, Isolated Custom Models per Provider, and Sprint Vault Upgrades.",
+  "releaseNotes": "🚀 Zenith v1.6.0 — Platform Maintenance Active.",
   "mandatory": true,
   "minSupportedVersion": "1.6.0"
 }
